@@ -407,7 +407,15 @@ export default function ClientWorkflow() {
                         <CardTitle className="text-lg flex items-center gap-2">
                           {step.completed && <CheckCircle className="h-5 w-5 text-green-600" />}
                           {!step.completed && <Circle className="h-5 w-5 text-gray-400" />}
-                          {step.stepTitle}
+                          {step.stepTitle || (
+                            step.stepId === 'cadastro' ? 'Cadastro' :
+                            step.stepId === 'boas-vindas' ? 'Boas Vindas' :
+                            step.stepId === 'agendamento-psicotecnico' ? 'Agendamento Psicotécnico' :
+                            step.stepId === 'juntada-documento' ? 'Juntada de Documento' :
+                            step.stepId === 'agendamento-laudo' ? 'Agendamento de Laudo' :
+                            step.stepId === 'despachante' ? 'Despachante' :
+                            'Etapa'
+                          )}
                         </CardTitle>
                         
                         {/* Sub-tarefas Progress */}

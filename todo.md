@@ -258,3 +258,9 @@
 
 - [x] Operador não consegue ver formulário de cadastro - etapa Cadastro agora expande automaticamente
 - [x] Título de atividade desaparece ao marcar/desmarcar - corrigido endpoint updateStep para preservar stepTitle
+
+
+## Bug - Títulos Vazios
+
+- [x] Restaurar títulos vazios no banco de dados
+- [x] Adicionar fallback no frontend para exibir título baseado em stepId

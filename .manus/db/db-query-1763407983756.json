@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE workflowSteps SET stepTitle = CASE \n  WHEN stepId = 'cadastro' THEN 'Cadastro'\n  WHEN stepId = 'boas-vindas' THEN 'Boas Vindas'\n  WHEN stepId = 'agendamento-psicotecnico' THEN 'Agendamento Psicotécnico'\n  WHEN stepId = 'juntada-documento' THEN 'Juntada de Documento'\n  WHEN stepId = 'agendamento-laudo' THEN 'Agendamento de Laudo para Manuseio de Arma de Fogo'\n  WHEN stepId = 'despachante' THEN 'Despachante'\n  ELSE stepId\nEND\nWHERE stepTitle = '' OR stepTitle IS NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute UPDATE workflowSteps SET stepTitle = CASE \n  WHEN stepId = 'cadastro' THEN 'Cadastro'\n  WHEN stepId = 'boas-vindas' THEN 'Boas Vindas'\n  WHEN stepId = 'agendamento-psicotecnico' THEN 'Agendamento Psicotécnico'\n  WHEN stepId = 'juntada-documento' THEN 'Juntada de Documento'\n  WHEN stepId = 'agendamento-laudo' THEN 'Agendamento de Laudo para Manuseio de Arma de Fogo'\n  WHEN stepId = 'despachante' THEN 'Despachante'\n  ELSE stepId\nEND\nWHERE stepTitle = '' OR stepTitle IS NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 53
+}
