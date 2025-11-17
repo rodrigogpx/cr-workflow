@@ -252,3 +252,9 @@
 - [x] Implementar formulário completo na etapa Cadastro do ClientWorkflow
 - [x] Adicionar validação de campos obrigatórios
 - [x] Testar salvamento e edição dos dados do cliente
+
+
+## Bugs a Corrigir
+
+- [x] Operador não consegue ver formulário de cadastro - etapa Cadastro agora expande automaticamente
+- [x] Título de atividade desaparece ao marcar/desmarcar - corrigido endpoint updateStep para preservar stepTitle

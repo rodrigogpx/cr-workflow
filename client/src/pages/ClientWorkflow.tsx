@@ -239,6 +239,16 @@ export default function ClientWorkflow() {
     }
   }, [client]);
 
+  // Expandir automaticamente a etapa "Cadastro" ao carregar
+  useEffect(() => {
+    if (workflow && workflow.length > 0) {
+      const cadastroStep = workflow.find((step: any) => step.stepTitle === "Cadastro");
+      if (cadastroStep && !expandedSteps.includes(cadastroStep.id)) {
+        setExpandedSteps(prev => [...prev, cadastroStep.id]);
+      }
+    }
+  }, [workflow]);
+
   if (!client || !workflow) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

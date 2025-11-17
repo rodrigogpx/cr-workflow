@@ -235,14 +235,18 @@ export const appRouter = router({
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
+              // Buscar etapa atual para preservar stepId e stepTitle
+        const currentStep = await db.getWorkflowStepById(input.stepId);
+        if (!currentStep) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
+        }
         
         await db.upsertWorkflowStep({
           id: input.stepId,
           clientId: input.clientId,
-          stepId: '',
-          stepTitle: '',
+          stepId: currentStep.stepId,
+          stepTitle: currentStep.stepTitle,
           completed: input.completed,
-          completedAt: input.completed ? new Date() : null,
         });
         
         return { success: true };

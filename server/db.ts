@@ -168,6 +168,14 @@ export async function getSubTasksByWorkflowStep(workflowStepId: number) {
   return await db.select().from(subTasks).where(eq(subTasks.workflowStepId, workflowStepId));
 }
 
+export async function getWorkflowStepById(stepId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(workflowSteps).where(eq(workflowSteps.id, stepId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function upsertWorkflowStep(step: InsertWorkflowStep & { id?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
