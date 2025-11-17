@@ -150,19 +150,15 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    delete: protectedProcedure
+    delete: adminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ input }) => {
         const client = await db.getClientById(input.id);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para excluir este cliente' });
-        }
-        
+        // Apenas admin pode deletar clientes
         await db.deleteClient(input.id);
         return { success: true };
       }),
@@ -426,6 +422,16 @@ export const appRouter = router({
     }),
 
     updateRole: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        role: z.enum(['operator', 'admin']),
+      }))
+      .mutation(async ({ input }) => {
+        await db.updateUserRole(input.userId, input.role);
+        return { success: true };
+      }),
+
+    assignRole: adminProcedure
       .input(z.object({
         userId: z.number(),
         role: z.enum(['operator', 'admin']),

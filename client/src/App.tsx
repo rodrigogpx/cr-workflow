@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ClientWorkflow from "./pages/ClientWorkflow";
 import Admin from "./pages/Admin";
+import PendingApproval from "./pages/PendingApproval";
 import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -24,6 +25,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Redirect to="/login" />;
+  }
+
+  // Redirecionar usuários sem perfil para página de aguardando aprovação
+  if (!user.role) {
+    return <Redirect to="/pending-approval" />;
   }
 
   return <>{children}</>;
@@ -44,6 +50,11 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     return <Redirect to="/login" />;
   }
 
+  // Redirecionar usuários sem perfil para página de aguardando aprovação
+  if (!user.role) {
+    return <Redirect to="/pending-approval" />;
+  }
+
   if (user.role !== 'admin') {
     return <Redirect to="/dashboard" />;
   }
@@ -55,6 +66,7 @@ function Router() {
   return (
     <Switch>
       <Route path={"/login"} component={Login} />
+      <Route path={"/pending-approval"} component={PendingApproval} />
       <Route path={"/"}>
         <Redirect to="/dashboard" />
       </Route>

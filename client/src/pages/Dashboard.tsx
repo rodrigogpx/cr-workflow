@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone, User } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone, User, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
@@ -43,6 +43,22 @@ export default function Dashboard() {
       toast.error(`Erro ao cadastrar cliente: ${error.message}`);
     },
   });
+
+  const deleteClientMutation = trpc.clients.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Cliente excluído com sucesso!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao excluir cliente: ${error.message}`);
+    },
+  });
+
+  const handleDeleteClient = (clientId: number, clientName: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir o cliente ${clientName}? Esta ação não pode ser desfeita.`)) {
+      deleteClientMutation.mutate({ id: clientId });
+    }
+  };
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -313,11 +329,33 @@ export default function Dashboard() {
                       />
                     </div>
                   </div>
-                  <Link href={`/client/${client.id}`}>
-                    <Button className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide mt-4">
-                      Ver Workflow →
-                    </Button>
-                  </Link>
+                  <div className="space-y-2 mt-4">
+                    <Link href={`/client/${client.id}`}>
+                      <Button className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide">
+                        Ver Workflow →
+                      </Button>
+                    </Link>
+                    {user?.role === 'admin' && (
+                      <Button
+                        onClick={() => handleDeleteClient(client.id, client.name)}
+                        variant="outline"
+                        className="w-full border-2 border-dashed border-red-500/40 text-red-500 hover:bg-red-500/10 hover:border-red-500/60 font-bold uppercase tracking-wide"
+                        disabled={deleteClientMutation.isPending}
+                      >
+                        {deleteClientMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Excluindo...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir Cliente
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}

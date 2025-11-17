@@ -172,3 +172,18 @@
 - [ ] Implementar edição de informações do cliente
 - [ ] Implementar exclusão de cliente com confirmação
 - [ ] Corrigir cálculo de progresso nos cards (sem violar regras de hooks)
+
+
+## Novas Funcionalidades - Sistema de Aprovação e Exclusão
+
+- [x] Modificar schema do banco de dados para permitir role NULL (usuários sem perfil)
+- [x] Atualizar função upsertUser para não atribuir role automaticamente
+- [x] Criar endpoint tRPC para admin atribuir perfil a usuários (assignRole)
+- [x] Criar endpoint tRPC para admin deletar clientes (deleteClient)
+- [x] Criar página "Aguardando Aprovação" para usuários sem perfil
+- [x] Atualizar proteção de rotas para redirecionar usuários sem perfil
+- [x] Adicionar seção no painel Admin para aprovar novos usuários
+- [x] Adicionar botão de exclusão de clientes no dashboard (apenas admin)
+- [x] Corrigir bug de redirecionamento infinito na rota raiz
+- [x] Testar fluxo completo de aprovação de usuário
+- [x] Testar exclusão de clientes com seus workflows e documentos

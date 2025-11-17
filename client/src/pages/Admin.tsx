@@ -167,9 +167,12 @@ export default function Admin() {
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center ${
+                      !u.role ? 'border-yellow-500/40 bg-yellow-500/10' :
                       u.role === 'admin' ? 'border-primary/40 bg-primary/10' : 'border-white/20 bg-muted'
                     }`}>
-                      {u.role === 'admin' ? (
+                      {!u.role ? (
+                        <Clock className="h-5 w-5 text-yellow-500" />
+                      ) : u.role === 'admin' ? (
                         <Shield className="h-5 w-5 text-primary" />
                       ) : (
                         <Users className="h-5 w-5 text-muted-foreground" />
@@ -182,8 +185,9 @@ export default function Admin() {
                   </div>
                   <div className="flex items-center gap-4">
                     <Select
-                      value={u.role}
+                      value={u.role || "pending"}
                       onValueChange={(value) => {
+                        if (value === "pending") return;
                         updateRoleMutation.mutate({
                           userId: u.id,
                           role: value as 'operator' | 'admin',
@@ -194,6 +198,9 @@ export default function Admin() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="pending" disabled>
+                          Aguardando Aprovação
+                        </SelectItem>
                         <SelectItem value="operator">Operador</SelectItem>
                         <SelectItem value="admin">Administrador</SelectItem>
                       </SelectContent>
