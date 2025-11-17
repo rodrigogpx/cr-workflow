@@ -122,3 +122,16 @@
 
 - [x] Corrigir erro ao visualizar workflow dos clientes
 - [x] Investigar problema na página ClientWorkflow
+
+
+## Redesign UI/UX Moderno
+
+- [x] Analisar identidade visual do Fire Range
+- [x] Atualizar paleta de cores no design system
+- [x] Aplicar tipografia oficial (usando sans-serif padrão)
+- [x] Redesenhar Dashboard com layout moderno
+- [x] Melhorar cards de clientes com hover effects
+- [ ] Redesenhar página de Workflow
+- [ ] Adicionar micro-interações e animações
+- [ ] Melhorar hierarquia visual e espaçamentos
+- [ ] Aplicar glassmorphism e sombras modernas
