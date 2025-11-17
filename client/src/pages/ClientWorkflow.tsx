@@ -195,11 +195,34 @@ export default function ClientWorkflow() {
 
                 {isExpanded && (
                   <CardContent>
-                    <DocumentUpload
-                      clientId={clientId}
-                      stepId={step.id}
-                      stepTitle={step.stepTitle}
-                    />
+                    {step.subTasks && step.subTasks.length > 0 ? (
+                      <div className="space-y-4">
+                        {step.subTasks.map((subTask) => (
+                          <div key={subTask.id} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                checked={subTask.completed}
+                                onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)}
+                              />
+                              <span className={"text-sm font-medium " + (subTask.completed ? "line-through text-muted-foreground" : "")}>
+                                {subTask.label}
+                              </span>
+                            </div>
+                            <DocumentUpload
+                              clientId={clientId}
+                              stepId={step.id}
+                              stepTitle={subTask.label}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <DocumentUpload
+                        clientId={clientId}
+                        stepId={step.id}
+                        stepTitle={step.stepTitle}
+                      />
+                    )}
                   </CardContent>
                 )}
               </Card>

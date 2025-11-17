@@ -67,33 +67,56 @@ export const appRouter = router({
           operatorId,
         });
         
-        // Criar workflow inicial para o cliente - 16 documentos do enxoval
+        // Criar workflow inicial para o cliente - 8 etapas principais
         const initialSteps = [
-          { stepId: 'doc-01', stepTitle: 'Comprovante de Capacidade Técnica para o manuseio de arma de fogo' },
-          { stepId: 'doc-02', stepTitle: 'Certidão de Antecedente Criminal Justiça Federal' },
-          { stepId: 'doc-03', stepTitle: 'Declaração de não estar respondendo a inquérito policial ou a processo criminal' },
-          { stepId: 'doc-04', stepTitle: 'Documento de Identificação Pessoal' },
-          { stepId: 'doc-05', stepTitle: 'Laudo de Aptidão Psicológica para o manuseio de arma de fogo' },
-          { stepId: 'doc-06', stepTitle: 'Comprovante de Residência Fixa' },
-          { stepId: 'doc-07', stepTitle: 'Comprovante de Ocupação Lícita' },
-          { stepId: 'doc-08', stepTitle: 'Comprovante de filiação a entidade de caça' },
-          { stepId: 'doc-09', stepTitle: 'Comprovante de Segundo Endereço de Guarda do Acervo' },
-          { stepId: 'doc-10', stepTitle: 'Certidão de Antecedente Criminal Justiça Estadual' },
-          { stepId: 'doc-11', stepTitle: 'Declaração de Segurança do Acervo' },
-          { stepId: 'doc-12', stepTitle: 'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente' },
-          { stepId: 'doc-13', stepTitle: 'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama' },
-          { stepId: 'doc-14', stepTitle: 'Comprovante de filiação a entidade de tiro desportivo' },
-          { stepId: 'doc-15', stepTitle: 'Certidão de Antecedente Criminal Justiça Militar' },
-          { stepId: 'doc-16', stepTitle: 'Certidão de Antecedente Criminal Justiça Eleitoral' },
+          { stepId: 'processo-venda', stepTitle: 'Processo de Venda' },
+          { stepId: 'cadastro', stepTitle: 'Cadastro' },
+          { stepId: 'boas-vindas', stepTitle: 'Boas Vindas' },
+          { stepId: 'agendamento-psicotecnico', stepTitle: 'Agendamento Psicotécnico' },
+          { stepId: 'juntada-documento', stepTitle: 'Juntada de Documento' },
+          { stepId: 'laudo-arma', stepTitle: 'Laudo Arma de Fogo' },
+          { stepId: 'despachante', stepTitle: 'Despachante' },
+          { stepId: 'fim', stepTitle: 'Fim' },
         ];
         
         for (const step of initialSteps) {
-          await db.upsertWorkflowStep({
+          const workflowStepId = await db.upsertWorkflowStep({
             clientId,
             stepId: step.stepId,
             stepTitle: step.stepTitle,
             completed: false,
           });
+          
+          // Se for a etapa "Juntada de Documento", criar as 16 subtarefas (documentos)
+          if (step.stepId === 'juntada-documento') {
+            const documents = [
+              'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
+              'Certidão de Antecedente Criminal Justiça Federal',
+              'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
+              'Documento de Identificação Pessoal',
+              'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
+              'Comprovante de Residência Fixa',
+              'Comprovante de Ocupação Lícita',
+              'Comprovante de filiação a entidade de caça',
+              'Comprovante de Segundo Endereço de Guarda do Acervo',
+              'Certidão de Antecedente Criminal Justiça Estadual',
+              'Declaração de Segurança do Acervo',
+              'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
+              'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
+              'Comprovante de filiação a entidade de tiro desportivo',
+              'Certidão de Antecedente Criminal Justiça Militar',
+              'Certidão de Antecedente Criminal Justiça Eleitoral',
+            ];
+            
+            for (let i = 0; i < documents.length; i++) {
+              await db.upsertSubTask({
+                workflowStepId,
+                subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
+                label: documents[i],
+                completed: false,
+              });
+            }
+          }
         }
         
         return { id: clientId };

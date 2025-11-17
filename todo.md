@@ -93,3 +93,12 @@
 - [x] Cada documento deve ter área de upload individual
 - [x] Reorganizar estrutura do workflow na página do cliente
 - [x] Validar que todos os documentos estão corretos
+
+
+## Reorganização do Workflow
+
+- [x] Criar 8 etapas principais do processo
+- [x] Adicionar 16 documentos como subtarefas da etapa "Juntada de Documento"
+- [x] Migrar dados dos clientes existentes para nova estrutura
+- [x] Ajustar interface para mostrar subtarefas com upload de documentos
+- [x] Manter upload individual por documento dentro das subtarefas
