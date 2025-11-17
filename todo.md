@@ -18,3 +18,19 @@
 - [x] Persistência de dados no localStorage
 - [x] Design responsivo
 - [x] Identidade visual Fire Range (vermelho, preto, branco)
+
+
+## Novas Funcionalidades - Sistema de Login e Gestão de Clientes
+
+- [x] Sistema de autenticação (login/logout)
+- [x] Contexto de autenticação global
+- [x] Página de login
+- [x] Dashboard de clientes
+- [x] Lista de clientes com busca e filtros
+- [x] Adicionar novo cliente
+- [ ] Editar informações do cliente (próxima versão)
+- [ ] Excluir cliente (próxima versão)
+- [x] Workflow individual por cliente
+- [x] Navegação entre clientes
+- [x] Persistência de dados de múltiplos clientes
+- [x] Proteção de rotas (autenticação obrigatória)
