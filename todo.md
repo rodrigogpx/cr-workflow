@@ -405,3 +405,12 @@
 - [x] Corrigir contagem de etapas nos cards superiores (Cadastro/On-Boarding, Documentação/Laudos, Juntada-Sinarm-CAC)
 - [x] Renomear "Dispachante/PF" para "Juntada-Sinarm-CAC"
 - [x] Testar e criar checkpoint
+
+
+## Correção - Percentual no Dashboard
+
+- [x] Investigar por que o percentual não está sendo exibido no Dashboard
+- [x] Verificar se a query está retornando o campo progress
+- [x] Corrigir campo isCompleted para completed
+- [x] Testar
+- [x] Criar checkpoint

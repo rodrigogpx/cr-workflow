@@ -34,7 +34,7 @@ export const appRouter = router({
         clients.map(async (client) => {
           const workflow = await db.getWorkflowByClient(client.id);
           const totalSteps = workflow.length;
-          const completedSteps = workflow.filter((s: any) => s.isCompleted).length;
+          const completedSteps = workflow.filter((s: any) => s.completed).length;
           const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
           
           return {
