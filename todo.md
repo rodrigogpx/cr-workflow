@@ -289,3 +289,12 @@
 - [x] Adicionar botão de envio individual para cada email
 - [x] Adicionar indicador de email já enviado
 - [x] Testar envio de emails
+
+
+## Correção - Erro ao Cadastrar Cliente
+
+- [x] Investigar campos do schema de clientes que estão como notNull mas deveriam aceitar NULL
+- [x] Atualizar schema para permitir NULL em campos opcionais de cadastro (já estava correto)
+- [x] Executar migração do banco de dados (pnpm db:push) - não necessário, schema já estava correto
+- [x] Testar cadastro de novo cliente com apenas campos básicos
+- [x] Criar checkpoint com correção

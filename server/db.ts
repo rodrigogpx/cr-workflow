@@ -111,7 +111,14 @@ export async function createClient(client: InsertClient) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(clients).values(client);
+  // Remove undefined fields to avoid Drizzle inserting 'default' as string
+  const cleanedClient = Object.fromEntries(
+    Object.entries(client).filter(([_, value]) => value !== undefined)
+  ) as InsertClient;
+  
+  console.log("[createClient] Input data:", JSON.stringify(cleanedClient, null, 2));
+  
+  const result = await db.insert(clients).values(cleanedClient);
   return result[0].insertId;
 }
 
