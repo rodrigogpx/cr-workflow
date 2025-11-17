@@ -299,27 +299,27 @@ export default function Dashboard() {
             {filteredClients.map((client) => (
               <Card
                 key={client.id}
-                className="border-2 border-dashed border-white/20 bg-card hover:border-primary transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1"
+                className="border-2 border-dashed border-white/20 bg-white/95 hover:border-primary transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1"
               >
                 <CardHeader>
-                  <CardTitle className="text-xl font-bold uppercase tracking-tight">{client.name}</CardTitle>
+                  <CardTitle className="text-xl font-bold uppercase tracking-tight text-black">{client.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
                     <User className="w-4 h-4" />
                     <span className="font-mono">{client.cpf}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
                     <Phone className="w-4 h-4" />
                     <span>{client.phone}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
                     <Mail className="w-4 h-4" />
                     <span className="truncate">{client.email}</span>
                   </div>
-                  <div className="pt-2 border-t border-dashed border-white/10 space-y-2">
+                  <div className="pt-2 border-t border-dashed border-gray-300 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
+                      <span className="text-xs text-gray-600">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
                       <span className="text-xs font-bold text-primary">{getClientProgress(client.id)}% concluído</span>
                     </div>
                     <div className="w-full h-2 bg-muted rounded-full overflow-hidden">

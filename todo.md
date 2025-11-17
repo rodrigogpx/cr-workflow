@@ -200,3 +200,9 @@
 - [x] Adicionar indicadores visuais de progresso mais claros
 - [x] Melhorar responsividade mobile
 - [x] Testar nova página de workflow
+
+
+## Ajuste de Estilo - Cards de Clientes
+
+- [x] Ajustar background dos cards de clientes para opacity 0.95
+- [x] Ajustar cor do texto dos cards para preto
