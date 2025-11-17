@@ -187,3 +187,16 @@
 - [x] Corrigir bug de redirecionamento infinito na rota raiz
 - [x] Testar fluxo completo de aprovação de usuário
 - [x] Testar exclusão de clientes com seus workflows e documentos
+
+
+## Redesign da Página de Workflow - Tema Claro
+
+- [x] Mudar tema global de dark para light
+- [x] Atualizar paleta de cores para tema claro
+- [x] Reconstruir página ClientWorkflow com novo layout
+- [x] Melhorar visualização de etapas do workflow
+- [x] Melhorar visualização de sub-tarefas
+- [x] Melhorar seção de upload de documentos
+- [x] Adicionar indicadores visuais de progresso mais claros
+- [x] Melhorar responsividade mobile
+- [x] Testar nova página de workflow

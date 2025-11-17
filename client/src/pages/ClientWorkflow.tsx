@@ -2,10 +2,30 @@ import { useParams, useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import JSZip from 'jszip';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, CheckCircle2, Download, FileText, Calendar, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { 
+  ArrowLeft, 
+  CheckCircle2, 
+  Download, 
+  FileText, 
+  Calendar, 
+  ChevronDown, 
+  ChevronUp, 
+  Loader2,
+  Clock,
+  User,
+  Mail,
+  Phone,
+  Target,
+  FolderOpen,
+  Upload,
+  CheckCircle,
+  Circle
+} from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
@@ -31,14 +51,14 @@ export default function ClientWorkflow() {
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
     onSuccess: () => {
       refetch();
-      toast.success("Etapa atualizada");
+      toast.success("Etapa atualizada com sucesso!");
     },
   });
 
   const updateSubTaskMutation = trpc.workflow.updateSubTask.useMutation({
     onSuccess: () => {
       refetch();
-      toast.success("Documento atualizado");
+      toast.success("Documento atualizado!");
     },
   });
 
@@ -52,7 +72,7 @@ export default function ClientWorkflow() {
   const updateSchedulingMutation = trpc.workflow.updateScheduling.useMutation({
     onSuccess: () => {
       refetch();
-      toast.success("Agendamento atualizado");
+      toast.success("Agendamento atualizado!");
     },
   });
 
@@ -65,7 +85,6 @@ export default function ClientWorkflow() {
       setIsDownloading(true);
       toast.info("Buscando documentos...");
 
-      // Buscar documentos
       const response = await fetch(`/api/trpc/documents.downloadEnxoval?input=${encodeURIComponent(JSON.stringify({ clientId: Number(clientId) }))}`, {
         credentials: 'include'
       });
@@ -87,7 +106,6 @@ export default function ClientWorkflow() {
 
       const zip = new JSZip();
 
-      // Baixar e adicionar cada documento ao ZIP
       for (const doc of result.documents) {
         try {
           const docResponse = await fetch(doc.fileUrl);
@@ -98,10 +116,8 @@ export default function ClientWorkflow() {
         }
       }
 
-      // Gerar o ZIP
       const content = await zip.generateAsync({ type: "blob" });
 
-      // Criar link de download
       const url = window.URL.createObjectURL(content);
       const link = document.createElement('a');
       link.href = url;
@@ -168,8 +184,8 @@ export default function ClientWorkflow() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando workflow...</p>
         </div>
       </div>
     );
@@ -192,239 +208,342 @@ export default function ClientWorkflow() {
   const progressoTotal = calcularProgressoFase(workflow);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b-2 border-dashed border-white/20 bg-black sticky top-0 z-10">
-        <div className="container py-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header Moderno */}
+      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
+        <div className="container py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/dashboard">
-                <Button variant="ghost" size="icon" className="text-white hover:text-primary">
+                <Button variant="ghost" size="icon" className="hover:bg-gray-100">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-white uppercase tracking-tight">{client.name}</h1>
-                <p className="text-sm text-muted-foreground">{client.cpf} • {client.email}</p>
+                <h1 className="text-3xl font-bold text-gray-900">{client.name}</h1>
+                <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                  <span className="flex items-center gap-1">
+                    <User className="h-4 w-4" />
+                    {client.cpf}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-4 w-4" />
+                    {client.email}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-4 w-4" />
+                    {client.phone}
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Progresso Total</p>
-                <p className="text-2xl font-bold text-primary">{progressoTotal}%</p>
+                <p className="text-sm text-gray-600 font-medium">Progresso Total</p>
+                <p className="text-4xl font-bold text-primary">{progressoTotal}%</p>
               </div>
+              <Button 
+                onClick={handleDownloadEnxoval}
+                disabled={isDownloading}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Baixando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Baixar Enxoval
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container py-8 max-w-4xl">
-        {/* Barra de Progresso Única Segmentada */}
-        <Card className="border-2 border-dashed border-white/20 bg-card mb-8">
-          <CardHeader>
-            <CardTitle className="uppercase text-sm tracking-wide">Progresso do Workflow</CardTitle>
+      <main className="container py-8 max-w-6xl">
+        {/* Card de Progresso Geral */}
+        <Card className="mb-8 shadow-lg border-0">
+          <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Target className="h-5 w-5 text-primary" />
+              Progresso do Workflow
+            </CardTitle>
+            <CardDescription>Acompanhe o andamento de todas as etapas do processo</CardDescription>
           </CardHeader>
-          <CardContent>
-            {/* Labels das Fases */}
-            <div className="flex justify-between mb-3">
-              <div className="flex-1 text-center">
-                <span className="text-xs font-bold uppercase text-muted-foreground">Cadastro</span>
+          <CardContent className="pt-6">
+            {/* Fases com Cards Individuais */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* Fase 1 */}
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-blue-900">Cadastro</h3>
+                  <Badge variant={progressoFase1 === 100 ? "default" : "secondary"} className="bg-blue-600">
+                    {progressoFase1}%
+                  </Badge>
+                </div>
+                <Progress value={progressoFase1} className="h-2 bg-blue-200" />
+                <p className="text-xs text-blue-700 mt-2">
+                  {fase1Steps.filter(s => s.completed).length} de {fase1Steps.length} etapas
+                </p>
               </div>
-              <div className="flex-1 text-center">
-                <span className="text-xs font-bold uppercase text-muted-foreground">Documentação</span>
+
+              {/* Fase 2 */}
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-amber-900">Documentação</h3>
+                  <Badge variant={progressoFase2 === 100 ? "default" : "secondary"} className="bg-amber-600">
+                    {progressoFase2}%
+                  </Badge>
+                </div>
+                <Progress value={progressoFase2} className="h-2 bg-amber-200" />
+                <p className="text-xs text-amber-700 mt-2">
+                  {fase2Steps.filter(s => s.completed).length} de {fase2Steps.length} etapas
+                </p>
               </div>
-              <div className="flex-1 text-center">
-                <span className="text-xs font-bold uppercase text-muted-foreground">Finalização</span>
+
+              {/* Fase 3 */}
+              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-green-900">Finalização</h3>
+                  <Badge variant={progressoFase3 === 100 ? "default" : "secondary"} className="bg-green-600">
+                    {progressoFase3}%
+                  </Badge>
+                </div>
+                <Progress value={progressoFase3} className="h-2 bg-green-200" />
+                <p className="text-xs text-green-700 mt-2">
+                  {fase3Steps.filter(s => s.completed).length} de {fase3Steps.length} etapas
+                </p>
               </div>
             </div>
-            
-            {/* Barra de Progresso Segmentada */}
-            <div className="relative h-6 bg-muted rounded-lg overflow-hidden border-2 border-dashed border-white/10">
-              {/* Fase 1 */}
-              <div 
-                className="absolute left-0 top-0 h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-700 ease-out"
-                style={{
-                  width: `${(progressoFase1 / 3)}%`,
-                  animation: 'pulse 2s ease-in-out infinite'
-                }}
-              />
-              {/* Fase 2 */}
-              <div 
-                className="absolute left-[33.33%] top-0 h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-700 ease-out delay-150"
-                style={{
-                  width: `${(progressoFase2 / 3)}%`,
-                  animation: 'pulse 2s ease-in-out infinite',
-                  animationDelay: '0.3s'
-                }}
-              />
-              {/* Fase 3 */}
-              <div 
-                className="absolute left-[66.66%] top-0 h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-700 ease-out delay-300"
-                style={{
-                  width: `${(progressoFase3 / 3)}%`,
-                  animation: 'pulse 2s ease-in-out infinite',
-                  animationDelay: '0.6s'
-                }}
-              />
-              
-              {/* Divisores entre fases */}
-              <div className="absolute left-[33.33%] top-0 h-full w-0.5 bg-background z-10" />
-              <div className="absolute left-[66.66%] top-0 h-full w-0.5 bg-background z-10" />
-              
-              {/* Porcentagens */}
-              <div className="absolute inset-0 flex items-center justify-around z-20">
-                <span className="text-xs font-bold text-white drop-shadow-lg">{progressoFase1}%</span>
-                <span className="text-xs font-bold text-white drop-shadow-lg">{progressoFase2}%</span>
-                <span className="text-xs font-bold text-white drop-shadow-lg">{progressoFase3}%</span>
+
+            {/* Barra de Progresso Total */}
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Progresso Geral</span>
+                <span className="text-2xl font-bold text-primary">{progressoTotal}%</span>
               </div>
+              <Progress value={progressoTotal} className="h-3" />
             </div>
           </CardContent>
         </Card>
 
-        {/* Workflow em Coluna Única */}
+        {/* Etapas do Workflow */}
         <div className="space-y-4">
           {workflow.map((step) => {
             const isExpanded = isStepExpanded(step.id);
-            const hasSubTasks = step.subTasks && step.subTasks.length > 0;
-            const completedSubTasks = hasSubTasks ? step.subTasks.filter(st => st.completed).length : 0;
-            const totalSubTasks = hasSubTasks ? step.subTasks.length : 0;
+            const completedSubTasks = step.subTasks?.filter(st => st.completed).length || 0;
+            const totalSubTasks = step.subTasks?.length || 0;
+            const subTaskProgress = totalSubTasks > 0 ? Math.round((completedSubTasks / totalSubTasks) * 100) : 0;
 
             return (
-              <Card
-                key={step.id}
-                className="border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300"
+              <Card 
+                key={step.id} 
+                className={`shadow-md border-l-4 transition-all hover:shadow-lg ${
+                  step.completed 
+                    ? 'border-l-green-500 bg-green-50/50' 
+                    : 'border-l-gray-300 bg-white'
+                }`}
               >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1">
                       <Checkbox
                         checked={step.completed}
                         onCheckedChange={() => toggleStep(step.id, step.completed)}
-                        className="border-2"
+                        className="mt-1"
                       />
-                      <div>
-                        <CardTitle className={`text-lg uppercase tracking-tight ${step.completed ? 'line-through opacity-60' : ''}`}>
+                      <div className="flex-1">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {step.completed && <CheckCircle className="h-5 w-5 text-green-600" />}
+                          {!step.completed && <Circle className="h-5 w-5 text-gray-400" />}
                           {step.stepTitle}
                         </CardTitle>
-                        {hasSubTasks && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {completedSubTasks}/{totalSubTasks} documentos concluídos
-                          </p>
+                        
+                        {/* Sub-tarefas Progress */}
+                        {totalSubTasks > 0 && (
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                              <span>{completedSubTasks} de {totalSubTasks} documentos</span>
+                              <span className="font-semibold">{subTaskProgress}%</span>
+                            </div>
+                            <Progress value={subTaskProgress} className="h-1.5" />
+                          </div>
                         )}
                       </div>
                     </div>
+                    
                     <div className="flex items-center gap-2">
                       {step.completed && (
-                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        <Badge className="bg-green-600">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Concluído
+                        </Badge>
                       )}
-                      {hasSubTasks && (
+                      {totalSubTasks > 0 && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleExpanded(step.id)}
-                          className="text-primary hover:text-primary/80"
                         >
-                          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
                         </Button>
                       )}
                     </div>
                   </div>
                 </CardHeader>
 
-                {isExpanded && hasSubTasks && (
-                  <CardContent className="space-y-3 border-t-2 border-dashed border-white/10 pt-4">
-                    {step.subTasks.map((subTask) => (
-                      <div key={subTask.id} className="border-2 border-dashed border-white/10 rounded-lg p-4 space-y-3 bg-background/50">
-                        <div className="flex items-start gap-3">
+                {/* Conteúdo Expandido */}
+                {isExpanded && totalSubTasks > 0 && (
+                  <CardContent className="pt-0">
+                    <Separator className="mb-4" />
+                    
+                    {/* Sub-tarefas */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+                        <FolderOpen className="h-4 w-4" />
+                        Documentos Necessários
+                      </div>
+                      
+                      {step.subTasks?.map((subTask) => (
+                        <div 
+                          key={subTask.id}
+                          className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                            subTask.completed 
+                              ? 'bg-green-50 border-green-200' 
+                              : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
                           <Checkbox
                             checked={subTask.completed}
                             onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)}
-                            className="mt-1"
+                            className="mt-0.5"
                           />
-                          <span className={`text-sm font-medium ${subTask.completed ? "line-through opacity-60" : ""}`}>
-                            {subTask.label}
-                          </span>
+                          <div className="flex-1">
+                            <p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>
+                              {subTask.label}
+                            </p>
+                          </div>
+                          {subTask.completed && (
+                            <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Upload de Documentos */}
+                    {step.stepTitle === "Juntada de Documento" && (
+                      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-3">
+                          <Upload className="h-4 w-4" />
+                          Upload de Documentos
                         </div>
                         <DocumentUpload
                           clientId={Number(clientId)}
                           stepId={step.id}
-                          stepTitle={subTask.label}
+                          stepTitle={step.stepTitle}
                         />
                       </div>
-                    ))}
-                  </CardContent>
-                )}
+                    )}
 
-                {/* Botão PDF em Boas Vindas */}
-                {step.stepTitle === "Boas Vindas" && !hasSubTasks && (
-                  <CardContent className="border-t-2 border-dashed border-white/10 pt-4">
-                    <Button
-                      onClick={handleGeneratePDF}
-                      disabled={generatePDFMutation.isPending}
-                      className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase"
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      {generatePDFMutation.isPending ? "Gerando..." : "Gerar PDF de Boas-Vindas"}
-                    </Button>
-                  </CardContent>
-                )}
-
-                {/* Campos de Agendamento no Laudo */}
-                {step.stepTitle === "Agendamento de Laudo" && !hasSubTasks && (
-                  <CardContent className="border-t-2 border-dashed border-white/10 pt-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor={`date-${step.id}`} className="uppercase text-xs font-bold">Data do Agendamento</Label>
-                        <Input
-                          id={`date-${step.id}`}
-                          type="date"
-                          value={schedulingData[step.id]?.date || (step.scheduledDate ? new Date(step.scheduledDate).toISOString().split('T')[0] : "")}
-                          onChange={(e) => setSchedulingData({...schedulingData, [step.id]: {...schedulingData[step.id], date: e.target.value}})}
-                          className="border-2 border-dashed border-white/20"
-                        />
+                    {/* Agendamento */}
+                    {(step.stepTitle === "Agendamento Psicotécnico" || step.stepTitle === "Agendamento de Laudo") && (
+                      <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 mb-3">
+                          <Calendar className="h-4 w-4" />
+                          Informações de Agendamento
+                        </div>
+                        
+                        {step.scheduledDate ? (
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-amber-700" />
+                              <span className="font-medium">Data:</span>
+                              <span>{new Date(step.scheduledDate).toLocaleDateString('pt-BR')}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-amber-700" />
+                              <span className="font-medium">Examinador:</span>
+                              <span>{step.examinerName}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div>
+                              <Label htmlFor={`date-${step.id}`} className="text-sm">Data do Agendamento</Label>
+                              <Input
+                                id={`date-${step.id}`}
+                                type="date"
+                                value={schedulingData[step.id]?.date || ''}
+                                onChange={(e) => setSchedulingData(prev => ({
+                                  ...prev,
+                                  [step.id]: { ...prev[step.id], date: e.target.value }
+                                }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`examiner-${step.id}`} className="text-sm">Nome do Examinador</Label>
+                              <Input
+                                id={`examiner-${step.id}`}
+                                type="text"
+                                placeholder="Digite o nome do examinador"
+                                value={schedulingData[step.id]?.examiner || ''}
+                                onChange={(e) => setSchedulingData(prev => ({
+                                  ...prev,
+                                  [step.id]: { ...prev[step.id], examiner: e.target.value }
+                                }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <Button
+                              onClick={() => handleSchedulingUpdate(step.id)}
+                              disabled={updateSchedulingMutation.isPending}
+                              className="w-full"
+                            >
+                              {updateSchedulingMutation.isPending ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Salvando...
+                                </>
+                              ) : (
+                                'Salvar Agendamento'
+                              )}
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`examiner-${step.id}`} className="uppercase text-xs font-bold">Nome do Examinador</Label>
-                        <Input
-                          id={`examiner-${step.id}`}
-                          value={schedulingData[step.id]?.examiner || step.examinerName || ""}
-                          onChange={(e) => setSchedulingData({...schedulingData, [step.id]: {...schedulingData[step.id], examiner: e.target.value}})}
-                          className="border-2 border-dashed border-white/20"
-                          placeholder="Nome completo"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => handleSchedulingUpdate(step.id)}
-                      disabled={updateSchedulingMutation.isPending}
-                      className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase"
-                    >
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {updateSchedulingMutation.isPending ? "Salvando..." : "Salvar Agendamento"}
-                    </Button>
-                  </CardContent>
-                )}
+                    )}
 
-                {/* Botão Download Enxoval no Despachante */}
-                {step.stepTitle === "Despachante" && !hasSubTasks && (
-                  <CardContent className="border-t-2 border-dashed border-white/10 pt-4">
-                    <Button
-                      onClick={handleDownloadEnxoval}
-                      disabled={isDownloading}
-                      className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase"
-                    >
-                      {isDownloading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Preparando Download...
-                        </>
-                      ) : (
-                        <>
-                          <Download className="w-4 h-4 mr-2" />
-                          Baixar Enxoval Completo (ZIP)
-                        </>
-                      )}
-                    </Button>
+                    {/* Gerar PDF Boas Vindas */}
+                    {step.stepTitle === "Boas Vindas" && (
+                      <div className="mt-6">
+                        <Button
+                          onClick={handleGeneratePDF}
+                          disabled={generatePDFMutation.isPending}
+                          className="w-full bg-primary hover:bg-primary/90"
+                        >
+                          {generatePDFMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Gerando PDF...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="mr-2 h-4 w-4" />
+                              Gerar PDF de Boas Vindas
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 )}
               </Card>
