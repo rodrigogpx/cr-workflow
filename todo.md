@@ -34,3 +34,22 @@
 - [x] Navegação entre clientes
 - [x] Persistência de dados de múltiplos clientes
 - [x] Proteção de rotas (autenticação obrigatória)
+
+
+## Sistema Multi-Usuário e Administração
+
+- [x] Upgrade para web-db-user (backend + banco de dados)
+- [x] Schema do banco de dados (usuários, clientes, documentos)
+- [ ] Sistema de autenticação real com JWT
+- [ ] Perfis de usuário (operador e administrador)
+- [ ] Controle de acesso por perfil
+- [ ] Operador vê apenas seus clientes
+- [ ] Área administrativa completa
+- [ ] Delegação de clientes entre operadores
+- [ ] Administrador edita todos os cadastros
+- [ ] Upload de documentos por etapa
+- [ ] Armazenamento de arquivos no S3
+- [ ] Listagem de documentos por cliente
+- [ ] Download individual de documentos
+- [ ] Download do enxoval completo (ZIP)
+- [ ] Gerenciamento de usuários (CRUD)

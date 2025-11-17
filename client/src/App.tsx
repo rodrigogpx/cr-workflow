@@ -12,6 +12,7 @@ import ClientWorkflow from "./pages/ClientWorkflow";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Login} />
