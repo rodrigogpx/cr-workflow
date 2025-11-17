@@ -1,0 +1,58 @@
+{
+  "query": "SELECT ws.id, ws.clientId, ws.stepId, ws.stepTitle, ws.completed, c.name \nFROM workflowSteps ws \nJOIN clients c ON ws.clientId = c.id \nWHERE c.name LIKE '%jose%' OR c.name LIKE '%josé%'\nORDER BY ws.id \nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT ws.id, ws.clientId, ws.stepId, ws.stepTitle, ws.completed, c.name \nFROM workflowSteps ws \nJOIN clients c ON ws.clientId = c.id \nWHERE c.name LIKE '%jose%' OR c.name LIKE '%josé%'\nORDER BY ws.id \nLIMIT 10;",
+  "rows": [
+    {
+      "id": "90001",
+      "clientId": "90001",
+      "stepId": "",
+      "stepTitle": "",
+      "completed": "0",
+      "name": "josé cordeiro"
+    },
+    {
+      "id": "90002",
+      "clientId": "90001",
+      "stepId": "boas-vindas",
+      "stepTitle": "Boas Vindas",
+      "completed": "0",
+      "name": "josé cordeiro"
+    },
+    {
+      "id": "90003",
+      "clientId": "90001",
+      "stepId": "agendamento-psicotecnico",
+      "stepTitle": "Agendamento Psicotécnico",
+      "completed": "0",
+      "name": "josé cordeiro"
+    },
+    {
+      "id": "90004",
+      "clientId": "90001",
+      "stepId": "juntada-documento",
+      "stepTitle": "Juntada de Documento",
+      "completed": "0",
+      "name": "josé cordeiro"
+    },
+    {
+      "id": "90005",
+      "clientId": "90001",
+      "stepId": "agendamento-laudo",
+      "stepTitle": "Agendamento de Laudo para Manuseio de Arma de Fogo",
+      "completed": "0",
+      "name": "josé cordeiro"
+    },
+    {
+      "id": "90006",
+      "clientId": "90001",
+      "stepId": "despachante",
+      "stepTitle": "Despachante",
+      "completed": "0",
+      "name": "josé cordeiro"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclientId\tstepId\tstepTitle\tcompleted\tname\n90001\t90001\t\t\t0\tjosé cordeiro\n90002\t90001\tboas-vindas\tBoas Vindas\t0\tjosé cordeiro\n90003\t90001\tagendamento-psicotecnico\tAgendamento Psicotécnico\t0\tjosé cordeiro\n90004\t90001\tjuntada-documento\tJuntada de Documento\t0\tjosé cordeiro\n90005\t90001\tagendamento-laudo\tAgendamento de Laudo para Manuseio de Arma de Fogo\t0\tjosé cordeiro\n90006\t90001\tdespachante\tDespachante\t0\tjosé cordeiro\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

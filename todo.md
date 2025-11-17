@@ -271,3 +271,9 @@
 - [x] Verificar nome da primeira atividade no banco de dados - já está "Cadastro"
 - [x] Garantir que o nome seja "Cadastro" - correto no código
 - [x] Verificar se formulário de cadastro está presente e funcional - implementado e expande automaticamente
+
+
+## Bug - Primeira Etapa sem Título
+
+- [x] Investigar stepId da primeira etapa no banco de dados - encontradas 2 etapas vazias
+- [x] Corrigir stepId e stepTitle para 'cadastro' e 'Cadastro' - atualizado no banco
