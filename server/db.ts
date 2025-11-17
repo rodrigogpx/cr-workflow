@@ -208,6 +208,14 @@ export async function getDocumentsByClient(clientId: number) {
   return await db.select().from(documents).where(eq(documents.clientId, clientId)).orderBy(desc(documents.createdAt));
 }
 
+export async function getDocumentById(documentId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function deleteDocument(documentId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

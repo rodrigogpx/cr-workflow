@@ -53,3 +53,14 @@
 - [ ] Download individual de documentos
 - [ ] Download do enxoval completo (ZIP)
 - [ ] Gerenciamento de usuários (CRUD)
+
+
+## Implementação dos Routers tRPC
+
+- [x] Router de clientes (list, create, update, delete)
+- [x] Router de workflows (get, update steps, update subtasks)
+- [x] Router de documentos (upload, list, delete)
+- [x] Router de usuários (admin only - list, update role)
+- [x] Controle de acesso por perfil nos routers
+- [x] Endpoint de upload de arquivos
+- [x] Endpoint de download de enxoval completo
