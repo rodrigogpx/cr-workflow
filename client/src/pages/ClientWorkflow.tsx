@@ -256,8 +256,14 @@ export default function ClientWorkflow() {
 
   // Calcular progresso por fase
   const fase1Steps = workflow.filter(s => s.stepTitle === "Cadastro" || s.stepTitle === "Boas Vindas");
-  const fase2Steps = workflow.filter(s => s.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas" || s.stepTitle === "Juntada de Documento");
-  const fase3Steps = workflow.filter(s => s.stepTitle === "Exame de Capacidade Técnica" || s.stepTitle === "Despachante");
+  const fase2Steps = workflow.filter(s => 
+    s.stepTitle === "Agendamento Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo" || 
+    s.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)"
+  );
+  const fase3Steps = workflow.filter(s => 
+    s.stepTitle === "Juntada de Documentos" || 
+    s.stepTitle === "Acompanhamento Sinarm-CAC"
+  );
 
   const calcularProgressoFase = (steps: typeof workflow) => {
     if (steps.length === 0) return 0;
@@ -349,7 +355,7 @@ export default function ClientWorkflow() {
               {/* Fase 3 */}
               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-green-900">Dispachante/PF</h3>
+                  <h3 className="font-semibold text-green-900">Juntada-Sinarm-CAC</h3>
                   <Badge variant={progressoFase3 === 100 ? "default" : "secondary"} className="bg-green-600">
                     {progressoFase3}%
                   </Badge>

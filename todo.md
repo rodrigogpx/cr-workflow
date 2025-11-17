@@ -397,3 +397,11 @@
 - [x] Remover expansão automática de todas as etapas
 - [x] Deixar todas as atividades recolhidas por padrão
 - [x] Criar checkpoint
+
+
+## Ajustes no Workflow e Dashboard
+
+- [x] Verificar se progresso geral está sendo exibido corretamente no card do cliente no Dashboard (já está correto)
+- [x] Corrigir contagem de etapas nos cards superiores (Cadastro/On-Boarding, Documentação/Laudos, Juntada-Sinarm-CAC)
+- [x] Renomear "Dispachante/PF" para "Juntada-Sinarm-CAC"
+- [x] Testar e criar checkpoint
