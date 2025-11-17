@@ -26,10 +26,8 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  // Por enquanto, retornar 0% para todos os clientes
-  // TODO: Implementar cálculo real de progresso sem violar regras de hooks
-  const getClientProgress = (clientId: number) => {
-    return 0;
+  const getClientProgress = (client: any) => {
+    return client.progress || 0;
   };
 
   const createClientMutation = trpc.clients.create.useMutation({
@@ -321,12 +319,12 @@ export default function Dashboard() {
                   <div className="pt-2 border-t border-dashed border-gray-300 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-600">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
-                      <span className="text-xs font-bold text-primary">{getClientProgress(client.id)}% concluído</span>
+                      <span className="text-xs font-bold text-primary">{getClientProgress(client)}% concluído</span>
                     </div>
                     <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-primary transition-all duration-300"
-                        style={{width: `${getClientProgress(client.id)}%`}}
+                        style={{width: `${getClientProgress(client)}%`}}
                       />
                     </div>
                   </div>

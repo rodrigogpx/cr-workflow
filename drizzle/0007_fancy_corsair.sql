@@ -1,0 +1,2 @@
+ALTER TABLE `workflowSteps` ADD `sinarmStatus` enum('Solicitado','Aguardando Baixa GRU','Em Análise','Correção Solicitada','Deferido','Indeferido');--> statement-breakpoint
+ALTER TABLE `workflowSteps` ADD `protocolNumber` varchar(100);

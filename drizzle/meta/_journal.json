@@ -50,6 +50,13 @@
       "when": 1763409468199,
       "tag": "0006_sturdy_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1763414793905,
+      "tag": "0007_fancy_corsair",
+      "breakpoints": true
     }
   ]
 }

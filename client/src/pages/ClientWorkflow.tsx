@@ -240,13 +240,11 @@ export default function ClientWorkflow() {
     }
   }, [client]);
 
-  // Expandir automaticamente a etapa "Cadastro" ao carregar
+  // Expandir automaticamente todas as etapas ao carregar
   useEffect(() => {
-    if (workflow && workflow.length > 0) {
-      const cadastroStep = workflow.find((step: any) => step.stepTitle === "Cadastro");
-      if (cadastroStep && !expandedSteps.includes(cadastroStep.id)) {
-        setExpandedSteps(prev => [...prev, cadastroStep.id]);
-      }
+    if (workflow && workflow.length > 0 && expandedSteps.length === 0) {
+      const allStepIds = workflow.map((step: any) => step.id);
+      setExpandedSteps(allStepIds);
     }
   }, [workflow]);
 
@@ -448,7 +446,7 @@ export default function ClientWorkflow() {
                           Concluído
                         </Badge>
                       )}
-                      {(totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas") && (
+                      {(totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepId === "acompanhamento-sinarm") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -466,7 +464,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas") && (
+                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepId === "acompanhamento-sinarm") && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     
@@ -890,6 +888,71 @@ export default function ClientWorkflow() {
                             </Button>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Acompanhamento Sinarm-CAC */}
+                    {step.stepId === "acompanhamento-sinarm" && (
+                      <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-purple-900 mb-4">
+                          <Target className="h-4 w-4" />
+                          Dados do Processo Sinarm-CAC
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="sinarmStatus" className="text-sm font-medium text-gray-700">Status do Processo</Label>
+                            <Select
+                              value={step.sinarmStatus || ""}
+                              onValueChange={(value) => {
+                                updateStepMutation.mutate({
+                                  stepId: step.id,
+                                  sinarmStatus: value,
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Selecione o status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Solicitado">Solicitado</SelectItem>
+                                <SelectItem value="Aguardando Baixa GRU">Aguardando Baixa GRU</SelectItem>
+                                <SelectItem value="Em Análise">Em Análise</SelectItem>
+                                <SelectItem value="Correção Solicitada">Correção Solicitada</SelectItem>
+                                <SelectItem value="Deferido">Deferido</SelectItem>
+                                <SelectItem value="Indeferido">Indeferido</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="protocolNumber" className="text-sm font-medium text-gray-700">Número de Protocolo</Label>
+                            <Input
+                              id="protocolNumber"
+                              type="text"
+                              placeholder="Ex: 2025/12345"
+                              value={step.protocolNumber || ""}
+                              onChange={(e) => {
+                                updateStepMutation.mutate({
+                                  stepId: step.id,
+                                  protocolNumber: e.target.value,
+                                });
+                              }}
+                              className="mt-1"
+                            />
+                          </div>
+                          
+                          {step.sinarmStatus && (
+                            <div className="mt-4 p-3 bg-purple-100 rounded border border-purple-300">
+                              <p className="text-sm text-purple-900">
+                                <strong>Status Atual:</strong> {step.sinarmStatus}
+                                {step.protocolNumber && (
+                                  <span className="ml-2">| <strong>Protocolo:</strong> {step.protocolNumber}</span>
+                                )}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 

@@ -83,6 +83,9 @@ export const workflowSteps = mysqlTable("workflowSteps", {
   // Campos para agendamento de laudo
   scheduledDate: timestamp("scheduledDate"),
   examinerName: varchar("examinerName", { length: 255 }),
+  // Campos para Acompanhamento Sinarm-CAC
+  sinarmStatus: mysqlEnum("sinarmStatus", ["Solicitado", "Aguardando Baixa GRU", "Em Análise", "Correção Solicitada", "Deferido", "Indeferido"]),
+  protocolNumber: varchar("protocolNumber", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

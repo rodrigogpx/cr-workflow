@@ -25,11 +25,28 @@ export const appRouter = router({
   clients: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       // Admin vê todos os clientes, operador vê apenas os seus
-      if (ctx.user.role === 'admin') {
-        return await db.getAllClients();
-      } else {
-        return await db.getClientsByOperator(ctx.user.id);
-      }
+      const clients = ctx.user.role === 'admin' 
+        ? await db.getAllClients()
+        : await db.getClientsByOperator(ctx.user.id);
+      
+      // Adicionar estatísticas de workflow para cada cliente
+      const clientsWithProgress = await Promise.all(
+        clients.map(async (client) => {
+          const workflow = await db.getWorkflowByClient(client.id);
+          const totalSteps = workflow.length;
+          const completedSteps = workflow.filter((s: any) => s.isCompleted).length;
+          const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+          
+          return {
+            ...client,
+            progress,
+            totalSteps,
+            completedSteps,
+          };
+        })
+      );
+      
+      return clientsWithProgress;
     }),
 
     getById: protectedProcedure
@@ -233,12 +250,20 @@ export const appRouter = router({
 
     updateStep: protectedProcedure
       .input(z.object({
-        clientId: z.number(),
+        clientId: z.number().optional(),
         stepId: z.number(),
-        completed: z.boolean(),
+        completed: z.boolean().optional(),
+        sinarmStatus: z.string().optional(),
+        protocolNumber: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const client = await db.getClientById(input.clientId);
+        // Buscar etapa atual
+        const currentStep = await db.getWorkflowStepById(input.stepId);
+        if (!currentStep) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
+        }
+        
+        const client = await db.getClientById(currentStep.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -247,19 +272,20 @@ export const appRouter = router({
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
-              // Buscar etapa atual para preservar stepId e stepTitle
-        const currentStep = await db.getWorkflowStepById(input.stepId);
-        if (!currentStep) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
-        }
         
-        await db.upsertWorkflowStep({
+        // Construir objeto de atualização apenas com campos fornecidos
+        const updateData: any = {
           id: input.stepId,
-          clientId: input.clientId,
+          clientId: currentStep.clientId,
           stepId: currentStep.stepId,
           stepTitle: currentStep.stepTitle,
-          completed: input.completed,
-        });
+        };
+        
+        if (input.completed !== undefined) updateData.completed = input.completed;
+        if (input.sinarmStatus !== undefined) updateData.sinarmStatus = input.sinarmStatus;
+        if (input.protocolNumber !== undefined) updateData.protocolNumber = input.protocolNumber;
+        
+        await db.upsertWorkflowStep(updateData);
         
         return { success: true };
       }),

@@ -376,3 +376,17 @@
 - [x] Adicionar card/link para Templates de Email na página /admin
 - [x] Testar navegação
 - [x] Criar checkpoint
+
+
+## Correções e Melhorias no Workflow
+
+- [x] Corrigir cálculo de percentual de conclusão no card do Dashboard
+- [x] Reorganizar etapas em 4 fases (já está correto):
+  1. Cadastro
+  2. Boas Vindas
+  3. Documentação/Laudos (Avaliação Psicológica + Laudo Capacidade Técnica)
+  4. Finalização (Juntada Documentos + Acompanhamento Sinarm-CAC)
+- [x] Adicionar campo "Status" na etapa Acompanhamento Sinarm-CAC (dropdown: Solicitado, Aguardando Baixa GRU, Em Análise, Correção Solicitada, Deferido, Indeferido)
+- [x] Adicionar campo "Número de Protocolo" na etapa Acompanhamento Sinarm-CAC
+- [x] Expandir todas as atividades por padrão ao abrir página
+- [x] Testar e criar checkpoint
