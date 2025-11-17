@@ -111,14 +111,43 @@ export async function createClient(client: InsertClient) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Remove undefined fields to avoid Drizzle inserting 'default' as string
-  const cleanedClient = Object.fromEntries(
-    Object.entries(client).filter(([_, value]) => value !== undefined)
-  ) as InsertClient;
+  // Build insert object with only provided fields (no undefined, no null for optional fields)
+  const insertData: any = {};
   
-  console.log("[createClient] Input data:", JSON.stringify(cleanedClient, null, 2));
+  // Required fields
+  if (client.name) insertData.name = client.name;
+  if (client.cpf) insertData.cpf = client.cpf;
+  if (client.phone) insertData.phone = client.phone;
+  if (client.email) insertData.email = client.email;
+  if (client.operatorId) insertData.operatorId = client.operatorId;
   
-  const result = await db.insert(clients).values(cleanedClient);
+  // Optional fields - only add if provided
+  if (client.identityNumber) insertData.identityNumber = client.identityNumber;
+  if (client.identityIssueDate) insertData.identityIssueDate = client.identityIssueDate;
+  if (client.identityIssuer) insertData.identityIssuer = client.identityIssuer;
+  if (client.identityUf) insertData.identityUf = client.identityUf;
+  if (client.birthDate) insertData.birthDate = client.birthDate;
+  if (client.birthCountry) insertData.birthCountry = client.birthCountry;
+  if (client.birthUf) insertData.birthUf = client.birthUf;
+  if (client.birthPlace) insertData.birthPlace = client.birthPlace;
+  if (client.gender) insertData.gender = client.gender;
+  if (client.profession) insertData.profession = client.profession;
+  if (client.otherProfession) insertData.otherProfession = client.otherProfession;
+  if (client.registrationNumber) insertData.registrationNumber = client.registrationNumber;
+  if (client.currentActivities) insertData.currentActivities = client.currentActivities;
+  if (client.phone2) insertData.phone2 = client.phone2;
+  if (client.motherName) insertData.motherName = client.motherName;
+  if (client.fatherName) insertData.fatherName = client.fatherName;
+  if (client.cep) insertData.cep = client.cep;
+  if (client.address) insertData.address = client.address;
+  if (client.addressNumber) insertData.addressNumber = client.addressNumber;
+  if (client.neighborhood) insertData.neighborhood = client.neighborhood;
+  if (client.city) insertData.city = client.city;
+  if (client.complement) insertData.complement = client.complement;
+  
+  console.log("[createClient] Insert data:", JSON.stringify(insertData, null, 2));
+  
+  const result = await db.insert(clients).values(insertData);
   return result[0].insertId;
 }
 

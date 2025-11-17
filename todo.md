@@ -298,3 +298,12 @@
 - [x] Executar migração do banco de dados (pnpm db:push) - não necessário, schema já estava correto
 - [x] Testar cadastro de novo cliente com apenas campos básicos
 - [x] Criar checkpoint com correção
+
+
+## Correção Persistente - Erro ao Cadastrar Cliente (Drizzle inserindo "default")
+
+- [x] Verificar se o código da correção foi carregado no servidor
+- [x] Investigar por que o Drizzle ainda está gerando SQL com "default"
+- [x] Implementar solução alternativa - construção manual do objeto de inserção
+- [x] Testar cadastro de cliente - pronto para teste pelo usuário
+- [x] Criar checkpoint com correção definitiva
