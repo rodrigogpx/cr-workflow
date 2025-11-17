@@ -346,7 +346,7 @@ export const appRouter = router({
     updateRole: adminProcedure
       .input(z.object({
         userId: z.number(),
-        role: z.enum(['operador', 'admin']),
+        role: z.enum(['operator', 'admin']),
       }))
       .mutation(async ({ input }) => {
         await db.updateUserRole(input.userId, input.role);

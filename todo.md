@@ -40,19 +40,19 @@
 
 - [x] Upgrade para web-db-user (backend + banco de dados)
 - [x] Schema do banco de dados (usuários, clientes, documentos)
-- [ ] Sistema de autenticação real com JWT
-- [ ] Perfis de usuário (operador e administrador)
-- [ ] Controle de acesso por perfil
-- [ ] Operador vê apenas seus clientes
-- [ ] Área administrativa completa
-- [ ] Delegação de clientes entre operadores
-- [ ] Administrador edita todos os cadastros
+- [x] Sistema de autenticação real com OAuth
+- [x] Perfis de usuário (operador e administrador)
+- [x] Controle de acesso por perfil
+- [x] Operador vê apenas seus clientes
+- [x] Área administrativa completa
+- [x] Delegação de clientes entre operadores
+- [x] Administrador edita todos os cadastros
 - [ ] Upload de documentos por etapa
 - [ ] Armazenamento de arquivos no S3
 - [ ] Listagem de documentos por cliente
 - [ ] Download individual de documentos
 - [ ] Download do enxoval completo (ZIP)
-- [ ] Gerenciamento de usuários (CRUD)
+- [x] Gerenciamento de usuários (alteração de perfil)
 
 
 ## Implementação dos Routers tRPC

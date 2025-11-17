@@ -1,21 +1,63 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider } from "./contexts/AuthContext";
-import { ClientsProvider } from "./contexts/ClientsContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ClientWorkflow from "./pages/ClientWorkflow";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import Admin from "./pages/Admin";
+import { useAuth } from "./_core/hooks/useAuth";
+import { Loader2 } from "lucide-react";
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (user.role !== 'admin') {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return <>{children}</>;
+}
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Login} />
+      <Route path={"/login"} component={Login} />
+      <Route path={"/"}>
+        <Redirect to="/dashboard" />
+      </Route>
       <Route path={"/dashboard"}>
         <ProtectedRoute>
           <Dashboard />
@@ -25,6 +67,11 @@ function Router() {
         <ProtectedRoute>
           <ClientWorkflow />
         </ProtectedRoute>
+      </Route>
+      <Route path={"/admin"}>
+        <AdminRoute>
+          <Admin />
+        </AdminRoute>
       </Route>
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
@@ -36,14 +83,10 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <AuthProvider>
-          <ClientsProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Router />
-            </TooltipProvider>
-          </ClientsProvider>
-        </AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

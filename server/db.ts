@@ -231,7 +231,7 @@ export async function getAllUsers() {
   return await db.select().from(users).orderBy(desc(users.createdAt));
 }
 
-export async function updateUserRole(userId: number, role: "operador" | "admin") {
+export async function updateUserRole(userId: number, role: "operator" | "admin") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   

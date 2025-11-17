@@ -15,6 +15,13 @@
       "when": 1763384303441,
       "tag": "0001_spotty_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1763385392908,
+      "tag": "0002_woozy_gamora",
+      "breakpoints": true
     }
   ]
 }
