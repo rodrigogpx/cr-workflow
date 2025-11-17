@@ -171,3 +171,46 @@ export const documentsRelations = relations(documents, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+/**
+ * Email Templates table - stores email templates for Boas Vindas
+ */
+export const emailTemplates = mysqlTable("emailTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  templateKey: varchar("templateKey", { length: 100 }).notNull().unique(), // 'welcome', 'process', 'status'
+  subject: varchar("subject", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+export type InsertEmailTemplate = typeof emailTemplates.$inferInsert;
+
+/**
+ * Email Logs table - tracks sent emails
+ */
+export const emailLogs = mysqlTable("emailLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  templateKey: varchar("templateKey", { length: 100 }).notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  sentBy: int("sentBy").notNull(), // userId who sent the email
+});
+
+export type EmailLog = typeof emailLogs.$inferSelect;
+export type InsertEmailLog = typeof emailLogs.$inferInsert;
+
+export const emailLogsRelations = relations(emailLogs, ({ one }) => ({
+  client: one(clients, {
+    fields: [emailLogs.clientId],
+    references: [clients.id],
+  }),
+  sentByUser: one(users, {
+    fields: [emailLogs.sentBy],
+    references: [users.id],
+  }),
+}));

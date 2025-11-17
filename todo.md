@@ -277,3 +277,15 @@
 
 - [x] Investigar stepId da primeira etapa no banco de dados - encontradas 2 etapas vazias
 - [x] Corrigir stepId e stepTitle para 'cadastro' e 'Cadastro' - atualizado no banco
+
+
+## Sistema de Emails - Boas Vindas
+
+- [x] Criar schema de emailTemplates no banco de dados
+- [x] Criar schema de emailLogs para rastrear envios
+- [x] Criar endpoint tRPC para salvar template de email
+- [x] Criar endpoint tRPC para enviar email
+- [x] Implementar editor de email no frontend (3 emails)
+- [x] Adicionar botão de envio individual para cada email
+- [x] Adicionar indicador de email já enviado
+- [x] Testar envio de emails

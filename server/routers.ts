@@ -443,6 +443,75 @@ export const appRouter = router({
       }),
   }),
 
+  // Email router
+  emails: router({
+    // Get email template
+    getTemplate: protectedProcedure
+      .input(z.object({
+        templateKey: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return await db.getEmailTemplate(input.templateKey);
+      }),
+
+    // Save email template
+    saveTemplate: protectedProcedure
+      .input(z.object({
+        templateKey: z.string(),
+        subject: z.string(),
+        content: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const templateId = await db.saveEmailTemplate(input);
+        return { success: true, templateId };
+      }),
+
+    // Check if email was sent
+    checkSent: protectedProcedure
+      .input(z.object({
+        clientId: z.number(),
+        templateKey: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return await db.checkEmailSent(input.clientId, input.templateKey);
+      }),
+
+    // Send email (log only, actual sending would need email service)
+    sendEmail: protectedProcedure
+      .input(z.object({
+        clientId: z.number(),
+        templateKey: z.string(),
+        recipientEmail: z.string(),
+        subject: z.string(),
+        content: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Log the email send
+        const logId = await db.logEmailSent({
+          clientId: input.clientId,
+          templateKey: input.templateKey,
+          recipientEmail: input.recipientEmail,
+          subject: input.subject,
+          content: input.content,
+          sentBy: ctx.user.id,
+        });
+
+        // TODO: Integrate with actual email service (SendGrid, AWS SES, etc.)
+        // For now, we just log it
+        
+        return { success: true, logId };
+      }),
+
+    // Get email logs for a client
+    getLogs: protectedProcedure
+      .input(z.object({
+        clientId: z.number(),
+      }))
+      .query(async ({ input }) => {
+        return await db.getEmailLogsByClient(input.clientId);
+      }),
+  }),
+
   // Users router (admin only)
   users: router({
     list: adminProcedure.query(async () => {

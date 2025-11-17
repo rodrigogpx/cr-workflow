@@ -10,7 +10,11 @@ import {
   subTasks,
   InsertSubTask,
   documents,
-  InsertDocument
+  InsertDocument,
+  emailTemplates,
+  InsertEmailTemplate,
+  emailLogs,
+  InsertEmailLog
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -246,4 +250,71 @@ export async function updateUserRole(userId: number, role: "operator" | "admin")
   if (!db) throw new Error("Database not available");
   
   await db.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+// Email template operations
+export async function getEmailTemplate(templateKey: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(emailTemplates)
+    .where(eq(emailTemplates.templateKey, templateKey))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function saveEmailTemplate(template: InsertEmailTemplate) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Check if template already exists
+  const existing = await getEmailTemplate(template.templateKey);
+  
+  if (existing) {
+    // Update existing template
+    await db.update(emailTemplates)
+      .set({
+        subject: template.subject,
+        content: template.content,
+        updatedAt: new Date()
+      })
+      .where(eq(emailTemplates.id, existing.id));
+    return existing.id;
+  } else {
+    // Insert new template
+    const result = await db.insert(emailTemplates).values(template);
+    return result[0].insertId;
+  }
+}
+
+export async function logEmailSent(log: InsertEmailLog) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(emailLogs).values(log);
+  return result[0].insertId;
+}
+
+export async function getEmailLogsByClient(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(emailLogs)
+    .where(eq(emailLogs.clientId, clientId))
+    .orderBy(desc(emailLogs.sentAt));
+}
+
+export async function checkEmailSent(clientId: number, templateKey: string) {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const result = await db.select().from(emailLogs)
+    .where(and(
+      eq(emailLogs.clientId, clientId),
+      eq(emailLogs.templateKey, templateKey)
+    ))
+    .limit(1);
+  
+  return result.length > 0;
 }

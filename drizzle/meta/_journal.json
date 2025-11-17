@@ -43,6 +43,13 @@
       "when": 1763403049227,
       "tag": "0005_dark_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1763409468199,
+      "tag": "0006_sturdy_prowler",
+      "breakpoints": true
     }
   ]
 }

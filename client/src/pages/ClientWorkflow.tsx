@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
+import { EmailEditor } from "@/components/EmailEditor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -892,26 +893,40 @@ export default function ClientWorkflow() {
                       </div>
                     )}
 
-                    {/* Gerar PDF Boas Vindas */}
+                    {/* Editores de Email - Boas Vindas */}
                     {step.stepTitle === "Boas Vindas" && (
-                      <div className="mt-6">
-                        <Button
-                          onClick={handleGeneratePDF}
-                          disabled={generatePDFMutation.isPending}
-                          className="w-full bg-primary hover:bg-primary/90"
-                        >
-                          {generatePDFMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Gerando PDF...
-                            </>
-                          ) : (
-                            <>
-                              <FileText className="mr-2 h-4 w-4" />
-                              Gerar PDF de Boas Vindas
-                            </>
-                          )}
-                        </Button>
+                      <div className="mt-6 space-y-4">
+                        <div className="mb-4">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Emails de Boas Vindas</h3>
+                          <p className="text-sm text-gray-600">Personalize e envie os emails de boas-vindas para o cliente.</p>
+                        </div>
+
+                        <EmailEditor
+                          clientId={Number(clientId)}
+                          clientEmail={client?.email || ""}
+                          templateKey="welcome"
+                          title="1. Email de Boas Vindas"
+                          defaultSubject="Bem-vindo ao Fire Range!"
+                          defaultContent={`Olá ${client?.name || "Cliente"},\n\nSeja muito bem-vindo(a) ao Fire Range!\n\nEstamos muito felizes em tê-lo(a) conosco. O Fire Range é um clube de tiro e caça que oferece as melhores instalações, treinamentos profissionais e uma comunidade apaixonada por tiro esportivo.\n\n**Sobre o Fire Range:**\n- Instalações modernas e seguras\n- Instrutores certificados e experientes\n- Competições mensais para todos os níveis\n- Cursos de formação e aperfeiçoamento\n- Comunidade ativa e acolhedora\n\n**Competições:**\nParticipe de nossas competições mensais e teste suas habilidades! Temos categorias para iniciantes e atiradores experientes.\n\n**Cursos Disponíveis:**\n- Curso Básico de Tiro Esportivo\n- Curso de Manuseio Seguro de Armas\n- Curso de Tiro Defensivo\n- Curso de Tiro de Precisão\n\nEstamos à disposição para qualquer dúvida!\n\nAtenciosamente,\nEquipe Fire Range`}
+                        />
+
+                        <EmailEditor
+                          clientId={Number(clientId)}
+                          clientEmail={client?.email || ""}
+                          templateKey="process_cr"
+                          title="2. Processo de Obtenção do CR"
+                          defaultSubject="Seu Processo de Obtenção do CR - Fire Range"
+                          defaultContent={`Olá ${client?.name || "Cliente"},\n\nVamos explicar todo o processo de obtenção do Certificado de Registro (CR) para que você possa acompanhar cada etapa.\n\n**O que é o CR?**\nO Certificado de Registro (CR) é o documento que autoriza a posse de arma de fogo no Brasil. É emitido pela Polícia Federal após análise de documentação e cumprimento de requisitos legais.\n\n**Etapas do Processo:**\n\n1. **Cadastro e Documentação Inicial**\n   - Coleta de dados pessoais\n   - Verificação de documentos básicos\n\n2. **Avaliação Psicológica**\n   - Agendamento com clínica credenciada\n   - Realização do exame psicotécnico\n   - Obtenção do laudo aprovado\n\n3. **Juntada de Documentos**\n   - Certidões negativas (federal, estadual, militar)\n   - Comprovantes de residência e renda\n   - Declarações obrigatórias\n\n4. **Exame de Capacidade Técnica**\n   - Agendamento do exame prático\n   - Demonstração de conhecimento técnico\n   - Aprovação no teste de tiro\n\n5. **Protocolo na Polícia Federal**\n   - Envio de toda documentação\n   - Pagamento de taxas\n   - Acompanhamento do processo\n\n**Prazo Estimado:**\nO processo completo leva em média 3 a 6 meses, dependendo da agilidade na obtenção dos documentos e disponibilidade de agendamentos.\n\n**Importante:**\n- Mantenha seus documentos sempre atualizados\n- Responda prontamente às solicitações\n- Acompanhe o status do seu processo\n\nEstamos aqui para ajudar em cada etapa!\n\nAtenciosamente,\nEquipe Fire Range`}
+                        />
+
+                        <EmailEditor
+                          clientId={Number(clientId)}
+                          clientEmail={client?.email || ""}
+                          templateKey="status_update"
+                          title="3. Atualização de Status"
+                          defaultSubject="Atualização do seu Processo CR - Fire Range"
+                          defaultContent={`Olá ${client?.name || "Cliente"},\n\nSegue uma atualização sobre o andamento do seu processo de obtenção do CR.\n\n**Status Atual do Processo:**\n\nVocê já completou as seguintes etapas:\n✓ Cadastro realizado\n✓ Documentação inicial coletada\n\n**Próximos Passos:**\n\n1. Avaliação Psicológica\n   - Agende seu exame psicotécnico\n   - Compareça na data marcada\n   - Aguarde o laudo\n\n2. Juntada de Documentos\n   - Providencie as certidões necessárias\n   - Reúna comprovantes de residência e renda\n   - Preencha as declarações obrigatórias\n\n**Progresso Geral:** Aproximadamente 17% concluído\n\n**Documentos Pendentes:**\n- Certidão de Antecedentes Criminais (Federal)\n- Certidão de Antecedentes Criminais (Estadual)\n- Laudo Psicológico\n- Comprovante de Capacidade Técnica\n\n**Importante:**\nMantenha-se atento aos prazos e agende os exames com antecedência. Qualquer dúvida, entre em contato conosco!\n\n**Contato:**\nTelefone: (61) XXXX-XXXX\nEmail: contato@firerange.com.br\nEndereço: DF-150, Km 08 - Sobradinho/DF\n\nEstamos acompanhando seu processo de perto!\n\nAtenciosamente,\nEquipe Fire Range`}
+                        />
                       </div>
                     )}
                   </CardContent>
