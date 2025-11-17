@@ -222,3 +222,15 @@
 ## Ajuste de Nomenclatura - ClientWorkflow
 
 - [x] Alterar texto da Fase 2 de "Documentação" para "Documentação/Laudos"
+
+
+## Ajustes Visuais e Nomenclatura - ClientWorkflow
+
+- [x] Mudar header para fundo escuro (#1c1c1c)
+- [x] Ajustar cores dos textos do header para tons claros
+- [x] Renomear "Cadastro" para "Cadastro/On-Boarding"
+- [x] Renomear "Finalização" para "Dispachante/PF"
+- [x] Renomear "Agendamento Psicotécnico" para "Avaliação Psicológica para Porte/Posse de Armas"
+- [x] Renomear "Agendamento de Laudo" para "Exame de Capacidade Técnica"
+- [x] Remover seção "Progresso Total" do header
+- [x] Remover botão "Baixar Enxoval" do header

@@ -193,8 +193,8 @@ export default function ClientWorkflow() {
 
   // Calcular progresso por fase
   const fase1Steps = workflow.filter(s => s.stepTitle === "Cadastro" || s.stepTitle === "Boas Vindas");
-  const fase2Steps = workflow.filter(s => s.stepTitle === "Agendamento Psicotécnico" || s.stepTitle === "Juntada de Documento");
-  const fase3Steps = workflow.filter(s => s.stepTitle === "Agendamento de Laudo" || s.stepTitle === "Despachante");
+  const fase2Steps = workflow.filter(s => s.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas" || s.stepTitle === "Juntada de Documento");
+  const fase3Steps = workflow.filter(s => s.stepTitle === "Exame de Capacidade Técnica" || s.stepTitle === "Despachante");
 
   const calcularProgressoFase = (steps: typeof workflow) => {
     if (steps.length === 0) return 0;
@@ -210,18 +210,18 @@ export default function ClientWorkflow() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header Moderno */}
-      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
+      <header style={{backgroundColor: '#1c1c1c'}} className="border-b shadow-sm sticky top-0 z-10">
         <div className="container py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/dashboard">
-                <Button variant="ghost" size="icon" className="hover:bg-gray-100">
+                <Button variant="ghost" size="icon" style={{color: '#cfcece'}} className="hover:bg-gray-700">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{client.name}</h1>
-                <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                <h1 style={{color: '#faf9f9'}} className="text-3xl font-bold">{client.name}</h1>
+                <div className="flex items-center gap-4 mt-1 text-sm" style={{color: '#b8b7b7'}}>
                   <span className="flex items-center gap-1">
                     <User className="h-4 w-4" />
                     {client.cpf}
@@ -237,29 +237,7 @@ export default function ClientWorkflow() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-600 font-medium">Progresso Total</p>
-                <p className="text-4xl font-bold text-primary">{progressoTotal}%</p>
-              </div>
-              <Button 
-                onClick={handleDownloadEnxoval}
-                disabled={isDownloading}
-                className="bg-primary hover:bg-primary/90"
-              >
-                {isDownloading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Baixando...
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Baixar Enxoval
-                  </>
-                )}
-              </Button>
-            </div>
+
           </div>
         </div>
       </header>
@@ -280,7 +258,7 @@ export default function ClientWorkflow() {
               {/* Fase 1 */}
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-blue-900">Cadastro</h3>
+                  <h3 className="font-semibold text-blue-900">Cadastro/On-Boarding</h3>
                   <Badge variant={progressoFase1 === 100 ? "default" : "secondary"} className="bg-blue-600">
                     {progressoFase1}%
                   </Badge>
@@ -308,7 +286,7 @@ export default function ClientWorkflow() {
               {/* Fase 3 */}
               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-green-900">Finalização</h3>
+                  <h3 className="font-semibold text-green-900">Dispachante/PF</h3>
                   <Badge variant={progressoFase3 === 100 ? "default" : "secondary"} className="bg-green-600">
                     {progressoFase3}%
                   </Badge>
@@ -454,7 +432,7 @@ export default function ClientWorkflow() {
                     )}
 
                     {/* Agendamento */}
-                    {(step.stepTitle === "Agendamento Psicotécnico" || step.stepTitle === "Agendamento de Laudo") && (
+                    {(step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas" || step.stepTitle === "Exame de Capacidade Técnica") && (
                       <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
                         <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 mb-3">
                           <Calendar className="h-4 w-4" />
