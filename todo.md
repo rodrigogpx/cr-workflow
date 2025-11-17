@@ -307,3 +307,10 @@
 - [x] Implementar solução alternativa - construção manual do objeto de inserção
 - [x] Testar cadastro de cliente - pronto para teste pelo usuário
 - [x] Criar checkpoint com correção definitiva
+
+
+## Correção Final - Usar SQL Bruto
+
+- [x] Reescrever createClient usando SQL bruto (execute) ao invés do query builder
+- [x] Testar cadastro de cliente - pronto para teste
+- [x] Criar checkpoint
