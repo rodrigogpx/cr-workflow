@@ -128,30 +128,6 @@ export const appRouter = router({
         phone: z.string().min(1).optional(),
         email: z.string().email().optional(),
         operatorId: z.number().optional(),
-        // Dados pessoais adicionais
-        identityNumber: z.string().optional(),
-        identityIssueDate: z.string().optional(),
-        identityIssuer: z.string().optional(),
-        identityUf: z.string().optional(),
-        birthDate: z.string().optional(),
-        birthCountry: z.string().optional(),
-        birthUf: z.string().optional(),
-        birthPlace: z.string().optional(),
-        gender: z.string().optional(),
-        profession: z.string().optional(),
-        otherProfession: z.string().optional(),
-        registrationNumber: z.string().optional(),
-        currentActivities: z.string().optional(),
-        phone2: z.string().optional(),
-        motherName: z.string().optional(),
-        fatherName: z.string().optional(),
-        // Endereço
-        cep: z.string().optional(),
-        address: z.string().optional(),
-        addressNumber: z.string().optional(),
-        neighborhood: z.string().optional(),
-        city: z.string().optional(),
-        complement: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const client = await db.getClientById(input.id);

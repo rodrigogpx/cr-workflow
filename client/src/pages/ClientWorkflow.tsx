@@ -27,20 +27,16 @@ import {
   Circle
 } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 
 export default function ClientWorkflow() {
   const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
   const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
   const [schedulingData, setSchedulingData] = useState<{[key: number]: {date: string, examiner: string}}>({});
-  const [clientFormData, setClientFormData] = useState<Record<string, string>>({});
 
   const { data: client } = trpc.clients.getById.useQuery(
     { id: Number(clientId) },
@@ -77,16 +73,6 @@ export default function ClientWorkflow() {
     onSuccess: () => {
       refetch();
       toast.success("Agendamento atualizado!");
-    },
-  });
-
-  const updateClientMutation = trpc.clients.update.useMutation({
-    onSuccess: () => {
-      refetch();
-      toast.success("Dados do cliente atualizados com sucesso!");
-    },
-    onError: (error) => {
-      toast.error(`Erro ao atualizar: ${error.message}`);
     },
   });
 
@@ -193,51 +179,6 @@ export default function ClientWorkflow() {
       examinerName: data.examiner,
     });
   };
-
-  const handleClientDataUpdate = () => {
-    if (!clientFormData.name || !clientFormData.cpf) {
-      toast.error("Nome e CPF são obrigatórios");
-      return;
-    }
-    updateClientMutation.mutate({
-      id: Number(clientId),
-      ...clientFormData,
-    });
-  };
-
-  // Inicializar formulário com dados do cliente
-  useEffect(() => {
-    if (client) {
-      setClientFormData({
-        name: client.name || '',
-        cpf: client.cpf || '',
-        phone: client.phone || '',
-        email: client.email || '',
-        identityNumber: client.identityNumber || '',
-        identityIssueDate: client.identityIssueDate || '',
-        identityIssuer: client.identityIssuer || '',
-        identityUf: client.identityUf || '',
-        birthDate: client.birthDate || '',
-        birthCountry: client.birthCountry || 'Brasil',
-        birthUf: client.birthUf || '',
-        birthPlace: client.birthPlace || '',
-        gender: client.gender || '',
-        profession: client.profession || '',
-        otherProfession: client.otherProfession || '',
-        registrationNumber: client.registrationNumber || '',
-        currentActivities: client.currentActivities || '',
-        phone2: client.phone2 || '',
-        motherName: client.motherName || '',
-        fatherName: client.fatherName || '',
-        cep: client.cep || '',
-        address: client.address || '',
-        addressNumber: client.addressNumber || '',
-        neighborhood: client.neighborhood || '',
-        city: client.city || '',
-        complement: client.complement || '',
-      });
-    }
-  }, [client]);
 
   if (!client || !workflow) {
     return (
@@ -410,15 +351,6 @@ export default function ClientWorkflow() {
                             <Progress value={subTaskProgress} className="h-1.5" />
                           </div>
                         )}
-                        
-                        {/* Indicador de Formulário para Cadastro */}
-                        {step.stepTitle === "Cadastro" && (
-                          <div className="mt-2">
-                            <span className="text-xs text-teal-600 font-medium">
-                              📋 Formulário de dados do cliente
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                     
@@ -429,7 +361,7 @@ export default function ClientWorkflow() {
                           Concluído
                         </Badge>
                       )}
-                      {(totalSubTasks > 0 || step.stepTitle === "Cadastro") && (
+                      {totalSubTasks > 0 && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -447,7 +379,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro") && (
+                {isExpanded && totalSubTasks > 0 && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     
@@ -496,312 +428,6 @@ export default function ClientWorkflow() {
                           stepId={step.id}
                           stepTitle={step.stepTitle}
                         />
-                      </div>
-                    )}
-
-                    {/* Formulário de Cadastro */}
-                    {step.stepTitle === "Cadastro" && (
-                      <div className="mt-6 p-6 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-yellow-900 mb-4">
-                          <User className="h-4 w-4" />
-                          1. Confira os dados do Solicitante
-                        </div>
-                        
-                        <div className="space-y-6">
-                          {/* Nome Completo */}
-                          <div>
-                            <Label htmlFor="name" className="text-sm font-medium">Nome Completo</Label>
-                            <Input
-                              id="name"
-                              value={clientFormData.name || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, name: e.target.value }))}
-                              className="mt-1 font-semibold"
-                            />
-                          </div>
-
-                          {/* Linha: Sexo */}
-                          <div>
-                            <Label className="text-sm font-medium">Sexo</Label>
-                            <RadioGroup
-                              value={clientFormData.gender || ''}
-                              onValueChange={(value) => setClientFormData(prev => ({ ...prev, gender: value }))}
-                              className="flex gap-4 mt-2"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="M" id="gender-m" />
-                                <Label htmlFor="gender-m" className="cursor-pointer">M</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="F" id="gender-f" />
-                                <Label htmlFor="gender-f" className="cursor-pointer">F</Label>
-                              </div>
-                            </RadioGroup>
-                          </div>
-
-                          {/* Linha: CPF, Nº Identidade, Data de Expedição, Órgão Emissor, UF */}
-                          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                            <div>
-                              <Label htmlFor="cpf" className="text-sm font-medium text-teal-600">CPF</Label>
-                              <Input
-                                id="cpf"
-                                value={clientFormData.cpf || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, cpf: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="identityNumber" className="text-sm font-medium text-teal-600">Nº Identidade</Label>
-                              <Input
-                                id="identityNumber"
-                                value={clientFormData.identityNumber || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, identityNumber: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="identityIssueDate" className="text-sm font-medium text-teal-600">Data de Expedição</Label>
-                              <Input
-                                id="identityIssueDate"
-                                type="date"
-                                value={clientFormData.identityIssueDate || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, identityIssueDate: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="identityIssuer" className="text-sm font-medium text-teal-600">Órgão Emissor</Label>
-                              <Input
-                                id="identityIssuer"
-                                placeholder="ssp"
-                                value={clientFormData.identityIssuer || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, identityIssuer: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="identityUf" className="text-sm font-medium text-teal-600">UF</Label>
-                              <Input
-                                id="identityUf"
-                                placeholder="DF"
-                                maxLength={2}
-                                value={clientFormData.identityUf || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, identityUf: e.target.value.toUpperCase() }))}
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Linha: Data de Nascimento, País, UF, Local de Nascimento */}
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                              <Label htmlFor="birthDate" className="text-sm font-medium text-teal-600">Data de Nascimento</Label>
-                              <Input
-                                id="birthDate"
-                                type="date"
-                                value={clientFormData.birthDate || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, birthDate: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="birthCountry" className="text-sm font-medium text-teal-600">País</Label>
-                              <Input
-                                id="birthCountry"
-                                value={clientFormData.birthCountry || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, birthCountry: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="birthUf" className="text-sm font-medium text-teal-600">UF</Label>
-                              <Input
-                                id="birthUf"
-                                maxLength={2}
-                                value={clientFormData.birthUf || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, birthUf: e.target.value.toUpperCase() }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="birthPlace" className="text-sm font-medium text-teal-600">Local de Nascimento</Label>
-                              <Input
-                                id="birthPlace"
-                                value={clientFormData.birthPlace || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, birthPlace: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Linha: Profissão, Outra Profissão */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="profession" className="text-sm font-medium text-teal-600">Profissão</Label>
-                              <Input
-                                id="profession"
-                                value={clientFormData.profession || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, profession: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="otherProfession" className="text-sm font-medium text-teal-600">Outra Profissão</Label>
-                              <Input
-                                id="otherProfession"
-                                value={clientFormData.otherProfession || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, otherProfession: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Linha: Nr Registro, Atividade(s) Atual(is) */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="registrationNumber" className="text-sm font-medium text-teal-600">Nr Registro</Label>
-                              <Input
-                                id="registrationNumber"
-                                value={clientFormData.registrationNumber || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, registrationNumber: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="currentActivities" className="text-sm font-medium text-teal-600">Atividade(s) Atual(is)</Label>
-                              <Input
-                                id="currentActivities"
-                                value={clientFormData.currentActivities || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, currentActivities: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Linha: Telefone 1, Telefone 2, Email */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <Label htmlFor="phone" className="text-sm font-medium text-teal-600">Telefone 1</Label>
-                              <Input
-                                id="phone"
-                                value={clientFormData.phone || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="phone2" className="text-sm font-medium text-teal-600">Telefone 2</Label>
-                              <Input
-                                id="phone2"
-                                value={clientFormData.phone2 || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, phone2: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="email" className="text-sm font-medium text-teal-600">Email</Label>
-                              <Input
-                                id="email"
-                                type="email"
-                                value={clientFormData.email || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, email: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Linha: Nome da Mãe */}
-                          <div>
-                            <Label htmlFor="motherName" className="text-sm font-medium text-teal-600">Nome da Mãe</Label>
-                            <Input
-                              id="motherName"
-                              value={clientFormData.motherName || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, motherName: e.target.value }))}
-                              className="mt-1"
-                            />
-                          </div>
-
-                          {/* Linha: Nome do Pai */}
-                          <div>
-                            <Label htmlFor="fatherName" className="text-sm font-medium text-teal-600">Nome do Pai</Label>
-                            <Input
-                              id="fatherName"
-                              value={clientFormData.fatherName || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, fatherName: e.target.value }))}
-                              className="mt-1"
-                            />
-                          </div>
-
-                          {/* Linha: CEP, Endereço Residencial */}
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                              <Label htmlFor="cep" className="text-sm font-medium text-teal-600">CEP</Label>
-                              <Input
-                                id="cep"
-                                value={clientFormData.cep || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, cep: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div className="md:col-span-3">
-                              <Label htmlFor="address" className="text-sm font-medium text-teal-600">Endereço Residencial</Label>
-                              <Input
-                                id="address"
-                                value={clientFormData.address || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, address: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Linha: Bairro, Cidade */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="neighborhood" className="text-sm font-medium text-teal-600">Bairro</Label>
-                              <Input
-                                id="neighborhood"
-                                value={clientFormData.neighborhood || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="city" className="text-sm font-medium text-teal-600">Cidade</Label>
-                              <Input
-                                id="city"
-                                value={clientFormData.city || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, city: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Linha: Complemento */}
-                          <div>
-                            <Label htmlFor="complement" className="text-sm font-medium text-teal-600">Complemento</Label>
-                            <Input
-                              id="complement"
-                              value={clientFormData.complement || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, complement: e.target.value }))}
-                              className="mt-1"
-                            />
-                          </div>
-
-                          {/* Botão Salvar */}
-                          <Button
-                            onClick={handleClientDataUpdate}
-                            disabled={updateClientMutation.isPending}
-                            className="w-full bg-primary hover:bg-primary/90"
-                          >
-                            {updateClientMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Salvando...
-                              </>
-                            ) : (
-                              'Salvar Dados do Cliente'
-                            )}
-                          </Button>
-                        </div>
                       </div>
                     )}
 

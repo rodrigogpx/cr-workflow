@@ -36,33 +36,6 @@ export const clients = mysqlTable("clients", {
   phone: varchar("phone", { length: 20 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   operatorId: int("operatorId").notNull(),
-  
-  // Dados pessoais adicionais
-  identityNumber: varchar("identityNumber", { length: 50 }),
-  identityIssueDate: varchar("identityIssueDate", { length: 10 }),
-  identityIssuer: varchar("identityIssuer", { length: 50 }),
-  identityUf: varchar("identityUf", { length: 2 }),
-  birthDate: varchar("birthDate", { length: 10 }),
-  birthCountry: varchar("birthCountry", { length: 100 }),
-  birthUf: varchar("birthUf", { length: 2 }),
-  birthPlace: varchar("birthPlace", { length: 255 }),
-  gender: varchar("gender", { length: 1 }),
-  profession: varchar("profession", { length: 255 }),
-  otherProfession: varchar("otherProfession", { length: 255 }),
-  registrationNumber: varchar("registrationNumber", { length: 100 }),
-  currentActivities: text("currentActivities"),
-  phone2: varchar("phone2", { length: 20 }),
-  motherName: varchar("motherName", { length: 255 }),
-  fatherName: varchar("fatherName", { length: 255 }),
-  
-  // Endereço
-  cep: varchar("cep", { length: 10 }),
-  address: varchar("address", { length: 255 }),
-  addressNumber: varchar("addressNumber", { length: 20 }),
-  neighborhood: varchar("neighborhood", { length: 100 }),
-  city: varchar("city", { length: 100 }),
-  complement: varchar("complement", { length: 255 }),
-  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
