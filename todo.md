@@ -84,3 +84,12 @@
 - [ ] Confirmação antes de ações destrutivas
 - [x] Loading states em todas as mutações
 - [ ] Mensagens de erro mais descritivas
+
+
+## Correção do Workflow e Documentos
+
+- [x] Atualizar etapas do workflow conforme processo real
+- [x] Implementar lista de 16 documentos oficiais do enxoval
+- [x] Cada documento deve ter área de upload individual
+- [x] Reorganizar estrutura do workflow na página do cliente
+- [x] Validar que todos os documentos estão corretos

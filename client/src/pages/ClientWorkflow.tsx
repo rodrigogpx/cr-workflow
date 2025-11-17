@@ -15,6 +15,9 @@ export default function ClientWorkflow() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [expandedSteps, setExpandedSteps] = useState<Record<number, boolean>>({});
+  
+  // Expandir todos os steps por padrão para mostrar upload de documentos
+  const isStepExpanded = (stepId: number) => expandedSteps[stepId] !== false;
 
   const { data: client, isLoading: clientLoading } = trpc.clients.getById.useQuery(
     { id: clientId },
@@ -63,7 +66,7 @@ export default function ClientWorkflow() {
   const toggleExpanded = (stepId: number) => {
     setExpandedSteps(prev => ({
       ...prev,
-      [stepId]: !prev[stepId],
+      [stepId]: prev[stepId] === false ? true : false,
     }));
   };
 
@@ -154,8 +157,7 @@ export default function ClientWorkflow() {
 
         <div className="space-y-4">
           {workflow?.map((step) => {
-            const hasSubTasks = step.subTasks && step.subTasks.length > 0;
-            const isExpanded = expandedSteps[step.id];
+            const isExpanded = isStepExpanded(step.id);
 
             return (
               <Card
@@ -177,40 +179,19 @@ export default function ClientWorkflow() {
                     {step.completed && (
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
                     )}
-                    {hasSubTasks && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => toggleExpanded(step.id)}
-                      >
-                        {isExpanded ? (
-                          <ChevronDown className="h-5 w-5" />
-                        ) : (
-                          <ChevronRight className="h-5 w-5" />
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => toggleExpanded(step.id)}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-5 w-5" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5" />
+                      )}
+                    </Button>
                   </div>
                 </CardHeader>
-
-                {hasSubTasks && isExpanded && (
-                  <CardContent>
-                    <div className="space-y-3 pl-10">
-                      {step.subTasks?.map((subTask) => (
-                        <div key={subTask.id} className="flex items-center gap-3">
-                          <Checkbox
-                            checked={subTask.completed}
-                            onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)}
-                          />
-                          <span className={"text-sm " + (subTask.completed ? "line-through text-muted-foreground" : "")}
-                          >
-                            {subTask.label}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                )}
 
                 {isExpanded && (
                   <CardContent>
@@ -220,7 +201,8 @@ export default function ClientWorkflow() {
                       stepTitle={step.stepTitle}
                     />
                   </CardContent>
-                )}        </Card>
+                )}
+              </Card>
             );
           })}
         </div>
