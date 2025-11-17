@@ -264,3 +264,10 @@
 
 - [x] Restaurar títulos vazios no banco de dados
 - [x] Adicionar fallback no frontend para exibir título baseado em stepId
+
+
+## Ajuste - Primeira Atividade
+
+- [x] Verificar nome da primeira atividade no banco de dados - já está "Cadastro"
+- [x] Garantir que o nome seja "Cadastro" - correto no código
+- [x] Verificar se formulário de cadastro está presente e funcional - implementado e expande automaticamente

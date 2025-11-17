@@ -1,0 +1,94 @@
+{
+  "query": "SELECT id, clientId, stepId, stepTitle, completed FROM workflowSteps ORDER BY clientId, id LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT id, clientId, stepId, stepTitle, completed FROM workflowSteps ORDER BY clientId, id LIMIT 20;",
+  "rows": [
+    {
+      "id": "90001",
+      "clientId": "90001",
+      "stepId": "",
+      "stepTitle": "",
+      "completed": "0"
+    },
+    {
+      "id": "90002",
+      "clientId": "90001",
+      "stepId": "boas-vindas",
+      "stepTitle": "Boas Vindas",
+      "completed": "0"
+    },
+    {
+      "id": "90003",
+      "clientId": "90001",
+      "stepId": "agendamento-psicotecnico",
+      "stepTitle": "Agendamento Psicotécnico",
+      "completed": "0"
+    },
+    {
+      "id": "90004",
+      "clientId": "90001",
+      "stepId": "juntada-documento",
+      "stepTitle": "Juntada de Documento",
+      "completed": "0"
+    },
+    {
+      "id": "90005",
+      "clientId": "90001",
+      "stepId": "agendamento-laudo",
+      "stepTitle": "Agendamento de Laudo para Manuseio de Arma de Fogo",
+      "completed": "0"
+    },
+    {
+      "id": "90006",
+      "clientId": "90001",
+      "stepId": "despachante",
+      "stepTitle": "Despachante",
+      "completed": "0"
+    },
+    {
+      "id": "120001",
+      "clientId": "150001",
+      "stepId": "",
+      "stepTitle": "",
+      "completed": "0"
+    },
+    {
+      "id": "120002",
+      "clientId": "150001",
+      "stepId": "boas-vindas",
+      "stepTitle": "Boas Vindas",
+      "completed": "0"
+    },
+    {
+      "id": "120003",
+      "clientId": "150001",
+      "stepId": "agendamento-psicotecnico",
+      "stepTitle": "Agendamento Psicotécnico",
+      "completed": "0"
+    },
+    {
+      "id": "120004",
+      "clientId": "150001",
+      "stepId": "juntada-documento",
+      "stepTitle": "Juntada de Documento",
+      "completed": "0"
+    },
+    {
+      "id": "120005",
+      "clientId": "150001",
+      "stepId": "agendamento-laudo",
+      "stepTitle": "Agendamento de Laudo para Manuseio de Arma de Fogo",
+      "completed": "0"
+    },
+    {
+      "id": "120006",
+      "clientId": "150001",
+      "stepId": "despachante",
+      "stepTitle": "Despachante",
+      "completed": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclientId\tstepId\tstepTitle\tcompleted\n90001\t90001\t\t\t0\n90002\t90001\tboas-vindas\tBoas Vindas\t0\n90003\t90001\tagendamento-psicotecnico\tAgendamento Psicotécnico\t0\n90004\t90001\tjuntada-documento\tJuntada de Documento\t0\n90005\t90001\tagendamento-laudo\tAgendamento de Laudo para Manuseio de Arma de Fogo\t0\n90006\t90001\tdespachante\tDespachante\t0\n120001\t150001\t\t\t0\n120002\t150001\tboas-vindas\tBoas Vindas\t0\n120003\t150001\tagendamento-psicotecnico\tAgendamento Psicotécnico\t0\n120004\t150001\tjuntada-documento\tJuntada de Documento\t0\n120005\t150001\tagendamento-laudo\tAgendamento de Laudo para Manuseio de Arma de Fogo\t0\n120006\t150001\tdespachante\tDespachante\t0\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}
