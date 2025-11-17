@@ -236,9 +236,19 @@
 - [x] Remover botão "Baixar Enxoval" do header
 
 
-## Preparação para GitHub
+## Ajustes Visuais - Dashboard
 
-- [x] Verificar estado do repositório Git local
-- [x] Criar arquivo README.md completo com documentação
-- [x] Verificar/criar .gitignore apropriado - já existe e está completo
-- [x] Preparar instruções para push ao GitHub
+- [x] Ajustar cor do botão Administração para cinza claro (#c2c1c1)
+- [x] Ajustar cores dos números nas estatísticas para tons escuros
+- [x] Centralizar alinhamento dos números nas estatísticas
+- [x] Ajustar background do botão Excluir Cliente para vermelho claro (#feecec)
+- [x] Ajustar margens do botão Excluir Cliente
+
+
+## Formulário de Dados do Cliente - Etapa Cadastro
+
+- [x] Adicionar novos campos ao schema de clientes no banco de dados
+- [x] Criar endpoint tRPC para atualizar dados completos do cliente
+- [x] Implementar formulário completo na etapa Cadastro do ClientWorkflow
+- [x] Adicionar validação de campos obrigatórios
+- [x] Testar salvamento e edição dos dados do cliente
