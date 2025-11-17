@@ -241,4 +241,4 @@
 - [x] Verificar estado do repositório Git local
 - [x] Criar arquivo README.md completo com documentação
 - [x] Verificar/criar .gitignore apropriado - já existe e está completo
-- [ ] Preparar instruções para push ao GitHub
+- [x] Preparar instruções para push ao GitHub
