@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function ClientWorkflow() {
-  const { clientId } = useParams();
+  const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
   const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
 

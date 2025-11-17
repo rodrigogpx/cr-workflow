@@ -116,3 +116,9 @@
 - [x] Organizar cards em 3 colunas
 - [x] Criar separação visual por fases do processo
 - [x] Migrar clientes existentes para nova estrutura
+
+
+## Bugs a Corrigir
+
+- [x] Corrigir erro ao visualizar workflow dos clientes
+- [x] Investigar problema na página ClientWorkflow
