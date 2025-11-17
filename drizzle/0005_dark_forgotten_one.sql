@@ -1,0 +1,22 @@
+ALTER TABLE `clients` ADD `identityNumber` varchar(50);--> statement-breakpoint
+ALTER TABLE `clients` ADD `identityIssueDate` varchar(10);--> statement-breakpoint
+ALTER TABLE `clients` ADD `identityIssuer` varchar(50);--> statement-breakpoint
+ALTER TABLE `clients` ADD `identityUf` varchar(2);--> statement-breakpoint
+ALTER TABLE `clients` ADD `birthDate` varchar(10);--> statement-breakpoint
+ALTER TABLE `clients` ADD `birthCountry` varchar(100);--> statement-breakpoint
+ALTER TABLE `clients` ADD `birthUf` varchar(2);--> statement-breakpoint
+ALTER TABLE `clients` ADD `birthPlace` varchar(255);--> statement-breakpoint
+ALTER TABLE `clients` ADD `gender` varchar(1);--> statement-breakpoint
+ALTER TABLE `clients` ADD `profession` varchar(255);--> statement-breakpoint
+ALTER TABLE `clients` ADD `otherProfession` varchar(255);--> statement-breakpoint
+ALTER TABLE `clients` ADD `registrationNumber` varchar(100);--> statement-breakpoint
+ALTER TABLE `clients` ADD `currentActivities` text;--> statement-breakpoint
+ALTER TABLE `clients` ADD `phone2` varchar(20);--> statement-breakpoint
+ALTER TABLE `clients` ADD `motherName` varchar(255);--> statement-breakpoint
+ALTER TABLE `clients` ADD `fatherName` varchar(255);--> statement-breakpoint
+ALTER TABLE `clients` ADD `cep` varchar(10);--> statement-breakpoint
+ALTER TABLE `clients` ADD `address` varchar(255);--> statement-breakpoint
+ALTER TABLE `clients` ADD `addressNumber` varchar(20);--> statement-breakpoint
+ALTER TABLE `clients` ADD `neighborhood` varchar(100);--> statement-breakpoint
+ALTER TABLE `clients` ADD `city` varchar(100);--> statement-breakpoint
+ALTER TABLE `clients` ADD `complement` varchar(255);
