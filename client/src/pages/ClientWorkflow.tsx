@@ -240,13 +240,8 @@ export default function ClientWorkflow() {
     }
   }, [client]);
 
-  // Expandir automaticamente todas as etapas ao carregar
-  useEffect(() => {
-    if (workflow && workflow.length > 0 && expandedSteps.length === 0) {
-      const allStepIds = workflow.map((step: any) => step.id);
-      setExpandedSteps(allStepIds);
-    }
-  }, [workflow]);
+  // Não expandir nenhuma etapa por padrão
+  // useEffect removido - todas as atividades começam recolhidas
 
   if (!client || !workflow) {
     return (

@@ -390,3 +390,10 @@
 - [x] Adicionar campo "Número de Protocolo" na etapa Acompanhamento Sinarm-CAC
 - [x] Expandir todas as atividades por padrão ao abrir página
 - [x] Testar e criar checkpoint
+
+
+## Correção - Remover Expansão Automática
+
+- [x] Remover expansão automática de todas as etapas
+- [x] Deixar todas as atividades recolhidas por padrão
+- [x] Criar checkpoint
