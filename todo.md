@@ -211,3 +211,9 @@
 ## Ajuste de Background - Cards de Clientes
 
 - [x] Mudar background dos cards de branco/95 para cinza claro
+
+
+## Inversão de Cores - Dashboard
+
+- [x] Mudar background da página para cinza claro
+- [x] Retornar cards para branco com opacidade 0.95

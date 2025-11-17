@@ -99,7 +99,7 @@ export default function Dashboard() {
   const inProgress = totalClients - completed;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-100">
       {/* Header com estilo Firing Range */}
       <header className="border-b-2 border-dashed border-white/20 bg-black sticky top-0 z-10">
         <div className="container py-4">
@@ -299,7 +299,7 @@ export default function Dashboard() {
             {filteredClients.map((client) => (
               <Card
                 key={client.id}
-                className="border-2 border-dashed border-gray-300 bg-gray-100 hover:border-primary transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1"
+                className="border-2 border-dashed border-white/20 bg-white/95 hover:border-primary transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1"
               >
                 <CardHeader>
                   <CardTitle className="text-xl font-bold uppercase tracking-tight text-black">{client.name}</CardTitle>
