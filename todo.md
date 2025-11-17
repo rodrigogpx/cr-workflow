@@ -338,3 +338,26 @@
 - [x] Substituir por "Firing Range" em todos os arquivos
 - [x] Verificar se não há ocorrências perdidas
 - [x] Criar checkpoint
+
+
+## Refatoração - Templates de Email
+
+- [ ] Criar página de administração de templates (/admin/email-templates)
+- [ ] Adicionar rota no App.tsx
+- [ ] Criar componente de edição de templates para admin
+- [ ] Atualizar ClientWorkflow para mostrar apenas preview e botão de envio
+- [ ] Testar fluxo completo
+- [ ] Criar checkpoint
+
+
+## Ajuste de Ordem das Etapas
+
+- [x] Corrigir EmailPreview no ClientWorkflow (remover props defaultSubject e defaultContent)
+- [x] Atualizar ordem das etapas no router:
+  1. Cadastro
+  2. Boas Vindas
+  3. Agendamento Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo
+  4. Agendamento de Laudo de Capacidade Técnica para a Obtenção do CR
+  5. Juntada de Documentos
+  6. Acompanhamento Sinarm-CAC
+- [x] Testar e criar checkpoint

@@ -322,16 +322,17 @@ export async function getEmailLogsByClient(clientId: number) {
     .orderBy(desc(emailLogs.sentAt));
 }
 
-export async function checkEmailSent(clientId: number, templateKey: string) {
+export async function getEmailLog(clientId: number, templateKey: string) {
   const db = await getDb();
-  if (!db) return false;
+  if (!db) return undefined;
   
   const result = await db.select().from(emailLogs)
     .where(and(
       eq(emailLogs.clientId, clientId),
       eq(emailLogs.templateKey, templateKey)
     ))
+    .orderBy(desc(emailLogs.sentAt))
     .limit(1);
   
-  return result.length > 0;
+  return result.length > 0 ? result[0] : undefined;
 }

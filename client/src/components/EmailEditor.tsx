@@ -29,10 +29,12 @@ export function EmailEditor({
   const [isSending, setIsSending] = useState(false);
 
   // Check if email was already sent
-  const { data: emailSent, refetch: refetchEmailSent } = trpc.emails.checkSent.useQuery({
+  const { data: emailLog, refetch: refetchEmailSent } = trpc.emails.getEmailLog.useQuery({
     clientId,
     templateKey,
   });
+  
+  const emailSent = !!emailLog;
 
   // Load saved template if exists
   const { data: savedTemplate } = trpc.emails.getTemplate.useQuery({

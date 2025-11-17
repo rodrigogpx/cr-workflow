@@ -83,10 +83,10 @@ export const appRouter = router({
         const initialSteps = [
           { stepId: 'cadastro', stepTitle: 'Cadastro' },
           { stepId: 'boas-vindas', stepTitle: 'Boas Vindas' },
-          { stepId: 'agendamento-psicotecnico', stepTitle: 'Agendamento Psicotécnico' },
-          { stepId: 'juntada-documento', stepTitle: 'Juntada de Documento' },
-          { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo para Manuseio de Arma de Fogo' },
-          { stepId: 'despachante', stepTitle: 'Despachante' },
+          { stepId: 'agendamento-psicotecnico', stepTitle: 'Agendamento Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo' },
+          { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)' },
+          { stepId: 'juntada-documento', stepTitle: 'Juntada de Documentos' },
+          { stepId: 'acompanhamento-sinarm', stepTitle: 'Acompanhamento Sinarm-CAC' },
         ];
         
         for (const step of initialSteps) {
@@ -478,14 +478,14 @@ export const appRouter = router({
         return { success: true, templateId };
       }),
 
-    // Check if email was sent
-    checkSent: protectedProcedure
+    // Get email log (check if email was sent and get details)
+    getEmailLog: protectedProcedure
       .input(z.object({
         clientId: z.number(),
         templateKey: z.string(),
       }))
       .query(async ({ input }) => {
-        return await db.checkEmailSent(input.clientId, input.templateKey);
+        return await db.getEmailLog(input.clientId, input.templateKey);
       }),
 
     // Send email (log only, actual sending would need email service)

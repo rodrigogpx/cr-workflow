@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import ClientWorkflow from "./pages/ClientWorkflow";
 import Admin from "./pages/Admin";
 import PendingApproval from "./pages/PendingApproval";
+import EmailTemplates from "./pages/EmailTemplates";
 import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -83,6 +84,11 @@ function Router() {
       <Route path={"/admin"}>
         <AdminRoute>
           <Admin />
+        </AdminRoute>
+      </Route>
+      <Route path={"/admin/email-templates"}>
+        <AdminRoute>
+          <EmailTemplates />
         </AdminRoute>
       </Route>
       <Route path={"/404"} component={NotFound} />
