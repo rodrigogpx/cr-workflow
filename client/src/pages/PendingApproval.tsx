@@ -26,7 +26,7 @@ export default function PendingApproval() {
         <div className="flex justify-center mb-8">
           <img 
             src={APP_LOGO} 
-            alt="Fire Range" 
+            alt="Firing Range" 
             className="h-24 w-auto"
           />
         </div>
@@ -83,7 +83,7 @@ export default function PendingApproval() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-white/40 text-sm">
-          <p>Fire Range - Tiro e Caça</p>
+          <p>Firing Range - Tiro e Caça</p>
           <p className="mt-1">DF-150, Km 08 - Sobradinho/DF</p>
         </div>
       </div>

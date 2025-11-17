@@ -330,3 +330,11 @@
 - [x] Verificar condição de renderização no ClientWorkflow
 - [x] Corrigir e testar
 - [x] Criar checkpoint
+
+
+## Correção - Nome do Clube (Fire Range → Firing Range)
+
+- [x] Buscar todas as ocorrências de "Fire Range" no código
+- [x] Substituir por "Firing Range" em todos os arquivos
+- [x] Verificar se não há ocorrências perdidas
+- [x] Criar checkpoint

@@ -11,7 +11,7 @@ export function generateWelcomePDF(client: Client): Promise<Buffer> {
     doc.on('error', reject);
 
     // Header com logo (texto por enquanto)
-    doc.fontSize(24).fillColor('#C41E3A').text('FIRE RANGE', { align: 'center' });
+    doc.fontSize(24).fillColor('#C41E3A').text('FIRING RANGE', { align: 'center' });
     doc.moveDown(0.5);
     doc.fontSize(12).fillColor('#000000').text('Clube de Tiro Desportivo', { align: 'center' });
     doc.moveDown(2);
@@ -24,7 +24,7 @@ export function generateWelcomePDF(client: Client): Promise<Buffer> {
     doc.fontSize(14).fillColor('#000000').text(`Olá, ${client.name}!`, { align: 'left' });
     doc.moveDown(0.5);
     doc.fontSize(11).text(
-      'Seja bem-vindo(a) ao Fire Range! Estamos muito felizes em tê-lo(a) conosco nesta jornada para obtenção do seu Certificado de Registro (CR) de Atirador Desportivo.',
+      'Seja bem-vindo(a) ao Firing Range! Estamos muito felizes em tê-lo(a) conosco nesta jornada para obtenção do seu Certificado de Registro (CR) de Atirador Desportivo.',
       { align: 'justify' }
     );
     doc.moveDown(1);
@@ -101,7 +101,7 @@ export function generateWelcomePDF(client: Client): Promise<Buffer> {
 
     // Footer
     doc.fontSize(10).fillColor('#666666').text(
-      'Fire Range - Clube de Tiro Desportivo | www.firingrange.com.br',
+      'Firing Range - Clube de Tiro Desportivo | www.firingrange.com.br',
       { align: 'center' }
     );
 
