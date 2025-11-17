@@ -118,6 +118,7 @@ export default function Dashboard() {
                 <Button 
                   variant="outline" 
                   onClick={() => setLocation("/admin")}
+                  style={{color: '#c2c1c1'}}
                   className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
                 >
                   <Users className="h-4 w-4 mr-2" />
@@ -147,7 +148,7 @@ export default function Dashboard() {
               <Users className="w-5 h-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-white">{totalClients}</div>
+              <div style={{color: '#434242', textAlign: 'center'}} className="text-4xl font-bold">{totalClients}</div>
             </CardContent>
           </Card>
 
@@ -159,7 +160,7 @@ export default function Dashboard() {
               <Clock className="w-5 h-5 text-yellow-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-white">{inProgress}</div>
+              <div style={{color: '#272626', textAlign: 'center'}} className="text-4xl font-bold">{inProgress}</div>
             </CardContent>
           </Card>
 
@@ -171,7 +172,7 @@ export default function Dashboard() {
               <CheckCircle2 className="w-5 h-5 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-white">{completed}</div>
+              <div style={{color: '#3e3d3d', textAlign: 'center'}} className="text-4xl font-bold">{completed}</div>
             </CardContent>
           </Card>
         </div>
@@ -339,6 +340,7 @@ export default function Dashboard() {
                       <Button
                         onClick={() => handleDeleteClient(client.id, client.name)}
                         variant="outline"
+                        style={{backgroundColor: '#feecec', marginTop: '10px', marginBottom: '5px'}}
                         className="w-full border-2 border-dashed border-red-500/40 text-red-500 hover:bg-red-500/10 hover:border-red-500/60 font-bold uppercase tracking-wide"
                         disabled={deleteClientMutation.isPending}
                       >
