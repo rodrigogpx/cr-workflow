@@ -294,7 +294,7 @@ export default function ClientWorkflow() {
               {/* Fase 2 */}
               <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-amber-900">Documentação</h3>
+                  <h3 className="font-semibold text-amber-900">Documentação/Laudos</h3>
                   <Badge variant={progressoFase2 === 100 ? "default" : "secondary"} className="bg-amber-600">
                     {progressoFase2}%
                   </Badge>

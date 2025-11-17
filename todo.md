@@ -217,3 +217,8 @@
 
 - [x] Mudar background da página para cinza claro
 - [x] Retornar cards para branco com opacidade 0.95
+
+
+## Ajuste de Nomenclatura - ClientWorkflow
+
+- [x] Alterar texto da Fase 2 de "Documentação" para "Documentação/Laudos"
