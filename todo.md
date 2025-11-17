@@ -156,3 +156,19 @@
 - [x] Implementar alteração de perfis de usuários (operator/admin)
 - [x] Implementar delegação de clientes entre operadores
 - [x] Adicionar estatísticas globais na página Admin
+
+
+## Correções e Funcionalidades Pendentes
+
+- [x] Corrigir bug de etapas sumindo quando marcadas como concluídas (texto invisível por text-muted-foreground)
+- [x] Implementar upload de documentos funcional com S3
+- [x] Implementar download do enxoval completo (ZIP real)
+- [ ] Adicionar preview de documentos (imagens, PDFs)
+- [ ] Adicionar indicador visual de documentos anexados em cada etapa
+- [ ] Implementar badges de notificação para etapas pendentes
+- [ ] Adicionar filtros no dashboard (todos/em andamento/concluídos)
+- [ ] Adicionar confirmação antes de ações destrutivas
+- [ ] Melhorar mensagens de erro
+- [ ] Implementar edição de informações do cliente
+- [ ] Implementar exclusão de cliente com confirmação
+- [ ] Corrigir cálculo de progresso nos cards (sem violar regras de hooks)

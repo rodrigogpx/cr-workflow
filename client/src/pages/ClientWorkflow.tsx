@@ -1,10 +1,11 @@
 import { useParams, useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import JSZip from 'jszip';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, CheckCircle2, Download, FileText, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, FileText, Calendar, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
@@ -55,8 +56,68 @@ export default function ClientWorkflow() {
     },
   });
 
-  const handleDownloadEnxoval = () => {
-    toast.info("Funcionalidade de download do enxoval em desenvolvimento");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadEnxoval = async () => {
+    if (isDownloading) return;
+    
+    try {
+      setIsDownloading(true);
+      toast.info("Buscando documentos...");
+
+      // Buscar documentos
+      const response = await fetch(`/api/trpc/documents.downloadEnxoval?input=${encodeURIComponent(JSON.stringify({ clientId: Number(clientId) }))}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar documentos');
+      }
+
+      const data = await response.json();
+      const result = data.result.data;
+      
+      if (!result || result.documents.length === 0) {
+        toast.error("Nenhum documento encontrado");
+        setIsDownloading(false);
+        return;
+      }
+
+      toast.info("Preparando download...");
+
+      const zip = new JSZip();
+
+      // Baixar e adicionar cada documento ao ZIP
+      for (const doc of result.documents) {
+        try {
+          const docResponse = await fetch(doc.fileUrl);
+          const blob = await docResponse.blob();
+          zip.file(doc.fileName, blob);
+        } catch (error) {
+          console.error(`Erro ao baixar ${doc.fileName}:`, error);
+        }
+      }
+
+      // Gerar o ZIP
+      const content = await zip.generateAsync({ type: "blob" });
+
+      // Criar link de download
+      const url = window.URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `enxoval-${result.clientName.replace(/\s+/g, '-')}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Download concluído!");
+    } catch (error) {
+      console.error('Erro ao baixar enxoval:', error);
+      toast.error("Erro ao preparar download");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const toggleStep = (stepId: number, currentCompleted: boolean) => {
@@ -242,7 +303,7 @@ export default function ClientWorkflow() {
                         className="border-2"
                       />
                       <div>
-                        <CardTitle className={`text-lg uppercase tracking-tight ${step.completed ? 'line-through text-muted-foreground' : ''}`}>
+                        <CardTitle className={`text-lg uppercase tracking-tight ${step.completed ? 'line-through opacity-60' : ''}`}>
                           {step.stepTitle}
                         </CardTitle>
                         {hasSubTasks && (
@@ -280,7 +341,7 @@ export default function ClientWorkflow() {
                             onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)}
                             className="mt-1"
                           />
-                          <span className={`text-sm font-medium ${subTask.completed ? "line-through text-muted-foreground" : ""}`}>
+                          <span className={`text-sm font-medium ${subTask.completed ? "line-through opacity-60" : ""}`}>
                             {subTask.label}
                           </span>
                         </div>
@@ -349,10 +410,20 @@ export default function ClientWorkflow() {
                   <CardContent className="border-t-2 border-dashed border-white/10 pt-4">
                     <Button
                       onClick={handleDownloadEnxoval}
+                      disabled={isDownloading}
                       className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase"
                     >
-                      <Download className="w-4 h-4 mr-2" />
-                      Baixar Enxoval Completo (ZIP)
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Preparando Download...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          Baixar Enxoval Completo (ZIP)
+                        </>
+                      )}
                     </Button>
                   </CardContent>
                 )}
