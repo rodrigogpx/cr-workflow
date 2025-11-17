@@ -62,10 +62,22 @@ export const appRouter = router({
           ? input.operatorId 
           : ctx.user.id;
         
-        const clientId = await db.createClient({
-          ...input,
-          operatorId,
-        });
+        let clientId: number;
+        try {
+          clientId = await db.createClient({
+            ...input,
+            operatorId,
+          });
+        } catch (error: any) {
+          // Check for duplicate CPF error (MySQL error code 1062)
+          if (error.message && error.message.includes('Duplicate entry')) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'Este CPF já está cadastrado no sistema.',
+            });
+          }
+          throw error;
+        }
         
         // Criar workflow inicial para o cliente - 6 etapas principais
         const initialSteps = [

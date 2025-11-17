@@ -314,3 +314,11 @@
 - [x] Reescrever createClient usando SQL bruto (execute) ao invés do query builder
 - [x] Testar cadastro de cliente - pronto para teste
 - [x] Criar checkpoint
+
+
+## Tratamento de Erro - CPF Duplicado
+
+- [x] Adicionar try-catch no router create de clientes
+- [x] Detectar erro de unique constraint (CPF duplicado)
+- [x] Retornar mensagem amigável ao usuário
+- [x] Testar e criar checkpoint
