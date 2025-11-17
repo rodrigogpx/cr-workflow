@@ -448,7 +448,7 @@ export default function ClientWorkflow() {
                           Concluído
                         </Badge>
                       )}
-                      {(totalSubTasks > 0 || step.stepTitle === "Cadastro") && (
+                      {(totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -466,7 +466,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro") && (
+                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas") && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     

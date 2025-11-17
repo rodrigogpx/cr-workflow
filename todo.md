@@ -322,3 +322,11 @@
 - [x] Detectar erro de unique constraint (CPF duplicado)
 - [x] Retornar mensagem amigável ao usuário
 - [x] Testar e criar checkpoint
+
+
+## Correção - Editores de Email Não Aparecem em Boas Vindas
+
+- [x] Investigar por que os EmailEditors não estão sendo renderizados
+- [x] Verificar condição de renderização no ClientWorkflow
+- [x] Corrigir e testar
+- [x] Criar checkpoint
