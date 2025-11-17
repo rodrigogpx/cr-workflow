@@ -206,3 +206,8 @@
 
 - [x] Ajustar background dos cards de clientes para opacity 0.95
 - [x] Ajustar cor do texto dos cards para preto
+
+
+## Ajuste de Background - Cards de Clientes
+
+- [x] Mudar background dos cards de branco/95 para cinza claro
