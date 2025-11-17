@@ -67,16 +67,14 @@ export const appRouter = router({
           operatorId,
         });
         
-        // Criar workflow inicial para o cliente - 8 etapas principais
+        // Criar workflow inicial para o cliente - 6 etapas principais
         const initialSteps = [
-          { stepId: 'processo-venda', stepTitle: 'Processo de Venda' },
           { stepId: 'cadastro', stepTitle: 'Cadastro' },
           { stepId: 'boas-vindas', stepTitle: 'Boas Vindas' },
           { stepId: 'agendamento-psicotecnico', stepTitle: 'Agendamento Psicotécnico' },
           { stepId: 'juntada-documento', stepTitle: 'Juntada de Documento' },
-          { stepId: 'laudo-arma', stepTitle: 'Laudo Arma de Fogo' },
+          { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo para Manuseio de Arma de Fogo' },
           { stepId: 'despachante', stepTitle: 'Despachante' },
-          { stepId: 'fim', stepTitle: 'Fim' },
         ];
         
         for (const step of initialSteps) {
@@ -254,6 +252,59 @@ export const appRouter = router({
           label: '',
           completed: input.completed,
           completedAt: input.completed ? new Date() : null,
+        });
+        
+        return { success: true };
+      }),
+
+    generateWelcomePDF: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await db.getClientById(input.clientId);
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+        
+        // Verificar permissão
+        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        }
+        
+        const { generateWelcomePDF } = await import('./generate-pdf');
+        const pdfBuffer = await generateWelcomePDF(client);
+        
+        // Upload para S3
+        const fileName = `boas-vindas-${client.name.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+        const result = await storagePut(fileName, pdfBuffer, 'application/pdf');
+        
+        return { url: result.url, fileName };
+      }),
+
+    updateScheduling: protectedProcedure
+      .input(z.object({
+        clientId: z.number(),
+        stepId: z.number(),
+        scheduledDate: z.string().optional(),
+        examinerName: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await db.getClientById(input.clientId);
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+        
+        // Verificar permissão
+        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        }
+        
+        await db.upsertWorkflowStep({
+          id: input.stepId,
+          clientId: input.clientId,
+          stepId: '',
+          stepTitle: '',
+          scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
+          examinerName: input.examinerName || null,
         });
         
         return { success: true };

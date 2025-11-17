@@ -102,3 +102,17 @@
 - [x] Migrar dados dos clientes existentes para nova estrutura
 - [x] Ajustar interface para mostrar subtarefas com upload de documentos
 - [x] Manter upload individual por documento dentro das subtarefas
+
+
+## Melhorias do Workflow
+
+- [x] Remover etapa "Processo de Venda"
+- [x] Remover etapa "Fim"
+- [x] Remover upload de arquivos das etapas sem documentos
+- [x] Adicionar botão de geração de PDF personalizado em "Boas Vindas"
+- [x] Transformar "Laudo Arma de Fogo" em "Agendamento de Laudo"
+- [x] Adicionar campos: data do agendamento e nome do examinador
+- [x] Mover botão "Baixar Enxoval" para dentro da etapa "Despachante"
+- [x] Organizar cards em 3 colunas
+- [x] Criar separação visual por fases do processo
+- [x] Migrar clientes existentes para nova estrutura

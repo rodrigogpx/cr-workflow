@@ -53,6 +53,9 @@ export const workflowSteps = mysqlTable("workflowSteps", {
   stepTitle: varchar("stepTitle", { length: 255 }).notNull(),
   completed: boolean("completed").default(false).notNull(),
   completedAt: timestamp("completedAt"),
+  // Campos para agendamento de laudo
+  scheduledDate: timestamp("scheduledDate"),
+  examinerName: varchar("examinerName", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
