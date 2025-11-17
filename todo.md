@@ -50,7 +50,7 @@
 - [ ] Upload de documentos por etapa
 - [ ] Armazenamento de arquivos no S3
 - [ ] Listagem de documentos por cliente
-- [ ] Download individual de documentos
+- [x] Download individual de documentos
 - [ ] Download do enxoval completo (ZIP)
 - [x] Gerenciamento de usuários (alteração de perfil)
 
@@ -64,3 +64,23 @@
 - [x] Controle de acesso por perfil nos routers
 - [x] Endpoint de upload de arquivos
 - [x] Endpoint de download de enxoval completo
+
+
+## Upload de Documentos e Enxoval
+
+- [x] Componente de upload de arquivos por etapa do workflow
+- [x] Listagem de documentos anexados por cliente
+- [ ] Preview de documentos (imagens, PDFs)
+- [x] Exclusão de documentos
+- [x] Download individual de documentos
+- [x] Botão de download do enxoval completo (ZIP)
+- [ ] Indicador visual de documentos anexados em cada etapa
+
+## Melhorias de UX
+
+- [x] Cálculo correto de progresso (em andamento/concluídos)
+- [ ] Badges de notificação para etapas pendentes
+- [ ] Filtros no dashboard (todos/em andamento/concluídos)
+- [ ] Confirmação antes de ações destrutivas
+- [x] Loading states em todas as mutações
+- [ ] Mensagens de erro mais descritivas

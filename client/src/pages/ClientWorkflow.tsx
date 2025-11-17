@@ -2,8 +2,9 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DocumentUpload } from "@/components/DocumentUpload";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Loader2, Target } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Download, Loader2, Target } from "lucide-react";
 import { useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
@@ -107,9 +108,22 @@ export default function ClientWorkflow() {
                 {client.cpf} • {client.email}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">{user?.role === 'admin' ? 'Admin' : 'Operador'}</span>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  window.open(`/api/trpc/documents.downloadEnxoval?input=${encodeURIComponent(JSON.stringify({ clientId }))}`, '_blank');
+                  toast.success('Preparando download do enxoval...');
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Baixar Enxoval
+              </Button>
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium">{user?.role === 'admin' ? 'Admin' : 'Operador'}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -188,7 +202,8 @@ export default function ClientWorkflow() {
                             checked={subTask.completed}
                             onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)}
                           />
-                          <span className={"text-sm " + (subTask.completed ? "line-through text-muted-foreground" : "")}>
+                          <span className={"text-sm " + (subTask.completed ? "line-through text-muted-foreground" : "")}
+                          >
                             {subTask.label}
                           </span>
                         </div>
@@ -196,7 +211,16 @@ export default function ClientWorkflow() {
                     </div>
                   </CardContent>
                 )}
-              </Card>
+
+                {isExpanded && (
+                  <CardContent>
+                    <DocumentUpload
+                      clientId={clientId}
+                      stepId={step.id}
+                      stepTitle={step.stepTitle}
+                    />
+                  </CardContent>
+                )}        </Card>
             );
           })}
         </div>

@@ -73,6 +73,11 @@ export default function Dashboard() {
   ) || [];
 
   const totalClients = clients?.length || 0;
+  
+  // TODO: Implement proper progress calculation with workflow data
+  // For now, showing placeholder values
+  const completed = 0;
+  const inProgress = totalClients;
 
   return (
     <div className="min-h-screen bg-background">
@@ -124,7 +129,7 @@ export default function Dashboard() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">-</div>
+              <div className="text-2xl font-bold">{inProgress}</div>
             </CardContent>
           </Card>
           <Card>
@@ -133,7 +138,7 @@ export default function Dashboard() {
               <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">-</div>
+              <div className="text-2xl font-bold">{completed}</div>
             </CardContent>
           </Card>
         </div>
