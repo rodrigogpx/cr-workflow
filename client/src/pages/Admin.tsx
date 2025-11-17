@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, Target, Users, Shield, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, Target, Users, Shield, TrendingUp, Clock, CheckCircle2, Mail } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -87,6 +87,29 @@ export default function Admin() {
       </header>
 
       <main className="container py-8 space-y-8">
+        {/* Card de Acesso Rápido - Templates de Email */}
+        <Card className="border-2 border-dashed border-primary/40 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg border-2 border-dashed border-primary/40 bg-primary/10 flex items-center justify-center">
+                  <Mail className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold uppercase text-sm text-white">Templates de Email</h3>
+                  <p className="text-xs text-muted-foreground">Edite os templates de email enviados aos clientes</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setLocation("/admin/email-templates")}
+                className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
+              >
+                Gerenciar →
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Estatísticas Globais */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="border-2 border-dashed border-white/20 bg-card">

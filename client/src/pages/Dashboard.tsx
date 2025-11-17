@@ -115,26 +115,15 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-2">
               {user.role === 'admin' && (
-                <>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setLocation("/admin")}
-                    style={{color: '#c2c1c1'}}
-                    className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Administração
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setLocation("/admin/email-templates")}
-                    style={{color: '#c2c1c1'}}
-                    className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Templates de Email
-                  </Button>
-                </>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setLocation("/admin")}
+                  style={{color: '#c2c1c1'}}
+                  className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Administração
+                </Button>
               )}
               <Button 
                 variant="ghost" 

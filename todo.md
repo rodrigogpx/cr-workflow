@@ -368,3 +368,11 @@
 - [x] Adicionar botão/link para /admin/email-templates no menu de administração
 - [x] Testar navegação
 - [x] Criar checkpoint
+
+
+## Mover Link de Templates para Página Admin
+
+- [x] Remover botão "Templates de Email" do Dashboard
+- [x] Adicionar card/link para Templates de Email na página /admin
+- [x] Testar navegação
+- [x] Criar checkpoint
