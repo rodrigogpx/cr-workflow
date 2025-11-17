@@ -134,3 +134,4 @@ export function MapView({
 
   return <div ref={mapContainer} className={className} />;
 }
+
