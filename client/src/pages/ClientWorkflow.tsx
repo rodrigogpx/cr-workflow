@@ -1,9 +1,10 @@
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, CheckCircle2, Download, FileText, Calendar } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, CheckCircle2, Download, FileText, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
@@ -14,6 +15,7 @@ export default function ClientWorkflow() {
   const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
   const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
+  const [schedulingData, setSchedulingData] = useState<{[key: number]: {date: string, examiner: string}}>({});
 
   const { data: client } = trpc.clients.getById.useQuery(
     { id: Number(clientId) },
@@ -54,7 +56,6 @@ export default function ClientWorkflow() {
   });
 
   const handleDownloadEnxoval = () => {
-    // TODO: Implementar geração de ZIP no backend
     toast.info("Funcionalidade de download do enxoval em desenvolvimento");
   };
 
@@ -88,231 +89,245 @@ export default function ClientWorkflow() {
     generatePDFMutation.mutate({ clientId: Number(clientId) });
   };
 
-  const handleSchedulingUpdate = (stepId: number, scheduledDate: string, examinerName: string) => {
+  const handleSchedulingUpdate = (stepId: number) => {
+    const data = schedulingData[stepId];
+    if (!data?.date || !data?.examiner) {
+      toast.error("Preencha data e nome do examinador");
+      return;
+    }
     updateSchedulingMutation.mutate({
       clientId: Number(clientId),
       stepId,
-      scheduledDate,
-      examinerName,
+      scheduledDate: data.date,
+      examinerName: data.examiner,
     });
   };
 
-
-
   if (!client || !workflow) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
       </div>
     );
   }
 
-  // Calcular progresso
-  const totalSteps = workflow.length;
-  const completedSteps = workflow.filter(s => s.completed).length;
-  const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+  // Calcular progresso por fase
+  const fase1Steps = workflow.filter(s => s.stepTitle === "Cadastro" || s.stepTitle === "Boas Vindas");
+  const fase2Steps = workflow.filter(s => s.stepTitle === "Agendamento Psicotécnico" || s.stepTitle === "Juntada de Documento");
+  const fase3Steps = workflow.filter(s => s.stepTitle === "Agendamento de Laudo" || s.stepTitle === "Despachante");
 
-  // Organizar etapas em 3 fases
-  const phases = [
-    {
-      title: "Fase 1: Cadastro e Boas-Vindas",
-      steps: workflow.filter(s => ['cadastro', 'boas-vindas'].includes(s.stepId)),
-    },
-    {
-      title: "Fase 2: Documentação",
-      steps: workflow.filter(s => ['agendamento-psicotecnico', 'juntada-documento', 'agendamento-laudo'].includes(s.stepId)),
-    },
-    {
-      title: "Fase 3: Finalização",
-      steps: workflow.filter(s => ['despachante'].includes(s.stepId)),
-    },
-  ];
+  const calcularProgressoFase = (steps: typeof workflow) => {
+    if (steps.length === 0) return 0;
+    const completed = steps.filter(s => s.completed).length;
+    return Math.round((completed / steps.length) * 100);
+  };
+
+  const progressoFase1 = calcularProgressoFase(fase1Steps);
+  const progressoFase2 = calcularProgressoFase(fase2Steps);
+  const progressoFase3 = calcularProgressoFase(fase3Steps);
+  const progressoTotal = calcularProgressoFase(workflow);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setLocation("/")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">{client.name}</h1>
-            <p className="text-sm text-muted-foreground">
-              CPF: {client.cpf} | Telefone: {client.phone}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground">Progresso</p>
-            <p className="text-2xl font-bold text-primary">{progress}%</p>
+      <header className="border-b-2 border-dashed border-white/20 bg-black sticky top-0 z-10">
+        <div className="container py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href="/dashboard">
+                <Button variant="ghost" size="icon" className="text-white hover:text-primary">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-white uppercase tracking-tight">{client.name}</h1>
+                <p className="text-sm text-muted-foreground">{client.cpf} • {client.email}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Progresso Total</p>
+                <p className="text-2xl font-bold text-primary">{progressoTotal}%</p>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto py-8">
-        <div className="space-y-8">
-          {phases.map((phase, phaseIndex) => (
-            <div key={phaseIndex} className="space-y-4">
-              <h2 className="text-xl font-bold text-primary border-b pb-2">
-                {phase.title}
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {phase.steps.map((step) => {
-                  const isExpanded = isStepExpanded(step.id);
-                  const isBoasVindas = step.stepId === 'boas-vindas';
-                  const isAgendamentoLaudo = step.stepId === 'agendamento-laudo';
-                  const isDespachante = step.stepId === 'despachante';
-                  const hasSubTasks = step.subTasks && step.subTasks.length > 0;
+      <main className="container py-8 max-w-4xl">
+        {/* Barra de Progresso por Fases */}
+        <Card className="border-2 border-dashed border-white/20 bg-card mb-8">
+          <CardHeader>
+            <CardTitle className="uppercase text-sm tracking-wide">Progresso por Fase</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium uppercase">Fase 1: Cadastro e Boas-Vindas</span>
+                <span className="text-sm font-bold text-primary">{progressoFase1}%</span>
+              </div>
+              <Progress value={progressoFase1} className="h-2" />
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium uppercase">Fase 2: Documentação</span>
+                <span className="text-sm font-bold text-primary">{progressoFase2}%</span>
+              </div>
+              <Progress value={progressoFase2} className="h-2" />
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium uppercase">Fase 3: Finalização</span>
+                <span className="text-sm font-bold text-primary">{progressoFase3}%</span>
+              </div>
+              <Progress value={progressoFase3} className="h-2" />
+            </div>
+          </CardContent>
+        </Card>
 
-                  return (
-                    <Card
-                      key={step.id}
-                      className={"transition-all " + (step.completed ? "border-green-500/50 bg-green-50/50 dark:bg-green-950/20" : "")}
-                    >
-                      <CardHeader>
+        {/* Workflow em Coluna Única */}
+        <div className="space-y-4">
+          {workflow.map((step) => {
+            const isExpanded = isStepExpanded(step.id);
+            const hasSubTasks = step.subTasks && step.subTasks.length > 0;
+            const completedSubTasks = hasSubTasks ? step.subTasks.filter(st => st.completed).length : 0;
+            const totalSubTasks = hasSubTasks ? step.subTasks.length : 0;
+
+            return (
+              <Card
+                key={step.id}
+                className="border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300"
+              >
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={step.completed}
+                        onCheckedChange={() => toggleStep(step.id, step.completed)}
+                        className="border-2"
+                      />
+                      <div>
+                        <CardTitle className={`text-lg uppercase tracking-tight ${step.completed ? 'line-through text-muted-foreground' : ''}`}>
+                          {step.stepTitle}
+                        </CardTitle>
+                        {hasSubTasks && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {completedSubTasks}/{totalSubTasks} documentos concluídos
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {step.completed && (
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      )}
+                      {hasSubTasks && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleExpanded(step.id)}
+                          className="text-primary hover:text-primary/80"
+                        >
+                          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+
+                {isExpanded && hasSubTasks && (
+                  <CardContent className="space-y-3 border-t-2 border-dashed border-white/10 pt-4">
+                    {step.subTasks.map((subTask) => (
+                      <div key={subTask.id} className="border-2 border-dashed border-white/10 rounded-lg p-4 space-y-3 bg-background/50">
                         <div className="flex items-start gap-3">
                           <Checkbox
-                            checked={step.completed}
-                            onCheckedChange={() => toggleStep(step.id, step.completed)}
-                            className="h-5 w-5 mt-1"
+                            checked={subTask.completed}
+                            onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)}
+                            className="mt-1"
                           />
-                          <div className="flex-1">
-                            <CardTitle className={"text-base " + (step.completed ? "line-through text-muted-foreground" : "")}>
-                              {step.stepTitle}
-                            </CardTitle>
-                            {step.completed && (
-                              <CheckCircle2 className="h-4 w-4 text-green-600 inline-block ml-2" />
-                            )}
-                          </div>
+                          <span className={`text-sm font-medium ${subTask.completed ? "line-through text-muted-foreground" : ""}`}>
+                            {subTask.label}
+                          </span>
                         </div>
-                      </CardHeader>
+                        <DocumentUpload
+                          clientId={Number(clientId)}
+                          stepId={step.id}
+                          stepTitle={subTask.label}
+                        />
+                      </div>
+                    ))}
+                  </CardContent>
+                )}
 
-                      <CardContent className="space-y-3">
-                        {/* Boas Vindas - Botão de PDF */}
-                        {isBoasVindas && (
-                          <Button
-                            onClick={handleGeneratePDF}
-                            disabled={generatePDFMutation.isPending}
-                            className="w-full"
-                            variant="outline"
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            {generatePDFMutation.isPending ? "Gerando..." : "Gerar PDF de Boas-Vindas"}
-                          </Button>
-                        )}
+                {/* Botão PDF em Boas Vindas */}
+                {step.stepTitle === "Boas Vindas" && !hasSubTasks && (
+                  <CardContent className="border-t-2 border-dashed border-white/10 pt-4">
+                    <Button
+                      onClick={handleGeneratePDF}
+                      disabled={generatePDFMutation.isPending}
+                      className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      {generatePDFMutation.isPending ? "Gerando..." : "Gerar PDF de Boas-Vindas"}
+                    </Button>
+                  </CardContent>
+                )}
 
-                        {/* Agendamento de Laudo - Campos de data e examinador */}
-                        {isAgendamentoLaudo && (
-                          <div className="space-y-3 border-t pt-3">
-                            <div className="space-y-2">
-                              <Label htmlFor="scheduledDate">Data do Agendamento</Label>
-                              <Input
-                                id="scheduledDate"
-                                type="datetime-local"
-                                defaultValue={step.scheduledDate ? new Date(step.scheduledDate).toISOString().slice(0, 16) : ''}
-                                onBlur={(e) => {
-                                  if (e.target.value) {
-                                    handleSchedulingUpdate(step.id, e.target.value, step.examinerName || '');
-                                  }
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="examinerName">Nome do Examinador</Label>
-                              <Input
-                                id="examinerName"
-                                type="text"
-                                placeholder="Digite o nome do examinador"
-                                defaultValue={step.examinerName || ''}
-                                onBlur={(e) => {
-                                  handleSchedulingUpdate(step.id, step.scheduledDate ? new Date(step.scheduledDate).toISOString() : '', e.target.value);
-                                }}
-                              />
-                            </div>
-                          </div>
-                        )}
+                {/* Campos de Agendamento no Laudo */}
+                {step.stepTitle === "Agendamento de Laudo" && !hasSubTasks && (
+                  <CardContent className="border-t-2 border-dashed border-white/10 pt-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`date-${step.id}`} className="uppercase text-xs font-bold">Data do Agendamento</Label>
+                        <Input
+                          id={`date-${step.id}`}
+                          type="date"
+                          value={schedulingData[step.id]?.date || (step.scheduledDate ? new Date(step.scheduledDate).toISOString().split('T')[0] : "")}
+                          onChange={(e) => setSchedulingData({...schedulingData, [step.id]: {...schedulingData[step.id], date: e.target.value}})}
+                          className="border-2 border-dashed border-white/20"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`examiner-${step.id}`} className="uppercase text-xs font-bold">Nome do Examinador</Label>
+                        <Input
+                          id={`examiner-${step.id}`}
+                          value={schedulingData[step.id]?.examiner || step.examinerName || ""}
+                          onChange={(e) => setSchedulingData({...schedulingData, [step.id]: {...schedulingData[step.id], examiner: e.target.value}})}
+                          className="border-2 border-dashed border-white/20"
+                          placeholder="Nome completo"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => handleSchedulingUpdate(step.id)}
+                      disabled={updateSchedulingMutation.isPending}
+                      className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase"
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      {updateSchedulingMutation.isPending ? "Salvando..." : "Salvar Agendamento"}
+                    </Button>
+                  </CardContent>
+                )}
 
-                        {/* Despachante - Botão de Download do Enxoval */}
-                        {isDespachante && (
-                          <Button
-                            onClick={handleDownloadEnxoval}
-                            disabled={false}
-                            className="w-full"
-                            variant="default"
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Baixar Enxoval Completo
-                          </Button>
-                        )}
-
-                        {/* Subtarefas (Documentos) */}
-                        {hasSubTasks && (
-                          <div className="space-y-2 border-t pt-3">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleExpanded(step.id)}
-                              className="w-full"
-                            >
-                              {isExpanded ? "Ocultar" : "Ver"} Documentos ({step.subTasks.filter(st => st.completed).length}/{step.subTasks.length})
-                            </Button>
-                            {isExpanded && (
-                              <div className="space-y-3 max-h-96 overflow-y-auto">
-                                {step.subTasks.map((subTask) => (
-                                  <div key={subTask.id} className="border rounded-lg p-3 space-y-2 bg-muted/30">
-                                    <div className="flex items-start gap-2">
-                                      <Checkbox
-                                        checked={subTask.completed}
-                                        onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)}
-                                        className="mt-1"
-                                      />
-                                      <span className={"text-sm " + (subTask.completed ? "line-through text-muted-foreground" : "")}>
-                                        {subTask.label}
-                                      </span>
-                                    </div>
-                                    <DocumentUpload
-                                      clientId={Number(clientId)}
-                                      stepId={step.id}
-                                      stepTitle={subTask.label}
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Upload para etapas sem subtarefas (exceto Boas Vindas) */}
-                        {!hasSubTasks && !isBoasVindas && (
-                          <div className="border-t pt-3">
-                            <DocumentUpload
-                              clientId={Number(clientId)}
-                              stepId={step.id}
-                              stepTitle={step.stepTitle}
-                            />
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                {/* Botão Download Enxoval no Despachante */}
+                {step.stepTitle === "Despachante" && !hasSubTasks && (
+                  <CardContent className="border-t-2 border-dashed border-white/10 pt-4">
+                    <Button
+                      onClick={handleDownloadEnxoval}
+                      className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Baixar Enxoval Completo (ZIP)
+                    </Button>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })}
         </div>
-
-        {progress === 100 && (
-          <div className="mt-8 p-6 bg-green-50 dark:bg-green-950/20 border border-green-500 rounded-lg text-center">
-            <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-green-700 dark:text-green-400 mb-2">
-              Processo Concluído!
-            </h3>
-            <p className="text-green-600 dark:text-green-300">
-              Todas as etapas do processo de CR foram finalizadas.
-            </p>
-          </div>
-        )}
       </main>
     </div>
   );

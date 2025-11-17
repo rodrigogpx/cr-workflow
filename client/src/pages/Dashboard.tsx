@@ -295,8 +295,17 @@ export default function Dashboard() {
                     <Mail className="w-4 h-4" />
                     <span className="truncate">{client.email}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground pt-2 border-t border-dashed border-white/10">
-                    {new Date(client.createdAt).toLocaleDateString("pt-BR")}
+                  <div className="pt-2 border-t border-dashed border-white/10 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
+                      <span className="text-xs font-bold text-primary">0% concluído</span>
+                    </div>
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{width: '0%'}}
+                      />
+                    </div>
                   </div>
                   <Link href={`/client/${client.id}`}>
                     <Button className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide mt-4">

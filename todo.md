@@ -135,3 +135,14 @@
 - [ ] Adicionar micro-interações e animações
 - [ ] Melhorar hierarquia visual e espaçamentos
 - [ ] Aplicar glassmorphism e sombras modernas
+
+
+## Melhorias Finais
+
+- [x] Investigar bug de tarefas concluídas sumindo (não há filtro, todas são renderizadas)
+- [x] Redesenhar página de Workflow com identidade Firing Range
+- [x] Reorganizar workflow em coluna única
+- [x] Adicionar barra de progresso segmentada por fases
+- [x] Adicionar indicadores de progresso nos cards de clientes
+- [x] Redesenhar página de Login personalizada
+- [x] Aplicar identidade visual completa em todas as páginas
