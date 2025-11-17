@@ -158,32 +158,64 @@ export default function ClientWorkflow() {
       </header>
 
       <main className="container py-8 max-w-4xl">
-        {/* Barra de Progresso por Fases */}
+        {/* Barra de Progresso Única Segmentada */}
         <Card className="border-2 border-dashed border-white/20 bg-card mb-8">
           <CardHeader>
-            <CardTitle className="uppercase text-sm tracking-wide">Progresso por Fase</CardTitle>
+            <CardTitle className="uppercase text-sm tracking-wide">Progresso do Workflow</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium uppercase">Fase 1: Cadastro e Boas-Vindas</span>
-                <span className="text-sm font-bold text-primary">{progressoFase1}%</span>
+          <CardContent>
+            {/* Labels das Fases */}
+            <div className="flex justify-between mb-3">
+              <div className="flex-1 text-center">
+                <span className="text-xs font-bold uppercase text-muted-foreground">Cadastro</span>
               </div>
-              <Progress value={progressoFase1} className="h-2" />
+              <div className="flex-1 text-center">
+                <span className="text-xs font-bold uppercase text-muted-foreground">Documentação</span>
+              </div>
+              <div className="flex-1 text-center">
+                <span className="text-xs font-bold uppercase text-muted-foreground">Finalização</span>
+              </div>
             </div>
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium uppercase">Fase 2: Documentação</span>
-                <span className="text-sm font-bold text-primary">{progressoFase2}%</span>
+            
+            {/* Barra de Progresso Segmentada */}
+            <div className="relative h-6 bg-muted rounded-lg overflow-hidden border-2 border-dashed border-white/10">
+              {/* Fase 1 */}
+              <div 
+                className="absolute left-0 top-0 h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-700 ease-out"
+                style={{
+                  width: `${(progressoFase1 / 3)}%`,
+                  animation: 'pulse 2s ease-in-out infinite'
+                }}
+              />
+              {/* Fase 2 */}
+              <div 
+                className="absolute left-[33.33%] top-0 h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-700 ease-out delay-150"
+                style={{
+                  width: `${(progressoFase2 / 3)}%`,
+                  animation: 'pulse 2s ease-in-out infinite',
+                  animationDelay: '0.3s'
+                }}
+              />
+              {/* Fase 3 */}
+              <div 
+                className="absolute left-[66.66%] top-0 h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-700 ease-out delay-300"
+                style={{
+                  width: `${(progressoFase3 / 3)}%`,
+                  animation: 'pulse 2s ease-in-out infinite',
+                  animationDelay: '0.6s'
+                }}
+              />
+              
+              {/* Divisores entre fases */}
+              <div className="absolute left-[33.33%] top-0 h-full w-0.5 bg-background z-10" />
+              <div className="absolute left-[66.66%] top-0 h-full w-0.5 bg-background z-10" />
+              
+              {/* Porcentagens */}
+              <div className="absolute inset-0 flex items-center justify-around z-20">
+                <span className="text-xs font-bold text-white drop-shadow-lg">{progressoFase1}%</span>
+                <span className="text-xs font-bold text-white drop-shadow-lg">{progressoFase2}%</span>
+                <span className="text-xs font-bold text-white drop-shadow-lg">{progressoFase3}%</span>
               </div>
-              <Progress value={progressoFase2} className="h-2" />
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium uppercase">Fase 3: Finalização</span>
-                <span className="text-sm font-bold text-primary">{progressoFase3}%</span>
-              </div>
-              <Progress value={progressoFase3} className="h-2" />
             </div>
           </CardContent>
         </Card>

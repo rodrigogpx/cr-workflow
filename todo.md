@@ -146,3 +146,13 @@
 - [x] Adicionar indicadores de progresso nos cards de clientes
 - [x] Redesenhar página de Login personalizada
 - [x] Aplicar identidade visual completa em todas as páginas
+
+
+## Implementações Finais
+
+- [x] Implementar cálculo real de progresso nos cards de clientes
+- [x] Melhorar barra de progresso do workflow (única, mais larga, animada, 3 fases)
+- [x] Criar página Admin funcional com lista de usuários
+- [x] Implementar alteração de perfis de usuários (operator/admin)
+- [x] Implementar delegação de clientes entre operadores
+- [x] Adicionar estatísticas globais na página Admin

@@ -2,12 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, Target, Users, Shield } from "lucide-react";
-import { useLocation } from "wouter";
+import { ArrowLeft, Loader2, Target, Users, Shield, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function Admin() {
   const [, setLocation] = useLocation();
+  const { user, loading: authLoading } = useAuth();
 
   const { data: users, isLoading: usersLoading, refetch: refetchUsers } = trpc.users.list.useQuery();
   const { data: clients, isLoading: clientsLoading, refetch: refetchClients } = trpc.clients.list.useQuery();
@@ -32,53 +34,151 @@ export default function Admin() {
     },
   });
 
-  if (usersLoading || clientsLoading) {
+  if (authLoading || usersLoading || clientsLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground uppercase text-sm tracking-wide">Carregando...</p>
+        </div>
       </div>
     );
   }
 
+  if (!user || user.role !== 'admin') {
+    setLocation("/dashboard");
+    return null;
+  }
+
   const operators = users?.filter(u => u.role === 'operator') || [];
+  const admins = users?.filter(u => u.role === 'admin') || [];
+  const totalUsers = users?.length || 0;
+  const totalClients = clients?.length || 0;
+  
+  // Calcular clientes por operador
+  const clientsByOperator = operators.map(op => ({
+    operator: op,
+    count: clients?.filter(c => c.operatorId === op.id).length || 0
+  }));
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card sticky top-0 z-10">
+      {/* Header com estilo Firing Range */}
+      <header className="border-b-2 border-dashed border-white/20 bg-black sticky top-0 z-10">
         <div className="container py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/dashboard")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold text-foreground">Administração</h1>
-              <p className="text-sm text-muted-foreground">
-                Gerenciamento de usuários e delegação de clientes
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href="/dashboard">
+                <Button variant="ghost" size="icon" className="text-white hover:text-primary">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-white uppercase tracking-tight">Administração</h1>
+                <p className="text-sm text-muted-foreground">Gerenciamento de usuários e delegação</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-primary/40 rounded-lg bg-primary/10">
               <Shield className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">Admin</span>
+              <span className="text-sm font-bold uppercase text-primary">Admin</span>
             </div>
           </div>
         </div>
       </header>
 
       <main className="container py-8 space-y-8">
-        <Card>
+        {/* Estatísticas Globais */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card className="border-2 border-dashed border-white/20 bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Total de Usuários
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-white">{totalUsers}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {admins.length} admin{admins.length !== 1 ? 's' : ''} • {operators.length} operador{operators.length !== 1 ? 'es' : ''}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-dashed border-white/20 bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                Total de Clientes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-white">{totalClients}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Distribuídos entre operadores
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-dashed border-white/20 bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Em Andamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-yellow-500">{totalClients}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Processos ativos
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-dashed border-white/20 bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Concluídos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-green-500">0</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                CRs emitidos
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Gerenciamento de Usuários */}
+        <Card className="border-2 border-dashed border-white/20 bg-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
+            <CardTitle className="uppercase text-sm tracking-wide flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
               Gerenciamento de Usuários
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {users?.map((u) => (
-                <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{u.name || u.email}</p>
-                    <p className="text-sm text-muted-foreground">{u.email}</p>
+                <div 
+                  key={u.id} 
+                  className="flex items-center justify-between p-4 border-2 border-dashed border-white/10 rounded-lg bg-background/50 hover:border-primary/40 transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center ${
+                      u.role === 'admin' ? 'border-primary/40 bg-primary/10' : 'border-white/20 bg-muted'
+                    }`}>
+                      {u.role === 'admin' ? (
+                        <Shield className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-bold uppercase text-sm">{u.name || u.email}</p>
+                      <p className="text-xs text-muted-foreground">{u.email}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <Select
@@ -90,7 +190,7 @@ export default function Admin() {
                         });
                       }}
                     >
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-[180px] border-2 border-dashed border-white/20 bg-background">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -105,28 +205,62 @@ export default function Admin() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Distribuição de Clientes por Operador */}
+        <Card className="border-2 border-dashed border-white/20 bg-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
+            <CardTitle className="uppercase text-sm tracking-wide flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Distribuição de Clientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {clientsByOperator.map(({ operator, count }) => (
+                <div 
+                  key={operator.id}
+                  className="flex items-center justify-between p-4 border-2 border-dashed border-white/10 rounded-lg bg-background/50"
+                >
+                  <div>
+                    <p className="font-bold uppercase text-sm">{operator.name || operator.email}</p>
+                    <p className="text-xs text-muted-foreground">{operator.email}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary">{count}</p>
+                    <p className="text-xs text-muted-foreground uppercase">Cliente{count !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Delegação de Clientes */}
+        <Card className="border-2 border-dashed border-white/20 bg-card">
+          <CardHeader>
+            <CardTitle className="uppercase text-sm tracking-wide flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
               Delegação de Clientes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {clients?.map((client) => {
                 const currentOperator = users?.find(u => u.id === client.operatorId);
                 
                 return (
-                  <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div 
+                    key={client.id} 
+                    className="flex items-center justify-between p-4 border-2 border-dashed border-white/10 rounded-lg bg-background/50 hover:border-primary/40 transition-all"
+                  >
                     <div>
-                      <p className="font-medium">{client.name}</p>
-                      <p className="text-sm text-muted-foreground">{client.cpf}</p>
+                      <p className="font-bold uppercase text-sm">{client.name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{client.cpf}</p>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground">
-                        Operador atual: {currentOperator?.name || currentOperator?.email || 'Não atribuído'}
-                      </span>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground uppercase">Operador Atual</p>
+                        <p className="text-sm font-bold">{currentOperator?.name || currentOperator?.email || 'Não atribuído'}</p>
+                      </div>
                       <Select
                         value={client.operatorId?.toString() || ''}
                         onValueChange={(value) => {
@@ -136,7 +270,7 @@ export default function Admin() {
                           });
                         }}
                       >
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-[200px] border-2 border-dashed border-white/20 bg-background">
                           <SelectValue placeholder="Selecionar operador" />
                         </SelectTrigger>
                         <SelectContent>
