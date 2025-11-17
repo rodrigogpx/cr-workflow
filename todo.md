@@ -361,3 +361,10 @@
   5. Juntada de Documentos
   6. Acompanhamento Sinarm-CAC
 - [x] Testar e criar checkpoint
+
+
+## Link para Templates de Email no Dashboard
+
+- [x] Adicionar botão/link para /admin/email-templates no menu de administração
+- [x] Testar navegação
+- [x] Criar checkpoint
