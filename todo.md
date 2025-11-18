@@ -414,3 +414,12 @@
 - [x] Corrigir campo isCompleted para completed
 - [x] Testar
 - [x] Criar checkpoint
+
+
+## Push para GitHub
+
+- [x] Configurar credenciais Git
+- [x] Adicionar remote do GitHub
+- [ ] Fazer commit de todas as mudanças
+- [ ] Push para repositório remoto
+- [ ] Verificar no GitHub
