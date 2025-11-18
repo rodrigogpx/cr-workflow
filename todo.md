@@ -420,6 +420,13 @@
 
 - [x] Configurar credenciais Git
 - [x] Adicionar remote do GitHub
-- [ ] Fazer commit de todas as mudanças
-- [ ] Push para repositório remoto
-- [ ] Verificar no GitHub
+- [x] Fazer commit de todas as mudanças
+- [x] Push para repositório remoto
+- [x] Verificar no GitHub
+
+
+## Documentação do Sistema
+
+- [x] Criar README.md com descrição completa do sistema
+- [x] Criar DEPLOYMENT.md com manual de implantação
+- [x] Commit e push para GitHub
