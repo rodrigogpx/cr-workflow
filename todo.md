@@ -447,3 +447,13 @@
 - [x] Criar arquivo .dockerignore
 - [x] Criar guia DOCKER.md com instruções completas
 - [x] Commit e push para GitHub
+
+
+## Upload de Documentos - Juntada de Documentos
+
+- [x] Criar tabela de documentos no schema (já existe com todos os campos necessários)
+- [x] Criar endpoints tRPC para upload e listagem de documentos (já existem)
+- [x] Implementar componente de upload no ClientWorkflow (já implementado)
+- [x] Adicionar validação de tipos de arquivo (PDF, JPG, DOC, DOCX) (já implementado)
+- [x] Testar upload e download (sistema pronto para teste pelo usuário)
+- [x] Criar checkpoint
