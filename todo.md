@@ -430,3 +430,11 @@
 - [x] Criar README.md com descrição completa do sistema
 - [x] Criar DEPLOYMENT.md com manual de implantação
 - [x] Commit e push para GitHub
+
+
+## Atualizar Créditos - ACR Digital
+
+- [x] Atualizar README.md com créditos da ACR Digital
+- [x] Atualizar DEPLOYMENT.md com créditos da ACR Digital
+- [x] Atualizar rodapé das páginas do sistema
+- [x] Commit e push para GitHub

@@ -9,6 +9,7 @@ import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone,
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
+import Footer from "@/components/Footer";
 
 export default function Dashboard() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -362,6 +363,7 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

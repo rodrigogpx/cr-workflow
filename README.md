@@ -159,8 +159,8 @@ Para dúvidas sobre funcionalidades do sistema, consulte este README e o manual 
 
 ## Licença
 
-Sistema desenvolvido exclusivamente para Firing Range. Todos os direitos reservados.
+Sistema desenvolvido pela **ACR Digital** exclusivamente para Firing Range. Todos os direitos reservados © 2025 ACR Digital.
 
 ---
 
-**Desenvolvido com ❤️ para Firing Range**
+**Desenvolvido por ACR Digital para Firing Range**

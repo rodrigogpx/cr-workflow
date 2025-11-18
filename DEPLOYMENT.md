@@ -531,4 +531,6 @@ Para assistência adicional durante implantação, consulte a documentação ofi
 
 ---
 
-**Manual elaborado para garantir implantação segura e estável do Sistema de Workflow CR**
+**Manual elaborado pela ACR Digital para garantir implantação segura e estável do Sistema de Workflow CR**
+
+© 2025 ACR Digital - Todos os direitos reservados
