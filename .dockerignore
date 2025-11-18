@@ -1,0 +1,41 @@
+# Dependências
+node_modules
+.pnpm-store
+
+# Build artifacts
+dist
+.vite
+
+# Logs
+*.log
+logs
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentação
+README.md
+DEPLOYMENT.md
+DOCKER.md
+todo.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

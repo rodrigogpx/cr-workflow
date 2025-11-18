@@ -1,0 +1,61 @@
+# Docker Compose para Sistema de Workflow CR - Firing Range
+# Desenvolvido por ACR Digital
+
+version: '3.8'
+
+services:
+  # Banco de Dados MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: firerange-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password_change_me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-firerange_workflow}
+      MYSQL_USER: ${MYSQL_USER:-firerange_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-firerange_password_change_me}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - firerange-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aplicação Web
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: firerange-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mysql://${MYSQL_USER:-firerange_user}:${MYSQL_PASSWORD:-firerange_password_change_me}@mysql:3306/${MYSQL_DATABASE:-firerange_workflow}
+      JWT_SECRET: ${JWT_SECRET}
+      OAUTH_SERVER_URL: ${OAUTH_SERVER_URL:-https://api.manus.im}
+      OWNER_NAME: ${OWNER_NAME}
+      OWNER_OPEN_ID: ${OWNER_OPEN_ID}
+      VITE_APP_TITLE: ${VITE_APP_TITLE:-Firing Range - Sistema de Workflow CR}
+      VITE_APP_LOGO: ${VITE_APP_LOGO:-/logo.webp}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - firerange-network
+    command: sh -c "sleep 10 && pnpm db:push && pnpm start"
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  firerange-network:
+    driver: bridge

@@ -438,3 +438,12 @@
 - [x] Atualizar DEPLOYMENT.md com créditos da ACR Digital
 - [x] Atualizar rodapé das páginas do sistema
 - [x] Commit e push para GitHub
+
+
+## Configuração Docker
+
+- [x] Criar Dockerfile para a aplicação
+- [x] Criar docker-compose.yml com app e MySQL
+- [x] Criar arquivo .dockerignore
+- [x] Criar guia DOCKER.md com instruções completas
+- [x] Commit e push para GitHub
