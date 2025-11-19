@@ -552,3 +552,10 @@
 - [x] Adicionar texto "FIRING RANGE" estilizado
 - [x] Testar envio
 - [x] Criar checkpoint final
+
+
+## Configurar Credenciais SMTP no Sistema
+
+- [x] Solicitar credenciais SMTP via webdev_request_secrets
+- [x] Validar credenciais com teste vitest
+- [ ] Criar checkpoint final
