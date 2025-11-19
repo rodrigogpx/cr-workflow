@@ -320,18 +320,18 @@ export default function Dashboard() {
                   <div className="pt-2 border-t border-dashed border-gray-300 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-600">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
-                      <span className="text-xs font-bold text-primary">{getClientProgress(client)}% concluído</span>
+                      <span className="text-xs font-bold" style={{ color: '#1c5c00' }}>{getClientProgress(client)}% concluído</span>
                     </div>
                     <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-primary transition-all duration-300"
-                        style={{width: `${getClientProgress(client)}%`}}
+                        className="h-full transition-all duration-300"
+                        style={{ width: `${getClientProgress(client)}%`, backgroundColor: '#4d9702' }}
                       />
                     </div>
                   </div>
                   <div className="space-y-2 mt-4">
                     <Link href={`/client/${client.id}`}>
-                      <Button className="w-full bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide">
+                      <Button className="w-full border-2 border-dashed border-white/40 font-bold uppercase tracking-wide" style={{ backgroundColor: '#db7929' }}>
                         Ver Workflow →
                       </Button>
                     </Link>
