@@ -500,11 +500,20 @@ export default function ClientWorkflow() {
                               const subTaskDocs = documents?.filter(doc => doc.subTaskId === subTask.id) || [];
                               if (subTaskDocs.length > 0) {
                                 return (
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <FileText className="h-3 w-3 text-blue-600" />
-                                    <span className="text-xs text-blue-600 font-medium">
-                                      {subTaskDocs.length} {subTaskDocs.length === 1 ? 'documento anexado' : 'documentos anexados'}
-                                    </span>
+                                  <div className="mt-2 space-y-1">
+                                    {subTaskDocs.map(doc => (
+                                      <div key={doc.id} className="flex items-center gap-2">
+                                        <FileText className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                                        <a 
+                                          href={doc.fileUrl} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-blue-600 font-medium hover:underline truncate"
+                                        >
+                                          {doc.fileName}
+                                        </a>
+                                      </div>
+                                    ))}
                                   </div>
                                 );
                               }
