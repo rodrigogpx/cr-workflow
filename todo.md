@@ -496,3 +496,12 @@
 - [x] Mostrar lista de anexos no preview de email
 - [ ] Testar envio de email com anexos
 - [ ] Criar checkpoint
+
+
+## Correção - React Quill incompatível com React 19
+
+- [x] Desinstalar React Quill
+- [x] Substituir por editor HTML simples
+- [x] Atualizar EmailTemplates para usar textarea HTML
+- [x] Testar editor HTML
+- [ ] Criar checkpoint

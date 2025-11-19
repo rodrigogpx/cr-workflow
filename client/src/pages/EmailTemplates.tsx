@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+// Editor simples usando Textarea
 
 interface Attachment {
   fileName: string;
@@ -23,27 +22,7 @@ interface TemplateState {
   attachments: Attachment[];
 }
 
-// Configuração do editor rico
-const quillModules = {
-  toolbar: [
-    [{ 'header': [1, 2, 3, false] }],
-    ['bold', 'italic', 'underline', 'strike'],
-    [{ 'color': [] }, { 'background': [] }],
-    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-    [{ 'align': [] }],
-    ['link', 'image'],
-    ['clean']
-  ],
-};
-
-const quillFormats = [
-  'header',
-  'bold', 'italic', 'underline', 'strike',
-  'color', 'background',
-  'list', 'bullet',
-  'align',
-  'link', 'image'
-];
+// Editor HTML simples
 
 const templateKeys = [
   { key: 'welcome', title: 'Boas Vindas' },
@@ -218,14 +197,12 @@ export default function EmailTemplates() {
                         />
                       </div>
                       <div>
-                        <Label>Conteúdo</Label>
-                        <ReactQuill
-                          theme="snow"
+                        <Label>Conteúdo (HTML)</Label>
+                        <textarea
                           value={templates[tk.key]?.content || ''}
-                          onChange={(content) => handleTemplateChange('content', content)}
-                          modules={quillModules}
-                          formats={quillFormats}
-                          className="bg-white"
+                          onChange={(e) => handleTemplateChange('content', e.target.value)}
+                          className="w-full min-h-[400px] p-3 border rounded-md font-mono text-sm"
+                          placeholder="Digite o conteúdo do email em HTML...\n\nExemplo:\n<p>Olá <strong>{{nome}}</strong>,</p>\n<p>Seja bem-vindo!</p>"
                         />
                       </div>
                       <div>
