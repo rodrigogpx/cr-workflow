@@ -312,6 +312,7 @@ export async function saveEmailTemplate(template: InsertEmailTemplate) {
     // Update existing template
     await db.update(emailTemplates)
       .set({
+        templateTitle: template.templateTitle || null,
         subject: template.subject,
         content: template.content,
         attachments: template.attachments || null,

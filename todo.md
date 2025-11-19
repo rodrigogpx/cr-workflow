@@ -619,3 +619,14 @@
 - [x] Permitir envio de qualquer template na etapa Central de Mensagens
 - [x] Testar envio de todos os tipos de email
 - [x] Criar checkpoint final
+
+## Criar Novos Templates e Corrigir Cards do Dashboard
+
+- [x] Corrigir cálculo de cards "Em Andamento" no Dashboard
+- [x] Corrigir cálculo de cards "Concluídos" no Dashboard
+- [x] Implementar botão "Criar Novo Template" na página de templates
+- [x] Adicionar formulário para criar template personalizado
+- [x] Salvar novo template no banco de dados
+- [x] Atualizar Central de Mensagens para listar templates dinamicamente
+- [x] Testar criação e exibição de novos templates
+- [x] Criar checkpoint final

@@ -519,6 +519,7 @@ export const appRouter = router({
     saveTemplate: protectedProcedure
       .input(z.object({
         templateKey: z.string(),
+        templateTitle: z.string().optional(),
         subject: z.string(),
         content: z.string(),
         attachments: z.string().optional(), // JSON string of attachments

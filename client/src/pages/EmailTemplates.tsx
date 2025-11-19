@@ -24,17 +24,14 @@ interface TemplateState {
 
 // Editor HTML simples
 
-const templateKeys = [
-  { key: 'welcome', title: 'Boas Vindas' },
-  { key: 'process_cr', title: 'Processo CR' },
-  { key: 'status_update', title: 'Atualização' },
-];
-
 export default function EmailTemplates() {
   const [, setLocation] = useLocation();
   const { data: user } = trpc.auth.me.useQuery();
   const [templates, setTemplates] = useState<Record<string, TemplateState>>({});
-  const [activeTab, setActiveTab] = useState(templateKeys[0].key);
+  const [activeTab, setActiveTab] = useState('welcome');
+  const [newTemplateKey, setNewTemplateKey] = useState('');
+  const [newTemplateTitle, setNewTemplateTitle] = useState('');
+  const [showNewTemplateDialog, setShowNewTemplateDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
@@ -43,17 +40,20 @@ export default function EmailTemplates() {
   const { data: fetchedTemplates, isLoading: isLoadingTemplates } = trpc.emails.getAllTemplates.useQuery();
 
   useEffect(() => {
-    if (fetchedTemplates) {
+    if (fetchedTemplates && fetchedTemplates.length > 0) {
       const initialTemplates: Record<string, TemplateState> = {};
-      templateKeys.forEach((tk: any) => {
-        const found = fetchedTemplates.find((t: any) => t.templateKey === tk.key);
-        initialTemplates[tk.key] = {
-          subject: found?.subject || '',
-          content: found?.content || '',
-          attachments: found?.attachments ? JSON.parse(found.attachments) : [],
+      fetchedTemplates.forEach((t: any) => {
+        initialTemplates[t.templateKey] = {
+          subject: t.subject || '',
+          content: t.content || '',
+          attachments: t.attachments ? JSON.parse(t.attachments) : [],
         };
       });
       setTemplates(initialTemplates);
+      // Set first template as active if not set
+      if (!activeTab && fetchedTemplates[0]) {
+        setActiveTab(fetchedTemplates[0].templateKey);
+      }
     }
   }, [fetchedTemplates]);
 
@@ -167,20 +167,25 @@ export default function EmailTemplates() {
       <div className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Gerenciar Templates
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Gerenciar Templates
+              </CardTitle>
+              <Button onClick={() => setShowNewTemplateDialog(true)} variant="outline" size="sm">
+                + Criar Novo Template
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList>
-                {templateKeys.map(tk => (
-                  <TabsTrigger key={tk.key} value={tk.key}>{tk.title}</TabsTrigger>
+                {fetchedTemplates?.map((t: any) => (
+                  <TabsTrigger key={t.templateKey} value={t.templateKey}>{t.templateTitle || t.templateKey}</TabsTrigger>
                 ))}
               </TabsList>
-              {templateKeys.map(tk => (
-                <TabsContent key={tk.key} value={tk.key}>
+              {fetchedTemplates?.map((t: any) => (
+                <TabsContent key={t.templateKey} value={t.templateKey}>
                   {isLoadingTemplates ? (
                     <div className="flex items-center justify-center h-64">
                       <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -188,10 +193,10 @@ export default function EmailTemplates() {
                   ) : (
                     <div className="space-y-4 mt-4">
                       <div>
-                        <Label htmlFor={`subject-${tk.key}`}>Assunto</Label>
+                        <Label htmlFor={`subject-${activeTab}`}>Assunto</Label>
                         <Input
-                          id={`subject-${tk.key}`}
-                          value={templates[tk.key]?.subject || ''}
+                          id={`subject-${activeTab}`}
+                          value={templates[activeTab]?.subject || ''}
                           onChange={(e) => handleTemplateChange('subject', e.target.value)}
                         />
                       </div>
@@ -201,7 +206,7 @@ export default function EmailTemplates() {
                           <div>
                             <p className="text-xs text-gray-500 mb-2">Editor HTML</p>
                             <textarea
-                              value={templates[tk.key]?.content || ''}
+                              value={templates[activeTab]?.content || ''}
                               onChange={(e) => handleTemplateChange('content', e.target.value)}
                               className="w-full min-h-[500px] p-3 border rounded-md font-mono text-sm"
                               placeholder="Digite o conteúdo do email em HTML...\n\nExemplo:\n<p>Olá <strong>{{nome}}</strong>,</p>\n<p>Seja bem-vindo!</p>"
@@ -211,7 +216,7 @@ export default function EmailTemplates() {
                             <p className="text-xs text-gray-500 mb-2">Preview</p>
                             <div 
                               className="w-full min-h-[500px] p-3 border rounded-md bg-white overflow-auto"
-                              dangerouslySetInnerHTML={{ __html: templates[tk.key]?.content || '<p className="text-gray-400">O preview aparecerá aqui...</p>' }}
+                              dangerouslySetInnerHTML={{ __html: templates[activeTab]?.content || '<p className="text-gray-400">O preview aparecerá aqui...</p>' }}
                             />
                           </div>
                         </div>
@@ -219,7 +224,7 @@ export default function EmailTemplates() {
                       <div>
                         <Label>Anexos</Label>
                         <div className="border rounded-md p-4 space-y-2">
-                          {templates[tk.key]?.attachments.map((att, index) => (
+                          {templates[activeTab]?.attachments.map((att, index) => (
                             <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-5 w-5 text-gray-500" />
@@ -251,6 +256,72 @@ export default function EmailTemplates() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog para criar novo template */}
+      {showNewTemplateDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Criar Novo Template</CardTitle>
+              <CardDescription>Adicione um novo template de email personalizado</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="templateKey">Chave do Template</Label>
+                <Input
+                  id="templateKey"
+                  placeholder="ex: welcome_premium"
+                  value={newTemplateKey}
+                  onChange={(e) => setNewTemplateKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                />
+                <p className="text-xs text-gray-500 mt-1">Use apenas letras minúsculas, números e underscore</p>
+              </div>
+              <div>
+                <Label htmlFor="templateTitle">Título do Template</Label>
+                <Input
+                  id="templateTitle"
+                  placeholder="ex: Boas Vindas Premium"
+                  value={newTemplateTitle}
+                  onChange={(e) => setNewTemplateTitle(e.target.value)}
+                />
+              </div>
+            </CardContent>
+            <div className="flex gap-2 p-6 pt-0">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowNewTemplateDialog(false);
+                  setNewTemplateKey('');
+                  setNewTemplateTitle('');
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!newTemplateKey || !newTemplateTitle) {
+                    toast.error('Preencha todos os campos');
+                    return;
+                  }
+                  saveTemplateMutation.mutate({
+                    templateKey: newTemplateKey,
+                    templateTitle: newTemplateTitle,
+                    subject: '',
+                    content: '',
+                    attachments: '[]',
+                  });
+                  setShowNewTemplateDialog(false);
+                  setNewTemplateKey('');
+                  setNewTemplateTitle('');
+                  setActiveTab(newTemplateKey);
+                }}
+              >
+                Criar Template
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

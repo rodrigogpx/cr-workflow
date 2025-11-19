@@ -182,6 +182,7 @@ export const documentsRelations = relations(documents, ({ one }) => ({
 export const emailTemplates = mysqlTable("emailTemplates", {
   id: int("id").autoincrement().primaryKey(),
   templateKey: varchar("templateKey", { length: 100 }).notNull().unique(), // 'welcome', 'process', 'status'
+  templateTitle: varchar("templateTitle", { length: 255 }), // Human-readable title for display
   subject: varchar("subject", { length: 255 }).notNull(),
   content: text("content").notNull(), // HTML content from rich editor
   attachments: text("attachments"), // JSON array of attachment file keys [{fileName, fileKey, fileUrl}]

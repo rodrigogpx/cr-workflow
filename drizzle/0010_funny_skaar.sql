@@ -1,0 +1,1 @@
+ALTER TABLE `emailTemplates` ADD `templateTitle` varchar(255);

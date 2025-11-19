@@ -56,6 +56,8 @@ export default function ClientWorkflow() {
     { enabled: !!clientId }
   );
 
+  const { data: emailTemplates } = trpc.emails.getAllTemplates.useQuery();
+
   const { data: documents } = trpc.documents.list.useQuery(
     { clientId: Number(clientId) },
     { enabled: !!clientId }
@@ -969,29 +971,23 @@ export default function ClientWorkflow() {
                           <p className="text-sm text-gray-600">Envie qualquer tipo de email para o cliente. Escolha o template apropriado abaixo.</p>
                         </div>
 
-                        <EmailPreview
-                          clientId={Number(clientId)}
-                          clientEmail={client?.email || ""}
-                          clientName={client?.name || "Cliente"}
-                          templateKey="welcome"
-                          title="1. Email de Boas Vindas"
-                        />
+                        {emailTemplates?.map((template: any, index: number) => (
+                          <EmailPreview
+                            key={template.templateKey}
+                            clientId={Number(clientId)}
+                            clientEmail={client?.email || ""}
+                            clientName={client?.name || "Cliente"}
+                            templateKey={template.templateKey}
+                            title={`${index + 1}. ${template.templateTitle || template.templateKey}`}
+                          />
+                        ))}
 
-                        <EmailPreview
-                          clientId={Number(clientId)}
-                          clientEmail={client?.email || ""}
-                          clientName={client?.name || "Cliente"}
-                          templateKey="process_cr"
-                          title="2. Processo de Obtenção do CR"
-                        />
-
-                        <EmailPreview
-                          clientId={Number(clientId)}
-                          clientEmail={client?.email || ""}
-                          clientName={client?.name || "Cliente"}
-                          templateKey="status_update"
-                          title="3. Atualização de Status"
-                        />
+                        {(!emailTemplates || emailTemplates.length === 0) && (
+                          <div className="text-center py-8 text-gray-500">
+                            <p>Nenhum template de email configurado.</p>
+                            <p className="text-sm">Acesse a página de Templates para criar novos templates.</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </CardContent>
