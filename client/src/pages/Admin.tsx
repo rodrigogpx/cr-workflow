@@ -62,7 +62,7 @@ export default function Admin() {
   }));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ backgroundColor: '#f0f0f0' }}>
       {/* Header com estilo Firing Range */}
       <header className="border-b-2 border-dashed border-white/20 bg-black sticky top-0 z-10">
         <div className="container py-4">
@@ -96,7 +96,7 @@ export default function Admin() {
                   <Mail className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold uppercase text-sm text-white">Templates de Email</h3>
+                  <h3 className="font-bold uppercase text-sm" style={{ color: '#575757' }}>Templates de Email</h3>
                   <p className="text-xs text-muted-foreground">Edite os templates de email enviados aos clientes</p>
                 </div>
               </div>
@@ -120,7 +120,7 @@ export default function Admin() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-white">{totalUsers}</p>
+              <p className="text-4xl font-bold" style={{ color: '#5a5858', textAlign: 'center' }}>{totalUsers}</p>
               <p className="text-xs text-muted-foreground mt-2">
                 {admins.length} admin{admins.length !== 1 ? 's' : ''} • {operators.length} operador{operators.length !== 1 ? 'es' : ''}
               </p>
@@ -135,7 +135,7 @@ export default function Admin() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-white">{totalClients}</p>
+              <p className="text-4xl font-bold" style={{ color: '#5a5858', textAlign: 'center' }}>{totalClients}</p>
               <p className="text-xs text-muted-foreground mt-2">
                 Distribuídos entre operadores
               </p>
@@ -150,7 +150,7 @@ export default function Admin() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-yellow-500">{totalClients}</p>
+              <p className="text-4xl font-bold text-yellow-500" style={{ textAlign: 'center' }}>{totalClients}</p>
               <p className="text-xs text-muted-foreground mt-2">
                 Processos ativos
               </p>
@@ -165,7 +165,7 @@ export default function Admin() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-green-500">0</p>
+              <p className="text-4xl font-bold text-green-500" style={{ textAlign: 'center' }}>0</p>
               <p className="text-xs text-muted-foreground mt-2">
                 CRs emitidos
               </p>
