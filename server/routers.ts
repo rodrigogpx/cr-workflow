@@ -99,8 +99,8 @@ export const appRouter = router({
         
         // Criar workflow inicial para o cliente - 6 etapas principais
         const initialSteps = [
+          { stepId: 'boas-vindas', stepTitle: 'Central de Mensagens' },
           { stepId: 'cadastro', stepTitle: 'Cadastro' },
-          { stepId: 'boas-vindas', stepTitle: 'Central de Comunicações' },
           { stepId: 'agendamento-psicotecnico', stepTitle: 'Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo' },
           { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)' },
           { stepId: 'juntada-documento', stepTitle: 'Juntada de Documentos' },

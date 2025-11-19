@@ -839,8 +839,8 @@ export default function ClientWorkflow() {
                           <div className="space-y-2 text-sm">
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4 text-amber-700" />
-                              <span className="font-medium">Data:</span>
-                              <span>{new Date(step.scheduledDate).toLocaleDateString('pt-BR')}</span>
+                              <span className="font-medium">Data e Hora:</span>
+                              <span>{new Date(step.scheduledDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <User className="h-4 w-4 text-amber-700" />
@@ -851,10 +851,10 @@ export default function ClientWorkflow() {
                         ) : (
                           <div className="space-y-3">
                             <div>
-                              <Label htmlFor={`date-${step.id}`} className="text-sm">Data do Agendamento</Label>
+                              <Label htmlFor={`date-${step.id}`} className="text-sm">Data e Hora do Agendamento</Label>
                               <Input
                                 id={`date-${step.id}`}
-                                type="date"
+                                type="datetime-local"
                                 value={schedulingData[step.id]?.date || ''}
                                 onChange={(e) => setSchedulingData(prev => ({
                                   ...prev,

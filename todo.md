@@ -593,3 +593,13 @@
 - [x] Atualizar EmailTemplates.tsx para usar novo endpoint
 - [x] Testar upload de anexo PDF em template
 - [x] Criar checkpoint final
+
+## Reordenar Fases e Adicionar Data/Hora no Agendamento
+
+- [x] Renomear "Boas Vindas" para "Central de Mensagens"
+- [x] Mover "Central de Mensagens" para primeira posição (antes de Cadastro)
+- [x] Renomear "Agendamento Avaliação Psicológica" para "Encaminhamento Avaliação Psicológica"
+- [x] Adicionar campo de data e hora no "Agendamento de Laudo"
+- [x] Atualizar interface para exibir data/hora do agendamento
+- [x] Testar alterações
+- [x] Criar checkpoint final
