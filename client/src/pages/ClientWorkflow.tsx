@@ -961,12 +961,12 @@ export default function ClientWorkflow() {
                       </div>
                     )}
 
-                    {/* Editores de Email - Boas Vindas */}
-                    {step.stepTitle === "Boas Vindas" && (
+                    {/* Editores de Email - Central de Mensagens */}
+                    {step.stepTitle === "Central de Mensagens" && (
                       <div className="mt-6 space-y-4">
                         <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Emails de Boas Vindas</h3>
-                          <p className="text-sm text-gray-600">Personalize e envie os emails de boas-vindas para o cliente.</p>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Central de Mensagens</h3>
+                          <p className="text-sm text-gray-600">Envie qualquer tipo de email para o cliente. Escolha o template apropriado abaixo.</p>
                         </div>
 
                         <EmailPreview

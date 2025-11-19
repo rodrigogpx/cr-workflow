@@ -611,3 +611,11 @@
 - [x] Mencionar arquivos anexos com informações complementares
 - [x] Documentar novo template
 - [x] Criar checkpoint final
+
+## Adicionar Todas Opções de Email na Central de Mensagens
+
+- [x] Analisar estrutura atual de envio de emails no ClientWorkflow
+- [x] Implementar seletor de tipo de email (Boas Vindas, Processo CR, Atualização)
+- [x] Permitir envio de qualquer template na etapa Central de Mensagens
+- [x] Testar envio de todos os tipos de email
+- [x] Criar checkpoint final
