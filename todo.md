@@ -468,3 +468,32 @@
 - [x] Mostrar documentos anexados em cada subtarefa
 - [ ] Testar upload por atividade
 - [ ] Criar checkpoint
+
+
+## Sistema de Envio Real de Emails
+
+- [x] Instalar Nodemailer e tipos
+- [x] Criar serviço de email (server/emailService.ts)
+- [ ] Solicitar secrets SMTP via webdev_request_secrets
+- [ ] Atualizar endpoint sendEmail para enviar email real
+- [ ] Testar envio de email real
+- [ ] Criar checkpoint
+
+## Editor Rico de Templates de Email
+
+- [ ] Instalar editor rico (React Quill ou TipTap- [x] Atualizar schema do banco para suportar anexos nos templates
+- [ ] Atualizar página EmailTemplates com editor rico
+- [ ] Adicionar barra de ferramentas (negrito, itálico, cores, fontes, etc.)
+- [ ] Adicionar suporte para inserir imagens
+- [ ] Testar edição de templates
+- [ ] Criar checkpoint
+
+## Sistema de Anexos PDF nos Templates
+
+- [ ] Atualizar schema do banco para adicionar campo attachments nos templates
+- [ ] Criar componente de upload de PDF na página EmailTemplates
+- [ ] Atualizar endpoint saveTemplate para salvar anexos
+- [ ] Atualizar endpoint sendEmail para enviar anexos
+- [ ] Mostrar lista de anexos no preview de email
+- [ ] Testar envio de email com anexos
+- [ ] Criar checkpoint

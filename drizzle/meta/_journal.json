@@ -64,6 +64,13 @@
       "when": 1763477796763,
       "tag": "0008_simple_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1763555792928,
+      "tag": "0009_vengeful_legion",
+      "breakpoints": true
     }
   ]
 }

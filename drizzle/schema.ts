@@ -183,7 +183,8 @@ export const emailTemplates = mysqlTable("emailTemplates", {
   id: int("id").autoincrement().primaryKey(),
   templateKey: varchar("templateKey", { length: 100 }).notNull().unique(), // 'welcome', 'process', 'status'
   subject: varchar("subject", { length: 255 }).notNull(),
-  content: text("content").notNull(),
+  content: text("content").notNull(), // HTML content from rich editor
+  attachments: text("attachments"), // JSON array of attachment file keys [{fileName, fileKey, fileUrl}]
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
