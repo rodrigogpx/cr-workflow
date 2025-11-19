@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE emailTemplates \nSET content = REPLACE(content, 'src=\"https://3000-i39ibnez4jmi1tab3xvhe-6bf60521.manusvm.computer/logo.webp\"', 'src=\"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iNjAiIGZpbGw9IiMxYzFjMWMiLz4KICA8dGV4dCB4PSI5MCIgeT0iMzUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNmZjAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkZJUklORyBSQU5HRTwvdGV4dD4KPC9zdmc+Cg==\"'),\n    updatedAt = NOW()\nWHERE templateKey IN ('welcome', 'process', 'status');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute UPDATE emailTemplates \nSET content = REPLACE(content, 'src=\"https://3000-i39ibnez4jmi1tab3xvhe-6bf60521.manusvm.computer/logo.webp\"', 'src=\"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iNjAiIGZpbGw9IiMxYzFjMWMiLz4KICA8dGV4dCB4PSI5MCIgeT0iMzUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNmZjAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkZJUklORyBSQU5HRTwvdGV4dD4KPC9zdmc+Cg==\"'),\n    updatedAt = NOW()\nWHERE templateKey IN ('welcome', 'process', 'status');",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 70
+}

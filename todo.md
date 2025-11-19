@@ -536,3 +536,19 @@
 - [x] Atualizar templates com URL absoluta da logo
 - [x] Testar envio com logo corrigida
 - [ ] Criar checkpoint final
+
+
+## Correção Logo Quebrada - Base64
+
+- [ ] Converter logo para Base64
+- [ ] Atualizar templates com logo Base64
+- [ ] Testar envio com logo Base64
+- [ ] Criar checkpoint final
+
+
+## Remover Imagem da Logo - Apenas Texto
+
+- [x] Atualizar templates removendo tag img
+- [x] Adicionar texto "FIRING RANGE" estilizado
+- [x] Testar envio
+- [x] Criar checkpoint final
