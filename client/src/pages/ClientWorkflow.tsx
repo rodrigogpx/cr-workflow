@@ -494,7 +494,6 @@ export default function ClientWorkflow() {
                                 <div className="flex-1 min-w-0"><p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>{subTask.label}</p></div>
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
-                                {subTaskDocs.length > 0 && (<Button variant="outline" size="sm" onClick={() => handleDownloadEnxoval(subTask.id)} disabled={downloadEnxovalMutation.isPending} className="text-xs" title="Baixar documentos">{downloadEnxovalMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}</Button>)}
                                 <Button variant="outline" size="sm" onClick={() => { setSelectedSubTask({ id: subTask.id, label: subTask.label, stepId: step.id }); setUploadModalOpen(true); }}><Upload className="h-3 w-3 mr-1" />Anexar</Button>
                                 {subTask.completed && <CheckCircle className="h-5 w-5 text-green-600" />}
                               </div>
@@ -503,6 +502,20 @@ export default function ClientWorkflow() {
                           </div>
                         );
                       })}
+                      {step.subTasks && step.subTasks.length > 0 && (() => {
+                        const allStepDocs = documents?.filter(doc => step.subTasks.some(st => st.id === doc.subTaskId)) || [];
+                        if (allStepDocs.length > 0) {
+                          return (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                              <Button onClick={() => handleDownloadEnxoval(step.id)} disabled={downloadEnxovalMutation.isPending} className="w-full">
+                                {downloadEnxovalMutation.isPending ? <>Gerando...</> : <>Enxoval ({allStepDocs.length})</>
+                                }
+                              </Button>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                     )}
 
@@ -998,6 +1011,7 @@ export default function ClientWorkflow() {
           stepId={selectedSubTask.stepId}
           subTaskId={selectedSubTask.id}
           subTaskLabel={selectedSubTask.label}
+          onUploadSuccess={(subTaskId) => toggleSubTask(subTaskId, false)}
         />
       )}
     </div>

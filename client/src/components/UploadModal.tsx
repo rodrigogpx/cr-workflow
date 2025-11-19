@@ -19,6 +19,7 @@ interface UploadModalProps {
   stepId: number;
   subTaskId: number;
   subTaskLabel: string;
+  onUploadSuccess?: (subTaskId: number) => void;
 }
 
 const ALLOWED_TYPES = [
@@ -39,6 +40,7 @@ export function UploadModal({
   stepId,
   subTaskId,
   subTaskLabel,
+  onUploadSuccess,
 }: UploadModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -50,6 +52,7 @@ export function UploadModal({
     onSuccess: () => {
       toast.success("Documento enviado com sucesso!");
       utils.documents.list.invalidate({ clientId });
+      onUploadSuccess?.(subTaskId);
       setSelectedFile(null);
       onOpenChange(false);
     },
