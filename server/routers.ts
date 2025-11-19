@@ -475,6 +475,27 @@ export const appRouter = router({
           })),
         };
       }),
+
+    // Upload de anexo para template (sem clientId)
+    uploadTemplateAttachment: protectedProcedure
+      .input(z.object({
+        fileName: z.string(),
+        fileData: z.string(), // base64
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Apenas admin pode fazer upload de anexos de template
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas administradores podem adicionar anexos a templates' });
+        }
+        
+        // Upload para S3
+        const buffer = Buffer.from(input.fileData, 'base64');
+        const fileKey = `templates/attachments/${Date.now()}-${input.fileName}`;
+        const { url } = await storagePut(fileKey, buffer, input.mimeType);
+        
+        return { url, fileKey };
+      }),
   }),
 
   // Email router

@@ -586,3 +586,10 @@
 - [x] Listar anexos adicionados com opção de remover
 - [x] Testar envio de email com anexos
 - [x] Criar checkpoint final
+
+## Corrigir Erro ao Adicionar Anexo em Template
+
+- [x] Criar endpoint específico para upload de anexos de template (sem clientId)
+- [x] Atualizar EmailTemplates.tsx para usar novo endpoint
+- [x] Testar upload de anexo PDF em template
+- [x] Criar checkpoint final

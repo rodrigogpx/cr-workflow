@@ -67,11 +67,11 @@ export default function EmailTemplates() {
     },
   });
 
-  const uploadAttachmentMutation = trpc.documents.upload.useMutation({
+  const uploadAttachmentMutation = trpc.documents.uploadTemplateAttachment.useMutation({
     onSuccess: (data: any) => {
-      // Store file info - documents.upload returns {id, url}
+      // Store file info - uploadTemplateAttachment returns {url, fileKey}
       const fileName = fileInputRef.current?.files?.[0]?.name || 'anexo.pdf';
-      const newAttachment = { fileName, fileKey: `attachment-${Date.now()}`, fileUrl: data.url };
+      const newAttachment = { fileName, fileKey: data.fileKey, fileUrl: data.url };
       const currentAttachments = templates[activeTab]?.attachments || [];
       handleTemplateChange('attachments', [...currentAttachments, newAttachment]);
       toast.success("Anexo enviado com sucesso!");
@@ -110,7 +110,6 @@ export default function EmailTemplates() {
       reader.onload = (e) => {
         const fileData = e.target?.result as string;
         uploadAttachmentMutation.mutate({
-          clientId: 0, // 0 for general attachments
           fileName: file.name,
           fileData: fileData.split(',')[1],
           mimeType: file.type,
