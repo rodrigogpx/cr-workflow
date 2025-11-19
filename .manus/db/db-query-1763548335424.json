@@ -1,0 +1,34 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_7HAvRBmq2mUeNEXoj8Xr7Q": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_7HAvRBmq2mUeNEXoj8Xr7Q": "clients"
+    },
+    {
+      "Tables_in_7HAvRBmq2mUeNEXoj8Xr7Q": "documents"
+    },
+    {
+      "Tables_in_7HAvRBmq2mUeNEXoj8Xr7Q": "emailLogs"
+    },
+    {
+      "Tables_in_7HAvRBmq2mUeNEXoj8Xr7Q": "emailTemplates"
+    },
+    {
+      "Tables_in_7HAvRBmq2mUeNEXoj8Xr7Q": "subTasks"
+    },
+    {
+      "Tables_in_7HAvRBmq2mUeNEXoj8Xr7Q": "users"
+    },
+    {
+      "Tables_in_7HAvRBmq2mUeNEXoj8Xr7Q": "workflowSteps"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_7HAvRBmq2mUeNEXoj8Xr7Q\n__drizzle_migrations\nclients\ndocuments\nemailLogs\nemailTemplates\nsubTasks\nusers\nworkflowSteps\n",
+  "stderr": "",
+  "execution_time_ms": 49
+}

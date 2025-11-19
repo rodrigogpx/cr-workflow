@@ -1,0 +1,9 @@
+{
+  "query": "DELETE t1 FROM subTasks t1\nINNER JOIN subTasks t2 \nWHERE t1.workflowStepId = 210005 \n  AND t2.workflowStepId = 210005\n  AND t1.subTaskId = t2.subTaskId \n  AND t1.id > t2.id\n  AND t1.completed = 0;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute DELETE t1 FROM subTasks t1\nINNER JOIN subTasks t2 \nWHERE t1.workflowStepId = 210005 \n  AND t2.workflowStepId = 210005\n  AND t1.subTaskId = t2.subTaskId \n  AND t1.id > t2.id\n  AND t1.completed = 0;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 63
+}

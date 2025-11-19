@@ -1,0 +1,210 @@
+{
+  "query": "SELECT * FROM subTasks WHERE subTaskId = '' OR label = '' OR workflowStepId = 0 ORDER BY id DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT * FROM subTasks WHERE subTaskId = '' OR label = '' OR workflowStepId = 0 ORDER BY id DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "210011",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 10:28:01",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 10:28:01"
+    },
+    {
+      "id": "210010",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 10:26:08",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 10:26:07"
+    },
+    {
+      "id": "210009",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 10:24:22",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 10:24:22"
+    },
+    {
+      "id": "210008",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 10:12:38",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 10:12:38"
+    },
+    {
+      "id": "210007",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 10:10:33",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 10:10:32"
+    },
+    {
+      "id": "210006",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 09:55:29",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 09:55:28"
+    },
+    {
+      "id": "210005",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 00:32:37",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 00:32:36"
+    },
+    {
+      "id": "210004",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 00:27:33",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 00:27:32"
+    },
+    {
+      "id": "210003",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 00:27:04",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 00:27:04"
+    },
+    {
+      "id": "210002",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-19 00:27:01",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-19 00:27:01"
+    },
+    {
+      "id": "210001",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-18 15:58:33",
+      "createdAt": "2025-11-18 14:53:50",
+      "updatedAt": "2025-11-18 15:58:32"
+    },
+    {
+      "id": "180032",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-17 21:23:01",
+      "createdAt": "2025-11-17 21:14:47",
+      "updatedAt": "2025-11-17 21:23:00"
+    },
+    {
+      "id": "180031",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-17 21:23:03",
+      "createdAt": "2025-11-17 21:14:47",
+      "updatedAt": "2025-11-17 21:23:03"
+    },
+    {
+      "id": "180030",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-17 21:23:04",
+      "createdAt": "2025-11-17 21:14:47",
+      "updatedAt": "2025-11-17 21:23:04"
+    },
+    {
+      "id": "180029",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-17 21:21:58",
+      "createdAt": "2025-11-17 21:14:47",
+      "updatedAt": "2025-11-17 21:21:57"
+    },
+    {
+      "id": "180028",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-17 21:21:56",
+      "createdAt": "2025-11-17 21:14:47",
+      "updatedAt": "2025-11-17 21:21:55"
+    },
+    {
+      "id": "180027",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-17 21:21:54",
+      "createdAt": "2025-11-17 21:14:47",
+      "updatedAt": "2025-11-17 21:21:54"
+    },
+    {
+      "id": "180026",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-17 21:21:53",
+      "createdAt": "2025-11-17 21:14:47",
+      "updatedAt": "2025-11-17 21:21:53"
+    },
+    {
+      "id": "180025",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-17 21:21:52",
+      "createdAt": "2025-11-17 21:14:47",
+      "updatedAt": "2025-11-17 21:21:52"
+    },
+    {
+      "id": "180024",
+      "workflowStepId": "0",
+      "subTaskId": "",
+      "label": "",
+      "completed": "1",
+      "completedAt": "2025-11-17 21:21:43",
+      "createdAt": "2025-11-17 21:14:47",
+      "updatedAt": "2025-11-17 21:21:43"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tworkflowStepId\tsubTaskId\tlabel\tcompleted\tcompletedAt\tcreatedAt\tupdatedAt\n210011\t0\t\t\t1\t2025-11-19 10:28:01\t2025-11-18 14:53:50\t2025-11-19 10:28:01\n210010\t0\t\t\t1\t2025-11-19 10:26:08\t2025-11-18 14:53:50\t2025-11-19 10:26:07\n210009\t0\t\t\t1\t2025-11-19 10:24:22\t2025-11-18 14:53:50\t2025-11-19 10:24:22\n210008\t0\t\t\t1\t2025-11-19 10:12:38\t2025-11-18 14:53:50\t2025-11-19 10:12:38\n210007\t0\t\t\t1\t2025-11-19 10:10:33\t2025-11-18 14:53:50\t2025-11-19 10:10:32\n210006\t0\t\t\t1\t2025-11-19 09:55:29\t2025-11-18 14:53:50\t2025-11-19 09:55:28\n210005\t0\t\t\t1\t2025-11-19 00:32:37\t2025-11-18 14:53:50\t2025-11-19 00:32:36\n210004\t0\t\t\t1\t2025-11-19 00:27:33\t2025-11-18 14:53:50\t2025-11-19 00:27:32\n210003\t0\t\t\t1\t2025-11-19 00:27:04\t2025-11-18 14:53:50\t2025-11-19 00:27:04\n210002\t0\t\t\t1\t2025-11-19 00:27:01\t2025-11-18 14:53:50\t2025-11-19 00:27:01\n210001\t0\t\t\t1\t2025-11-18 15:58:33\t2025-11-18 14:53:50\t2025-11-18 15:58:32\n180032\t0\t\t\t1\t2025-11-17 21:23:01\t2025-11-17 21:14:47\t2025-11-17 21:23:00\n180031\t0\t\t\t1\t2025-11-17 21:23:03\t2025-11-17 21:14:47\t2025-11-17 21:23:03\n180030\t0\t\t\t1\t2025-11-17 21:23:04\t2025-11-17 21:14:47\t2025-11-17 21:23:04\n180029\t0\t\t\t1\t2025-11-17 21:21:58\t2025-11-17 21:14:47\t2025-11-17 21:21:57\n180028\t0\t\t\t1\t2025-11-17 21:21:56\t2025-11-17 21:14:47\t2025-11-17 21:21:55\n180027\t0\t\t\t1\t2025-11-17 21:21:54\t2025-11-17 21:14:47\t2025-11-17 21:21:54\n180026\t0\t\t\t1\t2025-11-17 21:21:53\t2025-11-17 21:14:47\t2025-11-17 21:21:53\n180025\t0\t\t\t1\t2025-11-17 21:21:52\t2025-11-17 21:14:47\t2025-11-17 21:21:52\n180024\t0\t\t\t1\t2025-11-17 21:21:43\t2025-11-17 21:14:47\t2025-11-17 21:21:43\n",
+  "stderr": "",
+  "execution_time_ms": 49
+}

@@ -1,0 +1,106 @@
+{
+  "query": "SELECT id, subTaskId, label, completed FROM subTasks WHERE workflowStepId = 210005 ORDER BY subTaskId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT id, subTaskId, label, completed FROM subTasks WHERE workflowStepId = 210005 ORDER BY subTaskId;",
+  "rows": [
+    {
+      "id": "240001",
+      "subTaskId": "doc-01",
+      "label": "Comprovante de Capacidade Técnica para o manuseio de arma de fogo",
+      "completed": "0"
+    },
+    {
+      "id": "240002",
+      "subTaskId": "doc-02",
+      "label": "Certidão de Antecedente Criminal Justiça Federal",
+      "completed": "0"
+    },
+    {
+      "id": "240003",
+      "subTaskId": "doc-03",
+      "label": "Declaração de não estar respondendo a inquérito policial ou a processo criminal",
+      "completed": "0"
+    },
+    {
+      "id": "240004",
+      "subTaskId": "doc-04",
+      "label": "Documento de Identificação Pessoal",
+      "completed": "0"
+    },
+    {
+      "id": "240005",
+      "subTaskId": "doc-05",
+      "label": "Laudo de Aptidão Psicológica para o manuseio de arma de fogo",
+      "completed": "0"
+    },
+    {
+      "id": "240006",
+      "subTaskId": "doc-06",
+      "label": "Comprovante de Residência Fixa",
+      "completed": "0"
+    },
+    {
+      "id": "240007",
+      "subTaskId": "doc-07",
+      "label": "Comprovante de Ocupação Lícita",
+      "completed": "0"
+    },
+    {
+      "id": "240008",
+      "subTaskId": "doc-08",
+      "label": "Comprovante de filiação a entidade de caça",
+      "completed": "0"
+    },
+    {
+      "id": "240009",
+      "subTaskId": "doc-09",
+      "label": "Comprovante de Segundo Endereço de Guarda do Acervo",
+      "completed": "0"
+    },
+    {
+      "id": "240010",
+      "subTaskId": "doc-10",
+      "label": "Certidão de Antecedente Criminal Justiça Estadual",
+      "completed": "0"
+    },
+    {
+      "id": "240011",
+      "subTaskId": "doc-11",
+      "label": "Declaração de Segurança do Acervo",
+      "completed": "0"
+    },
+    {
+      "id": "210012",
+      "subTaskId": "doc-12",
+      "label": "Declaração com compromisso de comprovar a habitualidade na forma da norma vigente",
+      "completed": "1"
+    },
+    {
+      "id": "210013",
+      "subTaskId": "doc-13",
+      "label": "Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama",
+      "completed": "0"
+    },
+    {
+      "id": "210014",
+      "subTaskId": "doc-14",
+      "label": "Comprovante de filiação a entidade de tiro desportivo",
+      "completed": "0"
+    },
+    {
+      "id": "210015",
+      "subTaskId": "doc-15",
+      "label": "Certidão de Antecedente Criminal Justiça Militar",
+      "completed": "0"
+    },
+    {
+      "id": "210016",
+      "subTaskId": "doc-16",
+      "label": "Certidão de Antecedente Criminal Justiça Eleitoral",
+      "completed": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsubTaskId\tlabel\tcompleted\n240001\tdoc-01\tComprovante de Capacidade Técnica para o manuseio de arma de fogo\t0\n240002\tdoc-02\tCertidão de Antecedente Criminal Justiça Federal\t0\n240003\tdoc-03\tDeclaração de não estar respondendo a inquérito policial ou a processo criminal\t0\n240004\tdoc-04\tDocumento de Identificação Pessoal\t0\n240005\tdoc-05\tLaudo de Aptidão Psicológica para o manuseio de arma de fogo\t0\n240006\tdoc-06\tComprovante de Residência Fixa\t0\n240007\tdoc-07\tComprovante de Ocupação Lícita\t0\n240008\tdoc-08\tComprovante de filiação a entidade de caça\t0\n240009\tdoc-09\tComprovante de Segundo Endereço de Guarda do Acervo\t0\n240010\tdoc-10\tCertidão de Antecedente Criminal Justiça Estadual\t0\n240011\tdoc-11\tDeclaração de Segurança do Acervo\t0\n210012\tdoc-12\tDeclaração com compromisso de comprovar a habitualidade na forma da norma vigente\t1\n210013\tdoc-13\tComprovante da necessidade de abate de fauna invasora expedido pelo Ibama\t0\n210014\tdoc-14\tComprovante de filiação a entidade de tiro desportivo\t0\n210015\tdoc-15\tCertidão de Antecedente Criminal Justiça Militar\t0\n210016\tdoc-16\tCertidão de Antecedente Criminal Justiça Eleitoral\t0\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}
