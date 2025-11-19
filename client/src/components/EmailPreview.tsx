@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Eye, Send, CheckCircle2 } from "lucide-react";
+import { Eye, Send, CheckCircle2, FileText } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
@@ -59,6 +59,7 @@ export function EmailPreview({
   // Substituir {{nome}} pelo nome do cliente
   const previewSubject = template?.subject.replace(/\{\{nome\}\}/g, clientName) || "";
   const previewContent = template?.content.replace(/\{\{nome\}\}/g, clientName) || "";
+  const attachments = template?.attachments ? JSON.parse(template.attachments) : [];
 
   const wasAlreadySent = !!emailLog;
 
@@ -93,6 +94,19 @@ export function EmailPreview({
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{title}</DialogTitle>
+                  {attachments.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Anexos:</p>
+                      <div className="space-y-2">
+                        {attachments.map((att: any, index: number) => (
+                          <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" key={index} className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                            <FileText className="h-4 w-4" />
+                            <span>{att.fileName}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 <DialogDescription>
                   Preview do email que será enviado para {clientEmail}
                 </DialogDescription>
@@ -104,9 +118,7 @@ export function EmailPreview({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-1">Conteúdo:</p>
-                  <div className="text-sm bg-gray-50 p-4 rounded border whitespace-pre-wrap">
-                    {previewContent}
-                  </div>
+                  <div className="text-sm bg-gray-50 p-4 rounded border" dangerouslySetInnerHTML={{ __html: previewContent.replace(/\n/g, '<br />') }} />
                 </div>
               </div>
             </DialogContent>

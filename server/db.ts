@@ -282,6 +282,14 @@ export async function updateUserRole(userId: number, role: "operator" | "admin")
 }
 
 // Email template operations
+export async function getAllEmailTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db.select().from(emailTemplates);
+  return result;
+}
+
 export async function getEmailTemplate(templateKey: string) {
   const db = await getDb();
   if (!db) return undefined;
@@ -306,6 +314,7 @@ export async function saveEmailTemplate(template: InsertEmailTemplate) {
       .set({
         subject: template.subject,
         content: template.content,
+        attachments: template.attachments || null,
         updatedAt: new Date()
       })
       .where(eq(emailTemplates.id, existing.id));

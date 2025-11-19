@@ -463,8 +463,7 @@
 
 - [x] Criar componente UploadModal para seleção de arquivo
 - [x] Adicionar botão de upload em cada subtarefa do workflow
-- [x] Atualizar schema para associar documento à subtarefa específica
-- [x] Atualizar endpoints tRPC para salvar subTaskId
+- [x] Atualizar schema para associar documento à subtarefa específica- [x] Atualizar endpoints tRPC para suportar anexosId
 - [x] Mostrar documentos anexados em cada subtarefa
 - [ ] Testar upload por atividade
 - [ ] Criar checkpoint
@@ -475,25 +474,25 @@
 - [x] Instalar Nodemailer e tipos
 - [x] Criar serviço de email (server/emailService.ts)
 - [ ] Solicitar secrets SMTP via webdev_request_secrets
-- [ ] Atualizar endpoint sendEmail para enviar email real
+- [x] Atualizar endpoint sendEmail para enviar email real
 - [ ] Testar envio de email real
 - [ ] Criar checkpoint
 
 ## Editor Rico de Templates de Email
 
-- [ ] Instalar editor rico (React Quill ou TipTap- [x] Atualizar schema do banco para suportar anexos nos templates
-- [ ] Atualizar página EmailTemplates com editor rico
-- [ ] Adicionar barra de ferramentas (negrito, itálico, cores, fontes, etc.)
-- [ ] Adicionar suporte para inserir imagens
+- [x] Instalar editor rico (React Quill)- [x] Atualizar schema do banco para suportar anexos nos templates
+- [x] Atualizar página EmailTemplates com editor rico
+- [x] Adicionar barra de ferramentas (negrito, itálico, cores, fontes, etc.)
+- [x] Adicionar suporte para inserir imagens
 - [ ] Testar edição de templates
 - [ ] Criar checkpoint
 
 ## Sistema de Anexos PDF nos Templates
 
 - [ ] Atualizar schema do banco para adicionar campo attachments nos templates
-- [ ] Criar componente de upload de PDF na página EmailTemplates
-- [ ] Atualizar endpoint saveTemplate para salvar anexos
-- [ ] Atualizar endpoint sendEmail para enviar anexos
-- [ ] Mostrar lista de anexos no preview de email
+- [x] Criar componente de upload de PDF na página EmailTemplates
+- [x] Atualizar endpoint saveTemplate para salvar anexos
+- [x] Atualizar endpoint sendEmail para enviar anexos
+- [x] Mostrar lista de anexos no preview de email
 - [ ] Testar envio de email com anexos
 - [ ] Criar checkpoint

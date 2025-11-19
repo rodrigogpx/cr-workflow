@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
+import { sendEmail } from "./emailService";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
@@ -487,12 +488,19 @@ export const appRouter = router({
         return await db.getEmailTemplate(input.templateKey);
       }),
 
+    // Get all email templates
+    getAllTemplates: protectedProcedure
+      .query(async () => {
+        return await db.getAllEmailTemplates();
+      }),
+
     // Save email template
     saveTemplate: protectedProcedure
       .input(z.object({
         templateKey: z.string(),
         subject: z.string(),
         content: z.string(),
+        attachments: z.string().optional(), // JSON string of attachments
       }))
       .mutation(async ({ input }) => {
         const templateId = await db.saveEmailTemplate(input);
@@ -509,7 +517,7 @@ export const appRouter = router({
         return await db.getEmailLog(input.clientId, input.templateKey);
       }),
 
-    // Send email (log only, actual sending would need email service)
+    // Send email
     sendEmail: protectedProcedure
       .input(z.object({
         clientId: z.number(),
@@ -519,7 +527,26 @@ export const appRouter = router({
         content: z.string(),
       }))
       .mutation(async ({ input, ctx }) => {
-        // Log the email send
+        const template = await db.getEmailTemplate(input.templateKey);
+        const attachments = template?.attachments ? JSON.parse(template.attachments) : [];
+
+        // Send the actual email
+        try {
+          await sendEmail({
+            to: input.recipientEmail,
+            subject: input.subject,
+            html: input.content,
+            attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }))
+          });
+        } catch (error) {
+          console.error("Email sending failed:", error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Falha ao enviar o email. Verifique as configurações SMTP e tente novamente.',
+          });
+        }
+
+        // Log the email send in the database
         const logId = await db.logEmailSent({
           clientId: input.clientId,
           templateKey: input.templateKey,
@@ -529,9 +556,6 @@ export const appRouter = router({
           sentBy: ctx.user.id,
         });
 
-        // TODO: Integrate with actual email service (SendGrid, AWS SES, etc.)
-        // For now, we just log it
-        
         return { success: true, logId };
       }),
 
