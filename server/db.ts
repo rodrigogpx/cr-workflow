@@ -223,6 +223,18 @@ export async function upsertSubTask(task: InsertSubTask & { id?: number }) {
   }
 }
 
+export async function updateSubTaskCompleted(subTaskId: number, completed: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(subTasks)
+    .set({ 
+      completed, 
+      completedAt: completed ? new Date() : null 
+    })
+    .where(eq(subTasks.id, subTaskId));
+}
+
 // Document operations
 export async function createDocument(doc: InsertDocument) {
   const db = await getDb();

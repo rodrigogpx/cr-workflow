@@ -307,14 +307,7 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
-        await db.upsertSubTask({
-          id: input.subTaskId,
-          workflowStepId: 0,
-          subTaskId: '',
-          label: '',
-          completed: input.completed,
-          completedAt: input.completed ? new Date() : null,
-        });
+        await db.updateSubTaskCompleted(input.subTaskId, input.completed);
         
         return { success: true };
       }),
