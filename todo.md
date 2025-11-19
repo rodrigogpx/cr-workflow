@@ -505,3 +505,12 @@
 - [x] Atualizar EmailTemplates para usar textarea HTML
 - [x] Testar editor HTML
 - [ ] Criar checkpoint
+
+
+## Criação de Templates de Email Profissionais
+
+- [x] Criar 3 templates HTML com design Firing Range
+- [x] Adicionar logo e identidade visual (vermelho, preto, branco)
+- [x] Incluir variáveis dinâmicas ({{nome}}, {{data}}, {{status}})
+- [x] Atualizar templates no banco de dados
+- [ ] Testar e criar checkpoint
