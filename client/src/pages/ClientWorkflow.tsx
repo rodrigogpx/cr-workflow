@@ -471,13 +471,14 @@ export default function ClientWorkflow() {
                     <Separator className="mb-4" />
                     
                     {/* Sub-tarefas */}
+                    {step.subTasks && step.subTasks.length > 0 && (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
                         <FolderOpen className="h-4 w-4" />
                         Documentos Necessários
                       </div>
                       
-                      {step.subTasks?.map((subTask) => (
+                      {step.subTasks.map((subTask) => (
                         <div 
                           key={subTask.id}
                           className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
@@ -528,72 +529,77 @@ export default function ClientWorkflow() {
                         </div>
                       ))}
                     </div>
+                    )}
 
                     {/* Upload de Documentos */}
                     {step.stepTitle === "Juntada de Documento" && (
-                      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-900">
-                            <Upload className="h-4 w-4" />
-                            Documentos Anexados
-                          </div>
-                          {(() => {
-                            const stepDocs = documents?.filter(doc => doc.workflowStepId === step.id) || [];
-                            if (stepDocs.length > 0) {
-                              return (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDownloadEnxoval(step.id)}
-                                  disabled={downloadEnxovalMutation.isPending}
-                                  className="text-xs"
-                                >
-                                  {downloadEnxovalMutation.isPending ? (
-                                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Gerando...</>
-                                  ) : (
-                                    <><Download className="h-3 w-3 mr-1" />Enxoval ({stepDocs.length})</>
-                                  )}
-                                </Button>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
+                      <div className="mt-6 space-y-4">
+                        {(() => {
+                          const stepDocs = documents?.filter(doc => doc.workflowStepId === step.id) || [];
+                          if (stepDocs.length > 0) {
+                            return (
+                              <Button
+                                onClick={() => handleDownloadEnxoval(step.id)}
+                                disabled={downloadEnxovalMutation.isPending}
+                                className="w-full"
+                              >
+                                {downloadEnxovalMutation.isPending ? (
+                                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Gerando Enxoval...</>
+                                ) : (
+                                  <><Download className="h-4 w-4 mr-2" />Enxoval ({stepDocs.length} arquivos)</>
+                                )}
+                              </Button>
+                            );
+                          }
+                          return null;
+                        })()}
                         
                         {(() => {
                           const stepDocs = documents?.filter(doc => doc.workflowStepId === step.id) || [];
                           if (stepDocs.length > 0) {
                             return (
-                              <div className="mb-4 space-y-2 max-h-48 overflow-y-auto">
-                                {stepDocs.map(doc => (
-                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100 text-sm">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                                      <span className="truncate text-gray-700">{doc.fileName}</span>
+                              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-3">
+                                  <FileText className="h-4 w-4" />
+                                  Documentos Anexados ({stepDocs.length})
+                                </div>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                  {stepDocs.map(doc => (
+                                    <div key={doc.id} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100 text-sm">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                        <span className="truncate text-gray-700">{doc.fileName}</span>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        asChild
+                                        className="flex-shrink-0"
+                                      >
+                                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs">
+                                          <Download className="h-3 w-3" />
+                                        </a>
+                                      </Button>
                                     </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      asChild
-                                      className="flex-shrink-0"
-                                    >
-                                      <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs">
-                                        <Download className="h-3 w-3" />
-                                      </a>
-                                    </Button>
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
                             );
                           }
                           return null;
                         })()}
                         
-                        <DocumentUpload
-                          clientId={Number(clientId)}
-                          stepId={step.id}
-                          stepTitle={step.stepTitle}
-                        />
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-3">
+                            <Upload className="h-4 w-4" />
+                            Adicionar Documentos
+                          </div>
+                          <DocumentUpload
+                            clientId={Number(clientId)}
+                            stepId={step.id}
+                            stepTitle={step.stepTitle}
+                          />
+                        </div>
                       </div>
                     )}
 
