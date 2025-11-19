@@ -57,6 +57,13 @@
       "when": 1763414793905,
       "tag": "0007_fancy_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1763477796763,
+      "tag": "0008_simple_chat",
+      "breakpoints": true
     }
   ]
 }

@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { EmailPreview } from "@/components/EmailPreview";
+import { UploadModal } from "@/components/UploadModal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -42,6 +43,8 @@ export default function ClientWorkflow() {
   const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
   const [schedulingData, setSchedulingData] = useState<{[key: number]: {date: string, examiner: string}}>({});
   const [clientFormData, setClientFormData] = useState<Record<string, string>>({});
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedSubTask, setSelectedSubTask] = useState<{id: number, label: string, stepId: number} | null>(null);
 
   const { data: client } = trpc.clients.getById.useQuery(
     { id: Number(clientId) },
@@ -49,6 +52,11 @@ export default function ClientWorkflow() {
   );
 
   const { data: workflow, refetch } = trpc.workflow.getByClient.useQuery(
+    { clientId: Number(clientId) },
+    { enabled: !!clientId }
+  );
+
+  const { data: documents } = trpc.documents.list.useQuery(
     { clientId: Number(clientId) },
     { enabled: !!clientId }
   );
@@ -92,36 +100,29 @@ export default function ClientWorkflow() {
   });
 
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadEnxovalMutation, setDownloadEnxovalMutation] = useState<{isPending: boolean}>({isPending: false});
 
-  const handleDownloadEnxoval = async () => {
+  const handleDownloadEnxoval = async (stepId: number) => {
     if (isDownloading) return;
     
     try {
       setIsDownloading(true);
+      setDownloadEnxovalMutation({isPending: true});
       toast.info("Buscando documentos...");
 
-      const response = await fetch(`/api/trpc/documents.downloadEnxoval?input=${encodeURIComponent(JSON.stringify({ clientId: Number(clientId) }))}`, {
-        credentials: 'include'
-      });
+      const stepDocs = documents?.filter(doc => doc.workflowStepId === stepId) || [];
       
-      if (!response.ok) {
-        throw new Error('Erro ao buscar documentos');
-      }
-
-      const data = await response.json();
-      const result = data.result.data;
-      
-      if (!result || result.documents.length === 0) {
+      if (!stepDocs || stepDocs.length === 0) {
         toast.error("Nenhum documento encontrado");
         setIsDownloading(false);
+        setDownloadEnxovalMutation({isPending: false});
         return;
       }
 
       toast.info("Preparando download...");
-
       const zip = new JSZip();
 
-      for (const doc of result.documents) {
+      for (const doc of stepDocs) {
         try {
           const docResponse = await fetch(doc.fileUrl);
           const blob = await docResponse.blob();
@@ -132,11 +133,10 @@ export default function ClientWorkflow() {
       }
 
       const content = await zip.generateAsync({ type: "blob" });
-
       const url = window.URL.createObjectURL(content);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `enxoval-${result.clientName.replace(/\s+/g, '-')}.zip`;
+      link.download = `enxoval-${client?.name?.replace(/\s+/g, '-') || 'cliente'}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -148,6 +148,7 @@ export default function ClientWorkflow() {
       toast.error("Erro ao preparar download");
     } finally {
       setIsDownloading(false);
+      setDownloadEnxovalMutation({isPending: false});
     }
   };
 
@@ -465,7 +466,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepId === "acompanhamento-sinarm") && (
+                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documento") && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     
@@ -494,7 +495,33 @@ export default function ClientWorkflow() {
                             <p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>
                               {subTask.label}
                             </p>
+                            {(() => {
+                              const subTaskDocs = documents?.filter(doc => doc.subTaskId === subTask.id) || [];
+                              if (subTaskDocs.length > 0) {
+                                return (
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <FileText className="h-3 w-3 text-blue-600" />
+                                    <span className="text-xs text-blue-600 font-medium">
+                                      {subTaskDocs.length} {subTaskDocs.length === 1 ? 'documento anexado' : 'documentos anexados'}
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedSubTask({ id: subTask.id, label: subTask.label, stepId: step.id });
+                              setUploadModalOpen(true);
+                            }}
+                            className="flex-shrink-0"
+                          >
+                            <Upload className="h-3 w-3 mr-1" />
+                            Anexar
+                          </Button>
                           {subTask.completed && (
                             <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
                           )}
@@ -505,10 +532,63 @@ export default function ClientWorkflow() {
                     {/* Upload de Documentos */}
                     {step.stepTitle === "Juntada de Documento" && (
                       <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-3">
-                          <Upload className="h-4 w-4" />
-                          Upload de Documentos
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+                            <Upload className="h-4 w-4" />
+                            Documentos Anexados
+                          </div>
+                          {(() => {
+                            const stepDocs = documents?.filter(doc => doc.workflowStepId === step.id) || [];
+                            if (stepDocs.length > 0) {
+                              return (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDownloadEnxoval(step.id)}
+                                  disabled={downloadEnxovalMutation.isPending}
+                                  className="text-xs"
+                                >
+                                  {downloadEnxovalMutation.isPending ? (
+                                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Gerando...</>
+                                  ) : (
+                                    <><Download className="h-3 w-3 mr-1" />Enxoval ({stepDocs.length})</>
+                                  )}
+                                </Button>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
+                        
+                        {(() => {
+                          const stepDocs = documents?.filter(doc => doc.workflowStepId === step.id) || [];
+                          if (stepDocs.length > 0) {
+                            return (
+                              <div className="mb-4 space-y-2 max-h-48 overflow-y-auto">
+                                {stepDocs.map(doc => (
+                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100 text-sm">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                      <span className="truncate text-gray-700">{doc.fileName}</span>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      asChild
+                                      className="flex-shrink-0"
+                                    >
+                                      <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs">
+                                        <Download className="h-3 w-3" />
+                                      </a>
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                        
                         <DocumentUpload
                           clientId={Number(clientId)}
                           stepId={step.id}
@@ -997,6 +1077,18 @@ export default function ClientWorkflow() {
           })}
         </div>
       </main>
+
+      {/* Modal de Upload */}
+      {selectedSubTask && (
+        <UploadModal
+          open={uploadModalOpen}
+          onOpenChange={setUploadModalOpen}
+          clientId={Number(clientId)}
+          stepId={selectedSubTask.stepId}
+          subTaskId={selectedSubTask.id}
+          subTaskLabel={selectedSubTask.label}
+        />
+      )}
     </div>
   );
 }

@@ -395,6 +395,7 @@ export const appRouter = router({
       .input(z.object({
         clientId: z.number(),
         workflowStepId: z.number().optional(),
+        subTaskId: z.number().optional(),
         fileName: z.string(),
         fileData: z.string(), // base64
         mimeType: z.string(),
@@ -419,6 +420,7 @@ export const appRouter = router({
         const documentId = await db.createDocument({
           clientId: input.clientId,
           workflowStepId: input.workflowStepId || null,
+          subTaskId: input.subTaskId || null,
           fileName: input.fileName,
           fileKey,
           fileUrl: url,

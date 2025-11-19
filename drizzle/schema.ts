@@ -117,6 +117,7 @@ export const documents = mysqlTable("documents", {
   id: int("id").autoincrement().primaryKey(),
   clientId: int("clientId").notNull(),
   workflowStepId: int("workflowStepId"),
+  subTaskId: int("subTaskId"), // ID da subtarefa associada ao documento
   fileName: varchar("fileName", { length: 255 }).notNull(),
   fileKey: varchar("fileKey", { length: 500 }).notNull(),
   fileUrl: text("fileUrl").notNull(),

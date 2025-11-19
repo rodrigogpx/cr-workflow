@@ -457,3 +457,14 @@
 - [x] Adicionar validação de tipos de arquivo (PDF, JPG, DOC, DOCX) (já implementado)
 - [x] Testar upload e download (sistema pronto para teste pelo usuário)
 - [x] Criar checkpoint
+
+
+## Upload Individual por Atividade
+
+- [x] Criar componente UploadModal para seleção de arquivo
+- [x] Adicionar botão de upload em cada subtarefa do workflow
+- [x] Atualizar schema para associar documento à subtarefa específica
+- [x] Atualizar endpoints tRPC para salvar subTaskId
+- [x] Mostrar documentos anexados em cada subtarefa
+- [ ] Testar upload por atividade
+- [ ] Criar checkpoint
