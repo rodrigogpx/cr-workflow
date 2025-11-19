@@ -520,3 +520,19 @@
 
 - [x] Adicionar preview HTML renderizado ao lado do editor
 - [ ] Testar e criar checkpoint
+
+
+## Teste de Envio Real de Emails
+
+- [x] Verificar credenciais SMTP configuradas
+- [x] Criar script de teste de envio
+- [x] Executar teste e validar recebimento
+- [ ] Criar checkpoint com teste concluído
+
+
+## Correção da Logo nos Templates de Email
+
+- [x] Verificar logo atual do Firing Range
+- [x] Atualizar templates com URL absoluta da logo
+- [x] Testar envio com logo corrigida
+- [ ] Criar checkpoint final
