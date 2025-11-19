@@ -514,3 +514,9 @@
 - [x] Incluir variáveis dinâmicas ({{nome}}, {{data}}, {{status}})
 - [x] Atualizar templates no banco de dados
 - [ ] Testar e criar checkpoint
+
+
+## Preview Visual de Templates de Email
+
+- [x] Adicionar preview HTML renderizado ao lado do editor
+- [ ] Testar e criar checkpoint

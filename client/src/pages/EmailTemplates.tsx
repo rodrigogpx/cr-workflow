@@ -198,12 +198,24 @@ export default function EmailTemplates() {
                       </div>
                       <div>
                         <Label>Conteúdo (HTML)</Label>
-                        <textarea
-                          value={templates[tk.key]?.content || ''}
-                          onChange={(e) => handleTemplateChange('content', e.target.value)}
-                          className="w-full min-h-[400px] p-3 border rounded-md font-mono text-sm"
-                          placeholder="Digite o conteúdo do email em HTML...\n\nExemplo:\n<p>Olá <strong>{{nome}}</strong>,</p>\n<p>Seja bem-vindo!</p>"
-                        />
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-2">Editor HTML</p>
+                            <textarea
+                              value={templates[tk.key]?.content || ''}
+                              onChange={(e) => handleTemplateChange('content', e.target.value)}
+                              className="w-full min-h-[500px] p-3 border rounded-md font-mono text-sm"
+                              placeholder="Digite o conteúdo do email em HTML...\n\nExemplo:\n<p>Olá <strong>{{nome}}</strong>,</p>\n<p>Seja bem-vindo!</p>"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-2">Preview</p>
+                            <div 
+                              className="w-full min-h-[500px] p-3 border rounded-md bg-white overflow-auto"
+                              dangerouslySetInnerHTML={{ __html: templates[tk.key]?.content || '<p className="text-gray-400">O preview aparecerá aqui...</p>' }}
+                            />
+                          </div>
+                        </div>
                       </div>
                       <div>
                         <Label>Anexos</Label>
