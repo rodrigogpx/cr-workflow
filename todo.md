@@ -577,3 +577,12 @@
 - [x] Emails "Processo CR" e "Atualização de Status" não carregam template correto
 - [x] Renomear task para "Comprovante de Segundo Endereço"
 - [x] Aumentar tamanho do modal de preview HTML do email
+
+## Adicionar Anexos aos Templates de Email
+
+- [x] Verificar schema do banco de dados (campo attachments já existe)
+- [x] Implementar interface de upload de anexos na página EmailTemplates
+- [x] Adicionar botão de upload de PDF
+- [x] Listar anexos adicionados com opção de remover
+- [x] Testar envio de email com anexos
+- [x] Criar checkpoint final
