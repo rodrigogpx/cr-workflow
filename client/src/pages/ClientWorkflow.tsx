@@ -477,7 +477,7 @@ export default function ClientWorkflow() {
                     <Separator className="mb-4" />
                     
                     {/* Sub-tarefas */}
-                    {step.subTasks && step.subTasks.length > 0 && (
+                    {step.subTasks && (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
                         <FolderOpen className="h-4 w-4" />
