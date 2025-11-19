@@ -565,4 +565,15 @@
 
 - [x] Corrigir endpoint sendEmail para substituir {{nome}}, {{data}}, {{status}}
 - [x] Testar envio com variáveis substituídas corretamente
-- [ ] Criar checkpoint final
+- [x] Criar checkpoint final
+
+## Correções Solicitadas - Rodada 2
+
+- [x] Workflow concluído não está sendo contabilizado no card do dashboard
+- [x] Email de status deve conter status total de conclusão e Sinarm-CAC
+- [x] Modal de upload está estrapolando limites com nomes grandes
+- [x] Renomear etapa para "Encaminhamento de Avaliação Psicológica..."
+- [x] Renomear atividade "Boas Vindas" para "Central de Comunicações"
+- [x] Emails "Processo CR" e "Atualização de Status" não carregam template correto
+- [x] Renomear task para "Comprovante de Segundo Endereço"
+- [x] Aumentar tamanho do modal de preview HTML do email

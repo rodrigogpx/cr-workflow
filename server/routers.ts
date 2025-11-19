@@ -100,8 +100,8 @@ export const appRouter = router({
         // Criar workflow inicial para o cliente - 6 etapas principais
         const initialSteps = [
           { stepId: 'cadastro', stepTitle: 'Cadastro' },
-          { stepId: 'boas-vindas', stepTitle: 'Boas Vindas' },
-          { stepId: 'agendamento-psicotecnico', stepTitle: 'Agendamento Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo' },
+          { stepId: 'boas-vindas', stepTitle: 'Central de Comunicações' },
+          { stepId: 'agendamento-psicotecnico', stepTitle: 'Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo' },
           { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)' },
           { stepId: 'juntada-documento', stepTitle: 'Juntada de Documentos' },
           { stepId: 'acompanhamento-sinarm', stepTitle: 'Acompanhamento Sinarm-CAC' },
@@ -126,7 +126,7 @@ export const appRouter = router({
               'Comprovante de Residência Fixa',
               'Comprovante de Ocupação Lícita',
               'Comprovante de filiação a entidade de caça',
-              'Comprovante de Segundo Endereço de Guarda do Acervo',
+              'Comprovante de Segundo Endereço',
               'Certidão de Antecedente Criminal Justiça Estadual',
               'Declaração de Segurança do Acervo',
               'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
@@ -535,11 +535,22 @@ export const appRouter = router({
         const template = await db.getEmailTemplate(input.templateKey);
         const attachments = template?.attachments ? JSON.parse(template.attachments) : [];
 
+        // Calcular progresso do workflow
+        const workflow = await db.getWorkflowByClient(input.clientId);
+        const totalSteps = workflow.length;
+        const completedSteps = workflow.filter((s: any) => s.completed).length;
+        const progressPercentage = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+        
+        // Buscar status do Sinarm-CAC
+        const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
+        const sinarmStatus = sinarmStep?.sinarmStatus || 'Nao iniciado';
+
         const replaceVariables = (text: string, clientData: any) => {
           let result = text;
           result = result.replace(/{{nome}}/g, clientData.name || '');
           result = result.replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'));
-          result = result.replace(/{{status}}/g, 'Em Andamento');
+          result = result.replace(/{{status}}/g, progressPercentage + '% concluido');
+          result = result.replace(/{{status_sinarm}}/g, sinarmStatus);
           result = result.replace(/{{email}}/g, clientData.email || '');
           result = result.replace(/{{cpf}}/g, clientData.cpf || '');
           result = result.replace(/{{telefone}}/g, clientData.phone || '');

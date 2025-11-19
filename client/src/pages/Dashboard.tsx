@@ -94,7 +94,7 @@ export default function Dashboard() {
   ) || [];
 
   const totalClients = clients?.length || 0;
-  const completed = clients?.filter(c => getClientProgress(c.id) === 100).length || 0;
+  const completed = clients?.filter(c => getClientProgress(c) === 100).length || 0;
   const inProgress = totalClients - completed;
 
   return (

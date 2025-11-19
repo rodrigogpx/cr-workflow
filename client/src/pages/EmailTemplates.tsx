@@ -26,8 +26,8 @@ interface TemplateState {
 
 const templateKeys = [
   { key: 'welcome', title: 'Boas Vindas' },
-  { key: 'process', title: 'Processo CR' },
-  { key: 'status', title: 'Atualização' },
+  { key: 'process_cr', title: 'Processo CR' },
+  { key: 'status_update', title: 'Atualização' },
 ];
 
 export default function EmailTemplates() {
