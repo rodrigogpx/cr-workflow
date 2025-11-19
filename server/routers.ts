@@ -527,15 +527,33 @@ export const appRouter = router({
         content: z.string(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const client = await db.getClientById(input.clientId);
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+
         const template = await db.getEmailTemplate(input.templateKey);
         const attachments = template?.attachments ? JSON.parse(template.attachments) : [];
 
-        // Send the actual email
+        const replaceVariables = (text: string, clientData: any) => {
+          let result = text;
+          result = result.replace(/{{nome}}/g, clientData.name || '');
+          result = result.replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'));
+          result = result.replace(/{{status}}/g, 'Em Andamento');
+          result = result.replace(/{{email}}/g, clientData.email || '');
+          result = result.replace(/{{cpf}}/g, clientData.cpf || '');
+          result = result.replace(/{{telefone}}/g, clientData.phone || '');
+          return result;
+        };
+
+        const finalSubject = replaceVariables(input.subject, client);
+        const finalContent = replaceVariables(input.content, client);
+
         try {
           await sendEmail({
             to: input.recipientEmail,
-            subject: input.subject,
-            html: input.content,
+            subject: finalSubject,
+            html: finalContent,
             attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }))
           });
         } catch (error) {
@@ -546,13 +564,12 @@ export const appRouter = router({
           });
         }
 
-        // Log the email send in the database
         const logId = await db.logEmailSent({
           clientId: input.clientId,
           templateKey: input.templateKey,
           recipientEmail: input.recipientEmail,
-          subject: input.subject,
-          content: input.content,
+          subject: finalSubject,
+          content: finalContent,
           sentBy: ctx.user.id,
         });
 

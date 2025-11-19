@@ -559,3 +559,10 @@
 - [x] Solicitar credenciais SMTP via webdev_request_secrets
 - [x] Validar credenciais com teste vitest
 - [ ] Criar checkpoint final
+
+
+## Corrigir Substituição de Variáveis em Emails
+
+- [x] Corrigir endpoint sendEmail para substituir {{nome}}, {{data}}, {{status}}
+- [x] Testar envio com variáveis substituídas corretamente
+- [ ] Criar checkpoint final
