@@ -61,6 +61,12 @@ export default function ClientWorkflow() {
     { enabled: !!clientId }
   );
 
+  // Debug: Log de documentos
+  useEffect(() => {
+    console.log('Documentos carregados:', documents);
+    console.log('Workflow:', workflow);
+  }, [documents, workflow]);
+
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
     onSuccess: () => {
       refetch();
@@ -466,7 +472,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documento") && (
+                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documentos") && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     
@@ -478,139 +484,29 @@ export default function ClientWorkflow() {
                         Documentos Necessários
                       </div>
                       
-                      {step.subTasks.map((subTask) => (
-                        <div 
-                          key={subTask.id}
-                          className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-                            subTask.completed 
-                              ? 'bg-green-50 border-green-200' 
-                              : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                          }`}
-                        >
-                          <Checkbox
-                            checked={subTask.completed}
-                            onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)}
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1">
-                            <p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>
-                              {subTask.label}
-                            </p>
-                            {(() => {
-                              const subTaskDocs = documents?.filter(doc => doc.subTaskId === subTask.id) || [];
-                              if (subTaskDocs.length > 0) {
-                                return (
-                                  <div className="mt-2 space-y-1">
-                                    {subTaskDocs.map(doc => (
-                                      <div key={doc.id} className="flex items-center gap-2">
-                                        <FileText className="h-3 w-3 text-blue-600 flex-shrink-0" />
-                                        <a 
-                                          href={doc.fileUrl} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                          className="text-xs text-blue-600 font-medium hover:underline truncate"
-                                        >
-                                          {doc.fileName}
-                                        </a>
-                                      </div>
-                                    ))}
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
+                      {step.subTasks.map((subTask) => {
+                        const subTaskDocs = documents?.filter(doc => doc.subTaskId === subTask.id) || [];
+                        return (
+                          <div key={subTask.id} className={`p-3 rounded-lg border ${subTask.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-start gap-3 justify-between">
+                              <div className="flex items-start gap-3 flex-1">
+                                <Checkbox checked={subTask.completed} onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)} className="mt-0.5" />
+                                <div className="flex-1 min-w-0"><p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>{subTask.label}</p></div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {subTaskDocs.length > 0 && (<Button variant="outline" size="sm" onClick={() => handleDownloadEnxoval(subTask.id)} disabled={downloadEnxovalMutation.isPending} className="text-xs" title="Baixar documentos">{downloadEnxovalMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}</Button>)}
+                                <Button variant="outline" size="sm" onClick={() => { setSelectedSubTask({ id: subTask.id, label: subTask.label, stepId: step.id }); setUploadModalOpen(true); }}><Upload className="h-3 w-3 mr-1" />Anexar</Button>
+                                {subTask.completed && <CheckCircle className="h-5 w-5 text-green-600" />}
+                              </div>
+                            </div>
+                            {subTaskDocs.length > 0 && (<div className="mt-3 ml-7 space-y-1 pt-3 border-t border-gray-200"><p className="text-xs font-semibold text-gray-600 mb-2">Documentos ({subTaskDocs.length}):</p>{subTaskDocs.map(doc => (<div key={doc.id} className="flex items-center gap-2 text-xs"><FileText className="h-3 w-3 text-blue-600 flex-shrink-0" /><a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-medium hover:underline truncate flex-1 min-w-0">{doc.fileName}</a><Button variant="ghost" size="sm" asChild className="h-5 w-5 p-0 flex-shrink-0"><a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"><Download className="h-3 w-3" /></a></Button></div>))}</div>)}
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedSubTask({ id: subTask.id, label: subTask.label, stepId: step.id });
-                              setUploadModalOpen(true);
-                            }}
-                            className="flex-shrink-0"
-                          >
-                            <Upload className="h-3 w-3 mr-1" />
-                            Anexar
-                          </Button>
-                          {subTask.completed && (
-                            <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     )}
 
-                    {/* Upload de Documentos */}
-                    {step.stepTitle === "Juntada de Documento" && (
-                      <div className="mt-6 space-y-4">
-                        {(() => {
-                          const stepDocs = documents?.filter(doc => doc.workflowStepId === step.id) || [];
-                          if (stepDocs.length > 0) {
-                            return (
-                              <Button
-                                onClick={() => handleDownloadEnxoval(step.id)}
-                                disabled={downloadEnxovalMutation.isPending}
-                                className="w-full"
-                              >
-                                {downloadEnxovalMutation.isPending ? (
-                                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Gerando Enxoval...</>
-                                ) : (
-                                  <><Download className="h-4 w-4 mr-2" />Enxoval ({stepDocs.length} arquivos)</>
-                                )}
-                              </Button>
-                            );
-                          }
-                          return null;
-                        })()}
-                        
-                        {(() => {
-                          const stepDocs = documents?.filter(doc => doc.workflowStepId === step.id) || [];
-                          if (stepDocs.length > 0) {
-                            return (
-                              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-3">
-                                  <FileText className="h-4 w-4" />
-                                  Documentos Anexados ({stepDocs.length})
-                                </div>
-                                <div className="space-y-2 max-h-48 overflow-y-auto">
-                                  {stepDocs.map(doc => (
-                                    <div key={doc.id} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100 text-sm">
-                                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                                        <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                                        <span className="truncate text-gray-700">{doc.fileName}</span>
-                                      </div>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        asChild
-                                        className="flex-shrink-0"
-                                      >
-                                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs">
-                                          <Download className="h-3 w-3" />
-                                        </a>
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                        
-                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-3">
-                            <Upload className="h-4 w-4" />
-                            Adicionar Documentos
-                          </div>
-                          <DocumentUpload
-                            clientId={Number(clientId)}
-                            stepId={step.id}
-                            stepTitle={step.stepTitle}
-                          />
-                        </div>
-                      </div>
-                    )}
+
 
                     {/* Formulário de Cadastro */}
                     {step.stepTitle === "Cadastro" && (
