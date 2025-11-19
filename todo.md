@@ -603,3 +603,11 @@
 - [x] Atualizar interface para exibir data/hora do agendamento
 - [x] Testar alterações
 - [x] Criar checkpoint final
+
+## Criar Novo Texto para Email Processo CR
+
+- [x] Criar texto explicativo profissional mencionando anexos
+- [x] Incluir informações sobre documentação necessária
+- [x] Mencionar arquivos anexos com informações complementares
+- [x] Documentar novo template
+- [x] Criar checkpoint final
