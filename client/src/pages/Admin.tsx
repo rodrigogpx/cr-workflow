@@ -87,28 +87,52 @@ export default function Admin() {
       </header>
 
       <main className="container py-8 space-y-8">
-        {/* Card de Acesso Rápido - Templates de Email */}
-        <Card className="border-2 border-dashed border-primary/40 bg-primary/5">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg border-2 border-dashed border-primary/40 bg-primary/10 flex items-center justify-center">
-                  <Mail className="h-6 w-6 text-primary" />
+        {/* Cards de Acesso Rápido */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="border-2 border-dashed border-primary/40 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg border-2 border-dashed border-primary/40 bg-primary/10 flex items-center justify-center">
+                    <Mail className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold uppercase text-sm" style={{ color: '#575757' }}>Templates de Email</h3>
+                    <p className="text-xs text-muted-foreground">Edite os templates de email enviados aos clientes</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold uppercase text-sm" style={{ color: '#575757' }}>Templates de Email</h3>
-                  <p className="text-xs text-muted-foreground">Edite os templates de email enviados aos clientes</p>
-                </div>
+                <Button
+                  onClick={() => setLocation("/admin/email-templates")}
+                  className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
+                >
+                  Gerenciar →
+                </Button>
               </div>
-              <Button
-                onClick={() => setLocation("/admin/email-templates")}
-                className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
-              >
-                Gerenciar →
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-dashed border-primary/40 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg border-2 border-dashed border-primary/40 bg-primary/10 flex items-center justify-center">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold uppercase text-sm" style={{ color: '#575757' }}>Usuários do Sistema</h3>
+                    <p className="text-xs text-muted-foreground">Gerencie e exclua usuários do sistema</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setLocation("/admin/users")}
+                  className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
+                >
+                  Gerenciar →
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Estatísticas Globais */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

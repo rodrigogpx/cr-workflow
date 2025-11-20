@@ -644,6 +644,20 @@ export const appRouter = router({
         await db.updateUserRole(input.userId, input.role);
         return { success: true };
       }),
+
+    deleteUser: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Impedir exclusão do próprio usuário
+        if (input.userId === ctx.user.id) {
+          throw new Error('Você não pode excluir seu próprio usuário');
+        }
+        
+        await db.deleteUser(input.userId);
+        return { success: true };
+      }),
   }),
 });
 

@@ -647,3 +647,12 @@
 - [x] Corrigir problema de renderização
 - [x] Testar visualização de templates
 - [x] Criar checkpoint final
+
+## Implementar Gerenciamento de Usuários do Sistema
+
+- [x] Criar endpoints de listagem e exclusão de usuários
+- [x] Criar página de gerenciamento de usuários
+- [x] Adicionar botão "Excluir Usuário" com confirmação
+- [x] Impedir exclusão do próprio usuário logado
+- [x] Testar exclusão de usuários
+- [x] Criar checkpoint final
