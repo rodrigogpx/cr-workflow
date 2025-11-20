@@ -638,3 +638,12 @@
 - [x] Corrigir problema de exibição
 - [x] Testar visualização de templates
 - [x] Criar checkpoint final
+
+## Debug: Central de Mensagens Ainda Vazia
+
+- [x] Verificar console do navegador para erros
+- [x] Adicionar logs de debug na query getAllTemplates
+- [x] Verificar se query está retornando dados
+- [x] Corrigir problema de renderização
+- [x] Testar visualização de templates
+- [x] Criar checkpoint final

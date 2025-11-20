@@ -346,7 +346,7 @@ export async function getEmailLogsByClient(clientId: number) {
 
 export async function getEmailLog(clientId: number, templateKey: string) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return null;
   
   const result = await db.select().from(emailLogs)
     .where(and(
@@ -356,5 +356,5 @@ export async function getEmailLog(clientId: number, templateKey: string) {
     .orderBy(desc(emailLogs.sentAt))
     .limit(1);
   
-  return result.length > 0 ? result[0] : undefined;
+  return result.length > 0 ? result[0] : null;
 }

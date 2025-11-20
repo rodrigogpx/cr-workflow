@@ -56,7 +56,7 @@ export default function ClientWorkflow() {
     { enabled: !!clientId }
   );
 
-  const { data: emailTemplates } = trpc.emails.getAllTemplates.useQuery();
+  const { data: emailTemplates, isLoading: templatesLoading, error: templatesError } = trpc.emails.getAllTemplates.useQuery();
 
   const { data: documents } = trpc.documents.list.useQuery(
     { clientId: Number(clientId) },
@@ -456,7 +456,7 @@ export default function ClientWorkflow() {
                           Concluído
                         </Badge>
                       )}
-                      {(totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepId === "acompanhamento-sinarm") && (
+                      {(totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -474,7 +474,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documentos") && (
+                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documentos") && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     
@@ -971,7 +971,21 @@ export default function ClientWorkflow() {
                           <p className="text-sm text-gray-600">Envie qualquer tipo de email para o cliente. Escolha o template apropriado abaixo.</p>
                         </div>
 
-                        {emailTemplates?.map((template: any, index: number) => (
+                        {templatesLoading && (
+                          <div className="text-center py-8">
+                            <Loader2 className="animate-spin h-8 w-8 mx-auto text-gray-400" />
+                            <p className="text-sm text-gray-500 mt-2">Carregando templates...</p>
+                          </div>
+                        )}
+
+                        {templatesError && (
+                          <div className="text-center py-8 text-red-500">
+                            <p>Erro ao carregar templates</p>
+                            <p className="text-sm">{templatesError.message}</p>
+                          </div>
+                        )}
+
+                        {!templatesLoading && !templatesError && emailTemplates?.map((template: any, index: number) => (
                           <EmailPreview
                             key={template.templateKey}
                             clientId={Number(clientId)}
@@ -982,7 +996,7 @@ export default function ClientWorkflow() {
                           />
                         ))}
 
-                        {(!emailTemplates || emailTemplates.length === 0) && (
+                        {!templatesLoading && !templatesError && (!emailTemplates || emailTemplates.length === 0) && (
                           <div className="text-center py-8 text-gray-500">
                             <p>Nenhum template de email configurado.</p>
                             <p className="text-sm">Acesse a página de Templates para criar novos templates.</p>
