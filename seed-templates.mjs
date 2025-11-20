@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { drizzle } from 'drizzle-orm/mysql2';
-import { emailTemplates } from './drizzle/schema.ts';
+import { emailTemplates } from './drizzle/schema.js';
 import { eq } from 'drizzle-orm';
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -20,18 +20,24 @@ const statusTemplate = readFileSync('./email-templates/status.html', 'utf8');
 const templates = [
   {
     templateKey: 'welcome',
+    templateTitle: 'Boas Vindas',
     subject: 'Bem-vindo(a) à Firing Range - {{nome}}',
-    content: welcome
+    content: welcome,
+    attachments: '[]'
   },
   {
-    templateKey: 'process',
+    templateKey: 'process_cr',
+    templateTitle: 'Processo CR',
     subject: 'Informações sobre o Processo CR - {{nome}}',
-    content: processTemplate
+    content: processTemplate,
+    attachments: '[]'
   },
   {
-    templateKey: 'status',
+    templateKey: 'status_update',
+    templateTitle: 'Atualização de Status',
     subject: 'Atualização do Seu Processo - {{nome}}',
-    content: statusTemplate
+    content: statusTemplate,
+    attachments: '[]'
   }
 ];
 
@@ -49,8 +55,10 @@ async function seedTemplates() {
         // Update
         await db.update(emailTemplates)
           .set({
+            templateTitle: template.templateTitle,
             subject: template.subject,
             content: template.content,
+            attachments: template.attachments,
             updatedAt: new Date()
           })
           .where(eq(emailTemplates.templateKey, template.templateKey));
@@ -59,8 +67,10 @@ async function seedTemplates() {
         // Insert
         await db.insert(emailTemplates).values({
           templateKey: template.templateKey,
+          templateTitle: template.templateTitle,
           subject: template.subject,
           content: template.content,
+          attachments: template.attachments,
           createdAt: new Date(),
           updatedAt: new Date()
         });

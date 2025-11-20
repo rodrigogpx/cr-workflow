@@ -630,3 +630,11 @@
 - [x] Atualizar Central de Mensagens para listar templates dinamicamente
 - [x] Testar criação e exibição de novos templates
 - [x] Criar checkpoint final
+
+## Corrigir Central de Mensagens - Opções de Envio Não Aparecem
+
+- [x] Investigar por que templates não aparecem na Central de Mensagens
+- [x] Verificar se templates existem no banco de dados
+- [x] Corrigir problema de exibição
+- [x] Testar visualização de templates
+- [x] Criar checkpoint final

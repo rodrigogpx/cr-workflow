@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, templateKey, templateTitle, subject FROM emailTemplates ORDER BY id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT id, templateKey, templateTitle, subject FROM emailTemplates ORDER BY id",
+  "rows": [
+    {
+      "id": "1",
+      "templateKey": "welcome",
+      "templateTitle": "Boas Vindas",
+      "subject": "Bem-vindo(a) à Firing Range - {{nome}}"
+    },
+    {
+      "id": "2",
+      "templateKey": "process_cr",
+      "templateTitle": "NULL",
+      "subject": "Seu Processo de Obtenção do CR - Firing Range"
+    },
+    {
+      "id": "3",
+      "templateKey": "status_update",
+      "templateTitle": "NULL",
+      "subject": "Atualização do seu Processo CR - Firing Range"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttemplateKey\ttemplateTitle\tsubject\n1\twelcome\tBoas Vindas\tBem-vindo(a) à Firing Range - {{nome}}\n2\tprocess_cr\tNULL\tSeu Processo de Obtenção do CR - Firing Range\n3\tstatus_update\tNULL\tAtualização do seu Processo CR - Firing Range\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

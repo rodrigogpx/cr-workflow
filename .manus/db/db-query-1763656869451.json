@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, templateKey, templateTitle FROM emailTemplates ORDER BY id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT id, templateKey, templateTitle FROM emailTemplates ORDER BY id",
+  "rows": [
+    {
+      "id": "1",
+      "templateKey": "welcome",
+      "templateTitle": "NULL"
+    },
+    {
+      "id": "2",
+      "templateKey": "process_cr",
+      "templateTitle": "NULL"
+    },
+    {
+      "id": "3",
+      "templateKey": "status_update",
+      "templateTitle": "NULL"
+    },
+    {
+      "id": "30002",
+      "templateKey": "process",
+      "templateTitle": "NULL"
+    },
+    {
+      "id": "30003",
+      "templateKey": "status",
+      "templateTitle": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttemplateKey\ttemplateTitle\n1\twelcome\tNULL\n2\tprocess_cr\tNULL\n3\tstatus_update\tNULL\n30002\tprocess\tNULL\n30003\tstatus\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}

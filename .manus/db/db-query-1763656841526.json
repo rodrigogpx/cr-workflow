@@ -1,0 +1,35 @@
+{
+  "query": "SELECT templateKey, templateTitle, subject FROM emailTemplates",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT templateKey, templateTitle, subject FROM emailTemplates",
+  "rows": [
+    {
+      "templateKey": "welcome",
+      "templateTitle": "NULL",
+      "subject": "Bem-vindo(a) à Firing Range - {{nome}}"
+    },
+    {
+      "templateKey": "process_cr",
+      "templateTitle": "NULL",
+      "subject": "Seu Processo de Obtenção do CR - Firing Range"
+    },
+    {
+      "templateKey": "status_update",
+      "templateTitle": "NULL",
+      "subject": "Atualização do seu Processo CR - Firing Range"
+    },
+    {
+      "templateKey": "process",
+      "templateTitle": "NULL",
+      "subject": "Informações sobre o Processo CR - {{nome}}"
+    },
+    {
+      "templateKey": "status",
+      "templateTitle": "NULL",
+      "subject": "Atualização do Seu Processo - {{nome}}"
+    }
+  ],
+  "messages": [],
+  "stdout": "templateKey\ttemplateTitle\tsubject\nwelcome\tNULL\tBem-vindo(a) à Firing Range - {{nome}}\nprocess_cr\tNULL\tSeu Processo de Obtenção do CR - Firing Range\nstatus_update\tNULL\tAtualização do seu Processo CR - Firing Range\nprocess\tNULL\tInformações sobre o Processo CR - {{nome}}\nstatus\tNULL\tAtualização do Seu Processo - {{nome}}\n",
+  "stderr": "",
+  "execution_time_ms": 680
+}
