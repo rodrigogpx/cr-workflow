@@ -1,5 +1,6 @@
 import { useParams, useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import JSZip from 'jszip';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -40,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 export default function ClientWorkflow() {
   const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
+  const { user, isAuthenticated } = useAuth();
   const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
   const [schedulingData, setSchedulingData] = useState<{[key: number]: {date: string, examiner: string}}>({});
   const [clientFormData, setClientFormData] = useState<Record<string, string>>({});
@@ -48,19 +50,22 @@ export default function ClientWorkflow() {
 
   const { data: client } = trpc.clients.getById.useQuery(
     { id: Number(clientId) },
-    { enabled: !!clientId }
+    { enabled: !!clientId && isAuthenticated }
   );
 
   const { data: workflow, refetch } = trpc.workflow.getByClient.useQuery(
     { clientId: Number(clientId) },
-    { enabled: !!clientId }
+    { enabled: !!clientId && isAuthenticated }
   );
 
-  const { data: emailTemplates, isLoading: templatesLoading, error: templatesError } = trpc.emails.getAllTemplates.useQuery();
+  const { data: emailTemplates, isLoading: templatesLoading, error: templatesError } = trpc.emails.getAllTemplates.useQuery(
+    undefined,
+    { enabled: isAuthenticated }
+  );
 
   const { data: documents } = trpc.documents.list.useQuery(
     { clientId: Number(clientId) },
-    { enabled: !!clientId }
+    { enabled: !!clientId && isAuthenticated }
   );
 
   // Debug: Log de documentos
