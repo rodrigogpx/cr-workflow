@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, stepId, stepTitle FROM workflowSteps WHERE stepId LIKE '%laudo%' OR stepTitle LIKE '%Laudo%' OR stepTitle LIKE '%Capacidade%' LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT id, stepId, stepTitle FROM workflowSteps WHERE stepId LIKE '%laudo%' OR stepTitle LIKE '%Laudo%' OR stepTitle LIKE '%Capacidade%' LIMIT 10",
+  "rows": [
+    {
+      "id": "450004",
+      "stepId": "agendamento-laudo",
+      "stepTitle": "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)"
+    },
+    {
+      "id": "480004",
+      "stepId": "agendamento-laudo",
+      "stepTitle": "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstepId\tstepTitle\n450004\tagendamento-laudo\tAgendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)\n480004\tagendamento-laudo\tAgendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)\n",
+  "stderr": "",
+  "execution_time_ms": 748
+}

@@ -479,7 +479,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documentos" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas") && (
+                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documentos" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)" || step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas") && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     
@@ -835,7 +835,7 @@ export default function ClientWorkflow() {
                     )}
 
                     {/* Agendamento */}
-                    {(step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas" || step.stepTitle === "Exame de Capacidade Técnica") && (
+                    {(step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)") && (
                       <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
                         <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 mb-3">
                           <Calendar className="h-4 w-4" />
@@ -858,7 +858,7 @@ export default function ClientWorkflow() {
                             </div>
                             
                             {/* Botão de envio de email - apenas para Exame de Capacidade Técnica */}
-                            {step.stepTitle === "Exame de Capacidade Técnica" && client && (
+                            {(step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)") && client && (
                               <EmailPreview
                                 clientId={Number(clientId)}
                                 clientEmail={client.email || ""}

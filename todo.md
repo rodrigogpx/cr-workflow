@@ -666,3 +666,11 @@
 - [ ] Email deve incluir nome do examinador (se preenchido)
 - [ ] Testar envio de email com dados do agendamento
 - [ ] Criar checkpoint
+
+
+## Correção - Formulário de Agendamento de Laudo
+- [ ] Investigar por que formulário de data/examinador não aparece
+- [ ] Corrigir renderização do formulário na etapa de Agendamento de Laudo
+- [ ] Testar cadastro de data e examinador
+- [ ] Verificar se botão de email é habilitado após agendamento
+- [ ] Criar checkpoint
