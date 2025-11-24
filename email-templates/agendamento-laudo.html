@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendamento de Laudo - Firing Range</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #1c5c00; padding: 30px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold; letter-spacing: 2px;">
+                FIRING RANGE
+              </h1>
+              <p style="margin: 10px 0 0 0; color: #e0e0e0; font-size: 14px;">
+                Tiro e Caça
+              </p>
+            </td>
+          </tr>
+
+          <!-- Barra de destaque -->
+          <tr>
+            <td style="background-color: #4d9702; height: 4px;"></td>
+          </tr>
+
+          <!-- Conteúdo -->
+          <tr>
+            <td style="padding: 40px;">
+              
+              <!-- Saudação -->
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333;">
+                Olá <strong>{{nome}}</strong>,
+              </p>
+
+              <!-- Mensagem principal -->
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+                Confirmamos o agendamento do seu <strong>Laudo de Capacidade Técnica</strong> para obtenção do Certificado de Registro (CR).
+              </p>
+
+              <!-- Box de destaque com informações do agendamento -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fa; border-left: 4px solid #1c5c00; margin: 30px 0;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <h3 style="margin: 0 0 15px 0; color: #1c5c00; font-size: 18px;">
+                      📅 Informações do Agendamento
+                    </h3>
+                    
+                    <p style="margin: 0 0 10px 0; font-size: 15px; color: #333333;">
+                      <strong>Data e Hora:</strong> {{data_agendamento}}
+                    </p>
+                    
+                    <p style="margin: 0; font-size: 15px; color: #333333;">
+                      <strong>Examinador:</strong> {{examinador}}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Informações importantes -->
+              <h3 style="margin: 30px 0 15px 0; color: #1c5c00; font-size: 18px;">
+                ℹ️ Informações Importantes
+              </h3>
+
+              <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 15px; color: #333333; line-height: 1.8;">
+                <li>Chegue com <strong>15 minutos de antecedência</strong></li>
+                <li>Traga documento de identificação com foto (RG ou CNH)</li>
+                <li>Traga comprovante de residência atualizado</li>
+                <li>Use roupas confortáveis para a prática de tiro</li>
+                <li>Não é permitido consumo de álcool nas 24h anteriores</li>
+              </ul>
+
+              <!-- O que será avaliado -->
+              <h3 style="margin: 30px 0 15px 0; color: #1c5c00; font-size: 18px;">
+                ✓ O que será avaliado
+              </h3>
+
+              <p style="margin: 0 0 15px 0; font-size: 15px; color: #333333; line-height: 1.6;">
+                O Laudo de Capacidade Técnica avalia suas habilidades práticas no manuseio seguro de armas de fogo, incluindo:
+              </p>
+
+              <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 15px; color: #333333; line-height: 1.8;">
+                <li>Conhecimento das regras de segurança</li>
+                <li>Manuseio correto da arma</li>
+                <li>Postura e empunhadura</li>
+                <li>Precisão de tiro</li>
+                <li>Procedimentos de segurança no estande</li>
+              </ul>
+
+              <!-- Box de atenção -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fff3cd; border-left: 4px solid #ffc107; margin: 30px 0;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0; font-size: 15px; color: #856404; line-height: 1.6;">
+                      <strong>⚠️ Atenção:</strong> Em caso de necessidade de reagendamento, entre em contato conosco com pelo menos 48 horas de antecedência.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Contato -->
+              <h3 style="margin: 30px 0 15px 0; color: #1c5c00; font-size: 18px;">
+                📞 Dúvidas ou Reagendamento
+              </h3>
+
+              <p style="margin: 0 0 10px 0; font-size: 15px; color: #333333;">
+                Entre em contato conosco:
+              </p>
+
+              <p style="margin: 0 0 5px 0; font-size: 15px; color: #333333;">
+                <strong>Email:</strong> {{email}}
+              </p>
+
+              <p style="margin: 0 0 5px 0; font-size: 15px; color: #333333;">
+                <strong>Telefone:</strong> {{telefone}}
+              </p>
+
+              <p style="margin: 0; font-size: 15px; color: #333333;">
+                <strong>Endereço:</strong> DF-150, Km 08 - Sobradinho/DF
+              </p>
+
+              <!-- Mensagem de encerramento -->
+              <p style="margin: 30px 0 0 0; font-size: 16px; color: #333333; line-height: 1.6;">
+                Estamos à disposição para qualquer esclarecimento.
+              </p>
+
+              <p style="margin: 20px 0 0 0; font-size: 16px; color: #333333;">
+                Atenciosamente,<br>
+                <strong>Equipe Firing Range</strong>
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 30px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #666666;">
+                <strong>Firing Range - Tiro e Caça</strong>
+              </p>
+              <p style="margin: 0 0 5px 0; font-size: 13px; color: #999999;">
+                DF-150, Km 08 - Sobradinho/DF
+              </p>
+              <p style="margin: 0; font-size: 13px; color: #999999;">
+                Este é um email automático. Por favor, não responda.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

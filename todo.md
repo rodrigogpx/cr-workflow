@@ -656,3 +656,13 @@
 - [x] Impedir exclusão do próprio usuário logado
 - [x] Testar exclusão de usuários
 - [x] Criar checkpoint final
+
+### Sistema de Email para Agendamento de Laudo
+- [x] Criar template de email de agendamento de laudo
+- [x] Adicionar botão de envio na etapa de Agendamento de Laudo
+- [x] Adicionar botão de envio na Central de Mensagens
+- [x] Implementar validação: desabilitar botão se não houver data agendada
+- [x] Testar funcionalidade completa deve incluir data e hora do agendamento
+- [ ] Email deve incluir nome do examinador (se preenchido)
+- [ ] Testar envio de email com dados do agendamento
+- [ ] Criar checkpoint

@@ -12,6 +12,8 @@ interface EmailPreviewProps {
   clientName: string;
   templateKey: string;
   title: string;
+  requiresScheduling?: boolean;
+  scheduledDate?: string | Date | null;
 }
 
 export function EmailPreview({
@@ -20,6 +22,8 @@ export function EmailPreview({
   clientName,
   templateKey,
   title,
+  requiresScheduling = false,
+  scheduledDate = null,
 }: EmailPreviewProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
@@ -127,7 +131,7 @@ export function EmailPreview({
           {/* Botão de Envio */}
           <Button
             onClick={handleSendEmail}
-            disabled={sendEmailMutation.isPending || !template}
+            disabled={sendEmailMutation.isPending || !template || (requiresScheduling && !scheduledDate)}
             className="flex-1"
           >
             <Send className="h-4 w-4 mr-2" />
@@ -138,6 +142,12 @@ export function EmailPreview({
         {!template && (
           <p className="text-xs text-red-600">
             ⚠️ Template não configurado. Solicite ao administrador para configurar em /admin/email-templates
+          </p>
+        )}
+        
+        {requiresScheduling && !scheduledDate && (
+          <p className="text-xs text-amber-600">
+            ⚠️ É necessário agendar uma data antes de enviar este email.
           </p>
         )}
       </CardContent>

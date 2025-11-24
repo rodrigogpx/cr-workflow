@@ -461,7 +461,7 @@ export default function ClientWorkflow() {
                           Concluído
                         </Badge>
                       )}
-                      {(totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm") && (
+                      {(totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -479,7 +479,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documentos") && (
+                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documentos" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas") && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     
@@ -843,17 +843,32 @@ export default function ClientWorkflow() {
                         </div>
                         
                         {step.scheduledDate ? (
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-amber-700" />
-                              <span className="font-medium">Data e Hora:</span>
-                              <span>{new Date(step.scheduledDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                          <div className="space-y-3">
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-amber-700" />
+                                <span className="font-medium">Data e Hora:</span>
+                                <span>{new Date(step.scheduledDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-amber-700" />
+                                <span className="font-medium">Examinador:</span>
+                                <span>{step.examinerName}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-amber-700" />
-                              <span className="font-medium">Examinador:</span>
-                              <span>{step.examinerName}</span>
-                            </div>
+                            
+                            {/* Botão de envio de email - apenas para Exame de Capacidade Técnica */}
+                            {step.stepTitle === "Exame de Capacidade Técnica" && client && (
+                              <EmailPreview
+                                clientId={Number(clientId)}
+                                clientEmail={client.email || ""}
+                                clientName={client.name || "Cliente"}
+                                templateKey="agendamento_laudo"
+                                title="Confirmação de Agendamento de Laudo"
+                                requiresScheduling={true}
+                                scheduledDate={step.scheduledDate}
+                              />
+                            )}
                           </div>
                         ) : (
                           <div className="space-y-3">
