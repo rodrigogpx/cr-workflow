@@ -835,7 +835,7 @@ export default function ClientWorkflow() {
                     )}
 
                     {/* Agendamento */}
-                    {(step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)") && (
+                    {(step.stepId === "agendamento-laudo" || step.stepId === "agendamento-psicotecnico" || step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)") && (
                       <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
                         <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 mb-3">
                           <Calendar className="h-4 w-4" />

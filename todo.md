@@ -674,3 +674,12 @@
 - [ ] Testar cadastro de data e examinador
 - [ ] Verificar se botão de email é habilitado após agendamento
 - [ ] Criar checkpoint
+
+
+## Correção URGENTE - Formulário de Agendamento Não Aparece
+- [x] Desmarcar etapas de agendamento que estão marcadas incorretamente como concluídas
+- [x] Testar se formulário aparece após desmarcar
+- [x] Adicionar stepId na condição de renderização
+- [x] Criar testes automatizados (9 testes passando)
+- [x] Criar guia de uso para o usuário
+- [x] Criar checkpoint
