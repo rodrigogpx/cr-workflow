@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE workflowSteps SET completed = 0 WHERE clientId = 540002 AND stepId = 'agendamento-laudo'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute UPDATE workflowSteps SET completed = 0 WHERE clientId = 540002 AND stepId = 'agendamento-laudo'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 63
+}

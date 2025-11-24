@@ -479,7 +479,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documentos" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)" || step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas") && (
+                {isExpanded && (totalSubTasks > 0 || step.stepId === "agendamento-laudo" || step.stepId === "agendamento-psicotecnico" || step.stepTitle === "Cadastro" || step.stepTitle === "Boas Vindas" || step.stepTitle === "Central de Mensagens" || step.stepId === "acompanhamento-sinarm" || step.stepTitle === "Juntada de Documentos" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)" || step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas") && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     

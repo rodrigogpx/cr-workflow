@@ -683,3 +683,10 @@
 - [x] Criar testes automatizados (9 testes passando)
 - [x] Criar guia de uso para o usuário
 - [x] Criar checkpoint
+
+
+## Correção - Etapa de Agendamento Não Expande
+- [x] Adicionar stepId agendamento-laudo na condição de expansão (isExpanded)
+- [x] Testar expansão da etapa
+- [x] Identificar problema de marcação automática
+- [x] Criar checkpoint
