@@ -690,3 +690,15 @@
 - [x] Testar expansão da etapa
 - [x] Identificar problema de marcação automática
 - [x] Criar checkpoint
+
+
+## Correção - CardContent Não Renderiza Etapas de Agendamento
+- [x] Adicionar step.stepId === "agendamento-laudo" na condição de renderização do CardContent
+- [x] Adicionar step.stepId === "agendamento-psicotecnico" na condição de renderização do CardContent
+- [x] Simplificar condições usando apenas stepId (consistência)
+- [x] Testar expansão da etapa Agendamento de Laudo
+- [x] Testar expansão da etapa Agendamento Psicotécnico
+- [x] Verificar se formulário aparece corretamente
+- [x] Criar 24 testes automatizados (todos passando)
+- [x] Validar que todos os 118 testes do sistema passam
+- [x] Criar checkpoint
