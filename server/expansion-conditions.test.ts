@@ -7,7 +7,7 @@ describe('Condições de Expansão das Etapas', () => {
     return (
       totalSubTasks > 0 ||
       step.stepId === "cadastro" ||
-      step.stepId === "central-mensagens" ||
+      step.stepId === "boas-vindas" ||
       step.stepId === "agendamento-psicotecnico" ||
       step.stepId === "agendamento-laudo" ||
       step.stepId === "juntada-documentos" ||
@@ -20,7 +20,7 @@ describe('Condições de Expansão das Etapas', () => {
     return isExpanded && (
       totalSubTasks > 0 ||
       step.stepId === "cadastro" ||
-      step.stepId === "central-mensagens" ||
+      step.stepId === "boas-vindas" ||
       step.stepId === "agendamento-psicotecnico" ||
       step.stepId === "agendamento-laudo" ||
       step.stepId === "juntada-documentos" ||
@@ -34,8 +34,8 @@ describe('Condições de Expansão das Etapas', () => {
       expect(shouldShowExpandButton(step)).toBe(true);
     });
 
-    it('deve mostrar botão para etapa Central de Mensagens', () => {
-      const step = { stepId: 'central-mensagens', subTasks: [] };
+    it('deve mostrar botão para etapa Central de Mensagens (Boas Vindas)', () => {
+      const step = { stepId: 'boas-vindas', stepTitle: 'Central de Mensagens', subTasks: [] };
       expect(shouldShowExpandButton(step)).toBe(true);
     });
 
@@ -76,8 +76,8 @@ describe('Condições de Expansão das Etapas', () => {
       expect(shouldRenderCardContent(true, step)).toBe(true);
     });
 
-    it('deve renderizar conteúdo quando expandido - Central de Mensagens', () => {
-      const step = { stepId: 'central-mensagens', subTasks: [] };
+    it('deve renderizar conteúdo quando expandido - Central de Mensagens (Boas Vindas)', () => {
+      const step = { stepId: 'boas-vindas', stepTitle: 'Central de Mensagens', subTasks: [] };
       expect(shouldRenderCardContent(true, step)).toBe(true);
     });
 
@@ -120,7 +120,7 @@ describe('Condições de Expansão das Etapas', () => {
   describe('Consistência entre Condições', () => {
     const allStepIds = [
       'cadastro',
-      'central-mensagens',
+      'boas-vindas',
       'agendamento-psicotecnico',
       'agendamento-laudo',
       'juntada-documentos',

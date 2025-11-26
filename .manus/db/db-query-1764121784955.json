@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, clientId, stepId, stepTitle FROM workflowSteps WHERE stepTitle LIKE '%Central%' OR stepTitle LIKE '%Mensagens%' OR stepTitle LIKE '%Boas%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT id, clientId, stepId, stepTitle FROM workflowSteps WHERE stepTitle LIKE '%Central%' OR stepTitle LIKE '%Mensagens%' OR stepTitle LIKE '%Boas%';",
+  "rows": [
+    {
+      "id": "450001",
+      "clientId": "510001",
+      "stepId": "boas-vindas",
+      "stepTitle": "Central de Mensagens"
+    },
+    {
+      "id": "480007",
+      "clientId": "540002",
+      "stepId": "boas-vindas",
+      "stepTitle": "Central de Mensagens"
+    },
+    {
+      "id": "540001",
+      "clientId": "600001",
+      "stepId": "boas-vindas",
+      "stepTitle": "Central de Mensagens"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclientId\tstepId\tstepTitle\n450001\t510001\tboas-vindas\tCentral de Mensagens\n480007\t540002\tboas-vindas\tCentral de Mensagens\n540001\t600001\tboas-vindas\tCentral de Mensagens\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

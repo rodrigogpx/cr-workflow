@@ -702,3 +702,12 @@
 - [x] Criar 24 testes automatizados (todos passando)
 - [x] Validar que todos os 118 testes do sistema passam
 - [x] Criar checkpoint
+
+
+## Correção - Central de Mensagens Não Expande
+- [x] Investigar por que Central de Mensagens não está expandindo
+- [x] Verificar stepId no banco de dados (encontrado: boas-vindas)
+- [x] Corrigir stepId no código (central-mensagens → boas-vindas)
+- [x] Atualizar testes para refletir stepId correto
+- [x] Validar que todos os 118 testes passam
+- [x] Criar checkpoint

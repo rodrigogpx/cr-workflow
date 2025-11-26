@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, workflowClientId, stepId, stepTitle, completed FROM workflowSteps WHERE stepTitle LIKE '%Central%' OR stepTitle LIKE '%Mensagens%' OR stepTitle LIKE '%Boas%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QtoBiM63RS7wHFd.root --database 7HAvRBmq2mUeNEXoj8Xr7Q --execute SELECT id, workflowClientId, stepId, stepTitle, completed FROM workflowSteps WHERE stepTitle LIKE '%Central%' OR stepTitle LIKE '%Mensagens%' OR stepTitle LIKE '%Boas%' LIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'workflowclientid' in 'field list'"
+  ]
+}
