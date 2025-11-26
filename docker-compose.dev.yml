@@ -1,0 +1,50 @@
+services:
+  app:
+    build:
+      context: .
+      target: builder # Usar a imagem de build que tem todas as devDependencies
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
+      # Variáveis para o Vite Dev Server
+      - VITE_API_URL=http://localhost:3000
+      - VITE_APP_TITLE=CR Workflow (Dev)
+      - VITE_APP_LOGO=/logo.png
+      - VITE_ANALYTICS_ENDPOINT=
+      - VITE_ANALYTICS_WEBSITE_ID=
+      # Variáveis de Autenticação (substitua pelos valores corretos)
+      - VITE_OAUTH_PORTAL_URL=https://auth.manus.br
+      - VITE_APP_ID=seu-app-id-aqui
+      - COOKIE_SECRET=a-very-secure-and-random-secret-for-dev
+    volumes:
+      - .:/app # Monta o código-fonte local
+      - /app/node_modules # Impede que o node_modules local sobrescreva o do contêiner
+    command: sh -c "pnpm install && pnpm dev" # Garante que as dependências estão instaladas antes de iniciar
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    cap_add:
+      - SYS_NICE
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:

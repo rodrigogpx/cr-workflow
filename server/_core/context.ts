@@ -1,5 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
+import * as db from "../db";
+import { ENV } from "./env";
 import { sdk } from "./sdk";
 
 export type TrpcContext = {
@@ -15,9 +17,19 @@ export async function createContext(
 
   try {
     user = await sdk.authenticateRequest(opts.req);
-  } catch (error) {
-    // Authentication is optional for public procedures.
+  } catch {
     user = null;
+  }
+
+  // Fallback de desenvolvimento: se não houver sessão válida, usar o admin
+  if (!user && !ENV.isProduction) {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail) {
+      const admin = await db.getUserByEmail(adminEmail);
+      if (admin) {
+        user = admin as User;
+      }
+    }
   }
 
   return {

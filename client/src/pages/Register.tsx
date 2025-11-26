@@ -6,44 +6,58 @@ import { APP_TITLE } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Target, Loader2, UserPlus } from "lucide-react";
+import { Target, Loader2, ArrowLeft, UserPlus } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
+import { toast } from "sonner";
 
-const loginSchema = z.object({
+const registerSchema = z.object({
+  name: z.string().min(2, { message: "Nome deve ter pelo menos 2 caracteres" }),
   email: z.string().email({ message: "Email inválido" }),
-  password: z.string().min(1, { message: "Senha é obrigatória" }),
+  password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres" }),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "As senhas não conferem",
+  path: ["confirmPassword"],
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
-export default function Login() {
+export default function Register() {
   const [, setLocation] = useLocation();
-  const { user, loading, refresh } = useAuth();
-  const loginMutation = trpc.auth.login.useMutation();
+  const { user, loading } = useAuth();
+  const registerMutation = trpc.auth.register.useMutation();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     setError,
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
   });
 
   useEffect(() => {
     if (user && !loading) {
-      setLocation("/dashboard");
+      if (user.role) {
+        setLocation("/dashboard");
+      } else {
+        setLocation("/pending-approval");
+      }
     }
   }, [user, loading, setLocation]);
 
-  const onSubmit = async (data: LoginFormValues) => {
-    loginMutation.mutate(data, {
-      onSuccess: async () => {
-        await refresh(); // Recarrega os dados do usuário
-        // O redirecionamento será feito pelo useEffect que observa a mudança no 'user'
+  const onSubmit = async (data: RegisterFormValues) => {
+    registerMutation.mutate({
+      name: data.name,
+      email: data.email,
+      password: data.password,
+    }, {
+      onSuccess: (result) => {
+        toast.success(result.message);
+        setLocation("/login");
       },
       onError: (error) => {
         setError("root", { message: error.message });
@@ -72,28 +86,33 @@ export default function Login() {
       }}></div>
 
       <Card className="w-full max-w-md border-2 border-dashed border-white/20 bg-card/95 backdrop-blur-sm shadow-2xl relative z-10">
-        <CardHeader className="space-y-6 text-center pb-8">
+        <CardHeader className="space-y-4 text-center pb-6">
           <div className="flex justify-center">
             <div className="relative">
               <img 
                 src="/logo.webp" 
                 alt="Firing Range" 
-                className="h-20 w-auto"
+                className="h-16 w-auto"
               />
               <div className="absolute -inset-2 border-2 border-dashed border-primary/30 rounded-lg -z-10"></div>
             </div>
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-3xl font-bold uppercase tracking-tight text-white">
-              {APP_TITLE || "FIRING RANGE"}
+            <CardTitle className="text-2xl font-bold uppercase tracking-tight text-white">
+              Criar Conta
             </CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
-              Sistema de Gerenciamento de Workflow CR
+            <CardDescription className="text-sm text-muted-foreground">
+              {APP_TITLE || "FIRING RANGE"} - Sistema de Workflow CR
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome Completo</Label>
+              <Input id="name" type="text" placeholder="Seu nome completo" {...register("name")} />
+              {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="seu@email.com" {...register("email")} />
@@ -101,59 +120,41 @@ export default function Login() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" {...register("password")} />
+              <Input id="password" type="password" placeholder="Mínimo 6 caracteres" {...register("password")} />
               {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+              <Input id="confirmPassword" type="password" placeholder="Repita a senha" {...register("confirmPassword")} />
+              {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
             </div>
             {errors.root && <p className="text-sm text-red-500 text-center">{errors.root.message}</p>}
             <Button
               type="submit"
-              disabled={loginMutation.isPending}
+              disabled={registerMutation.isPending}
               className="w-full h-12 bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide text-base transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5"
             >
-              {loginMutation.isPending ? (
+              {registerMutation.isPending ? (
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
               ) : (
-                <Target className="w-5 h-5 mr-2" />
+                <UserPlus className="w-5 h-5 mr-2" />
               )}
-              Entrar no Sistema
+              Criar Conta
             </Button>
           </form>
-
-          <div className="pt-6 border-t-2 border-dashed border-white/10">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="space-y-1">
-                <div className="w-12 h-12 mx-auto border-2 border-dashed border-primary/40 rounded-lg flex items-center justify-center bg-primary/10">
-                  <span className="text-lg font-bold text-primary">1</span>
-                </div>
-                <p className="text-xs text-muted-foreground uppercase">Cadastro</p>
-              </div>
-              <div className="space-y-1">
-                <div className="w-12 h-12 mx-auto border-2 border-dashed border-primary/40 rounded-lg flex items-center justify-center bg-primary/10">
-                  <span className="text-lg font-bold text-primary">2</span>
-                </div>
-                <p className="text-xs text-muted-foreground uppercase">Documentos</p>
-              </div>
-              <div className="space-y-1">
-                <div className="w-12 h-12 mx-auto border-2 border-dashed border-primary/40 rounded-lg flex items-center justify-center bg-primary/10">
-                  <span className="text-lg font-bold text-primary">3</span>
-                </div>
-                <p className="text-xs text-muted-foreground uppercase">Aprovação</p>
-              </div>
-            </div>
-          </div>
 
           <div className="pt-4 border-t-2 border-dashed border-white/10">
             <div className="text-center space-y-3">
               <p className="text-sm text-muted-foreground">
-                Não tem uma conta?
+                Já tem uma conta?
               </p>
-              <Link href="/register">
+              <Link href="/login">
                 <Button
                   variant="outline"
                   className="w-full border-2 border-dashed border-white/20 bg-transparent hover:bg-white/5 font-bold uppercase tracking-wide"
                 >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Criar Conta
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Voltar para Login
                 </Button>
               </Link>
             </div>
@@ -161,10 +162,7 @@ export default function Login() {
 
           <div className="text-center pt-4 border-t-2 border-dashed border-white/10">
             <p className="text-xs text-muted-foreground">
-              Acesso restrito à equipe Firing Range
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              © {new Date().getFullYear()} Firing Range. Todos os direitos reservados.
+              Após o cadastro, um administrador irá aprovar seu acesso.
             </p>
           </div>
         </CardContent>

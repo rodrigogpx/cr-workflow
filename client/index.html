@@ -19,10 +19,30 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <script>
+      const rawEndpoint = "%VITE_ANALYTICS_ENDPOINT%";
+      const rawWebsiteId = "%VITE_ANALYTICS_WEBSITE_ID%";
+
+      const analyticsEndpoint =
+        rawEndpoint && rawEndpoint !== "%VITE_ANALYTICS_ENDPOINT%"
+          ? rawEndpoint
+          : "";
+      const analyticsWebsiteId =
+        rawWebsiteId && rawWebsiteId !== "%VITE_ANALYTICS_WEBSITE_ID%"
+          ? rawWebsiteId
+          : "";
+
+      if (analyticsEndpoint) {
+        const script = document.createElement("script");
+        script.defer = true;
+        script.src = `${analyticsEndpoint.replace(/\/$/, "")}/umami`;
+
+        if (analyticsWebsiteId) {
+          script.dataset.websiteId = analyticsWebsiteId;
+        }
+        document.body.appendChild(script);
+      }
+    </script>
   </body>
 
 </html>

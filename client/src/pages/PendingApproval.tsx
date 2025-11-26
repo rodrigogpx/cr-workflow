@@ -4,8 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, LogOut } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Redirect } from "wouter";
 
 export default function PendingApproval() {
+  const { user, loading } = useAuth();
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
       window.location.href = "/";
@@ -14,6 +17,25 @@ export default function PendingApproval() {
       toast.error("Erro ao fazer logout");
     },
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground uppercase text-sm tracking-wide">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (user.role) {
+    return <Redirect to="/dashboard" />;
+  }
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -67,15 +89,34 @@ export default function PendingApproval() {
             </div>
 
             {/* Botão de Logout */}
-            <div className="flex justify-center pt-4">
+            <div className="flex flex-col gap-3 justify-center pt-4">
               <Button
                 onClick={handleLogout}
                 variant="outline"
-                className="bg-transparent border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300 uppercase tracking-wider font-bold"
+                className="bg-transparent border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300 uppercase tracking-wider font-bold w-full max-w-xs mx-auto"
                 disabled={logoutMutation.isPending}
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 {logoutMutation.isPending ? "Saindo..." : "Sair"}
+              </Button>
+
+              <Button
+                onClick={() => {
+                  console.log("Executando limpeza forçada...");
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  // Limpar cookies manualmente
+                  document.cookie.split(";").forEach((c) => {
+                    document.cookie = c
+                      .replace(/^ +/, "")
+                      .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                  });
+                  window.location.href = "/login";
+                }}
+                variant="ghost"
+                className="text-xs text-white/30 hover:text-white/60 hover:bg-transparent uppercase tracking-widest"
+              >
+                Forçar Saída (Limpar Cache)
               </Button>
             </div>
           </CardContent>

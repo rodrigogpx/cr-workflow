@@ -72,7 +72,6 @@ export default function Users() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Função</TableHead>
-                  <TableHead>Método de Login</TableHead>
                   <TableHead>Cadastro</TableHead>
                   <TableHead>Último Acesso</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -98,14 +97,17 @@ export default function Users() {
                           <Shield className="h-3 w-3 mr-1" />
                           Administrador
                         </Badge>
-                      ) : (
+                      ) : user.role === 'operator' ? (
                         <Badge variant="secondary">
                           <User className="h-3 w-3 mr-1" />
                           Operador
                         </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                          Pendente
+                        </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="capitalize">{user.loginMethod}</TableCell>
                     <TableCell>{formatDate(user.createdAt)}</TableCell>
                     <TableCell>
                       {user.lastSignedIn ? formatDate(user.lastSignedIn) : '-'}

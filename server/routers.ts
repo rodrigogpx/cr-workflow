@@ -1,4 +1,4 @@
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
@@ -7,19 +7,100 @@ import { sendEmail } from "./emailService";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
+import { comparePassword, hashPassword } from "./_core/auth";
+import { sdk } from "./_core/sdk";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => {
+      console.log("DEBUG /me user:", JSON.stringify(opts.ctx.user, null, 2));
+      return opts.ctx.user;
+    }),
+    login: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserByEmail(input.email);
+        if (!user) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+        }
+
+        const passwordMatch = await comparePassword(input.password, user.hashedPassword);
+        if (!passwordMatch) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+        }
+
+        const sessionToken = await sdk.createSessionToken(user.id.toString(), {
+          name: user.name || "",
+          expiresInMs: ONE_YEAR_MS,
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { 
+          ...cookieOptions, 
+          maxAge: ONE_YEAR_MS, 
+          path: "/",
+          httpOnly: true,
+          sameSite: "lax",
+        });
+
+        console.log(`DEBUG Login success for ${user.email}, role: ${user.role}`);
+
+        return {
+          success: true,
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          },
+        };
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      // Garantir que os atributos de limpeza correspondam aos de criação
+      ctx.res.clearCookie(COOKIE_NAME, { 
+        ...cookieOptions, 
+        maxAge: -1,
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+      });
       return {
         success: true,
       } as const;
     }),
+    register: publicProcedure
+      .input(z.object({
+        name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+        email: z.string().email("Email inválido"),
+        password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+      }))
+      .mutation(async ({ input }) => {
+        // Verificar se email já existe
+        const existingUser = await db.getUserByEmail(input.email);
+        if (existingUser) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
+        }
+
+        // Hash da senha
+        const hashedPassword = await hashPassword(input.password);
+
+        // Criar usuário sem role (aguardando aprovação)
+        const userId = await db.upsertUser({
+          name: input.name,
+          email: input.email,
+          hashedPassword,
+          role: null, // Aguardando aprovação do admin
+        });
+
+        return {
+          success: true,
+          message: 'Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.',
+          userId,
+        };
+      }),
   }),
 
   // Clients router
