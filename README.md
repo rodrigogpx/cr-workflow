@@ -32,9 +32,55 @@ Cada etapa pode ser marcada como concluída individualmente, permitindo controle
 
 ### Sistema de Templates de Email
 
-A área administrativa oferece editor completo para personalização dos três templates de email da etapa Boas Vindas. Os administradores podem editar assunto e conteúdo de cada email, com suporte a variáveis dinâmicas como `{{nome}}` que são substituídas automaticamente pelos dados do cliente. Os templates são salvos no banco de dados e aplicados a todos os novos envios.
+A área administrativa oferece editor completo para personalização dos templates de email usados ao longo do workflow. Os administradores podem editar **assunto**, **conteúdo HTML** e **anexos** de cada template, que são salvos no banco de dados e aplicados a todos os novos envios.
 
-No workflow do cliente, os operadores visualizam os emails com conteúdo já preenchido e podem enviá-los com um clique. O sistema registra automaticamente data e horário de envio, impedindo envios duplicados e mantendo histórico completo de comunicações.
+Principais templates padrão:
+
+- **Boas-Vindas (3 mensagens)**: sequência de emails enviada na fase inicial explicando o processo de CR, apresentando o clube e orientando o cliente.
+- **Confirmação de Agendamento de Laudo de Capacidade Técnica**: email específico que confirma data, horário e examinador do laudo, além de trazer orientações sobre o exame.
+
+Os templates suportam variáveis dinâmicas que são substituídas automaticamente, por exemplo:
+
+- `{{nome}}` – nome do cliente
+- `{{data}}` – data atual
+- `{{status}}` – percentual de conclusão do workflow
+- `{{status_sinarm}}` – status atual da etapa Sinarm-CAC
+- `{{email}}`, `{{telefone}}`, `{{cpf}}` – dados de contato e documento
+- `{{data_agendamento}}` – data e hora do agendamento do laudo
+- `{{examinador}}` – nome do examinador responsável pelo laudo
+
+No workflow do cliente, os operadores visualizam os emails com conteúdo já preenchido e podem enviá-los com um clique. O sistema registra automaticamente data e horário de envio, impede envios duplicados (via histórico de logs) e mantém trilha de auditoria das comunicações.
+
+### Configuração de Envio de Emails (SMTP)
+
+O sistema possui uma tela específica na administração para configuração do **servidor SMTP** usado no envio de emails. É possível definir:
+
+- Host e porta do servidor SMTP
+- Usuário e senha
+- Endereço de remetente (`smtpFrom`)
+- Uso de conexão segura (SSL/TLS)
+
+Essas configurações são armazenadas em tabela dedicada no banco de dados, com fallback opcional para variáveis de ambiente. Há também um botão de **"Testar conexão"** que verifica, em tempo real, se o servidor SMTP está acessível com as credenciais informadas.
+
+### Gestão de Usuários e Perfis
+
+Além do controle de acesso por role, a área administrativa oferece uma tela completa de **gestão de usuários**:
+
+- Cadastro de novos usuários com nome, email, senha e perfil (admin ou operador)
+- Edição de usuários existentes (nome, email, senha e perfil)
+- Aprovação de usuários registrados via tela de cadastro pública (usuários entram inicialmente como "pendentes" até receberem um perfil)
+- Exclusão de usuários, com proteção para impedir a exclusão do próprio usuário logado e do **último administrador do sistema**
+
+Regras de segurança adicionais garantem que nunca fique o sistema sem ao menos um administrador ativo.
+
+### Fluxo de Agendamentos e Laudos
+
+As etapas de **Agendamento de Avaliação Psicológica** e **Agendamento de Laudo de Capacidade Técnica** permitem registrar:
+
+- Data e hora do agendamento
+- Nome do examinador responsável
+
+Os dados de agendamento ficam visíveis no card da etapa e alimentam diretamente o template de email de **Confirmação de Agendamento de Laudo**, garantindo que o cliente receba todas as informações (data, hora, examinador e orientações) de forma consistente e automatizada.
 
 ### Controle de Acesso e Permissões
 
@@ -48,7 +94,12 @@ A autenticação é realizada via OAuth integrado com contas Manus, garantindo s
 
 ### Dashboard Administrativo
 
-A página administrativa centraliza ferramentas de gestão e oferece visão estratégica do sistema através de estatísticas globais (total de clientes, clientes em andamento e concluídos). Administradores acessam rapidamente a edição de templates de email e podem expandir funcionalidades conforme necessidade do negócio.
+A página administrativa centraliza ferramentas de gestão e oferece visão estratégica do sistema através de estatísticas globais (total de clientes, clientes em andamento e concluídos). A partir deste painel, administradores acessam rapidamente:
+
+- Edição de templates de email
+- Configuração de SMTP
+- Gestão de usuários (criação, edição, aprovação e remoção)
+- Visão consolidada do progresso dos workflows
 
 ### Interface Moderna e Responsiva
 
