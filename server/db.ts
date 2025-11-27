@@ -158,7 +158,52 @@ export async function getWorkflowByClient(clientId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return await db.select().from(workflowSteps).where(eq(workflowSteps.clientId, clientId));
+  // Buscar etapas ordenadas por id para preservar a ordem canônica
+  const steps = await db
+    .select()
+    .from(workflowSteps)
+    .where(eq(workflowSteps.clientId, clientId))
+    .orderBy(workflowSteps.id);
+
+  // Correção defensiva: se alguma etapa estiver sem stepId ou stepTitle,
+  // e o cliente tiver exatamente as 6 etapas padrão, restaurar valores
+  const hasCorruptedSteps = steps.some(
+    (s: any) => !s.stepId || !s.stepTitle
+  );
+
+  if (hasCorruptedSteps && steps.length === 6) {
+    const canonicalSteps = [
+      { stepId: 'boas-vindas', stepTitle: 'Central de Mensagens' },
+      { stepId: 'cadastro', stepTitle: 'Cadastro' },
+      { stepId: 'agendamento-psicotecnico', stepTitle: 'Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo' },
+      { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)' },
+      { stepId: 'juntada-documento', stepTitle: 'Juntada de Documentos' },
+      { stepId: 'acompanhamento-sinarm', stepTitle: 'Acompanhamento Sinarm-CAC' },
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      const step: any = steps[i];
+      const canonical = canonicalSteps[i];
+      if (!step.stepId || !step.stepTitle) {
+        await db
+          .update(workflowSteps)
+          .set({
+            stepId: step.stepId || canonical.stepId,
+            stepTitle: step.stepTitle || canonical.stepTitle,
+          })
+          .where(eq(workflowSteps.id, step.id));
+      }
+    }
+
+    // Recarregar etapas já corrigidas
+    return await db
+      .select()
+      .from(workflowSteps)
+      .where(eq(workflowSteps.clientId, clientId))
+      .orderBy(workflowSteps.id);
+  }
+
+  return steps;
 }
 
 export async function getSubTasksByWorkflowStep(workflowStepId: number) {
@@ -253,6 +298,13 @@ export async function getAllUsers() {
   return await db.select().from(users).orderBy(desc(users.createdAt));
 }
 
+export async function updateUser(userId: number, data: Partial<InsertUser>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(users).set(data).where(eq(users.id, userId));
+}
+
 export async function updateUserRole(userId: number, role: "operator" | "admin") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -265,6 +317,79 @@ export async function deleteUser(userId: number) {
   if (!db) throw new Error("Database not available");
   
   await db.delete(users).where(eq(users.id, userId));
+}
+
+// Email settings (SMTP) - stored in a dedicated table managed via raw SQL
+export interface EmailSettings {
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;
+  smtpFrom: string;
+  useSecure: boolean;
+}
+
+async function ensureEmailSettingsTable(db: ReturnType<typeof drizzle>) {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS emailSettings (
+      id INT PRIMARY KEY,
+      smtpHost VARCHAR(255) NOT NULL,
+      smtpPort INT NOT NULL,
+      smtpUser VARCHAR(255) NOT NULL,
+      smtpPass VARCHAR(255) NOT NULL,
+      smtpFrom VARCHAR(255) NOT NULL,
+      useSecure TINYINT(1) NOT NULL DEFAULT 0,
+      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+export async function getEmailSettings(): Promise<EmailSettings | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  await ensureEmailSettingsTable(db);
+
+  const result: any = await db.execute(sql`
+    SELECT smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom, useSecure
+    FROM emailSettings
+    WHERE id = 1
+    LIMIT 1
+  `);
+
+  const rows = result[0] as any[];
+  if (!rows || rows.length === 0) {
+    return null;
+  }
+
+  const row = rows[0];
+  return {
+    smtpHost: row.smtpHost,
+    smtpPort: Number(row.smtpPort),
+    smtpUser: row.smtpUser,
+    smtpPass: row.smtpPass,
+    smtpFrom: row.smtpFrom,
+    useSecure: !!row.useSecure,
+  };
+}
+
+export async function saveEmailSettings(settings: EmailSettings): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await ensureEmailSettingsTable(db);
+
+  await db.execute(sql`
+    INSERT INTO emailSettings (id, smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom, useSecure)
+    VALUES (1, ${settings.smtpHost}, ${settings.smtpPort}, ${settings.smtpUser}, ${settings.smtpPass}, ${settings.smtpFrom}, ${settings.useSecure ? 1 : 0})
+    ON DUPLICATE KEY UPDATE
+      smtpHost = VALUES(smtpHost),
+      smtpPort = VALUES(smtpPort),
+      smtpUser = VALUES(smtpUser),
+      smtpPass = VALUES(smtpPass),
+      smtpFrom = VALUES(smtpFrom),
+      useSecure = VALUES(useSecure)
+  `);
 }
 
 // Email template operations

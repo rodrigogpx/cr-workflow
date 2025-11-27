@@ -14,6 +14,7 @@ interface EmailPreviewProps {
   title: string;
   requiresScheduling?: boolean;
   scheduledDate?: string | Date | null;
+  examinerName?: string | null;
 }
 
 export function EmailPreview({
@@ -24,6 +25,7 @@ export function EmailPreview({
   title,
   requiresScheduling = false,
   scheduledDate = null,
+  examinerName = null,
 }: EmailPreviewProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
@@ -60,9 +62,33 @@ export function EmailPreview({
     });
   };
 
-  // Substituir {{nome}} pelo nome do cliente
-  const previewSubject = template?.subject.replace(/\{\{nome\}\}/g, clientName) || "";
-  const previewContent = template?.content.replace(/\{\{nome\}\}/g, clientName) || "";
+  // Preparar substituições para preview (nome, data de agendamento e examinador)
+  const formatScheduledDate = (date?: string | Date | null) => {
+    if (!date) return "";
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  };
+
+  const schedulingDateFormatted = formatScheduledDate(scheduledDate);
+  const schedulingExaminer = examinerName || "";
+
+  let previewSubject = template?.subject || "";
+  let previewContent = template?.content || "";
+
+  if (previewSubject) {
+    previewSubject = previewSubject
+      .replace(/\{\{nome\}\}/g, clientName)
+      .replace(/\{\{data_agendamento\}\}/g, schedulingDateFormatted)
+      .replace(/\{\{examinador\}\}/g, schedulingExaminer);
+  }
+
+  if (previewContent) {
+    previewContent = previewContent
+      .replace(/\{\{nome\}\}/g, clientName)
+      .replace(/\{\{data_agendamento\}\}/g, schedulingDateFormatted)
+      .replace(/\{\{examinador\}\}/g, schedulingExaminer);
+  }
   const attachments = template?.attachments ? JSON.parse(template.attachments) : [];
 
   const wasAlreadySent = !!emailLog;

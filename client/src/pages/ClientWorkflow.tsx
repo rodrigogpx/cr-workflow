@@ -399,6 +399,17 @@ export default function ClientWorkflow() {
             const completedSubTasks = step.subTasks?.filter(st => st.completed).length || 0;
             const totalSubTasks = step.subTasks?.length || 0;
             const subTaskProgress = totalSubTasks > 0 ? Math.round((completedSubTasks / totalSubTasks) * 100) : 0;
+            const isPsychEvaluationForwardStep =
+              step.stepTitle?.includes("Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo") ?? false;
+            const canExpand =
+              !isPsychEvaluationForwardStep &&
+              (totalSubTasks > 0 ||
+                step.stepId === "cadastro" ||
+                step.stepId === "boas-vindas" ||
+                step.stepId === "agendamento-psicotecnico" ||
+                step.stepId === "agendamento-laudo" ||
+                step.stepId === "juntada-documentos" ||
+                step.stepId === "acompanhamento-sinarm");
 
             return (
               <Card 
@@ -461,7 +472,7 @@ export default function ClientWorkflow() {
                           Concluído
                         </Badge>
                       )}
-                      {(totalSubTasks > 0 || step.stepId === "cadastro" || step.stepId === "boas-vindas" || step.stepId === "agendamento-psicotecnico" || step.stepId === "agendamento-laudo" || step.stepId === "juntada-documentos" || step.stepId === "acompanhamento-sinarm") && (
+                      {canExpand && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -479,7 +490,7 @@ export default function ClientWorkflow() {
                 </CardHeader>
 
                 {/* Conteúdo Expandido */}
-                {isExpanded && (totalSubTasks > 0 || step.stepId === "cadastro" || step.stepId === "boas-vindas" || step.stepId === "agendamento-psicotecnico" || step.stepId === "agendamento-laudo" || step.stepId === "juntada-documentos" || step.stepId === "acompanhamento-sinarm") && (
+                {isExpanded && canExpand && (
                   <CardContent className="pt-0">
                     <Separator className="mb-4" />
                     
@@ -867,6 +878,7 @@ export default function ClientWorkflow() {
                                 title="Confirmação de Agendamento de Laudo"
                                 requiresScheduling={true}
                                 scheduledDate={step.scheduledDate}
+                                examinerName={step.examinerName}
                               />
                             )}
                           </div>

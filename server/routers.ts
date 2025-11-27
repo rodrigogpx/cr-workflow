@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { sendEmail } from "./emailService";
+import { sendEmail, verifyConnection } from "./emailService";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
@@ -435,11 +435,17 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
+        const currentStep = await db.getWorkflowStepById(input.stepId);
+        if (!currentStep) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
+        }
+
+        // Atualizar apenas campos de agendamento, preservando identificadores e título da etapa
         await db.upsertWorkflowStep({
-          id: input.stepId,
-          clientId: input.clientId,
-          stepId: '',
-          stepTitle: '',
+          id: currentStep.id,
+          clientId: currentStep.clientId,
+          stepId: currentStep.stepId,
+          stepTitle: currentStep.stepTitle,
           scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
           examinerName: input.examinerName || null,
         });
@@ -581,6 +587,86 @@ export const appRouter = router({
 
   // Email router
   emails: router({
+    // SMTP configuration - admin only
+    getSmtpConfig: adminProcedure
+      .query(async () => {
+        const settings = await db.getEmailSettings();
+
+        const fallbackFromEnv = {
+          smtpHost: process.env.SMTP_HOST || "",
+          smtpPort: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
+          smtpUser: process.env.SMTP_USER || "",
+          smtpFrom: process.env.SMTP_FROM || (process.env.SMTP_USER ? `"Firing Range" <${process.env.SMTP_USER}>` : ""),
+          useSecure: process.env.SMTP_PORT === "465",
+        };
+
+        if (!settings) {
+          return {
+            ...fallbackFromEnv,
+            hasPassword: Boolean(process.env.SMTP_PASS),
+            source: process.env.SMTP_HOST ? "env" : "none",
+          };
+        }
+
+        return {
+          smtpHost: settings.smtpHost,
+          smtpPort: settings.smtpPort,
+          smtpUser: settings.smtpUser,
+          smtpFrom: settings.smtpFrom,
+          useSecure: settings.useSecure,
+          hasPassword: true,
+          source: "database",
+        };
+      }),
+
+    updateSmtpConfig: adminProcedure
+      .input(z.object({
+        smtpHost: z.string().min(1),
+        smtpPort: z.number().int().positive(),
+        smtpUser: z.string().min(1),
+        smtpPass: z.string().optional(),
+        smtpFrom: z.string().min(1),
+        useSecure: z.boolean(),
+      }))
+      .mutation(async ({ input }) => {
+        const existing = await db.getEmailSettings();
+
+        const smtpPass = input.smtpPass !== undefined
+          ? input.smtpPass
+          : existing?.smtpPass || process.env.SMTP_PASS || "";
+
+        if (!smtpPass) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Informe a senha SMTP.",
+          });
+        }
+
+        await db.saveEmailSettings({
+          smtpHost: input.smtpHost,
+          smtpPort: input.smtpPort,
+          smtpUser: input.smtpUser,
+          smtpPass,
+          smtpFrom: input.smtpFrom,
+          useSecure: input.useSecure,
+        });
+
+        return { success: true };
+      }),
+
+    testSmtpConnection: adminProcedure
+      .mutation(async () => {
+        const ok = await verifyConnection();
+        if (!ok) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Falha ao conectar ao servidor SMTP. Verifique as configurações.",
+          });
+        }
+
+        return { success: true };
+      }),
+
     // Get email template
     getTemplate: protectedProcedure
       .input(z.object({
@@ -648,6 +734,22 @@ export const appRouter = router({
         const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
         const sinarmStatus = sinarmStep?.sinarmStatus || 'Nao iniciado';
 
+        // Buscar dados de agendamento de laudo (data e examinador)
+        const schedulingStep = workflow.find((s: any) => s.stepId === 'agendamento-laudo');
+        let schedulingDateFormatted = '';
+        let schedulingExaminer = '';
+
+        if (schedulingStep?.scheduledDate) {
+          schedulingDateFormatted = new Date(schedulingStep.scheduledDate).toLocaleString('pt-BR', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+          });
+        }
+
+        if (schedulingStep?.examinerName) {
+          schedulingExaminer = schedulingStep.examinerName;
+        }
+
         const replaceVariables = (text: string, clientData: any) => {
           let result = text;
           result = result.replace(/{{nome}}/g, clientData.name || '');
@@ -657,6 +759,15 @@ export const appRouter = router({
           result = result.replace(/{{email}}/g, clientData.email || '');
           result = result.replace(/{{cpf}}/g, clientData.cpf || '');
           result = result.replace(/{{telefone}}/g, clientData.phone || '');
+
+          // Variáveis específicas de agendamento de laudo
+          if (schedulingDateFormatted) {
+            result = result.replace(/{{data_agendamento}}/g, schedulingDateFormatted);
+          }
+          if (schedulingExaminer) {
+            result = result.replace(/{{examinador}}/g, schedulingExaminer);
+          }
+
           return result;
         };
 
@@ -706,13 +817,126 @@ export const appRouter = router({
       return await db.getAllUsers();
     }),
 
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1, "Nome é obrigatório"),
+        email: z.string().email("Email inválido"),
+        password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+        role: z.enum(['operator', 'admin']),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const existingUser = await db.getUserByEmail(input.email);
+        if (existingUser) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
+        }
+
+        const hashedPassword = await hashPassword(input.password);
+        const userId = await db.upsertUser({
+          name: input.name,
+          email: input.email,
+          hashedPassword,
+          role: input.role,
+        });
+
+        console.log('[AUDIT] User created', {
+          actorId: ctx.user.id,
+          targetUserId: userId,
+          email: input.email,
+          role: input.role,
+        });
+
+        return { success: true, userId };
+      }),
+
+    update: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        name: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        role: z.enum(['operator', 'admin']).optional(),
+        password: z.string().min(6).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await db.getUserById(input.userId);
+        if (!user) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
+        }
+
+        const admins = (await db.getAllUsers()).filter((u: any) => u.role === 'admin');
+        const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
+
+        const updateData: any = {};
+
+        if (input.name !== undefined) {
+          updateData.name = input.name;
+        }
+
+        if (input.email !== undefined) {
+          const other = await db.getUserByEmail(input.email);
+          if (other && other.id !== input.userId) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está em uso por outro usuário' });
+          }
+          updateData.email = input.email;
+        }
+
+        if (input.role !== undefined) {
+          if (isLastAdmin && input.role !== 'admin') {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Não é possível rebaixar o último administrador do sistema.',
+            });
+          }
+          updateData.role = input.role;
+        }
+
+        if (input.password !== undefined) {
+          updateData.hashedPassword = await hashPassword(input.password);
+        }
+
+        if (Object.keys(updateData).length === 0) {
+          return { success: true };
+        }
+
+        await db.updateUser(input.userId, updateData);
+
+        console.log('[AUDIT] User updated', {
+          actorId: ctx.user.id,
+          targetUserId: input.userId,
+          updatedFields: Object.keys(updateData),
+        });
+
+        return { success: true };
+      }),
+
     updateRole: adminProcedure
       .input(z.object({
         userId: z.number(),
         role: z.enum(['operator', 'admin']),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const user = await db.getUserById(input.userId);
+        if (!user) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
+        }
+
+        const admins = (await db.getAllUsers()).filter((u: any) => u.role === 'admin');
+        const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
+
+        if (isLastAdmin && input.role !== 'admin') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Não é possível rebaixar o último administrador do sistema.',
+          });
+        }
+
         await db.updateUserRole(input.userId, input.role);
+
+        console.log('[AUDIT] User role updated', {
+          actorId: ctx.user.id,
+          targetUserId: input.userId,
+          newRole: input.role,
+        });
+
         return { success: true };
       }),
 
@@ -721,8 +945,30 @@ export const appRouter = router({
         userId: z.number(),
         role: z.enum(['operator', 'admin']),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const user = await db.getUserById(input.userId);
+        if (!user) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
+        }
+
+        const admins = (await db.getAllUsers()).filter((u: any) => u.role === 'admin');
+        const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
+
+        if (isLastAdmin && input.role !== 'admin') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Não é possível rebaixar o último administrador do sistema.',
+          });
+        }
+
         await db.updateUserRole(input.userId, input.role);
+
+        console.log('[AUDIT] User role assigned', {
+          actorId: ctx.user.id,
+          targetUserId: input.userId,
+          newRole: input.role,
+        });
+
         return { success: true };
       }),
 
@@ -735,8 +981,29 @@ export const appRouter = router({
         if (input.userId === ctx.user.id) {
           throw new Error('Você não pode excluir seu próprio usuário');
         }
+
+        const user = await db.getUserById(input.userId);
+        if (!user) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
+        }
+
+        const admins = (await db.getAllUsers()).filter((u: any) => u.role === 'admin');
+        const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
+
+        if (isLastAdmin) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Não é possível excluir o último administrador do sistema.',
+          });
+        }
         
         await db.deleteUser(input.userId);
+
+        console.log('[AUDIT] User deleted', {
+          actorId: ctx.user.id,
+          targetUserId: input.userId,
+        });
+
         return { success: true };
       }),
   }),
