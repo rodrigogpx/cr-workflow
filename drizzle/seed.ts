@@ -7,12 +7,13 @@ import { hashPassword } from '../server/_core/auth';
 async function main() {
   console.log('🌱 Seeding database...');
 
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  // Permitir configuração via variáveis de ambiente, mas com defaults seguros para
+  // ambiente de desenvolvimento/local. Em produção, sempre sobrescreva via env.
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@firingrange.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
-  if (!adminEmail || !adminPassword) {
-    console.error('❌ Missing ADMIN_EMAIL or ADMIN_PASSWORD environment variables.');
-    process.exit(1);
+  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+    console.warn('⚠️ Using default admin credentials admin@firingrange.com / admin123 for seed. Override via ADMIN_EMAIL / ADMIN_PASSWORD in production.');
   }
 
   const dbUrl = process.env.DATABASE_URL;
@@ -33,7 +34,7 @@ async function main() {
     const hashedPassword = await hashPassword(adminPassword);
 
     await db.insert(users).values({
-      name: 'Admin',
+      name: 'Administrador',
       email: adminEmail,
       hashedPassword: hashedPassword,
       role: 'admin',

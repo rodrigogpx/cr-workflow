@@ -202,7 +202,18 @@ INSERT INTO emailTemplates (templateKey, subject, content, createdAt, updatedAt)
 
 ### Usuário Administrador Inicial
 
-O primeiro usuário administrador será criado automaticamente no primeiro login via OAuth Manus. Certifique-se de que as variáveis `OWNER_NAME` e `OWNER_OPEN_ID` no arquivo `.env` estão configuradas corretamente com os dados do administrador principal.
+O primeiro usuário administrador é criado via script de seed do banco de dados. Após configurar as variáveis de ambiente e o `DATABASE_URL`, execute:
+
+```bash
+pnpm db:seed
+```
+
+Por padrão, se as variáveis `ADMIN_EMAIL` e `ADMIN_PASSWORD` **não** estiverem definidas, o seed criará um usuário administrador com as seguintes credenciais (apenas para ambientes de desenvolvimento):
+
+- Email: `admin@firingrange.com`
+- Senha: `admin123`
+
+Em produção, **sempre** defina `ADMIN_EMAIL` e `ADMIN_PASSWORD` no `.env` antes de rodar o seed para utilizar credenciais específicas e seguras.
 
 ## Build da Aplicação
 
