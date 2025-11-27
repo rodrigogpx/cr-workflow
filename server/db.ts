@@ -1,6 +1,6 @@
-import { eq, and, desc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { 
   InsertUser, 
   users, 
@@ -20,12 +20,14 @@ import {
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _client: ReturnType<typeof postgres> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _client = postgres(process.env.DATABASE_URL);
+      _db = drizzle(_client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -44,8 +46,11 @@ export async function upsertUser(user: InsertUser & { id?: number }): Promise<nu
     await db.update(users).set(user).where(eq(users.id, user.id));
     return user.id;
   } else {
-    const result = await db.insert(users).values(user);
-    return result[0].insertId;
+    const [inserted] = await db
+      .insert(users)
+      .values(user)
+      .returning({ id: users.id });
+    return inserted.id;
   }
 }
 
@@ -92,23 +97,13 @@ export async function createClient(client: InsertClient) {
   
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
-  // Use raw SQL to avoid Drizzle's default value issues
-  const query = sql`
-    INSERT INTO clients (name, cpf, phone, email, operatorId)
-    VALUES (${client.name}, ${client.cpf}, ${client.phone}, ${client.email}, ${client.operatorId})
-  `;
-  
-  console.log("[createClient] Executing SQL with params:", {
-    name: client.name,
-    cpf: client.cpf,
-    phone: client.phone,
-    email: client.email,
-    operatorId: client.operatorId
-  });
-  
-  const result = await db.execute(query);
-  return Number(result[0].insertId);
+
+  const [inserted] = await db
+    .insert(clients)
+    .values(client)
+    .returning({ id: clients.id });
+
+  return inserted.id;
 }
 
 export async function getClientsByOperator(operatorId: number) {
@@ -229,8 +224,11 @@ export async function upsertWorkflowStep(step: InsertWorkflowStep & { id?: numbe
     await db.update(workflowSteps).set(step).where(eq(workflowSteps.id, step.id));
     return step.id;
   } else {
-    const result = await db.insert(workflowSteps).values(step);
-    return result[0].insertId;
+    const [inserted] = await db
+      .insert(workflowSteps)
+      .values(step)
+      .returning({ id: workflowSteps.id });
+    return inserted.id;
   }
 }
 
@@ -242,8 +240,11 @@ export async function upsertSubTask(task: InsertSubTask & { id?: number }) {
     await db.update(subTasks).set(task).where(eq(subTasks.id, task.id));
     return task.id;
   } else {
-    const result = await db.insert(subTasks).values(task);
-    return result[0].insertId;
+    const [inserted] = await db
+      .insert(subTasks)
+      .values(task)
+      .returning({ id: subTasks.id });
+    return inserted.id;
   }
 }
 
@@ -264,8 +265,11 @@ export async function createDocument(doc: InsertDocument) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(documents).values(doc);
-  return result[0].insertId;
+  const [inserted] = await db
+    .insert(documents)
+    .values(doc)
+    .returning({ id: documents.id });
+  return inserted.id;
 }
 
 export async function getDocumentsByClient(clientId: number) {
@@ -331,16 +335,16 @@ export interface EmailSettings {
 
 async function ensureEmailSettingsTable(db: ReturnType<typeof drizzle>) {
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS emailSettings (
-      id INT PRIMARY KEY,
-      smtpHost VARCHAR(255) NOT NULL,
-      smtpPort INT NOT NULL,
-      smtpUser VARCHAR(255) NOT NULL,
-      smtpPass VARCHAR(255) NOT NULL,
-      smtpFrom VARCHAR(255) NOT NULL,
-      useSecure TINYINT(1) NOT NULL DEFAULT 0,
-      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )
+    CREATE TABLE IF NOT EXISTS "emailSettings" (
+      id INTEGER PRIMARY KEY,
+      "smtpHost" VARCHAR(255) NOT NULL,
+      "smtpPort" INTEGER NOT NULL,
+      "smtpUser" VARCHAR(255) NOT NULL,
+      "smtpPass" VARCHAR(255) NOT NULL,
+      "smtpFrom" VARCHAR(255) NOT NULL,
+      "useSecure" BOOLEAN NOT NULL DEFAULT FALSE,
+      "updatedAt" TIMESTAMP DEFAULT NOW()
+    );
   `);
 }
 
@@ -380,15 +384,15 @@ export async function saveEmailSettings(settings: EmailSettings): Promise<void> 
   await ensureEmailSettingsTable(db);
 
   await db.execute(sql`
-    INSERT INTO emailSettings (id, smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom, useSecure)
-    VALUES (1, ${settings.smtpHost}, ${settings.smtpPort}, ${settings.smtpUser}, ${settings.smtpPass}, ${settings.smtpFrom}, ${settings.useSecure ? 1 : 0})
-    ON DUPLICATE KEY UPDATE
-      smtpHost = VALUES(smtpHost),
-      smtpPort = VALUES(smtpPort),
-      smtpUser = VALUES(smtpUser),
-      smtpPass = VALUES(smtpPass),
-      smtpFrom = VALUES(smtpFrom),
-      useSecure = VALUES(useSecure)
+    INSERT INTO "emailSettings" (id, "smtpHost", "smtpPort", "smtpUser", "smtpPass", "smtpFrom", "useSecure")
+    VALUES (1, ${settings.smtpHost}, ${settings.smtpPort}, ${settings.smtpUser}, ${settings.smtpPass}, ${settings.smtpFrom}, ${settings.useSecure})
+    ON CONFLICT (id) DO UPDATE SET
+      "smtpHost" = EXCLUDED."smtpHost",
+      "smtpPort" = EXCLUDED."smtpPort",
+      "smtpUser" = EXCLUDED."smtpUser",
+      "smtpPass" = EXCLUDED."smtpPass",
+      "smtpFrom" = EXCLUDED."smtpFrom",
+      "useSecure" = EXCLUDED."useSecure";
   `);
 }
 
@@ -433,8 +437,11 @@ export async function saveEmailTemplate(template: InsertEmailTemplate) {
     return existing.id;
   } else {
     // Insert new template
-    const result = await db.insert(emailTemplates).values(template);
-    return result[0].insertId;
+    const [inserted] = await db
+      .insert(emailTemplates)
+      .values(template)
+      .returning({ id: emailTemplates.id });
+    return inserted.id;
   }
 }
 
@@ -442,8 +449,11 @@ export async function logEmailSent(log: InsertEmailLog) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(emailLogs).values(log);
-  return result[0].insertId;
+  const [inserted] = await db
+    .insert(emailLogs)
+    .values(log)
+    .returning({ id: emailLogs.id });
+  return inserted.id;
 }
 
 export async function getEmailLogsByClient(clientId: number) {

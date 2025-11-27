@@ -1,5 +1,6 @@
 import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/mysql2';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
 import { users } from './schema';
 import { hashPassword } from '../server/_core/auth';
@@ -23,7 +24,8 @@ async function main() {
   }
 
   try {
-    const db = drizzle(dbUrl);
+    const client = postgres(dbUrl);
+    const db = drizzle(client);
 
     const existingAdmin = await db.select().from(users).where(eq(users.email, adminEmail));
     if (existingAdmin.length > 0) {
