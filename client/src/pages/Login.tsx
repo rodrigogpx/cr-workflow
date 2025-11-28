@@ -65,35 +65,35 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(196,30,58,0.1),transparent_50%)]"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(18,58,99,0.15),transparent_50%)]"></div>
       <div className="absolute inset-0" style={{
         backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)',
         backgroundSize: '100% 4px'
       }}></div>
 
-      <Card className="w-full max-w-md border-2 border-dashed border-white/20 bg-card/95 backdrop-blur-sm shadow-2xl relative z-10">
-        <CardHeader className="space-y-6 text-center pb-8">
+      <Card className="w-full max-w-xs border border-primary/30 bg-card/95 backdrop-blur-sm shadow-xl relative z-10">
+        <CardHeader className="space-y-4 text-center pb-4">
           <div className="flex justify-center">
             <div className="relative">
               <img 
                 src={APP_LOGO}
                 alt="CAC 360 – Gestão de Ciclo Completo" 
-                className="h-20 w-auto"
+                className="h-14 w-auto"
               />
-              <div className="absolute -inset-2 border-2 border-dashed border-primary/30 rounded-lg -z-10"></div>
+              <div className="absolute -inset-2 border border-secondary/40 rounded-lg -z-10"></div>
             </div>
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-3xl font-bold uppercase tracking-tight text-white">
+            <CardTitle className="text-xl font-bold uppercase tracking-tight text-primary">
               {APP_TITLE || "CAC 360 – Gestão de Ciclo Completo"}
             </CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
+            <CardDescription className="text-sm text-muted-foreground">
               CAC 360 – Gestão de Ciclo Completo
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <CardContent className="space-y-4 pt-0">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="seu@email.com" {...register("email")} />
@@ -108,7 +108,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={loginMutation.isPending}
-              className="w-full h-12 bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide text-base transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5"
+              className="w-full h-10 bg-primary hover:bg-primary/90 font-semibold uppercase tracking-wide text-sm transition-all duration-300 hover:shadow-md hover:shadow-primary/20"
             >
               {loginMutation.isPending ? (
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -119,30 +119,30 @@ export default function Login() {
             </Button>
           </form>
 
-          <div className="pt-6 border-t-2 border-dashed border-white/10">
+          <div className="pt-4 border-t border-border">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="space-y-1">
-                <div className="w-12 h-12 mx-auto border-2 border-dashed border-primary/40 rounded-lg flex items-center justify-center bg-primary/10">
-                  <span className="text-lg font-bold text-primary">1</span>
+                <div className="w-10 h-10 mx-auto border border-secondary/50 rounded-lg flex items-center justify-center bg-secondary/10">
+                  <span className="text-sm font-bold text-secondary">1</span>
                 </div>
                 <p className="text-xs text-muted-foreground uppercase">Cadastro</p>
               </div>
               <div className="space-y-1">
-                <div className="w-12 h-12 mx-auto border-2 border-dashed border-primary/40 rounded-lg flex items-center justify-center bg-primary/10">
-                  <span className="text-lg font-bold text-primary">2</span>
+                <div className="w-10 h-10 mx-auto border border-secondary/50 rounded-lg flex items-center justify-center bg-secondary/10">
+                  <span className="text-sm font-bold text-secondary">2</span>
                 </div>
                 <p className="text-xs text-muted-foreground uppercase">Documentos</p>
               </div>
               <div className="space-y-1">
-                <div className="w-12 h-12 mx-auto border-2 border-dashed border-primary/40 rounded-lg flex items-center justify-center bg-primary/10">
-                  <span className="text-lg font-bold text-primary">3</span>
+                <div className="w-10 h-10 mx-auto border border-secondary/50 rounded-lg flex items-center justify-center bg-secondary/10">
+                  <span className="text-sm font-bold text-secondary">3</span>
                 </div>
                 <p className="text-xs text-muted-foreground uppercase">Aprovação</p>
               </div>
             </div>
           </div>
 
-          <div className="pt-4 border-t-2 border-dashed border-white/10">
+          <div className="pt-3 border-t border-border">
             <div className="text-center space-y-3">
               <p className="text-sm text-muted-foreground">
                 Não tem uma conta?
@@ -150,7 +150,7 @@ export default function Login() {
               <Link href="/register">
                 <Button
                   variant="outline"
-                  className="w-full border-2 border-dashed border-white/20 bg-transparent hover:bg-white/5 font-bold uppercase tracking-wide"
+                  className="w-full border-secondary/40 bg-transparent hover:bg-secondary/10 font-semibold uppercase tracking-wide text-sm"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Criar Conta
@@ -159,7 +159,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="text-center pt-4 border-t-2 border-dashed border-white/10">
+          <div className="text-center pt-3 border-t border-border">
             <p className="text-xs text-muted-foreground">
               Acesso restrito à equipe CAC 360
             </p>
