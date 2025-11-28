@@ -40,13 +40,24 @@ export default function MainDashboard() {
               </p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 text-xs sm:text-sm">
+          <div className="flex flex-col items-end gap-2 text-xs sm:text-sm">
             <span className="px-2 py-0.5 rounded-full border border-white/30 bg-background/60 font-semibold uppercase tracking-wide text-[0.7rem] sm:text-[0.75rem]">
               {roleLabel}
             </span>
             <span className="text-muted-foreground truncate max-w-[180px] sm:max-w-xs text-right">
               {user?.name || user?.email}
             </span>
+            {user?.role === "admin" && (
+              <Button
+                variant="outline"
+                onClick={() => setLocation("/platform-admin/users")}
+                style={{ color: "#c2c1c1" }}
+                className="mt-1 h-8 px-3 text-[0.65rem] sm:text-[0.7rem] font-semibold uppercase tracking-wide border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10 flex items-center gap-1"
+              >
+                <Shield className="h-3 w-3" />
+                Administração
+              </Button>
+            )}
           </div>
         </header>
 
