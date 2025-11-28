@@ -64,12 +64,17 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(18,58,99,0.15),transparent_50%)]"></div>
-      <div className="absolute inset-0" style={{
-        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)',
-        backgroundSize: '100% 4px'
-      }}></div>
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage: 'url("/background-01.webp")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+      {/* Overlay for readability */}
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px] z-0"></div>
 
       <Card className="w-full max-w-xs border border-primary/30 bg-card/95 backdrop-blur-sm shadow-xl relative z-10">
         <CardHeader className="space-y-4 text-center pb-4">
