@@ -42,8 +42,20 @@ export default function PendingApproval() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage: 'url("/background-01.webp")',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
+      {/* Overlay for readability */}
+      <div className="absolute inset-0 bg-[#0A0A0A]/85 backdrop-blur-[2px] z-0"></div>
+
+      <div className="w-full max-w-2xl relative z-10">
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <img 
