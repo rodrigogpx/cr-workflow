@@ -147,7 +147,23 @@ function App() {
           <ThemeProvider defaultTheme="light">
             <TooltipProvider>
               <Toaster />
-              <Router />
+              <div className="min-h-screen relative overflow-hidden">
+                {/* Background Image global */}
+                <div
+                  className="absolute inset-0 -z-20"
+                  style={{
+                    backgroundImage: 'url("/background-01.webp")',
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
+                />
+                {/* Overlay para legibilidade em todas as páginas */}
+                <div className="absolute inset-0 -z-10 bg-background/80 backdrop-blur-[2px]"></div>
+
+                <div className="relative z-10">
+                  <Router />
+                </div>
+              </div>
             </TooltipProvider>
           </ThemeProvider>
         </ErrorBoundary>
