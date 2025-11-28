@@ -38,6 +38,28 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+const formatCPF = (value: string): string => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+};
+
+const formatPhone = (value: string): string => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+};
+
+const formatCEP = (value: string): string => {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+};
+
 export default function ClientWorkflow() {
   const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
@@ -210,13 +232,31 @@ export default function ClientWorkflow() {
   };
 
   const handleClientDataUpdate = () => {
-    if (!clientFormData.name || !clientFormData.cpf) {
-      toast.error("Nome e CPF são obrigatórios");
+    const name = clientFormData.name?.trim();
+    const cpfDigits = (clientFormData.cpf || "").replace(/\D/g, "");
+
+    if (!name) {
+      toast.error("Nome completo é obrigatório");
       return;
     }
+
+    if (!cpfDigits || cpfDigits.length !== 11) {
+      toast.error("CPF é obrigatório e deve ter 11 dígitos");
+      return;
+    }
+
+    const phoneDigits = (clientFormData.phone || "").replace(/\D/g, "");
+    const phone2Digits = (clientFormData.phone2 || "").replace(/\D/g, "");
+    const cepDigits = (clientFormData.cep || "").replace(/\D/g, "");
+
     updateClientMutation.mutate({
       id: Number(clientId),
       ...clientFormData,
+      name,
+      cpf: cpfDigits,
+      phone: phoneDigits,
+      phone2: phone2Digits,
+      cep: cepDigits,
     });
   };
 
@@ -225,8 +265,8 @@ export default function ClientWorkflow() {
     if (client) {
       setClientFormData({
         name: client.name || '',
-        cpf: client.cpf || '',
-        phone: client.phone || '',
+        cpf: client.cpf ? formatCPF(client.cpf) : '',
+        phone: client.phone ? formatPhone(client.phone) : '',
         email: client.email || '',
         identityNumber: client.identityNumber || '',
         identityIssueDate: client.identityIssueDate || '',
@@ -241,10 +281,18 @@ export default function ClientWorkflow() {
         otherProfession: client.otherProfession || '',
         registrationNumber: client.registrationNumber || '',
         currentActivities: client.currentActivities || '',
-        phone2: client.phone2 || '',
+        phone2: client.phone2 ? formatPhone(client.phone2) : '',
         motherName: client.motherName || '',
         fatherName: client.fatherName || '',
-        cep: client.cep || '',
+        maritalStatus: client.maritalStatus || '',
+        requestType: client.requestType || '',
+        cacNumber: client.cacNumber || '',
+        cacCategory: client.cacCategory || '',
+        previousCrNumber: client.previousCrNumber || '',
+        psychReportValidity: client.psychReportValidity || '',
+        techReportValidity: client.techReportValidity || '',
+        residenceUf: client.residenceUf || '',
+        cep: client.cep ? formatCEP(client.cep) : '',
         address: client.address || '',
         addressNumber: client.addressNumber || '',
         neighborhood: client.neighborhood || '',
@@ -307,7 +355,7 @@ export default function ClientWorkflow() {
                 <div className="flex items-center gap-4 mt-1 text-sm" style={{color: '#b8b7b7'}}>
                   <span className="flex items-center gap-1">
                     <User className="h-4 w-4" />
-                    {client.cpf}
+                    {client.cpf && formatCPF(client.cpf)}
                   </span>
                   <span className="flex items-center gap-1">
                     <Mail className="h-4 w-4" />
@@ -315,7 +363,7 @@ export default function ClientWorkflow() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Phone className="h-4 w-4" />
-                    {client.phone}
+                    {client.phone && formatPhone(client.phone)}
                   </span>
                 </div>
               </div>
@@ -548,6 +596,7 @@ export default function ClientWorkflow() {
                         </div>
                         
                         <div className="space-y-6">
+                          <div className="text-xs font-semibold text-yellow-900 uppercase tracking-wide">Dados pessoais</div>
                           {/* Nome Completo */}
                           <div>
                             <Label htmlFor="name" className="text-sm font-medium">Nome Completo</Label>
@@ -576,6 +625,17 @@ export default function ClientWorkflow() {
                                 <Label htmlFor="gender-f" className="cursor-pointer">F</Label>
                               </div>
                             </RadioGroup>
+                          </div>
+
+                          {/* Linha: Estado Civil */}
+                          <div>
+                            <Label htmlFor="maritalStatus" className="text-sm font-medium text-teal-600">Estado Civil</Label>
+                            <Input
+                              id="maritalStatus"
+                              value={clientFormData.maritalStatus || ''}
+                              onChange={(e) => setClientFormData(prev => ({ ...prev, maritalStatus: e.target.value }))}
+                              className="mt-1"
+                            />
                           </div>
 
                           {/* Linha: CPF, Nº Identidade, Data de Expedição, Órgão Emissor, UF */}
@@ -717,6 +777,79 @@ export default function ClientWorkflow() {
                             </div>
                           </div>
 
+                          <div className="pt-4 border-t border-yellow-200 space-y-4">
+                            <div className="text-xs font-semibold text-yellow-900 uppercase tracking-wide">Dados do CR / CAC</div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Label htmlFor="requestType" className="text-sm font-medium text-teal-600">Tipo de Solicitação</Label>
+                                <Select
+                                  value={clientFormData.requestType || ""}
+                                  onValueChange={(value) => setClientFormData(prev => ({ ...prev, requestType: value }))}
+                                >
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue placeholder="Selecione" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Concessão">Concessão</SelectItem>
+                                    <SelectItem value="Renovação">Renovação</SelectItem>
+                                    <SelectItem value="2ª Via">2ª Via</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label htmlFor="cacNumber" className="text-sm font-medium text-teal-600">Nº CAC</Label>
+                                <Input
+                                  id="cacNumber"
+                                  value={clientFormData.cacNumber || ''}
+                                  onChange={(e) => setClientFormData(prev => ({ ...prev, cacNumber: e.target.value }))}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="cacCategory" className="text-sm font-medium text-teal-600">Categoria CAC</Label>
+                                <Input
+                                  id="cacCategory"
+                                  value={clientFormData.cacCategory || ''}
+                                  onChange={(e) => setClientFormData(prev => ({ ...prev, cacCategory: e.target.value }))}
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Label htmlFor="previousCrNumber" className="text-sm font-medium text-teal-600">Nº CR Anterior (se houver)</Label>
+                                <Input
+                                  id="previousCrNumber"
+                                  value={clientFormData.previousCrNumber || ''}
+                                  onChange={(e) => setClientFormData(prev => ({ ...prev, previousCrNumber: e.target.value }))}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="psychReportValidity" className="text-sm font-medium text-teal-600">Validade Laudo Psicológico</Label>
+                                <Input
+                                  id="psychReportValidity"
+                                  type="date"
+                                  value={clientFormData.psychReportValidity || ''}
+                                  onChange={(e) => setClientFormData(prev => ({ ...prev, psychReportValidity: e.target.value }))}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="techReportValidity" className="text-sm font-medium text-teal-600">Validade Laudo Capacidade Técnica</Label>
+                                <Input
+                                  id="techReportValidity"
+                                  type="date"
+                                  value={clientFormData.techReportValidity || ''}
+                                  onChange={(e) => setClientFormData(prev => ({ ...prev, techReportValidity: e.target.value }))}
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">Contato</div>
                           {/* Linha: Telefone 1, Telefone 2, Email */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
@@ -724,7 +857,7 @@ export default function ClientWorkflow() {
                               <Input
                                 id="phone"
                                 value={clientFormData.phone || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, phone: e.target.value }))}
+                                onChange={(e) => setClientFormData(prev => ({ ...prev, phone: formatPhone(e.target.value) }))}
                                 className="mt-1"
                               />
                             </div>
@@ -733,7 +866,7 @@ export default function ClientWorkflow() {
                               <Input
                                 id="phone2"
                                 value={clientFormData.phone2 || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, phone2: e.target.value }))}
+                                onChange={(e) => setClientFormData(prev => ({ ...prev, phone2: formatPhone(e.target.value) }))}
                                 className="mt-1"
                               />
                             </div>
@@ -771,6 +904,7 @@ export default function ClientWorkflow() {
                             />
                           </div>
 
+                          <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">Endereço</div>
                           {/* Linha: CEP, Endereço Residencial */}
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
@@ -778,7 +912,7 @@ export default function ClientWorkflow() {
                               <Input
                                 id="cep"
                                 value={clientFormData.cep || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, cep: e.target.value }))}
+                                onChange={(e) => setClientFormData(prev => ({ ...prev, cep: formatCEP(e.target.value) }))}
                                 className="mt-1"
                               />
                             </div>
@@ -810,6 +944,28 @@ export default function ClientWorkflow() {
                                 id="city"
                                 value={clientFormData.city || ''}
                                 onChange={(e) => setClientFormData(prev => ({ ...prev, city: e.target.value }))}
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="addressNumber" className="text-sm font-medium text-teal-600">Número</Label>
+                              <Input
+                                id="addressNumber"
+                                value={clientFormData.addressNumber || ''}
+                                onChange={(e) => setClientFormData(prev => ({ ...prev, addressNumber: e.target.value }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="residenceUf" className="text-sm font-medium text-teal-600">UF Residência</Label>
+                              <Input
+                                id="residenceUf"
+                                maxLength={2}
+                                value={clientFormData.residenceUf || ''}
+                                onChange={(e) => setClientFormData(prev => ({ ...prev, residenceUf: e.target.value.toUpperCase() }))}
                                 className="mt-1"
                               />
                             </div>

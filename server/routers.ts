@@ -219,22 +219,105 @@ export const appRouter = router({
             
             for (let i = 0; i < documents.length; i++) {
               await db.upsertSubTask({
-                workflowStepId,
-                subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
-                label: documents[i],
                 completed: false,
               });
+              
+              // Se for a etapa "Juntada de Documento", criar as 16 subtarefas (documentos)
+              if (step.stepId === 'juntada-documento') {
+                const documents = [
+                  'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
+                  'Certidão de Antecedente Criminal Justiça Federal',
+                  'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
+                  'Documento de Identificação Pessoal',
+                  'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
+                  'Comprovante de Residência Fixa',
+                  'Comprovante de Ocupação Lícita',
+                  'Comprovante de filiação a entidade de caça',
+                  'Comprovante de Segundo Endereço',
+                  'Certidão de Antecedente Criminal Justiça Estadual',
+                  'Declaração de Segurança do Acervo',
+                  'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
+                  'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
+                  'Comprovante de filiação a entidade de tiro desportivo',
+                  'Certidão de Antecedente Criminal Justiça Militar',
+                  'Certidão de Antecedente Criminal Justiça Eleitoral',
+                ];
+                
+                for (let i = 0; i < documents.length; i++) {
+                  await db.upsertSubTask({
+                    workflowStepId,
+                    subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
+                    label: documents[i],
+                    completed: false,
+                  });
+                }
+              }
             }
-          }
-        }
-        
-        return { id: clientId };
-      }),
+            
+            return { id: clientId };
+          }),
 
-    update: protectedProcedure
-      .input(z.object({
-        id: z.number(),
-        name: z.string().min(1).optional(),
+        update: protectedProcedure
+          .input(z.object({
+            id: z.number(),
+            name: z.string().min(1).optional(),
+            cpf: z.string().min(11).optional(),
+            phone: z.string().min(1).optional(),
+            email: z.string().email().optional(),
+            operatorId: z.number().optional(),
+            // Dados pessoais adicionais
+            identityNumber: z.string().optional(),
+            identityIssueDate: z.string().optional(),
+            identityIssuer: z.string().optional(),
+            identityUf: z.string().optional(),
+            birthDate: z.string().optional(),
+            birthCountry: z.string().optional(),
+            birthUf: z.string().optional(),
+            birthPlace: z.string().optional(),
+            gender: z.string().optional(),
+            profession: z.string().optional(),
+            otherProfession: z.string().optional(),
+            registrationNumber: z.string().optional(),
+            currentActivities: z.string().optional(),
+            phone2: z.string().optional(),
+            motherName: z.string().optional(),
+            fatherName: z.string().optional(),
+            maritalStatus: z.string().optional(),
+            requestType: z.string().optional(),
+            cacNumber: z.string().optional(),
+            cacCategory: z.string().optional(),
+            previousCrNumber: z.string().optional(),
+            psychReportValidity: z.string().optional(),
+            techReportValidity: z.string().optional(),
+            residenceUf: z.string().optional(),
+            // Endereço
+            cep: z.string().optional(),
+            address: z.string().optional(),
+            addressNumber: z.string().optional(),
+            neighborhood: z.string().optional(),
+            city: z.string().optional(),
+            complement: z.string().optional(),
+          }))
+          .mutation(async ({ ctx, input }) => {
+            const client = await db.getClientById(input.id);
+            if (!client) {
+              throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+            }
+            
+            // Verificar permissão
+            if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para editar este cliente' });
+            }
+            
+            // Apenas admin pode alterar operador
+            if (input.operatorId && ctx.user.role !== 'admin') {
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas administradores podem delegar clientes' });
+            }
+            
+            const { id, ...updateData } = input;
+            await db.updateClient(id, updateData);
+            return { success: true };
+          }),
         cpf: z.string().min(11).optional(),
         phone: z.string().min(1).optional(),
         email: z.string().email().optional(),
@@ -256,6 +339,14 @@ export const appRouter = router({
         phone2: z.string().optional(),
         motherName: z.string().optional(),
         fatherName: z.string().optional(),
+        maritalStatus: z.string().optional(),
+        requestType: z.string().optional(),
+        cacNumber: z.string().optional(),
+        cacCategory: z.string().optional(),
+        previousCrNumber: z.string().optional(),
+        psychReportValidity: z.string().optional(),
+        techReportValidity: z.string().optional(),
+        residenceUf: z.string().optional(),
         // Endereço
         cep: z.string().optional(),
         address: z.string().optional(),
