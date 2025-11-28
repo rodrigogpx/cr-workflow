@@ -88,6 +88,12 @@ export default function Dashboard() {
     return null;
   }
 
+  const roleLabel = !user.role
+    ? "Pendente"
+    : user.role === "admin"
+      ? "Administrador"
+      : "Operador";
+
   const filteredClients = clients?.filter((client) =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.cpf.includes(searchTerm) ||
@@ -99,17 +105,17 @@ export default function Dashboard() {
   const inProgress = totalClients - completed;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen">
       {/* Header com estilo Firing Range */}
       <header className="border-b-2 border-dashed border-white/20 bg-black sticky top-0 z-10">
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src={APP_LOGO} alt="CAC 360 – Gestão de Ciclo Completo" className="h-12 w-auto" />
+              <img src={APP_LOGO} alt="CAC 360 – Workflow CR" className="h-12 w-auto" />
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight uppercase">CAC 360 – Gestão de Ciclo Completo</h1>
-                <p className="text-sm text-muted-foreground">
-                  {user.role === 'admin' ? 'Administrador' : 'Operador'} - {user.name || user.email}
+                <h1 className="text-2xl font-bold text-white tracking-tight uppercase">CAC 360 – Workflow CR</h1>
+                <p className="text-sm text-white/70">
+                  Módulo Workflow CR · {roleLabel} · {user.name || user.email}
                 </p>
               </div>
             </div>
