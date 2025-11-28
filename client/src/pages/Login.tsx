@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { APP_TITLE } from "@/const";
+import { APP_LOGO, APP_TITLE } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -76,8 +76,8 @@ export default function Login() {
           <div className="flex justify-center">
             <div className="relative">
               <img 
-                src="/logo.webp" 
-                alt="Firing Range" 
+                src={APP_LOGO}
+                alt="CAC 360 – Gestão de Ciclo Completo" 
                 className="h-20 w-auto"
               />
               <div className="absolute -inset-2 border-2 border-dashed border-primary/30 rounded-lg -z-10"></div>
@@ -85,10 +85,10 @@ export default function Login() {
           </div>
           <div className="space-y-2">
             <CardTitle className="text-3xl font-bold uppercase tracking-tight text-white">
-              {APP_TITLE || "FIRING RANGE"}
+              {APP_TITLE || "CAC 360 – Gestão de Ciclo Completo"}
             </CardTitle>
             <CardDescription className="text-base text-muted-foreground">
-              Sistema de Gerenciamento de Workflow CR
+              CAC 360 – Gestão de Ciclo Completo
             </CardDescription>
           </div>
         </CardHeader>
@@ -161,10 +161,10 @@ export default function Login() {
 
           <div className="text-center pt-4 border-t-2 border-dashed border-white/10">
             <p className="text-xs text-muted-foreground">
-              Acesso restrito à equipe Firing Range
+              Acesso restrito à equipe CAC 360
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              © {new Date().getFullYear()} Firing Range. Todos os direitos reservados.
+              © {new Date().getFullYear()} CAC 360. Todos os direitos reservados.
             </p>
           </div>
         </CardContent>

@@ -11,7 +11,7 @@ export default function Footer() {
           <div className="flex items-center gap-2">
             <span>Desenvolvido por</span>
             <span className="font-semibold text-foreground">ACR Digital</span>
-            <span>para Firing Range</span>
+            <span>para CAC 360</span>
           </div>
         </div>
       </div>

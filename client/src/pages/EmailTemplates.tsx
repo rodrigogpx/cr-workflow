@@ -289,7 +289,7 @@ export default function EmailTemplates() {
                     <Label htmlFor="smtpFrom">Remetente (From)</Label>
                     <Input
                       id="smtpFrom"
-                      placeholder='Ex: "Firing Range" <no-reply@seu-dominio.com>'
+                      placeholder='Ex: "CAC 360" <no-reply@seu-dominio.com>'
                       value={smtpFrom}
                       onChange={(e) => setSmtpFrom(e.target.value)}
                     />

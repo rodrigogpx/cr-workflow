@@ -48,7 +48,7 @@ export default function PendingApproval() {
         <div className="flex justify-center mb-8">
           <img 
             src={APP_LOGO} 
-            alt="Firing Range" 
+            alt="CAC 360 – Gestão de Ciclo Completo" 
             className="h-24 w-auto"
           />
         </div>
@@ -124,7 +124,7 @@ export default function PendingApproval() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-white/40 text-sm">
-          <p>Firing Range - Tiro e Caça</p>
+          <p>CAC 360 – Gestão de Ciclo Completo</p>
           <p className="mt-1">DF-150, Km 08 - Sobradinho/DF</p>
         </div>
       </div>

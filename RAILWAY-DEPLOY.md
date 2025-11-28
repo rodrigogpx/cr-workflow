@@ -117,8 +117,8 @@ No serviço da aplicação, vá em **Settings** → **Variables** e adicione:
 
 | Variável | Valor | Descrição |
 |----------|-------|-----------|
-| `VITE_APP_TITLE` | `Firing Range - Sistema de Workflow CR` | Título da aplicação |
-| `VITE_APP_LOGO` | `/logo.webp` | Caminho do logo |
+| `VITE_APP_TITLE` | `CAC 360 – Gestão de Ciclo Completo` | Título da aplicação |
+| `VITE_APP_LOGO` | `/logo.png` | Caminho do logo |
 
 ### Variáveis para Envio de Email (SMTP)
 
@@ -156,8 +156,8 @@ NODE_ENV=production
 PORT=3000
 
 # Frontend
-VITE_APP_TITLE=Firing Range - Sistema de Workflow CR
-VITE_APP_LOGO=/logo.webp
+VITE_APP_TITLE=CAC 360 – Gestão de Ciclo Completo
+VITE_APP_LOGO=/logo.png
 
 # SMTP (Gmail como exemplo)
 SMTP_HOST=smtp.gmail.com

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { APP_TITLE } from "@/const";
+import { APP_LOGO, APP_TITLE } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -90,8 +90,8 @@ export default function Register() {
           <div className="flex justify-center">
             <div className="relative">
               <img 
-                src="/logo.webp" 
-                alt="Firing Range" 
+                src={APP_LOGO}
+                alt="CAC 360 – Gestão de Ciclo Completo" 
                 className="h-16 w-auto"
               />
               <div className="absolute -inset-2 border-2 border-dashed border-primary/30 rounded-lg -z-10"></div>
@@ -102,7 +102,7 @@ export default function Register() {
               Criar Conta
             </CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
-              {APP_TITLE || "FIRING RANGE"} - Sistema de Workflow CR
+              {APP_TITLE || "CAC 360 – Gestão de Ciclo Completo"}
             </CardDescription>
           </div>
         </CardHeader>

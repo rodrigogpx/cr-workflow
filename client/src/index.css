@@ -43,74 +43,74 @@
 }
 
 :root {
-  --primary: oklch(0.52 0.22 15); /* Vermelho Firing Range #C41E3A */
-  --primary-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(0.52 0.22 15);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
+  --primary: #123A63; /* Vermelho Firing Range #C41E3A */
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #123A63;
+  --sidebar-primary-foreground: #ffffff;
+  --chart-1: #123A63;
+  --chart-2: #0B2340;
+  --chart-3: #F37321;
+  --chart-4: #F89A3C;
+  --chart-5: #111827;
   --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.25 0 0);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --background: #F9FAFB;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --secondary: #F37321;
+  --secondary-foreground: #ffffff;
+  --muted: #E5E7EB;
+  --muted-foreground: #374151;
+  --accent: #F89A3C;
+  --accent-foreground: #111827;
+  --destructive: #DC2626;
+  --destructive-foreground: #ffffff;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #123A63;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111827;
+  --sidebar-accent: #E5E7EB;
+  --sidebar-accent-foreground: #111827;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #123A63;
 }
 
 .dark {
-  --primary: oklch(0.52 0.22 15); /* Vermelho Firing Range #C41E3A */
-  --primary-foreground: oklch(1 0 0);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.12 0.005 285.823); /* Fundo mais escuro Firing Range */
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.18 0.006 285.885); /* Cards mais escuros */
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.52 0.22 15); /* Accent vermelho Firing Range */
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  --primary: #F37321; /* Vermelho Firing Range #C41E3A */
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #123A63;
+  --sidebar-primary-foreground: #E5E7EB;
+  --background: #050816; /* Fundo mais escuro Firing Range */
+  --foreground: #E5E7EB;
+  --card: #0B1220; /* Cards mais escuros */
+  --card-foreground: #E5E7EB;
+  --popover: #0B1220;
+  --popover-foreground: #E5E7EB;
+  --secondary: #123A63;
+  --secondary-foreground: #ffffff;
+  --muted: #1F2937;
+  --muted-foreground: #9CA3AF;
+  --accent: #F89A3C; /* Accent vermelho Firing Range */
+  --accent-foreground: #111827;
+  --destructive: #DC2626;
+  --destructive-foreground: #F9FAFB;
+  --border: #1F2937;
+  --input: #1F2937;
+  --ring: #F37321;
+  --chart-1: #123A63;
+  --chart-2: #0B2340;
+  --chart-3: #F37321;
+  --chart-4: #F89A3C;
+  --chart-5: #E5E7EB;
+  --sidebar: #0B1220;
+  --sidebar-foreground: #E5E7EB;
+  --sidebar-accent: #111827;
+  --sidebar-accent-foreground: #F9FAFB;
+  --sidebar-border: #1F2937;
+  --sidebar-ring: #F37321;
 }
 
 @layer base {

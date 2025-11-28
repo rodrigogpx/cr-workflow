@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
+import { APP_LOGO } from "@/const";
 
 export default function Dashboard() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -104,9 +105,9 @@ export default function Dashboard() {
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/logo.webp" alt="Firing Range" className="h-12 w-auto" />
+              <img src={APP_LOGO} alt="CAC 360 – Gestão de Ciclo Completo" className="h-12 w-auto" />
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight uppercase">Firing Range</h1>
+                <h1 className="text-2xl font-bold text-white tracking-tight uppercase">CAC 360 – Gestão de Ciclo Completo</h1>
                 <p className="text-sm text-muted-foreground">
                   {user.role === 'admin' ? 'Administrador' : 'Operador'} - {user.name || user.email}
                 </p>
