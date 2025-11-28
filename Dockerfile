@@ -56,9 +56,8 @@ ENV PORT=3000
 # Expor porta da aplicação
 EXPOSE $PORT
 
-# Healthcheck para Railway
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+# Nota: Healthcheck gerenciado pelo Railway via railway.toml
+# O Railway faz requisições para /health após o container iniciar
 
 # Comando de inicialização
 # Ao subir o container, aplica as migrações (db:push) e o seed (db:seed)
