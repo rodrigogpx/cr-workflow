@@ -78,7 +78,7 @@ export default function Login() {
               <img 
                 src={APP_LOGO}
                 alt="CAC 360 – Gestão de Ciclo Completo" 
-                className="h-14 w-auto"
+                className="h-28 w-auto"
               />
             </div>
           </div>
