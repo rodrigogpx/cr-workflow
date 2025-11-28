@@ -10,11 +10,15 @@ import React, { Suspense, lazy } from "react";
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const MainDashboard = lazy(() => import("./pages/MainDashboard"));
 const ClientWorkflow = lazy(() => import("./pages/ClientWorkflow"));
 const Admin = lazy(() => import("./pages/Admin"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const EmailTemplates = lazy(() => import("./pages/EmailTemplates"));
 const Users = lazy(() => import("./pages/Users"));
+const PlatformAdminUsers = lazy(() => import("./pages/PlatformAdminUsers"));
+const PlatformAdminEmailTemplates = lazy(() => import("./pages/PlatformAdminEmailTemplates"));
+const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
@@ -105,6 +109,11 @@ function Router() {
         </Route>
         <Route path={"/dashboard"}>
           <ApprovedRoute>
+            <MainDashboard />
+          </ApprovedRoute>
+        </Route>
+        <Route path={"/cr-workflow"}>
+          <ApprovedRoute>
             <Dashboard />
           </ApprovedRoute>
         </Route>
@@ -118,15 +127,23 @@ function Router() {
             <Admin />
           </AdminRoute>
         </Route>
-        <Route path={"/admin/email-templates"}>
+        <Route path={"/platform-admin/users"}>
           <AdminRoute>
-            <EmailTemplates />
+            <PlatformAdminUsers />
           </AdminRoute>
         </Route>
-        <Route path={"/admin/users"}>
+        <Route path={"/platform-admin/email-templates"}>
           <AdminRoute>
-            <Users />
+            <PlatformAdminEmailTemplates />
           </AdminRoute>
+        </Route>
+        <Route path={"/platform-admin/settings"}>
+          <AdminRoute>
+            <PlatformAdminSettings />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/email-templates"}>
+          <Redirect to="/platform-admin/email-templates" />
         </Route>
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />

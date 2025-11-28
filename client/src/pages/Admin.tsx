@@ -102,7 +102,7 @@ export default function Admin() {
                   </div>
                 </div>
                 <Button
-                  onClick={() => setLocation("/admin/email-templates")}
+                  onClick={() => setLocation("/platform-admin/email-templates")}
                   className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
                 >
                   Gerenciar →
@@ -124,7 +124,7 @@ export default function Admin() {
                   </div>
                 </div>
                 <Button
-                  onClick={() => setLocation("/admin/users")}
+                  onClick={() => setLocation("/platform-admin/users")}
                   className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
                 >
                   Gerenciar →
