@@ -74,7 +74,7 @@ export default function Login() {
         }}
       />
       {/* Overlay for readability */}
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px] z-0"></div>
+      <div className="absolute inset-0 bg-background/10 backdrop-blur-[2px] z-0"></div>
 
       <Card className="w-full max-w-xs border border-primary/30 bg-card/95 backdrop-blur-sm shadow-xl relative z-10">
         <CardHeader className="space-y-4 text-center pb-4">
