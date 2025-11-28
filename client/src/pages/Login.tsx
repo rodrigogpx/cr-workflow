@@ -74,13 +74,12 @@ export default function Login() {
       <Card className="w-full max-w-xs border border-primary/30 bg-card/95 backdrop-blur-sm shadow-xl relative z-10">
         <CardHeader className="space-y-4 text-center pb-4">
           <div className="flex justify-center">
-            <div className="relative">
+            <div className="relative bg-white rounded-lg p-2">
               <img 
                 src={APP_LOGO}
                 alt="CAC 360 – Gestão de Ciclo Completo" 
                 className="h-14 w-auto"
               />
-              <div className="absolute -inset-2 border border-secondary/40 rounded-lg -z-10"></div>
             </div>
           </div>
           <div className="space-y-2">
