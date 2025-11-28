@@ -108,8 +108,8 @@ NODE_ENV=production
 PORT=3000
 
 # Frontend
-VITE_APP_TITLE=Firing Range - Sistema de Workflow CR
-VITE_APP_LOGO=/logo.webp
+VITE_APP_TITLE=CAC 360 – Gestão de Ciclo Completo
+VITE_APP_LOGO=/logo.png
 ```
 
 ### Descrição das Variáveis

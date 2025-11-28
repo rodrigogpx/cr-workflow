@@ -7,8 +7,8 @@ FROM node:22-alpine AS frontend-builder
 WORKDIR /app
 
 # Variáveis de ambiente para o build do frontend (Vite)
-ARG VITE_APP_TITLE="Firing Range - Sistema de Workflow CR"
-ARG VITE_APP_LOGO="/logo.webp"
+ARG VITE_APP_TITLE="CAC 360 – Gestão de Ciclo Completo"
+ARG VITE_APP_LOGO="/logo.png"
 ENV VITE_APP_TITLE=$VITE_APP_TITLE
 ENV VITE_APP_LOGO=$VITE_APP_LOGO
 

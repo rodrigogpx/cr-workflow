@@ -42,8 +42,8 @@ services:
       OAUTH_SERVER_URL: ${OAUTH_SERVER_URL:-https://api.manus.im}
       OWNER_NAME: ${OWNER_NAME}
       OWNER_OPEN_ID: ${OWNER_OPEN_ID}
-      VITE_APP_TITLE: ${VITE_APP_TITLE:-Firing Range - Sistema de Workflow CR}
-      VITE_APP_LOGO: ${VITE_APP_LOGO:-/logo.webp}
+      VITE_APP_TITLE: ${VITE_APP_TITLE:-CAC 360 – Gestão de Ciclo Completo}
+      VITE_APP_LOGO: ${VITE_APP_LOGO:-/logo.png}
     depends_on:
       postgres:
         condition: service_healthy

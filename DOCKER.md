@@ -66,8 +66,8 @@ OWNER_NAME=Seu Nome Completo
 OWNER_OPEN_ID=seu_id_oauth_manus
 
 # Frontend
-VITE_APP_TITLE=Firing Range - Sistema de Workflow CR
-VITE_APP_LOGO=/logo.webp
+VITE_APP_TITLE=CAC 360 – Gestão de Ciclo Completo
+VITE_APP_LOGO=/logo.png
 ```
 
 **Importante:** Substitua todos os valores placeholder por credenciais reais e seguras. Para gerar uma chave JWT forte, utilize o comando `openssl rand -base64 64` no terminal. Nunca compartilhe o arquivo `.env` ou faça commit dele no repositório Git, pois contém informações sensíveis.
