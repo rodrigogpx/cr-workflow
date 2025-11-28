@@ -49,8 +49,18 @@ COPY drizzle.config.ts ./
 # Copiar build do frontend do stage anterior
 COPY --from=frontend-builder /app/dist ./dist
 
+# Railway injeta a variável PORT automaticamente
+# Fallback para 3000 se não estiver definida
+ENV PORT=3000
+
 # Expor porta da aplicação
-EXPOSE 3000
+EXPOSE $PORT
+
+# Healthcheck para Railway
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 # Comando de inicialização
-CMD ["pnpm", "start"]
+# Ao subir o container, aplica as migrações (db:push) e o seed (db:seed)
+# antes de iniciar o servidor HTTP.
+CMD ["sh", "-c", "pnpm db:push && pnpm db:seed && pnpm start"]

@@ -10,7 +10,7 @@ async function main() {
 
   // Permitir configuração via variáveis de ambiente, mas com defaults seguros para
   // ambiente de desenvolvimento/local. Em produção, sempre sobrescreva via env.
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@firingrange.com';
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@acrdigital.com.br';
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
   if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
