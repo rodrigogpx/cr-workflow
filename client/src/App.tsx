@@ -1,6 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "./_core/hooks/useAuth";
@@ -20,6 +20,13 @@ const PlatformAdminUsers = lazy(() => import("./pages/PlatformAdminUsers"));
 const PlatformAdminEmailTemplates = lazy(() => import("./pages/PlatformAdminEmailTemplates"));
 const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+
+function getBackgroundForPath(path: string) {
+  if (path.startsWith("/cr-workflow") || path.startsWith("/client/")) {
+    return "/backgrond-02.webp";
+  }
+  return "/background-01.webp";
+}
 
 function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -157,6 +164,8 @@ import { trpc } from "./lib/trpc";
 import { queryClient, trpcClient } from "./lib/trpcClient";
 
 function App() {
+  const [location] = useLocation();
+  const backgroundImage = getBackgroundForPath(location);
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
@@ -165,17 +174,17 @@ function App() {
             <TooltipProvider>
               <Toaster />
               <div className="min-h-screen relative overflow-hidden">
-                {/* Background Image global */}
+                {/* Background Image global (por módulo) */}
                 <div
                   className="absolute inset-0 -z-20"
                   style={{
-                    backgroundImage: 'url("/background-01.webp")',
+                    backgroundImage: `url("${backgroundImage}")`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                   }}
                 />
                 {/* Overlay para legibilidade em todas as páginas */}
-                <div className="absolute inset-0 -z-10 bg-background/80 backdrop-blur-[2px]"></div>
+                <div className="absolute inset-0 -z-10 bg-background/20 backdrop-blur-[2px]"></div>
 
                 <div className="relative z-10">
                   <Router />
