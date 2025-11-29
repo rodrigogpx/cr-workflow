@@ -356,18 +356,29 @@ export default function Dashboard() {
                       <span className="truncate">{client.email}</span>
                     </span>
                   </div>
-                  <div className="pt-2 border-t border-dashed border-gray-300 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
-                      <span className="text-xs font-bold" style={{ color: '#1c5c00' }}>{getClientProgress(client)}% concluído</span>
-                    </div>
-                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full transition-all duration-300"
-                        style={{ width: `${getClientProgress(client)}%`, backgroundColor: '#4d9702' }}
-                      />
-                    </div>
-                  </div>
+                  {(() => {
+                    const progress = getClientProgress(client);
+                    const diasDesdeCadastro = client.createdAt 
+                      ? Math.floor((new Date().getTime() - new Date(client.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+                      : 0;
+                    return (
+                      <div className="pt-2 border-t border-dashed border-gray-300 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
+                          <span className="text-xs font-bold" style={{ color: '#1c5c00' }}>{progress}% concluído</span>
+                        </div>
+                        <div className="relative w-full h-5 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className="h-full transition-all duration-300"
+                            style={{ width: `${progress}%`, backgroundColor: '#4d9702' }}
+                          />
+                          <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white drop-shadow-sm">
+                            {progress === 100 ? '✓ Concluído' : `${diasDesdeCadastro} ${diasDesdeCadastro === 1 ? 'dia' : 'dias'}`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="space-y-2 mt-4">
                     {user?.role === 'admin' && (
                       <Button

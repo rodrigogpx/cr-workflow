@@ -516,7 +516,7 @@ export default function ClientWorkflow() {
                   <div className="relative w-48">
                     <Progress value={progressoTotal} className="h-6" />
                     <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white drop-shadow-sm">
-                      {diasDesdeCadastro} {diasDesdeCadastro === 1 ? 'dia' : 'dias'}
+                      {progressoTotal === 100 ? '✓ Concluído' : `${diasDesdeCadastro} ${diasDesdeCadastro === 1 ? 'dia' : 'dias'}`}
                     </span>
                   </div>
                   <span className="text-lg font-bold text-primary">{progressoTotal}%</span>
