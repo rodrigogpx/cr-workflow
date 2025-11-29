@@ -555,7 +555,7 @@ export default function ClientWorkflow() {
                         Documentos Necessários
                       </div>
                       
-                      {step.subTasks.map((subTask) => {
+                      {[...step.subTasks].sort((a, b) => a.id - b.id).map((subTask) => {
                         const subTaskDocs = documents?.filter(doc => doc.subTaskId === subTask.id) || [];
                         return (
                           <div key={subTask.id} className={`p-3 rounded-lg border ${subTask.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>

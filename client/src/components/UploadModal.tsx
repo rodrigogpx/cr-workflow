@@ -130,7 +130,7 @@ export function UploadModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Upload de Documento</DialogTitle>
           <DialogDescription>
@@ -143,10 +143,10 @@ export function UploadModal({
           <div className="border-2 border-dashed rounded-lg p-6 text-center">
             {selectedFile ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-center gap-3">
-                  <FileText className="h-8 w-8 text-primary" />
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-sm truncate">{selectedFile.name}</p>
+                <div className="flex items-start justify-center gap-3">
+                  <FileText className="h-8 w-8 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="font-medium text-sm break-all">{selectedFile.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {formatFileSize(selectedFile.size)}
                     </p>
