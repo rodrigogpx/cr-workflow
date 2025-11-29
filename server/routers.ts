@@ -1035,6 +1035,63 @@ export const appRouter = router({
 
         return { success: true };
       }),
+
+    // Listar operadores com estatísticas de clientes
+    listOperatorsWithStats: adminProcedure.query(async () => {
+      const allUsers = await db.getAllUsers();
+      const operators = allUsers.filter((u: any) => u.role === 'operator' || u.role === 'admin');
+      const allClients = await db.getAllClients();
+
+      return operators.map((operator: any) => {
+        const operatorClients = allClients.filter((c: any) => c.operatorId === operator.id);
+        return {
+          id: operator.id,
+          name: operator.name,
+          email: operator.email,
+          role: operator.role,
+          clientCount: operatorClients.length,
+        };
+      });
+    }),
+
+    // Listar clientes disponíveis para atribuição
+    listClientsForAssignment: adminProcedure.query(async () => {
+      const allClients = await db.getAllClients();
+      return allClients.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        cpf: c.cpf,
+        operatorId: c.operatorId,
+      }));
+    }),
+
+    // Atribuir cliente a operador
+    assignClientToOperator: adminProcedure
+      .input(z.object({
+        clientId: z.number(),
+        operatorId: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const client = await db.getClientById(input.clientId);
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+
+        const operator = await db.getUserById(input.operatorId);
+        if (!operator) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Operador não encontrado' });
+        }
+
+        await db.updateClient(input.clientId, { operatorId: input.operatorId });
+
+        console.log('[AUDIT] Client assigned to operator', {
+          actorId: ctx.user.id,
+          clientId: input.clientId,
+          operatorId: input.operatorId,
+        });
+
+        return { success: true };
+      }),
   }),
 });
 

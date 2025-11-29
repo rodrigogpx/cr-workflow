@@ -19,10 +19,11 @@ const Users = lazy(() => import("./pages/Users"));
 const PlatformAdminUsers = lazy(() => import("./pages/PlatformAdminUsers"));
 const PlatformAdminEmailTemplates = lazy(() => import("./pages/PlatformAdminEmailTemplates"));
 const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings"));
+const WorkflowAdminOperators = lazy(() => import("./pages/WorkflowAdminOperators"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function getBackgroundForPath(path: string) {
-  if (path.startsWith("/cr-workflow") || path.startsWith("/client/")) {
+  if (path.startsWith("/cr-workflow") || path.startsWith("/client/") || path.startsWith("/workflow-admin")) {
     return "/backgrond-02.webp";
   }
   return "/background-01.webp";
@@ -128,6 +129,11 @@ function Router() {
           <ApprovedRoute>
             <ClientWorkflow />
           </ApprovedRoute>
+        </Route>
+        <Route path={"/workflow-admin/operators"}>
+          <AdminRoute>
+            <WorkflowAdminOperators />
+          </AdminRoute>
         </Route>
         <Route path={"/admin"}>
           <AdminRoute>

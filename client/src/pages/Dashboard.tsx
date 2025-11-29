@@ -128,15 +128,26 @@ export default function Dashboard() {
                 Voltar para módulos
               </Button>
               {user.role === 'admin' && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setLocation("/platform-admin/users")}
-                  style={{color: '#c2c1c1'}}
-                  className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Administração
-                </Button>
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setLocation("/workflow-admin/operators")}
+                    style={{color: '#c2c1c1'}}
+                    className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Operadores
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setLocation("/platform-admin/users")}
+                    style={{color: '#c2c1c1'}}
+                    className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
+                  >
+                    <Target className="h-4 w-4 mr-2" />
+                    Admin
+                  </Button>
+                </>
               )}
               <Button 
                 variant="ghost" 
