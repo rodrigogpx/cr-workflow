@@ -344,25 +344,35 @@ export default function Dashboard() {
           </Dialog>
         </div>
 
-        {/* Lista de Clientes */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {/* Seção Lista de Clientes */}
+        <div className="mt-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px flex-1 bg-white/20" />
+            <h2 className="text-lg font-semibold text-white/80 uppercase tracking-wide">
+              {statusFilter === 'all' ? 'Todos os Clientes' : statusFilter === 'inProgress' ? 'Clientes em Andamento' : 'Clientes Concluídos'}
+              <span className="ml-2 text-primary">({filteredClients.length})</span>
+            </h2>
+            <div className="h-px flex-1 bg-white/20" />
           </div>
-        ) : filteredClients.length === 0 ? (
-          <Card className="border-2 border-dashed border-white/20 bg-card">
-            <CardContent className="py-12 text-center">
-              <Target className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-semibold text-foreground mb-2 uppercase">
-                {searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
-              </p>
-              <p className="text-muted-foreground">
-                {searchTerm ? "Tente buscar com outros termos" : "Cadastre seu primeiro cliente para começar"}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredClients.length === 0 ? (
+            <Card className="border-2 border-dashed border-white/20 bg-card">
+              <CardContent className="py-12 text-center">
+                <Target className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-semibold text-foreground mb-2 uppercase">
+                  {searchTerm || statusFilter !== 'all' ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
+                </p>
+                <p className="text-muted-foreground">
+                  {searchTerm ? "Tente buscar com outros termos" : statusFilter !== 'all' ? "Nenhum cliente nesta categoria" : "Cadastre seu primeiro cliente para começar"}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filteredClients.map((client) => (
               <Card
                 key={client.id}
@@ -441,8 +451,9 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </main>
       <Footer />
     </div>
