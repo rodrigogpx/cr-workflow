@@ -390,58 +390,128 @@ export default function ClientWorkflow() {
             <CardDescription>Acompanhe o andamento de todas as etapas do processo</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            {/* Fases com Cards Individuais */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              {/* Fase 1 */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-blue-900">Cadastro/On-Boarding</h3>
-                  <Badge variant={progressoFase1 === 100 ? "default" : "secondary"} className="bg-blue-600">
-                    {progressoFase1}%
-                  </Badge>
+            {/* Progress Step Line */}
+            <div className="relative">
+              {/* Linha de conexão de fundo */}
+              <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 mx-16" />
+              <div 
+                className="absolute top-6 left-0 h-1 bg-primary mx-16 transition-all duration-500"
+                style={{ 
+                  width: `calc(${
+                    progressoFase1 === 100 && progressoFase2 === 100 && progressoFase3 === 100 ? 100 :
+                    progressoFase1 === 100 && progressoFase2 === 100 ? 66 :
+                    progressoFase1 === 100 ? 33 : 0
+                  }% - 8rem)` 
+                }}
+              />
+              
+              {/* Steps */}
+              <div className="relative flex justify-between items-start">
+                {/* Step 1 - Cadastro/On-Boarding */}
+                <div className="flex flex-col items-center w-1/3">
+                  <div className={`
+                    w-12 h-12 rounded-full flex items-center justify-center z-10 transition-all duration-300
+                    ${progressoFase1 === 100 
+                      ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                      : progressoFase1 > 0 
+                        ? 'bg-primary/20 text-primary border-2 border-primary' 
+                        : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
+                    }
+                  `}>
+                    {progressoFase1 === 100 ? (
+                      <CheckCircle className="h-6 w-6" />
+                    ) : (
+                      <span className="text-lg font-bold">1</span>
+                    )}
+                  </div>
+                  <div className="mt-3 text-center">
+                    <h4 className={`font-semibold text-sm ${progressoFase1 === 100 ? 'text-primary' : 'text-gray-700'}`}>
+                      Cadastro/On-Boarding
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {fase1Steps.filter(s => s.completed).length}/{fase1Steps.length} etapas
+                    </p>
+                    {progressoFase1 > 0 && progressoFase1 < 100 && (
+                      <div className="mt-2 w-16 mx-auto">
+                        <Progress value={progressoFase1} className="h-1" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <Progress value={progressoFase1} className="h-2 bg-blue-200" />
-                <p className="text-xs text-blue-700 mt-2">
-                  {fase1Steps.filter(s => s.completed).length} de {fase1Steps.length} etapas
-                </p>
-              </div>
 
-              {/* Fase 2 */}
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-amber-900">Documentação/Laudos</h3>
-                  <Badge variant={progressoFase2 === 100 ? "default" : "secondary"} className="bg-amber-600">
-                    {progressoFase2}%
-                  </Badge>
+                {/* Step 2 - Documentação/Laudos */}
+                <div className="flex flex-col items-center w-1/3">
+                  <div className={`
+                    w-12 h-12 rounded-full flex items-center justify-center z-10 transition-all duration-300
+                    ${progressoFase2 === 100 
+                      ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                      : progressoFase2 > 0 
+                        ? 'bg-primary/20 text-primary border-2 border-primary' 
+                        : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
+                    }
+                  `}>
+                    {progressoFase2 === 100 ? (
+                      <CheckCircle className="h-6 w-6" />
+                    ) : (
+                      <span className="text-lg font-bold">2</span>
+                    )}
+                  </div>
+                  <div className="mt-3 text-center">
+                    <h4 className={`font-semibold text-sm ${progressoFase2 === 100 ? 'text-primary' : 'text-gray-700'}`}>
+                      Documentação/Laudos
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {fase2Steps.filter(s => s.completed).length}/{fase2Steps.length} etapas
+                    </p>
+                    {progressoFase2 > 0 && progressoFase2 < 100 && (
+                      <div className="mt-2 w-16 mx-auto">
+                        <Progress value={progressoFase2} className="h-1" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <Progress value={progressoFase2} className="h-2 bg-amber-200" />
-                <p className="text-xs text-amber-700 mt-2">
-                  {fase2Steps.filter(s => s.completed).length} de {fase2Steps.length} etapas
-                </p>
-              </div>
 
-              {/* Fase 3 */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-green-900">Juntada-Sinarm-CAC</h3>
-                  <Badge variant={progressoFase3 === 100 ? "default" : "secondary"} className="bg-green-600">
-                    {progressoFase3}%
-                  </Badge>
+                {/* Step 3 - Juntada-Sinarm-CAC */}
+                <div className="flex flex-col items-center w-1/3">
+                  <div className={`
+                    w-12 h-12 rounded-full flex items-center justify-center z-10 transition-all duration-300
+                    ${progressoFase3 === 100 
+                      ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                      : progressoFase3 > 0 
+                        ? 'bg-primary/20 text-primary border-2 border-primary' 
+                        : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
+                    }
+                  `}>
+                    {progressoFase3 === 100 ? (
+                      <CheckCircle className="h-6 w-6" />
+                    ) : (
+                      <span className="text-lg font-bold">3</span>
+                    )}
+                  </div>
+                  <div className="mt-3 text-center">
+                    <h4 className={`font-semibold text-sm ${progressoFase3 === 100 ? 'text-primary' : 'text-gray-700'}`}>
+                      Juntada-Sinarm-CAC
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {fase3Steps.filter(s => s.completed).length}/{fase3Steps.length} etapas
+                    </p>
+                    {progressoFase3 > 0 && progressoFase3 < 100 && (
+                      <div className="mt-2 w-16 mx-auto">
+                        <Progress value={progressoFase3} className="h-1" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <Progress value={progressoFase3} className="h-2 bg-green-200" />
-                <p className="text-xs text-green-700 mt-2">
-                  {fase3Steps.filter(s => s.completed).length} de {fase3Steps.length} etapas
-                </p>
               </div>
             </div>
 
-            {/* Barra de Progresso Total */}
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Progresso Geral</span>
-                <span className="text-2xl font-bold text-primary">{progressoTotal}%</span>
+            {/* Progresso Geral Compacto */}
+            <div className="mt-8 flex items-center justify-center gap-4 py-3 px-4 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Progresso Geral</span>
+              <div className="w-48">
+                <Progress value={progressoTotal} className="h-2" />
               </div>
-              <Progress value={progressoTotal} className="h-3" />
+              <span className="text-lg font-bold text-primary">{progressoTotal}%</span>
             </div>
           </CardContent>
         </Card>
