@@ -20,6 +20,7 @@ const PlatformAdminUsers = lazy(() => import("./pages/PlatformAdminUsers"));
 const PlatformAdminEmailTemplates = lazy(() => import("./pages/PlatformAdminEmailTemplates"));
 const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings"));
 const WorkflowAdminOperators = lazy(() => import("./pages/WorkflowAdminOperators"));
+const WorkflowAdminEmails = lazy(() => import("./pages/WorkflowAdminEmails"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function getBackgroundForPath(path: string) {
@@ -133,6 +134,11 @@ function Router() {
         <Route path={"/workflow-admin/operators"}>
           <AdminRoute>
             <WorkflowAdminOperators />
+          </AdminRoute>
+        </Route>
+        <Route path={"/workflow-admin/emails"}>
+          <AdminRoute>
+            <WorkflowAdminEmails />
           </AdminRoute>
         </Route>
         <Route path={"/admin"}>

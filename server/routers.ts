@@ -700,21 +700,26 @@ export const appRouter = router({
     getTemplate: protectedProcedure
       .input(z.object({
         templateKey: z.string(),
+        module: z.string().optional(),
       }))
       .query(async ({ input }) => {
-        return await db.getEmailTemplate(input.templateKey);
+        return await db.getEmailTemplate(input.templateKey, input.module);
       }),
 
-    // Get all email templates
+    // Get all email templates (optionally filtered by module)
     getAllTemplates: protectedProcedure
-      .query(async () => {
-        return await db.getAllEmailTemplates();
+      .input(z.object({
+        module: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return await db.getAllEmailTemplates(input?.module);
       }),
 
     // Save email template
     saveTemplate: protectedProcedure
       .input(z.object({
         templateKey: z.string(),
+        module: z.string().optional(),
         templateTitle: z.string().optional(),
         subject: z.string(),
         content: z.string(),

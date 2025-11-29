@@ -180,11 +180,12 @@ export const documentsRelations = relations(documents, ({ one }) => ({
 }));
 
 /**
- * Email Templates table - stores email templates for Boas Vindas
+ * Email Templates table - stores email templates per module
  */
 export const emailTemplates = pgTable("emailTemplates", {
   id: serial("id").primaryKey(),
-  templateKey: varchar("templateKey", { length: 100 }).notNull().unique(), // 'welcome', 'process', 'status'
+  module: varchar("module", { length: 50 }).notNull().default('workflow-cr'), // 'workflow-cr', 'platform', etc
+  templateKey: varchar("templateKey", { length: 100 }).notNull(), // 'welcome', 'process', 'status'
   templateTitle: varchar("templateTitle", { length: 255 }), // Human-readable title for display
   subject: varchar("subject", { length: 255 }).notNull(),
   content: text("content").notNull(), // HTML content from rich editor

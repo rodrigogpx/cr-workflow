@@ -140,6 +140,15 @@ export default function Dashboard() {
                   </Button>
                   <Button 
                     variant="outline" 
+                    onClick={() => setLocation("/workflow-admin/emails")}
+                    style={{color: '#c2c1c1'}}
+                    className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Emails
+                  </Button>
+                  <Button 
+                    variant="outline" 
                     onClick={() => setLocation("/platform-admin/users")}
                     style={{color: '#c2c1c1'}}
                     className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"

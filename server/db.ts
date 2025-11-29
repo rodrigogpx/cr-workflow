@@ -397,17 +397,33 @@ export async function saveEmailSettings(settings: EmailSettings): Promise<void> 
 }
 
 // Email template operations
-export async function getAllEmailTemplates() {
+export async function getAllEmailTemplates(module?: string) {
   const db = await getDb();
   if (!db) return [];
+  
+  if (module) {
+    const result = await db.select().from(emailTemplates)
+      .where(eq(emailTemplates.module, module));
+    return result;
+  }
   
   const result = await db.select().from(emailTemplates);
   return result;
 }
 
-export async function getEmailTemplate(templateKey: string) {
+export async function getEmailTemplate(templateKey: string, module?: string) {
   const db = await getDb();
   if (!db) return undefined;
+  
+  if (module) {
+    const result = await db.select().from(emailTemplates)
+      .where(and(
+        eq(emailTemplates.templateKey, templateKey),
+        eq(emailTemplates.module, module)
+      ))
+      .limit(1);
+    return result.length > 0 ? result[0] : undefined;
+  }
   
   const result = await db.select().from(emailTemplates)
     .where(eq(emailTemplates.templateKey, templateKey))
@@ -416,12 +432,14 @@ export async function getEmailTemplate(templateKey: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function saveEmailTemplate(template: InsertEmailTemplate) {
+export async function saveEmailTemplate(template: InsertEmailTemplate & { module?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Check if template already exists
-  const existing = await getEmailTemplate(template.templateKey);
+  const moduleValue = template.module || 'workflow-cr';
+  
+  // Check if template already exists for this module
+  const existing = await getEmailTemplate(template.templateKey, moduleValue);
   
   if (existing) {
     // Update existing template
@@ -439,7 +457,7 @@ export async function saveEmailTemplate(template: InsertEmailTemplate) {
     // Insert new template
     const [inserted] = await db
       .insert(emailTemplates)
-      .values(template)
+      .values({ ...template, module: moduleValue })
       .returning({ id: emailTemplates.id });
     return inserted.id;
   }
