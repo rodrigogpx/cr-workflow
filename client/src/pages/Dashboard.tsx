@@ -342,17 +342,19 @@ export default function Dashboard() {
                   <CardTitle className="text-xl font-bold uppercase tracking-tight text-black">{client.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <User className="w-4 h-4" />
-                    <span className="font-mono">{client.cpf}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Phone className="w-4 h-4" />
-                    <span>{client.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Mail className="w-4 h-4" />
-                    <span className="truncate">{client.email}</span>
+                  <div className="flex items-center gap-4 text-sm text-gray-700 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <User className="w-4 h-4" />
+                      <span className="font-mono">{client.cpf}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-4 h-4" />
+                      <span>{client.phone}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-4 h-4" />
+                      <span className="truncate">{client.email}</span>
+                    </span>
                   </div>
                   <div className="pt-2 border-t border-dashed border-gray-300 space-y-2">
                     <div className="flex items-center justify-between">
