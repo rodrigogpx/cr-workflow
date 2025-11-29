@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone, User, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
 import { APP_LOGO } from "@/const";
@@ -313,7 +313,10 @@ export default function Dashboard() {
             {filteredClients.map((client) => (
               <Card
                 key={client.id}
-                className="border-2 border-dashed border-white/20 bg-white/95 hover:border-primary transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1"
+                role="button"
+                tabIndex={0}
+                onClick={() => setLocation(`/client/${client.id}`)}
+                className="cursor-pointer border-2 border-dashed border-white/20 bg-white/95 hover:border-primary transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
                 <CardHeader>
                   <CardTitle className="text-xl font-bold uppercase tracking-tight text-black">{client.name}</CardTitle>
@@ -344,14 +347,12 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="space-y-2 mt-4">
-                    <Link href={`/client/${client.id}`}>
-                      <Button className="w-full border-2 border-dashed border-white/40 font-bold uppercase tracking-wide" style={{ backgroundColor: '#db7929' }}>
-                        Ver Workflow →
-                      </Button>
-                    </Link>
                     {user?.role === 'admin' && (
                       <Button
-                        onClick={() => handleDeleteClient(client.id, client.name)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClient(client.id, client.name);
+                        }}
                         variant="outline"
                         style={{backgroundColor: '#feecec', marginTop: '10px', marginBottom: '5px'}}
                         className="w-full border-2 border-dashed border-red-500/40 text-red-500 hover:bg-red-500/10 hover:border-red-500/60 font-bold uppercase tracking-wide"
