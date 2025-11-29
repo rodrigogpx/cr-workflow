@@ -1,4 +1,4 @@
-import { useParams, useLocation, Link } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import JSZip from 'jszip';
@@ -339,17 +339,21 @@ export default function ClientWorkflow() {
   const progressoTotal = calcularProgressoFase(workflow);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen">
       {/* Header Moderno */}
       <header style={{backgroundColor: '#1c1c1c'}} className="border-b shadow-sm sticky top-0 z-10">
         <div className="container py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="icon" style={{color: '#cfcece'}} className="hover:bg-gray-700">
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                style={{color: '#cfcece'}}
+                className="hover:bg-gray-700"
+                onClick={() => setLocation("/cr-workflow")}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
               <div>
                 <h1 style={{color: '#faf9f9'}} className="text-3xl font-bold">{client.name}</h1>
                 <div className="flex items-center gap-4 mt-1 text-sm" style={{color: '#b8b7b7'}}>
