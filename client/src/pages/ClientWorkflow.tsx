@@ -506,13 +506,23 @@ export default function ClientWorkflow() {
             </div>
 
             {/* Progresso Geral Compacto */}
-            <div className="mt-8 flex items-center justify-center gap-4 py-3 px-4 bg-gray-50 rounded-lg">
-              <span className="text-sm font-medium text-gray-600">Progresso Geral</span>
-              <div className="w-48">
-                <Progress value={progressoTotal} className="h-2" />
-              </div>
-              <span className="text-lg font-bold text-primary">{progressoTotal}%</span>
-            </div>
+            {(() => {
+              const diasDesdeCadastro = client.createdAt 
+                ? Math.floor((new Date().getTime() - new Date(client.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+                : 0;
+              return (
+                <div className="mt-8 flex items-center justify-center gap-4 py-3 px-4 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium text-gray-600">Progresso Geral</span>
+                  <div className="relative w-48">
+                    <Progress value={progressoTotal} className="h-6" />
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white drop-shadow-sm">
+                      {diasDesdeCadastro} {diasDesdeCadastro === 1 ? 'dia' : 'dias'}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-primary">{progressoTotal}%</span>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 
