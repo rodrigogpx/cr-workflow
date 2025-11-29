@@ -1,5 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 
 /**
  * Base directory for storing client documents.
