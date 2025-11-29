@@ -16,6 +16,7 @@ export default function Dashboard() {
   const { user, loading: authLoading, logout } = useAuth();
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<'all' | 'inProgress' | 'completed'>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newClient, setNewClient] = useState({
     name: "",
@@ -94,15 +95,26 @@ export default function Dashboard() {
       ? "Administrador"
       : "Operador";
 
-  const filteredClients = clients?.filter((client) =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.cpf.includes(searchTerm) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
-
   const totalClients = clients?.length || 0;
   const completed = clients?.filter(c => getClientProgress(c) === 100).length || 0;
   const inProgress = totalClients - completed;
+
+  const filteredClients = clients?.filter((client) => {
+    // Filtro de busca por texto
+    const matchesSearch = searchTerm === '' || 
+      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.cpf.includes(searchTerm) ||
+      client.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Filtro por status
+    const progress = getClientProgress(client);
+    const matchesStatus = 
+      statusFilter === 'all' ||
+      (statusFilter === 'completed' && progress === 100) ||
+      (statusFilter === 'inProgress' && progress < 100);
+    
+    return matchesSearch && matchesStatus;
+  }) || [];
 
   return (
     <div className="min-h-screen">
@@ -171,9 +183,16 @@ export default function Dashboard() {
       </header>
 
       <main className="container py-8">
-        {/* Cards de Estatísticas com bordas tracejadas */}
+        {/* Cards de Estatísticas com bordas tracejadas - Clicáveis para filtrar */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+          <Card 
+            className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 ${
+              statusFilter === 'all' 
+                ? 'border-primary bg-primary/5 shadow-lg shadow-primary/20' 
+                : 'border-white/20 bg-card hover:border-primary/50'
+            }`}
+            onClick={() => setStatusFilter('all')}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 Total de Clientes
@@ -185,7 +204,14 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+          <Card 
+            className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-yellow-500/20 ${
+              statusFilter === 'inProgress' 
+                ? 'border-yellow-500 bg-yellow-500/5 shadow-lg shadow-yellow-500/20' 
+                : 'border-white/20 bg-card hover:border-yellow-500/50'
+            }`}
+            onClick={() => setStatusFilter('inProgress')}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 Em Andamento
@@ -197,7 +223,14 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+          <Card 
+            className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-green-500/20 ${
+              statusFilter === 'completed' 
+                ? 'border-green-500 bg-green-500/5 shadow-lg shadow-green-500/20' 
+                : 'border-white/20 bg-card hover:border-green-500/50'
+            }`}
+            onClick={() => setStatusFilter('completed')}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 Concluídos
