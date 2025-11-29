@@ -1203,6 +1203,7 @@ export default function ClientWorkflow() {
             );
           })}
         </div>
+        </div>
 
         {uploadModalOpen && selectedSubTask && (
           <UploadModal
