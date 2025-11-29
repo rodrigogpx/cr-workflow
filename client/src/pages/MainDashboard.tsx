@@ -21,7 +21,7 @@ export default function MainDashboard() {
         {/* Header principal */}
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-white/20 bg-card/95 backdrop-blur-sm px-4 py-3 sm:px-6 sm:py-4 shadow-lg">
           <div className="flex items-center gap-4">
-            <div className="relative bg-white rounded-lg p-2 shadow-sm">
+            <div className="relative">
               <img
                 src={APP_LOGO}
                 alt=""
