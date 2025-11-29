@@ -123,7 +123,7 @@ export default function Dashboard() {
               {user.role === 'admin' && (
                 <Button 
                   variant="outline" 
-                  onClick={() => setLocation("/admin")}
+                  onClick={() => setLocation("/platform-admin/users")}
                   style={{color: '#c2c1c1'}}
                   className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
                 >
