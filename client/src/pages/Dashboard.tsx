@@ -120,6 +120,13 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setLocation("/dashboard")}
+                className="text-white hover:text-primary"
+              >
+                Voltar para módulos
+              </Button>
               {user.role === 'admin' && (
                 <Button 
                   variant="outline" 

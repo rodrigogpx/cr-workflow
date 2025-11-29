@@ -99,6 +99,20 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
       {/* Conteúdo principal */}
       <main className="flex-1 min-h-screen bg-background/80 backdrop-blur-sm p-4 sm:p-6">
         <div className="max-w-5xl mx-auto space-y-4">
+          <div className="flex items-center justify-between text-xs sm:text-sm text-white/70 mb-2">
+            <div className="flex flex-col">
+              <span className="uppercase tracking-[0.2em] text-white/40 text-[0.6rem]">Administração</span>
+              <span className="font-medium text-[0.8rem]">CAC 360 – Plataforma</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation("/dashboard")}
+              className="h-8 px-3 text-[0.65rem] font-semibold uppercase tracking-wide border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
+            >
+              Voltar para módulos
+            </Button>
+          </div>
           {children}
         </div>
       </main>
