@@ -6,6 +6,7 @@ import { z } from "zod";
 import { sendEmail, verifyConnection } from "./emailService";
 import * as db from "./db";
 import { storagePut } from "./storage";
+import { saveClientDocumentFile } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
@@ -500,11 +501,31 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
-        // Upload para S3
-        const buffer = Buffer.from(input.fileData, 'base64');
-        const fileKey = `clients/${input.clientId}/${Date.now()}-${input.fileName}`;
-        const { url } = await storagePut(fileKey, buffer, input.mimeType);
-        
+        const buffer = Buffer.from(input.fileData, "base64");
+
+        let fileKey: string;
+        let fileUrl: string;
+        let fileSize: number;
+
+        // Se DOCUMENTS_STORAGE_DIR estiver definido, usa Volume (filesystem)
+        if (process.env.DOCUMENTS_STORAGE_DIR) {
+          const stored = await saveClientDocumentFile({
+            clientId: input.clientId,
+            fileName: input.fileName,
+            buffer,
+          });
+          fileKey = stored.key;
+          fileUrl = stored.publicPath;
+          fileSize = stored.size;
+        } else {
+          // Fallback para storage padrão (proxy/S3)
+          const relKey = `clients/${input.clientId}/${Date.now()}-${input.fileName}`;
+          const { url } = await storagePut(relKey, buffer, input.mimeType);
+          fileKey = relKey;
+          fileUrl = url;
+          fileSize = buffer.length;
+        }
+
         // Salvar no banco
         const documentId = await db.createDocument({
           clientId: input.clientId,
@@ -512,13 +533,13 @@ export const appRouter = router({
           subTaskId: input.subTaskId || null,
           fileName: input.fileName,
           fileKey,
-          fileUrl: url,
+          fileUrl,
           mimeType: input.mimeType,
-          fileSize: buffer.length,
+          fileSize,
           uploadedBy: ctx.user.id,
         });
         
-        return { id: documentId, url };
+        return { id: documentId, url: fileUrl };
       }),
 
     delete: protectedProcedure

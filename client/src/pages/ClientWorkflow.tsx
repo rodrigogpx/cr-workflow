@@ -378,8 +378,9 @@ export default function ClientWorkflow() {
       </header>
 
       <main className="container py-8 max-w-6xl">
-        {/* Card de Progresso Geral */}
-        <Card className="mb-8 shadow-lg border-0">
+        <div className="space-y-8 rounded-2xl border border-white/10 bg-background/95 px-4 py-6 sm:px-6 sm:py-7 shadow-xl backdrop-blur-sm">
+          {/* Card de Progresso Geral */}
+          <Card className="mb-6 shadow-lg border-0">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
             <CardTitle className="flex items-center gap-2 text-xl">
               <Target className="h-5 w-5 text-primary" />
@@ -1202,20 +1203,19 @@ export default function ClientWorkflow() {
             );
           })}
         </div>
-      </main>
 
-      {/* Modal de Upload */}
-      {selectedSubTask && (
-        <UploadModal
-          open={uploadModalOpen}
-          onOpenChange={setUploadModalOpen}
-          clientId={Number(clientId)}
-          stepId={selectedSubTask.stepId}
-          subTaskId={selectedSubTask.id}
-          subTaskLabel={selectedSubTask.label}
-          onUploadSuccess={(subTaskId) => toggleSubTask(subTaskId, false)}
-        />
-      )}
+        {uploadModalOpen && selectedSubTask && (
+          <UploadModal
+            open={uploadModalOpen}
+            onOpenChange={setUploadModalOpen}
+            clientId={Number(clientId)}
+            stepId={selectedSubTask.stepId}
+            subTaskId={selectedSubTask.id}
+            subTaskLabel={selectedSubTask.label}
+            onUploadSuccess={(subTaskId) => toggleSubTask(subTaskId, false)}
+          />
+        )}
+      </main>
     </div>
   );
 }
