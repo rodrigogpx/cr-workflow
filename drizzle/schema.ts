@@ -208,7 +208,7 @@ export const emailLogs = pgTable("emailLogs", {
   subject: varchar("subject", { length: 255 }).notNull(),
   content: text("content").notNull(),
   sentAt: timestamp("sentAt", { withTimezone: false }).defaultNow().notNull(),
-  sentBy: integer("sentBy").notNull(), // userId who sent the email
+  sentBy: integer("sentBy").notNull(),
 });
 
 export type EmailLog = typeof emailLogs.$inferSelect;
@@ -224,3 +224,91 @@ export const emailLogsRelations = relations(emailLogs, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+/**
+ * ============================================
+ * MULTI-TENANT TABLES (Platform Admin Database)
+ * ============================================
+ */
+
+/**
+ * Tenants table - stores tenant/club information
+ */
+export const tenants = pgTable("tenants", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 50 }).notNull().unique(), // URL slug: clubeX.cac360.com
+  name: varchar("name", { length: 255 }).notNull(),
+  // Database connection
+  dbHost: varchar("dbHost", { length: 255 }).notNull(),
+  dbPort: integer("dbPort").default(5432).notNull(),
+  dbName: varchar("dbName", { length: 100 }).notNull(),
+  dbUser: varchar("dbUser", { length: 100 }).notNull(),
+  dbPassword: text("dbPassword").notNull(), // Encrypted
+  // Branding
+  logo: varchar("logo", { length: 500 }),
+  favicon: varchar("favicon", { length: 500 }),
+  primaryColor: varchar("primaryColor", { length: 7 }).default("#1a5c00"),
+  secondaryColor: varchar("secondaryColor", { length: 7 }).default("#4d9702"),
+  // Features enabled
+  featureWorkflowCR: boolean("featureWorkflowCR").default(true),
+  featureApostilamento: boolean("featureApostilamento").default(false),
+  featureRenovacao: boolean("featureRenovacao").default(false),
+  featureInsumos: boolean("featureInsumos").default(false),
+  // SMTP Settings (per tenant)
+  smtpHost: varchar("smtpHost", { length: 255 }),
+  smtpPort: integer("smtpPort").default(587),
+  smtpUser: varchar("smtpUser", { length: 255 }),
+  smtpPassword: text("smtpPassword"),
+  smtpFrom: varchar("smtpFrom", { length: 255 }),
+  // Storage
+  storageBucket: varchar("storageBucket", { length: 255 }),
+  backupSchedule: varchar("backupSchedule", { length: 50 }).default("0 3 * * *"),
+  // Limits
+  maxUsers: integer("maxUsers").default(10),
+  maxClients: integer("maxClients").default(500),
+  maxStorageGB: integer("maxStorageGB").default(50),
+  // Subscription
+  plan: varchar("plan", { length: 20 }).default("starter").$type<"starter" | "professional" | "enterprise">(),
+  subscriptionStatus: varchar("subscriptionStatus", { length: 20 }).default("trial").$type<"active" | "suspended" | "trial" | "cancelled">(),
+  subscriptionExpiresAt: timestamp("subscriptionExpiresAt", { withTimezone: false }),
+  // Metadata
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type Tenant = typeof tenants.$inferSelect;
+export type InsertTenant = typeof tenants.$inferInsert;
+
+/**
+ * Platform Admins - Super admins who manage all tenants
+ */
+export const platformAdmins = pgTable("platformAdmins", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  hashedPassword: text("hashedPassword").notNull(),
+  name: varchar("name", { length: 255 }),
+  role: varchar("role", { length: 20 }).default("admin").$type<"superadmin" | "admin" | "support">(),
+  isActive: boolean("isActive").default(true).notNull(),
+  lastSignedIn: timestamp("lastSignedIn", { withTimezone: false }),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type PlatformAdmin = typeof platformAdmins.$inferSelect;
+export type InsertPlatformAdmin = typeof platformAdmins.$inferInsert;
+
+/**
+ * Tenant Activity Logs - audit trail for tenant operations
+ */
+export const tenantActivityLogs = pgTable("tenantActivityLogs", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  action: varchar("action", { length: 100 }).notNull(), // created, updated, suspended, backup, etc.
+  details: text("details"), // JSON with action details
+  performedBy: integer("performedBy"), // platformAdminId
+  performedAt: timestamp("performedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type TenantActivityLog = typeof tenantActivityLogs.$inferSelect;
+export type InsertTenantActivityLog = typeof tenantActivityLogs.$inferInsert;

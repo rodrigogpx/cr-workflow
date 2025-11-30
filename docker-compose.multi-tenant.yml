@@ -1,0 +1,209 @@
+# Docker Compose - CAC 360 Multi-Tenant Architecture
+# Arquitetura Híbrida: Container único + DBs separados por tenant
+
+version: '3.8'
+
+services:
+  # ============================================
+  # PROXY REVERSO (Traefik)
+  # Roteia requisições baseado no subdomínio
+  # ============================================
+  traefik:
+    image: traefik:v2.10
+    container_name: cac360-traefik
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@cac360.com.br}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard (remover em produção)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certificates:/letsencrypt
+    networks:
+      - cac360-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+    restart: unless-stopped
+
+  # ============================================
+  # APLICAÇÃO PRINCIPAL (Multi-Tenant)
+  # Atende todos os clubes via subdomínio
+  # ============================================
+  cac360-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cac360-app
+    environment:
+      - NODE_ENV=production
+      - PLATFORM_DATABASE_URL=postgres://cac360_platform:${PLATFORM_DB_PASS}@db-platform:5432/cac360_platform
+      - DATABASE_URL=postgres://cac360_platform:${PLATFORM_DB_PASS}@db-platform:5432/cac360_platform
+      - JWT_SECRET=${JWT_SECRET}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - DEV_TENANT_SLUG=default
+    depends_on:
+      - db-platform
+    networks:
+      - cac360-network
+    labels:
+      - "traefik.enable=true"
+      # Rota para qualquer subdomínio (clubes)
+      - "traefik.http.routers.cac360-app.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.${DOMAIN:-cac360.com.br}`)"
+      - "traefik.http.routers.cac360-app.entrypoints=websecure"
+      - "traefik.http.routers.cac360-app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.cac360-app.loadbalancer.server.port=3000"
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  # ============================================
+  # SUPER ADMIN (Platform Administration)
+  # Gerencia todos os tenants
+  # ============================================
+  platform-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cac360-platform-admin
+    environment:
+      - NODE_ENV=production
+      - PLATFORM_DATABASE_URL=postgres://cac360_platform:${PLATFORM_DB_PASS}@db-platform:5432/cac360_platform
+      - DATABASE_URL=postgres://cac360_platform:${PLATFORM_DB_PASS}@db-platform:5432/cac360_platform
+      - JWT_SECRET=${JWT_SECRET}
+      - IS_PLATFORM_ADMIN=true
+    depends_on:
+      - db-platform
+    networks:
+      - cac360-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.platform-admin.rule=Host(`admin.${DOMAIN:-cac360.com.br}`)"
+      - "traefik.http.routers.platform-admin.entrypoints=websecure"
+      - "traefik.http.routers.platform-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.services.platform-admin.loadbalancer.server.port=3000"
+    restart: unless-stopped
+
+  # ============================================
+  # DATABASE - PLATAFORMA (Gerencia Tenants)
+  # ============================================
+  db-platform:
+    image: postgres:15-alpine
+    container_name: cac360-db-platform
+    environment:
+      - POSTGRES_DB=cac360_platform
+      - POSTGRES_USER=cac360_platform
+      - POSTGRES_PASSWORD=${PLATFORM_DB_PASS}
+    volumes:
+      - db-platform-data:/var/lib/postgresql/data
+      - ./scripts/init-platform-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cac360-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cac360_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # DATABASES POR TENANT
+  # Cada clube tem seu próprio banco
+  # ============================================
+  
+  # Exemplo: Clube de Tiro Esportivo SP
+  db-tiroesp:
+    image: postgres:15-alpine
+    container_name: cac360-db-tiroesp
+    environment:
+      - POSTGRES_DB=cac360_tiroesp
+      - POSTGRES_USER=cac360_tiroesp
+      - POSTGRES_PASSWORD=${TIROESP_DB_PASS}
+    volumes:
+      - db-tiroesp-data:/var/lib/postgresql/data
+      - ./scripts/init-tenant-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cac360-network
+    restart: unless-stopped
+
+  # Exemplo: Clube Tiro Rio
+  db-cluberio:
+    image: postgres:15-alpine
+    container_name: cac360-db-cluberio
+    environment:
+      - POSTGRES_DB=cac360_cluberio
+      - POSTGRES_USER=cac360_cluberio
+      - POSTGRES_PASSWORD=${CLUBERIO_DB_PASS}
+    volumes:
+      - db-cluberio-data:/var/lib/postgresql/data
+      - ./scripts/init-tenant-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cac360-network
+    restart: unless-stopped
+
+  # ============================================
+  # REDIS (Cache e Sessions compartilhado)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: cac360-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - cac360-network
+    restart: unless-stopped
+
+  # ============================================
+  # BACKUP SERVICE
+  # Backup automático de todos os bancos
+  # ============================================
+  backup:
+    image: postgres:15-alpine
+    container_name: cac360-backup
+    environment:
+      - PLATFORM_DB_PASS=${PLATFORM_DB_PASS}
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 3 * * *}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh
+    entrypoint: ["sh", "-c", "crond -f"]
+    networks:
+      - cac360-network
+    depends_on:
+      - db-platform
+    restart: unless-stopped
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  traefik-certificates:
+  db-platform-data:
+  db-tiroesp-data:
+  db-cluberio-data:
+  redis-data:
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  cac360-network:
+    driver: bridge
