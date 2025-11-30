@@ -188,7 +188,7 @@ export default function Dashboard() {
           <Card 
             className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 ${
               statusFilter === 'all' 
-                ? 'border-primary bg-primary/5 shadow-lg shadow-primary/20' 
+                ? 'border-primary bg-primary/20 shadow-lg shadow-primary/30' 
                 : 'border-white/20 bg-card hover:border-primary/50'
             }`}
             onClick={() => setStatusFilter('all')}
@@ -207,7 +207,7 @@ export default function Dashboard() {
           <Card 
             className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-yellow-500/20 ${
               statusFilter === 'inProgress' 
-                ? 'border-yellow-500 bg-yellow-500/5 shadow-lg shadow-yellow-500/20' 
+                ? 'border-yellow-500 bg-yellow-100 shadow-lg shadow-yellow-500/30' 
                 : 'border-white/20 bg-card hover:border-yellow-500/50'
             }`}
             onClick={() => setStatusFilter('inProgress')}
@@ -226,7 +226,7 @@ export default function Dashboard() {
           <Card 
             className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-green-500/20 ${
               statusFilter === 'completed' 
-                ? 'border-green-500 bg-green-500/5 shadow-lg shadow-green-500/20' 
+                ? 'border-green-500 bg-green-100 shadow-lg shadow-green-500/30' 
                 : 'border-white/20 bg-card hover:border-green-500/50'
             }`}
             onClick={() => setStatusFilter('completed')}
