@@ -513,9 +513,15 @@ export default function ClientWorkflow() {
               return (
                 <div className="mt-8 flex items-center justify-center gap-4 py-3 px-4 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-600">Progresso Geral</span>
-                  <div className="relative w-48">
-                    <Progress value={progressoTotal} className="h-6" />
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white drop-shadow-sm">
+                  <div className="relative w-48 h-6 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full transition-all duration-300"
+                      style={{ width: `${progressoTotal}%`, backgroundColor: '#4d9702' }}
+                    />
+                    <span 
+                      className="absolute inset-0 flex items-center justify-center text-xs font-bold"
+                      style={{ color: progressoTotal >= 50 ? '#ffffff' : '#1c5c00', textShadow: progressoTotal >= 50 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none' }}
+                    >
                       {progressoTotal === 100 ? '✓ Concluído' : `${diasDesdeCadastro} ${diasDesdeCadastro === 1 ? 'dia' : 'dias'}`}
                     </span>
                   </div>

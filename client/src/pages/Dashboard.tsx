@@ -410,12 +410,15 @@ export default function Dashboard() {
                           <span className="text-xs text-gray-600">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
                           <span className="text-xs font-bold" style={{ color: '#1c5c00' }}>{progress}% concluído</span>
                         </div>
-                        <div className="relative w-full h-5 bg-muted rounded-full overflow-hidden">
+                        <div className="relative w-full h-5 bg-gray-200 rounded-full overflow-hidden">
                           <div 
                             className="h-full transition-all duration-300"
                             style={{ width: `${progress}%`, backgroundColor: '#4d9702' }}
                           />
-                          <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white drop-shadow-sm">
+                          <span 
+                            className="absolute inset-0 flex items-center justify-center text-xs font-bold"
+                            style={{ color: progress >= 50 ? '#ffffff' : '#1c5c00', textShadow: progress >= 50 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none' }}
+                          >
                             {progress === 100 ? '✓ Concluído' : `${diasDesdeCadastro} ${diasDesdeCadastro === 1 ? 'dia' : 'dias'}`}
                           </span>
                         </div>
