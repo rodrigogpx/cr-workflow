@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, Target, Users, Shield, TrendingUp, Clock, CheckCircle2, Mail } from "lucide-react";
+import { ArrowLeft, Loader2, Target, Users, Shield, TrendingUp, Clock, CheckCircle2, Mail, Building2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -88,7 +88,7 @@ export default function Admin() {
 
       <main className="container py-8 space-y-8">
         {/* Cards de Acesso Rápido */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="border-2 border-dashed border-primary/40 bg-primary/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -126,6 +126,28 @@ export default function Admin() {
                 <Button
                   onClick={() => setLocation("/platform-admin/users")}
                   className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
+                >
+                  Gerenciar →
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-dashed border-purple-500/40 bg-purple-500/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg border-2 border-dashed border-purple-500/40 bg-purple-500/10 flex items-center justify-center">
+                    <Building2 className="h-6 w-6 text-purple-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold uppercase text-sm" style={{ color: '#575757' }}>Multi-Tenant</h3>
+                    <p className="text-xs text-muted-foreground">Gerencie clubes e tenants da plataforma</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setLocation("/super-admin/tenants")}
+                  className="bg-purple-600 hover:bg-purple-700 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
                 >
                   Gerenciar →
                 </Button>
