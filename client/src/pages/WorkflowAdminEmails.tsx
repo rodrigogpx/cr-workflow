@@ -98,11 +98,401 @@ export default function WorkflowAdminEmails() {
 
   const getTemplateTitle = (key: string) => {
     const titles: Record<string, string> = {
-      welcome: "Email de Boas Vindas",
-      process_cr: "Processo de Obtenção do CR",
-      status_update: "Atualização de Status",
+      welcome: "Boas Vindas",
+      workflow_cr: "Workflow CR",
+      psicotecnico: "Encaminhamento Psicotécnico",
+      laudo_tecnico: "Agendamento Laudo Técnico",
+      juntada_documentos: "Juntada de Documentos",
+      acompanhamento_sinarm: "Acompanhamento Sinarm CAC",
     };
     return titles[key] || key;
+  };
+
+  const getDefaultTemplate = (key: string): { subject: string; content: string } => {
+    const defaults: Record<string, { subject: string; content: string }> = {
+      welcome: {
+        subject: "Bem-vindo(a) ao CAC 360 - {{clientName}}",
+        content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+    .highlight { color: #4d9702; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CAC 360</h1>
+      <p>Workflow CR - Certificado de Registro</p>
+    </div>
+    <div class="content">
+      <h2>Olá, {{clientName}}!</h2>
+      <p>Seja muito bem-vindo(a) à família <span class="highlight">CAC 360</span>!</p>
+      <p>Estamos muito felizes em tê-lo(a) conosco nessa jornada para a obtenção do seu Certificado de Registro (CR) e se tornar um <strong>Colecionador, Atirador Desportivo e Caçador (CAC)</strong>.</p>
+      <p>Nossa equipe está preparada para auxiliá-lo(a) em cada etapa desse processo, garantindo que você tenha todo o suporte necessário.</p>
+      <p>Em breve, você receberá mais informações sobre os próximos passos.</p>
+      <p>Qualquer dúvida, estamos à disposição!</p>
+      <p>Atenciosamente,<br><strong>Equipe CAC 360</strong></p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático. Por favor, não responda diretamente.</p>
+    </div>
+  </div>
+</body>
+</html>`
+      },
+      workflow_cr: {
+        subject: "Como funciona o processo de obtenção do CR - {{clientName}}",
+        content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+    .step { background: white; padding: 15px; margin: 10px 0; border-left: 4px solid #4d9702; border-radius: 4px; }
+    .step-number { background: #4d9702; color: white; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; }
+    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CAC 360</h1>
+      <p>Processo de Obtenção do CR</p>
+    </div>
+    <div class="content">
+      <h2>Olá, {{clientName}}!</h2>
+      <p>Vamos explicar como funciona o processo para você se tornar um <strong>CAC (Colecionador, Atirador Desportivo e Caçador)</strong>:</p>
+      
+      <div class="step">
+        <span class="step-number">1</span>
+        <strong>Cadastro e Boas-Vindas</strong>
+        <p>Coleta de dados pessoais e documentação inicial.</p>
+      </div>
+      
+      <div class="step">
+        <span class="step-number">2</span>
+        <strong>Avaliação Psicológica</strong>
+        <p>Agendamento e realização do exame psicotécnico com profissional credenciado.</p>
+      </div>
+      
+      <div class="step">
+        <span class="step-number">3</span>
+        <strong>Laudo de Capacidade Técnica</strong>
+        <p>Curso e avaliação de manuseio seguro de armas de fogo.</p>
+      </div>
+      
+      <div class="step">
+        <span class="step-number">4</span>
+        <strong>Juntada de Documentos</strong>
+        <p>Reunião de toda documentação necessária para o processo.</p>
+      </div>
+      
+      <div class="step">
+        <span class="step-number">5</span>
+        <strong>Protocolo no SINARM/CAC</strong>
+        <p>Envio e acompanhamento do processo junto ao Exército Brasileiro.</p>
+      </div>
+      
+      <p>Acompanharemos você em cada etapa! Em breve, entraremos em contato para iniciar o processo.</p>
+      <p>Atenciosamente,<br><strong>Equipe CAC 360</strong></p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático. Por favor, não responda diretamente.</p>
+    </div>
+  </div>
+</body>
+</html>`
+      },
+      psicotecnico: {
+        subject: "Encaminhamento para Avaliação Psicológica - {{clientName}}",
+        content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+    .info-box { background: #e8f5e9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4d9702; }
+    .warning { background: #fff3e0; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ff9800; }
+    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CAC 360</h1>
+      <p>Avaliação Psicológica</p>
+    </div>
+    <div class="content">
+      <h2>Olá, {{clientName}}!</h2>
+      <p>Chegou o momento de realizar a <strong>Avaliação Psicológica</strong>, etapa obrigatória para a obtenção do Certificado de Registro (CR).</p>
+      
+      <div class="info-box">
+        <h3>📋 Informações do Agendamento</h3>
+        <p><strong>Data:</strong> [INSERIR DATA]</p>
+        <p><strong>Horário:</strong> [INSERIR HORÁRIO]</p>
+        <p><strong>Local:</strong> [INSERIR ENDEREÇO COMPLETO]</p>
+        <p><strong>Profissional:</strong> [NOME DO PSICÓLOGO]</p>
+      </div>
+      
+      <div class="warning">
+        <h4>⚠️ Documentos Necessários:</h4>
+        <ul>
+          <li>Documento de identidade com foto (RG ou CNH)</li>
+          <li>CPF</li>
+          <li>Comprovante de residência atualizado</li>
+        </ul>
+      </div>
+      
+      <p><strong>Dicas importantes:</strong></p>
+      <ul>
+        <li>Durma bem na noite anterior</li>
+        <li>Evite bebidas alcoólicas 24h antes</li>
+        <li>Chegue com 15 minutos de antecedência</li>
+        <li>Leve óculos de grau, se usar</li>
+      </ul>
+      
+      <p>Caso precise reagendar, entre em contato conosco com antecedência.</p>
+      <p>Atenciosamente,<br><strong>Equipe CAC 360</strong></p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático. Por favor, não responda diretamente.</p>
+    </div>
+  </div>
+</body>
+</html>`
+      },
+      laudo_tecnico: {
+        subject: "Agendamento do Laudo de Capacidade Técnica - {{clientName}}",
+        content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+    .info-box { background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2196f3; }
+    .checklist { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CAC 360</h1>
+      <p>Laudo de Capacidade Técnica</p>
+    </div>
+    <div class="content">
+      <h2>Olá, {{clientName}}!</h2>
+      <p>Está chegando uma das etapas mais importantes: o <strong>Laudo de Capacidade Técnica</strong> para a obtenção do seu Certificado de Registro (CR).</p>
+      
+      <div class="info-box">
+        <h3>🎯 Informações do Agendamento</h3>
+        <p><strong>Data:</strong> [INSERIR DATA]</p>
+        <p><strong>Horário:</strong> [INSERIR HORÁRIO]</p>
+        <p><strong>Local:</strong> [INSERIR ENDEREÇO DO CLUBE/STAND]</p>
+        <p><strong>Instrutor:</strong> [NOME DO INSTRUTOR]</p>
+      </div>
+      
+      <div class="checklist">
+        <h4>📋 O que será avaliado:</h4>
+        <ul>
+          <li>Conhecimento teórico sobre legislação e segurança</li>
+          <li>Manuseio seguro de armas de fogo</li>
+          <li>Técnicas de tiro</li>
+          <li>Procedimentos de segurança</li>
+        </ul>
+      </div>
+      
+      <p><strong>O que levar:</strong></p>
+      <ul>
+        <li>Documento de identidade com foto</li>
+        <li>Protetor auricular (se possuir)</li>
+        <li>Óculos de proteção (se possuir)</li>
+        <li>Roupa confortável</li>
+      </ul>
+      
+      <p>Não se preocupe! Nosso instrutor irá guiá-lo em todo o processo.</p>
+      <p>Atenciosamente,<br><strong>Equipe CAC 360</strong></p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático. Por favor, não responda diretamente.</p>
+    </div>
+  </div>
+</body>
+</html>`
+      },
+      juntada_documentos: {
+        subject: "Documentos Necessários para o Processo CR - {{clientName}}",
+        content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+    .doc-list { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .doc-item { padding: 10px 0; border-bottom: 1px dashed #ddd; }
+    .doc-item:last-child { border-bottom: none; }
+    .important { background: #ffebee; padding: 15px; border-radius: 8px; border-left: 4px solid #f44336; margin: 20px 0; }
+    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CAC 360</h1>
+      <p>Juntada de Documentos</p>
+    </div>
+    <div class="content">
+      <h2>Olá, {{clientName}}!</h2>
+      <p>Para dar continuidade ao seu processo de obtenção do <strong>Certificado de Registro (CR)</strong>, precisamos que você providencie os seguintes documentos:</p>
+      
+      <div class="doc-list">
+        <h3>📄 Documentos Necessários:</h3>
+        
+        <div class="doc-item">
+          <strong>1. Documento de Identidade</strong>
+          <p>RG ou CNH (cópia legível frente e verso)</p>
+        </div>
+        
+        <div class="doc-item">
+          <strong>2. CPF</strong>
+          <p>Cadastro de Pessoa Física</p>
+        </div>
+        
+        <div class="doc-item">
+          <strong>3. Comprovante de Residência</strong>
+          <p>Emitido nos últimos 90 dias (água, luz, telefone ou internet)</p>
+        </div>
+        
+        <div class="doc-item">
+          <strong>4. Certidão de Antecedentes Criminais</strong>
+          <p>Federal e Estadual (emitidas nos últimos 90 dias)</p>
+        </div>
+        
+        <div class="doc-item">
+          <strong>5. Laudo Psicológico</strong>
+          <p>Emitido por profissional credenciado pela Polícia Federal</p>
+        </div>
+        
+        <div class="doc-item">
+          <strong>6. Laudo de Capacidade Técnica</strong>
+          <p>Emitido por instrutor de tiro credenciado</p>
+        </div>
+        
+        <div class="doc-item">
+          <strong>7. Foto 3x4</strong>
+          <p>Recente, com fundo branco</p>
+        </div>
+        
+        <div class="doc-item">
+          <strong>8. Comprovante de Ocupação Lícita</strong>
+          <p>Carteira de trabalho, holerite ou declaração de IR</p>
+        </div>
+      </div>
+      
+      <div class="important">
+        <strong>⚠️ Importante:</strong>
+        <p>Todos os documentos devem estar legíveis e dentro da validade. Documentos ilegíveis ou vencidos atrasarão o processo.</p>
+      </div>
+      
+      <p>Você pode enviar os documentos digitalizados pelo nosso sistema ou entregar pessoalmente.</p>
+      <p>Atenciosamente,<br><strong>Equipe CAC 360</strong></p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático. Por favor, não responda diretamente.</p>
+    </div>
+  </div>
+</body>
+</html>`
+      },
+      acompanhamento_sinarm: {
+        subject: "Acompanhamento do Processo SINARM/CAC - {{clientName}}",
+        content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+    .status-box { background: #e8f5e9; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 2px solid #4d9702; }
+    .timeline { margin: 20px 0; }
+    .timeline-item { padding: 15px; margin-left: 20px; border-left: 3px solid #4d9702; position: relative; }
+    .timeline-item::before { content: '✓'; position: absolute; left: -12px; background: #4d9702; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .timeline-item.pending::before { content: '○'; background: #ccc; }
+    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CAC 360</h1>
+      <p>Acompanhamento SINARM/CAC</p>
+    </div>
+    <div class="content">
+      <h2>Olá, {{clientName}}!</h2>
+      <p>Temos novidades sobre o seu processo de registro no <strong>SINARM/CAC</strong>!</p>
+      
+      <div class="status-box">
+        <h3>📋 Status do Processo</h3>
+        <p style="font-size: 24px; color: #4d9702; font-weight: bold;">[STATUS ATUAL]</p>
+        <p>Número do Protocolo: <strong>[NÚMERO DO PROTOCOLO]</strong></p>
+      </div>
+      
+      <div class="timeline">
+        <h4>Histórico do Processo:</h4>
+        
+        <div class="timeline-item">
+          <strong>Documentação Enviada</strong>
+          <p>[DATA] - Processo protocolado junto ao Exército Brasileiro</p>
+        </div>
+        
+        <div class="timeline-item">
+          <strong>Em Análise</strong>
+          <p>[DATA] - Documentação em análise pela autoridade competente</p>
+        </div>
+        
+        <div class="timeline-item pending">
+          <strong>Aguardando Aprovação</strong>
+          <p>Previsão: [PRAZO ESTIMADO]</p>
+        </div>
+      </div>
+      
+      <p><strong>Próximos passos:</strong></p>
+      <p>Após a aprovação, você receberá instruções para retirada do seu Certificado de Registro (CR).</p>
+      
+      <p>Fique tranquilo(a)! Continuamos acompanhando seu processo e informaremos sobre qualquer atualização.</p>
+      
+      <p>Atenciosamente,<br><strong>Equipe CAC 360</strong></p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático. Por favor, não responda diretamente.</p>
+    </div>
+  </div>
+</body>
+</html>`
+      }
+    };
+    return defaults[key] || { subject: "", content: "" };
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,9 +537,19 @@ export default function WorkflowAdminEmails() {
   }
 
   const roleLabel = user.role === "admin" ? "Administrador" : "Operador";
-  const currentTemplate = templates[activeTab] || { subject: "", content: "", attachments: [] };
-  const defaultTemplates = ["welcome", "process_cr", "status_update"];
-  const allTemplateKeys = [...new Set([...defaultTemplates, ...Object.keys(templates)])];
+  const defaultTemplateKeys = ["welcome", "workflow_cr", "psicotecnico", "laudo_tecnico", "juntada_documentos", "acompanhamento_sinarm"];
+  const allTemplateKeys = [...new Set([...defaultTemplateKeys, ...Object.keys(templates)])];
+  
+  // Get current template - use saved template or default
+  const getCurrentTemplateValue = (key: string) => {
+    if (templates[key]) {
+      return templates[key];
+    }
+    const defaultTpl = getDefaultTemplate(key);
+    return { subject: defaultTpl.subject, content: defaultTpl.content, attachments: [] };
+  };
+  
+  const currentTemplate = getCurrentTemplateValue(activeTab);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -206,18 +606,21 @@ export default function WorkflowAdminEmails() {
                   ))}
                 </TabsList>
 
-                {allTemplateKeys.map((key) => (
+                {allTemplateKeys.map((key) => {
+                  const tplValue = getCurrentTemplateValue(key);
+                  return (
                   <TabsContent key={key} value={key} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="subject">Assunto do Email</Label>
                       <Input
                         id="subject"
-                        value={templates[key]?.subject || ""}
+                        value={templates[key]?.subject ?? tplValue.subject}
                         onChange={(e) =>
                           setTemplates((prev) => ({
                             ...prev,
                             [key]: {
-                              ...(prev[key] || { subject: "", content: "", attachments: [] }),
+                              ...tplValue,
+                              ...(prev[key] || {}),
                               subject: e.target.value,
                             },
                           }))
@@ -231,12 +634,13 @@ export default function WorkflowAdminEmails() {
                       <textarea
                         id="content"
                         className="w-full h-64 p-3 border rounded-md bg-background text-foreground font-mono text-sm"
-                        value={templates[key]?.content || ""}
+                        value={templates[key]?.content ?? tplValue.content}
                         onChange={(e) =>
                           setTemplates((prev) => ({
                             ...prev,
                             [key]: {
-                              ...(prev[key] || { subject: "", content: "", attachments: [] }),
+                              ...tplValue,
+                              ...(prev[key] || {}),
                               content: e.target.value,
                             },
                           }))
@@ -293,7 +697,8 @@ export default function WorkflowAdminEmails() {
                       </Button>
                     </div>
                   </TabsContent>
-                ))}
+                  );
+                })}
               </Tabs>
             )}
           </CardContent>
