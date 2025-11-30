@@ -188,7 +188,7 @@ export default function Dashboard() {
           <Card 
             className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 ${
               statusFilter === 'all' 
-                ? 'border-primary bg-primary/20 shadow-lg shadow-primary/30' 
+                ? 'border-primary bg-blue-100 shadow-lg shadow-primary/30' 
                 : 'border-white/20 bg-card hover:border-primary/50'
             }`}
             onClick={() => setStatusFilter('all')}
