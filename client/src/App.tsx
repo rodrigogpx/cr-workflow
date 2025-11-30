@@ -21,6 +21,7 @@ const PlatformAdminEmailTemplates = lazy(() => import("./pages/PlatformAdminEmai
 const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings"));
 const WorkflowAdminOperators = lazy(() => import("./pages/WorkflowAdminOperators"));
 const WorkflowAdminEmails = lazy(() => import("./pages/WorkflowAdminEmails"));
+const SuperAdminTenants = lazy(() => import("./pages/SuperAdminTenants"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function getBackgroundForPath(path: string) {
@@ -159,6 +160,11 @@ function Router() {
         <Route path={"/platform-admin/settings"}>
           <AdminRoute>
             <PlatformAdminSettings />
+          </AdminRoute>
+        </Route>
+        <Route path={"/super-admin/tenants"}>
+          <AdminRoute>
+            <SuperAdminTenants />
           </AdminRoute>
         </Route>
         <Route path={"/admin/email-templates"}>

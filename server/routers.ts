@@ -1098,6 +1098,184 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // ===========================================
+  // TENANTS (Super Admin - Multi-Tenant)
+  // ===========================================
+  tenants: router({
+    // Listar todos os tenants
+    list: adminProcedure.query(async () => {
+      const tenantsList = await db.getAllTenants();
+      return tenantsList;
+    }),
+
+    // Buscar tenant por ID
+    getById: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const tenant = await db.getTenantById(input.id);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+        return tenant;
+      }),
+
+    // Buscar tenant por slug
+    getBySlug: publicProcedure
+      .input(z.object({ slug: z.string() }))
+      .query(async ({ input }) => {
+        const tenant = await db.getTenantBySlug(input.slug);
+        return tenant;
+      }),
+
+    // Criar novo tenant
+    create: adminProcedure
+      .input(z.object({
+        slug: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/),
+        name: z.string().min(2).max(255),
+        dbHost: z.string(),
+        dbPort: z.number().default(5432),
+        dbName: z.string(),
+        dbUser: z.string(),
+        dbPassword: z.string(),
+        primaryColor: z.string().optional(),
+        secondaryColor: z.string().optional(),
+        featureWorkflowCR: z.boolean().default(true),
+        featureApostilamento: z.boolean().default(false),
+        featureRenovacao: z.boolean().default(false),
+        featureInsumos: z.boolean().default(false),
+        plan: z.enum(['starter', 'professional', 'enterprise']).default('starter'),
+        maxUsers: z.number().default(10),
+        maxClients: z.number().default(500),
+        maxStorageGB: z.number().default(50),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Verificar se slug já existe
+        const existing = await db.getTenantBySlug(input.slug);
+        if (existing) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este slug já está em uso' });
+        }
+
+        const tenantId = await db.createTenant({
+          ...input,
+          subscriptionStatus: 'trial',
+          isActive: true,
+        });
+
+        console.log('[AUDIT] Tenant created', {
+          actorId: ctx.user.id,
+          tenantId,
+          slug: input.slug,
+        });
+
+        return { success: true, tenantId };
+      }),
+
+    // Atualizar tenant
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        primaryColor: z.string().optional(),
+        secondaryColor: z.string().optional(),
+        logo: z.string().optional(),
+        favicon: z.string().optional(),
+        featureWorkflowCR: z.boolean().optional(),
+        featureApostilamento: z.boolean().optional(),
+        featureRenovacao: z.boolean().optional(),
+        featureInsumos: z.boolean().optional(),
+        smtpHost: z.string().optional(),
+        smtpPort: z.number().optional(),
+        smtpUser: z.string().optional(),
+        smtpPassword: z.string().optional(),
+        smtpFrom: z.string().optional(),
+        plan: z.enum(['starter', 'professional', 'enterprise']).optional(),
+        maxUsers: z.number().optional(),
+        maxClients: z.number().optional(),
+        maxStorageGB: z.number().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { id, ...updates } = input;
+        
+        const tenant = await db.getTenantById(id);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        await db.updateTenant(id, updates);
+
+        console.log('[AUDIT] Tenant updated', {
+          actorId: ctx.user.id,
+          tenantId: id,
+          updates: Object.keys(updates),
+        });
+
+        return { success: true };
+      }),
+
+    // Suspender/Ativar tenant
+    setStatus: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(['active', 'suspended', 'trial', 'cancelled']),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const tenant = await db.getTenantById(input.id);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        await db.updateTenant(input.id, { subscriptionStatus: input.status });
+
+        console.log('[AUDIT] Tenant status changed', {
+          actorId: ctx.user.id,
+          tenantId: input.id,
+          oldStatus: tenant.subscriptionStatus,
+          newStatus: input.status,
+        });
+
+        return { success: true };
+      }),
+
+    // Deletar tenant (soft delete)
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const tenant = await db.getTenantById(input.id);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        await db.updateTenant(input.id, { isActive: false, subscriptionStatus: 'cancelled' });
+
+        console.log('[AUDIT] Tenant deleted (soft)', {
+          actorId: ctx.user.id,
+          tenantId: input.id,
+          slug: tenant.slug,
+        });
+
+        return { success: true };
+      }),
+
+    // Estatísticas do tenant
+    getStats: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const tenant = await db.getTenantById(input.id);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        // TODO: Conectar ao banco do tenant e buscar estatísticas reais
+        return {
+          usersCount: 0,
+          clientsCount: 0,
+          storageUsedGB: 0,
+          lastActivity: null,
+        };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -15,7 +15,9 @@ import {
   emailTemplates,
   InsertEmailTemplate,
   emailLogs,
-  InsertEmailLog
+  InsertEmailLog,
+  tenants,
+  InsertTenant
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -496,4 +498,66 @@ export async function getEmailLog(clientId: number, templateKey: string) {
     .limit(1);
   
   return result.length > 0 ? result[0] : null;
+}
+
+// ===========================================
+// TENANT FUNCTIONS (Multi-Tenant)
+// ===========================================
+
+export async function getAllTenants() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(tenants).orderBy(desc(tenants.createdAt));
+}
+
+export async function getTenantById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getTenantBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(tenants)
+    .where(and(
+      eq(tenants.slug, slug),
+      eq(tenants.isActive, true)
+    ))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createTenant(tenant: InsertTenant) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const [inserted] = await db
+    .insert(tenants)
+    .values(tenant)
+    .returning({ id: tenants.id });
+  return inserted.id;
+}
+
+export async function updateTenant(id: number, updates: Partial<InsertTenant>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(tenants)
+    .set({ ...updates, updatedAt: new Date() })
+    .where(eq(tenants.id, id));
+}
+
+export async function deleteTenant(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Soft delete - apenas desativa
+  await db.update(tenants)
+    .set({ isActive: false, subscriptionStatus: 'cancelled', updatedAt: new Date() })
+    .where(eq(tenants.id, id));
 }
