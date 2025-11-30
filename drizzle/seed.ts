@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
-import { users } from './schema';
+import { users, tenants } from './schema';
 import { hashPassword } from '../server/_core/auth';
 
 async function main() {
@@ -27,23 +27,57 @@ async function main() {
     const client = postgres(dbUrl);
     const db = drizzle(client);
 
+    // ============================================
+    // SEED: Admin User
+    // ============================================
     const existingAdmin = await db.select().from(users).where(eq(users.email, adminEmail));
     if (existingAdmin.length > 0) {
       console.log('✅ Admin user already exists.');
-      return;
+    } else {
+      const hashedPassword = await hashPassword(adminPassword);
+
+      await db.insert(users).values({
+        name: 'Administrador',
+        email: adminEmail,
+        hashedPassword: hashedPassword,
+        role: 'admin',
+        perfil: 'admin',
+      });
+
+      console.log('✅ Admin user created successfully.');
     }
 
-    const hashedPassword = await hashPassword(adminPassword);
+    // ============================================
+    // SEED: Default Tenant (Multi-Tenant)
+    // ============================================
+    const existingTenant = await db.select().from(tenants).where(eq(tenants.slug, 'default'));
+    if (existingTenant.length > 0) {
+      console.log('✅ Default tenant already exists.');
+    } else {
+      await db.insert(tenants).values({
+        slug: 'default',
+        name: 'CAC 360 - Demo',
+        dbHost: process.env.DB_HOST || 'localhost',
+        dbPort: parseInt(process.env.DB_PORT || '5432'),
+        dbName: process.env.DB_NAME || 'cac360_default',
+        dbUser: process.env.DB_USER || 'cac360_user',
+        dbPassword: process.env.DB_PASSWORD || 'change_this_password',
+        primaryColor: '#1a5c00',
+        secondaryColor: '#4d9702',
+        featureWorkflowCR: true,
+        featureApostilamento: false,
+        featureRenovacao: false,
+        featureInsumos: false,
+        plan: 'enterprise',
+        subscriptionStatus: 'active',
+        maxUsers: 100,
+        maxClients: 10000,
+        maxStorageGB: 500,
+        isActive: true,
+      });
 
-    await db.insert(users).values({
-      name: 'Administrador',
-      email: adminEmail,
-      hashedPassword: hashedPassword,
-      role: 'admin',
-      perfil: 'admin',
-    });
-
-    console.log('✅ Admin user created successfully.');
+      console.log('✅ Default tenant created successfully.');
+    }
 
   } catch (error) {
     console.error('❌ Error seeding database:', error);
