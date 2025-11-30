@@ -598,9 +598,9 @@ export default function WorkflowAdminEmails() {
               </div>
             ) : (
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="mb-4">
+                <TabsList className="mb-4 flex flex-wrap h-auto gap-1">
                   {allTemplateKeys.map((key) => (
-                    <TabsTrigger key={key} value={key}>
+                    <TabsTrigger key={key} value={key} className="text-xs sm:text-sm">
                       {getTemplateTitle(key)}
                     </TabsTrigger>
                   ))}
