@@ -49,6 +49,35 @@ export default function EmailTemplates() {
   const { data: fetchedTemplates, isLoading: isLoadingTemplates } =
     trpc.emails.getAllTemplates.useQuery();
 
+  // Templates padrão do módulo Workflow CR
+  const defaultTemplateKeys = ["welcome", "workflow_cr", "psicotecnico", "laudo_tecnico", "juntada_documentos", "acompanhamento_sinarm"];
+  
+  const getTemplateTitle = (key: string) => {
+    const titles: Record<string, string> = {
+      welcome: "Boas Vindas",
+      workflow_cr: "Workflow CR",
+      psicotecnico: "Encaminhamento Psicotécnico",
+      laudo_tecnico: "Agendamento Laudo Técnico",
+      juntada_documentos: "Juntada de Documentos",
+      acompanhamento_sinarm: "Acompanhamento Sinarm CAC",
+    };
+    return titles[key] || key;
+  };
+
+  // Combinar templates salvos com templates padrão
+  const allTemplates = (() => {
+    const savedKeys = fetchedTemplates?.map((t: any) => t.templateKey) || [];
+    const missingDefaults = defaultTemplateKeys.filter(k => !savedKeys.includes(k));
+    const defaultsAsTemplates = missingDefaults.map(key => ({
+      templateKey: key,
+      templateTitle: getTemplateTitle(key),
+      subject: "",
+      content: "",
+      attachments: null,
+    }));
+    return [...(fetchedTemplates || []), ...defaultsAsTemplates];
+  })();
+
   const updateSmtpConfigMutation = trpc.emails.updateSmtpConfig.useMutation({
     onSuccess: () => {
       toast.success("Configurações de email salvas com sucesso!");
@@ -341,12 +370,12 @@ export default function EmailTemplates() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                {fetchedTemplates?.map((t: any) => (
-                  <TabsTrigger key={t.templateKey} value={t.templateKey}>{t.templateTitle || t.templateKey}</TabsTrigger>
+              <TabsList className="flex flex-wrap h-auto gap-1">
+                {allTemplates.map((t: any) => (
+                  <TabsTrigger key={t.templateKey} value={t.templateKey} className="text-xs sm:text-sm">{t.templateTitle || getTemplateTitle(t.templateKey)}</TabsTrigger>
                 ))}
               </TabsList>
-              {fetchedTemplates?.map((t: any) => (
+              {allTemplates.map((t: any) => (
                 <TabsContent key={t.templateKey} value={t.templateKey}>
                   {isLoadingTemplates ? (
                     <div className="flex items-center justify-center h-64">
