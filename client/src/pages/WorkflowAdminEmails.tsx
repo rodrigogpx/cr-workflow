@@ -12,8 +12,6 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
 import Footer from "@/components/Footer";
 import { Switch } from "@/components/ui/switch";
-import ReactQuill from "react-quill-new";
-import "react-quill-new/dist/quill.snow.css";
 
 const MODULE_ID = 'workflow-cr';
 
@@ -655,7 +653,7 @@ export default function WorkflowAdminEmails() {
               <>
               <div className="flex items-center justify-end gap-2 mb-4">
                 <span className="text-xs text-muted-foreground">
-                  Editor visual (beta)
+                  Preview visual
                 </span>
                 <Switch
                   checked={useRichEditor}
@@ -697,51 +695,57 @@ export default function WorkflowAdminEmails() {
                     <div className="space-y-2">
                       <Label htmlFor="content">Conteúdo (HTML)</Label>
                       {useRichEditor ? (
-                        <>
-                          <ReactQuill
-                            theme="snow"
-                            value={getBodySegments(templates[key]?.content ?? tplValue.content).body}
-                            onChange={(value: string) => {
-                              const currentHtml = templates[key]?.content ?? tplValue.content;
-                              const segments = getBodySegments(currentHtml);
-                              const newContent = segments.prefix + value + segments.suffix;
-                              setTemplates((prev: Record<string, TemplateState>) => ({
-                                ...prev,
-                                [key]: {
-                                  ...tplValue,
-                                  ...(prev[key] || {}),
-                                  content: newContent,
-                                },
-                              }));
-                            }}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Variáveis disponíveis: {"{{nome}}"}, {"{{data}}"}, {"{{status}}"}, {"{{status_sinarm}}"}, {"{{email}}"}, {"{{cpf}}"}, {"{{telefone}}"}, {"{{data_agendamento}}"}, {"{{examinador}}"}
-                          </p>
-                        </>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Código HTML</Label>
+                            <textarea
+                              id="content"
+                              className="w-full h-80 p-3 border rounded-md bg-background text-foreground font-mono text-xs"
+                              value={templates[key]?.content ?? tplValue.content}
+                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                                setTemplates((prev: Record<string, TemplateState>) => ({
+                                  ...prev,
+                                  [key]: {
+                                    ...tplValue,
+                                    ...(prev[key] || {}),
+                                    content: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Digite o conteúdo HTML do email..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Preview Visual</Label>
+                            <iframe
+                              title="Preview do Email"
+                              srcDoc={templates[key]?.content ?? tplValue.content}
+                              className="w-full h-80 border rounded-md bg-white"
+                              sandbox="allow-same-origin"
+                            />
+                          </div>
+                        </div>
                       ) : (
-                        <>
-                          <textarea
-                            id="content"
-                            className="w-full h-64 p-3 border rounded-md bg-background text-foreground font-mono text-sm"
-                            value={templates[key]?.content ?? tplValue.content}
-                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                              setTemplates((prev: Record<string, TemplateState>) => ({
-                                ...prev,
-                                [key]: {
-                                  ...tplValue,
-                                  ...(prev[key] || {}),
-                                  content: e.target.value,
-                                },
-                              }))
-                            }
-                            placeholder="Digite o conteúdo HTML do email..."
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Variáveis disponíveis: {"{{nome}}"}, {"{{data}}"}, {"{{status}}"}, {"{{status_sinarm}}"}, {"{{email}}"}, {"{{cpf}}"}, {"{{telefone}}"}, {"{{data_agendamento}}"}, {"{{examinador}}"}
-                          </p>
-                        </>
+                        <textarea
+                          id="content"
+                          className="w-full h-64 p-3 border rounded-md bg-background text-foreground font-mono text-sm"
+                          value={templates[key]?.content ?? tplValue.content}
+                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                            setTemplates((prev: Record<string, TemplateState>) => ({
+                              ...prev,
+                              [key]: {
+                                ...tplValue,
+                                ...(prev[key] || {}),
+                                content: e.target.value,
+                              },
+                            }))
+                          }
+                          placeholder="Digite o conteúdo HTML do email..."
+                        />
                       )}
+                      <p className="text-xs text-muted-foreground">
+                        Variáveis disponíveis: {"{{nome}}"}, {"{{data}}"}, {"{{status}}"}, {"{{status_sinarm}}"}, {"{{email}}"}, {"{{cpf}}"}, {"{{telefone}}"}, {"{{data_agendamento}}"}, {"{{examinador}}"}
+                      </p>
                     </div>
 
                     <div className="space-y-2">
