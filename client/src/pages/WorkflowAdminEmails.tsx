@@ -12,8 +12,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
 import Footer from "@/components/Footer";
 import { Switch } from "@/components/ui/switch";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 
 const MODULE_ID = 'workflow-cr';
 
