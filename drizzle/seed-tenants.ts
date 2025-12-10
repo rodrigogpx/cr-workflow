@@ -1,7 +1,9 @@
 import "dotenv/config";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { tenants } from "./schema";
+import bcrypt from "bcryptjs";
+import { clients, tenants, users } from "./schema";
 import { encryptSecret } from "../server/config/crypto.util";
 
 async function main() {
@@ -83,14 +85,98 @@ async function main() {
     },
   ];
 
+  // Seed tenants
   for (const t of mocks) {
-    const exists = await db.select().from(tenants).where(tenants.slug.eq(t.slug)).limit(1);
+    const exists = await db.select().from(tenants).where(eq(tenants.slug, t.slug)).limit(1);
     if (exists.length > 0) {
       console.log(`[seed-tenants] Skip existing ${t.slug}`);
       continue;
     }
     await db.insert(tenants).values(t);
     console.log(`[seed-tenants] Inserted ${t.slug}`);
+  }
+
+  // Seed platform users (2 admins + 3 operadores por tenant)
+  const passwordHash = bcrypt.hashSync("123456", 10);
+  const tenantUserIds: Record<string, { admins: number[]; operators: number[] }> = {};
+
+  for (const t of mocks) {
+    const admins: number[] = [];
+    const operators: number[] = [];
+
+    // Admins
+    for (let i = 1; i <= 2; i++) {
+      const email = `${t.slug}.admin${i}@example.com`;
+      const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      if (existing.length > 0) {
+        admins.push(existing[0].id);
+        continue;
+      }
+      const [inserted] = await db
+        .insert(users)
+        .values({
+          name: `${t.name} Admin ${i}`,
+          email,
+          hashedPassword: passwordHash,
+          role: "admin",
+        })
+        .returning({ id: users.id });
+      admins.push(inserted.id);
+    }
+
+    // Operadores
+    for (let i = 1; i <= 3; i++) {
+      const email = `${t.slug}.op${i}@example.com`;
+      const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      if (existing.length > 0) {
+        operators.push(existing[0].id);
+        continue;
+      }
+      const [inserted] = await db
+        .insert(users)
+        .values({
+          name: `${t.name} Operador ${i}`,
+          email,
+          hashedPassword: passwordHash,
+          role: "operator",
+        })
+        .returning({ id: users.id });
+      operators.push(inserted.id);
+    }
+
+    tenantUserIds[t.slug] = { admins, operators };
+  }
+
+  // Seed clients (15 por tenant, atribuídos aos operadores)
+  for (const t of mocks) {
+    const { operators } = tenantUserIds[t.slug];
+    if (operators.length === 0) continue;
+
+    for (let i = 1; i <= 15; i++) {
+      const cpf = `${String(i).padStart(3, "0")}${String(i).padStart(3, "0")}0000${String(i).padStart(2, "0")}`;
+      const email = `${t.slug}.cliente${i}@example.com`;
+
+      const existing = await db.select().from(clients).where(eq(clients.cpf, cpf)).limit(1);
+      if (existing.length > 0) {
+        continue;
+      }
+
+      const operatorId = operators[(i - 1) % operators.length];
+
+      await db.insert(clients).values({
+        name: `Cliente ${i} - ${t.name}`,
+        cpf,
+        phone: `11999${String(i).padStart(4, "0")}`,
+        email,
+        operatorId,
+        address: "Rua Exemplo",
+        addressNumber: `${100 + i}`,
+        neighborhood: "Centro",
+        city: "São Paulo",
+        cep: "01000-000",
+      });
+    }
+    console.log(`[seed-tenants] Inserted users/clients for ${t.slug}`);
   }
 
   await client.end();
