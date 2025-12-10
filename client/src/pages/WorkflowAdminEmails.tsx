@@ -625,7 +625,7 @@ export default function WorkflowAdminEmails() {
               variant="outline"
               size="sm"
               onClick={() => setLocation("/cr-workflow")}
-              className="gap-2"
+              className="gap-2 text-white border-white/50 hover:bg-white/10 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
               Voltar
