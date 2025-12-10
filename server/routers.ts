@@ -5,6 +5,7 @@ import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_
 import { z } from "zod";
 import { sendEmail, verifyConnection } from "./emailService";
 import * as db from "./db";
+import { invalidateTenantCache } from "./config/tenant.config";
 import { storagePut } from "./storage";
 import { saveClientDocumentFile } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
@@ -1162,6 +1163,14 @@ export const appRouter = router({
           isActive: true,
         });
 
+        await db.logTenantActivity({
+          tenantId,
+          action: 'created',
+          details: JSON.stringify({ slug: input.slug, plan: input.plan }),
+          performedBy: ctx.user.id,
+        });
+        invalidateTenantCache(input.slug);
+
         console.log('[AUDIT] Tenant created', {
           actorId: ctx.user.id,
           tenantId,
@@ -1204,6 +1213,14 @@ export const appRouter = router({
         }
 
         await db.updateTenant(id, updates);
+        invalidateTenantCache(tenant.slug);
+
+        await db.logTenantActivity({
+          tenantId: id,
+          action: 'updated',
+          details: JSON.stringify(Object.keys(updates)),
+          performedBy: ctx.user.id,
+        });
 
         console.log('[AUDIT] Tenant updated', {
           actorId: ctx.user.id,
@@ -1227,6 +1244,14 @@ export const appRouter = router({
         }
 
         await db.updateTenant(input.id, { subscriptionStatus: input.status });
+        invalidateTenantCache(tenant.slug);
+
+        await db.logTenantActivity({
+          tenantId: input.id,
+          action: 'status_changed',
+          details: JSON.stringify({ from: tenant.subscriptionStatus, to: input.status }),
+          performedBy: ctx.user.id,
+        });
 
         console.log('[AUDIT] Tenant status changed', {
           actorId: ctx.user.id,
@@ -1248,6 +1273,14 @@ export const appRouter = router({
         }
 
         await db.updateTenant(input.id, { isActive: false, subscriptionStatus: 'cancelled' });
+        invalidateTenantCache(tenant.slug);
+
+        await db.logTenantActivity({
+          tenantId: input.id,
+          action: 'deleted',
+          details: JSON.stringify({ slug: tenant.slug }),
+          performedBy: ctx.user.id,
+        });
 
         console.log('[AUDIT] Tenant deleted (soft)', {
           actorId: ctx.user.id,

@@ -4,7 +4,7 @@
  * Página para gerenciamento de tenants (clubes) da plataforma CAC 360
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,8 @@ import {
   Trash2,
   Edit,
   Eye,
-  Globe
+  Globe,
+  Loader
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,6 +60,7 @@ interface Tenant {
 
 export default function SuperAdminTenants() {
   const [, setLocation] = useLocation();
+  const utils = trpc.useContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
@@ -81,55 +83,66 @@ export default function SuperAdminTenants() {
     featureInsumos: false,
   });
 
-  // Mock data - replace with actual API calls
-  const mockTenants: Tenant[] = [
-    {
-      id: 1,
-      slug: "tiroesp",
-      name: "Clube de Tiro Esportivo SP",
-      dbHost: "db-tiroesp",
-      dbName: "cac360_tiroesp",
-      primaryColor: "#1a5c00",
-      secondaryColor: "#4d9702",
-      featureWorkflowCR: true,
-      featureApostilamento: true,
-      featureRenovacao: true,
-      featureInsumos: false,
-      plan: "professional",
-      subscriptionStatus: "active",
-      subscriptionExpiresAt: "2025-12-31",
-      maxUsers: 20,
-      maxClients: 1000,
-      isActive: true,
-      createdAt: "2024-01-15",
-    },
-    {
-      id: 2,
-      slug: "cluberio",
-      name: "Clube Tiro Rio",
-      dbHost: "db-cluberio",
-      dbName: "cac360_cluberio",
-      primaryColor: "#002366",
-      secondaryColor: "#4169E1",
-      featureWorkflowCR: true,
-      featureApostilamento: false,
-      featureRenovacao: false,
-      featureInsumos: false,
-      plan: "starter",
-      subscriptionStatus: "trial",
-      subscriptionExpiresAt: "2024-02-15",
-      maxUsers: 5,
-      maxClients: 100,
-      isActive: true,
-      createdAt: "2024-01-20",
-    },
-  ];
+  const { data: tenants = [], isLoading: isLoadingTenants, isFetching } = trpc.tenants.list.useQuery();
 
-  const [tenants] = useState<Tenant[]>(mockTenants);
+  const createTenant = trpc.tenants.create.useMutation({
+    onSuccess: () => {
+      toast.success(`Tenant "${newTenant.name}" criado com sucesso!`);
+      setShowCreateModal(false);
+      setNewTenant({
+        slug: "",
+        name: "",
+        dbHost: "localhost",
+        dbPort: 5432,
+        dbName: "",
+        dbUser: "",
+        dbPassword: "",
+        plan: "starter",
+        maxUsers: 10,
+        maxClients: 500,
+        featureWorkflowCR: true,
+        featureApostilamento: false,
+        featureRenovacao: false,
+        featureInsumos: false,
+      });
+      utils.tenants.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Erro ao criar tenant"),
+  });
 
-  const filteredTenants = tenants.filter(t => 
-    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.slug.toLowerCase().includes(searchTerm.toLowerCase())
+  const updateTenant = trpc.tenants.update.useMutation({
+    onSuccess: () => {
+      toast.success("Tenant atualizado");
+      setEditingTenant(null);
+      utils.tenants.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Erro ao atualizar tenant"),
+  });
+
+  const setStatus = trpc.tenants.setStatus.useMutation({
+    onSuccess: () => {
+      toast.success("Status atualizado");
+      utils.tenants.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Erro ao alterar status"),
+  });
+
+  const deleteTenant = trpc.tenants.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Tenant removido");
+      utils.tenants.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Erro ao remover tenant"),
+  });
+
+  const filteredTenants = useMemo(
+    () =>
+      tenants.filter(
+        (t) =>
+          t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          t.slug.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [tenants, searchTerm]
   );
 
   const getStatusBadge = (status: string) => {
@@ -167,25 +180,50 @@ export default function SuperAdminTenants() {
       return;
     }
 
-    // TODO: Call API to create tenant
-    toast.success(`Tenant "${newTenant.name}" criado com sucesso!`);
-    setShowCreateModal(false);
-    setNewTenant({
-      slug: "",
-      name: "",
-      dbHost: "localhost",
-      dbPort: 5432,
-      dbName: "",
-      dbUser: "",
-      dbPassword: "",
-      plan: "starter",
-      maxUsers: 10,
-      maxClients: 500,
-      featureWorkflowCR: true,
-      featureApostilamento: false,
-      featureRenovacao: false,
-      featureInsumos: false,
+    createTenant.mutate({
+      ...newTenant,
+      dbPort: Number(newTenant.dbPort),
+      maxUsers: Number(newTenant.maxUsers),
+      maxClients: Number(newTenant.maxClients),
+      maxStorageGB: 50, // default
+      secondaryColor: newTenant.secondaryColor || "#4d9702",
+      primaryColor: newTenant.primaryColor || "#1a5c00",
+      featureWorkflowCR: Boolean(newTenant.featureWorkflowCR),
+      featureApostilamento: Boolean(newTenant.featureApostilamento),
+      featureRenovacao: Boolean(newTenant.featureRenovacao),
+      featureInsumos: Boolean(newTenant.featureInsumos),
     });
+  };
+
+  const handleUpdateTenant = () => {
+    if (!editingTenant) return;
+    updateTenant.mutate({
+      id: editingTenant.id,
+      name: editingTenant.name,
+      primaryColor: editingTenant.primaryColor,
+      secondaryColor: editingTenant.secondaryColor,
+      featureWorkflowCR: editingTenant.featureWorkflowCR,
+      featureApostilamento: editingTenant.featureApostilamento,
+      featureRenovacao: editingTenant.featureRenovacao,
+      featureInsumos: editingTenant.featureInsumos,
+      maxUsers: editingTenant.maxUsers,
+      maxClients: editingTenant.maxClients,
+      plan: editingTenant.plan,
+      isActive: editingTenant.isActive,
+    });
+  };
+
+  const toggleStatus = (tenant: Tenant) => {
+    const next =
+      tenant.subscriptionStatus === "suspended" || tenant.subscriptionStatus === "cancelled"
+        ? "active"
+        : "suspended";
+    setStatus.mutate({ id: tenant.id, status: next });
+  };
+
+  const handleDelete = (tenant: Tenant) => {
+    if (!confirm(`Remover tenant ${tenant.name}?`)) return;
+    deleteTenant.mutate({ id: tenant.id });
   };
 
   return (
@@ -280,94 +318,117 @@ export default function SuperAdminTenants() {
               className="pl-10"
             />
           </div>
-          <Button onClick={() => setShowCreateModal(true)} className="bg-purple-600 hover:bg-purple-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Tenant
-          </Button>
+          <div className="flex items-center gap-3">
+            {isFetching && <Loader className="h-4 w-4 animate-spin text-gray-500" />}
+            <Button onClick={() => setShowCreateModal(true)} className="bg-purple-600 hover:bg-purple-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Tenant
+            </Button>
+          </div>
         </div>
 
         {/* Tenants List */}
         <div className="grid gap-4">
-          {filteredTenants.map((tenant) => (
-            <Card key={tenant.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* Color indicator */}
-                    <div 
-                      className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg"
-                      style={{ backgroundColor: tenant.primaryColor }}
-                    >
-                      {tenant.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold">{tenant.name}</h3>
-                        {getStatusBadge(tenant.subscriptionStatus)}
-                        {getPlanBadge(tenant.plan)}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                        <span className="flex items-center gap-1">
-                          <Globe className="h-3 w-3" />
-                          {tenant.slug}.cac360.com.br
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Database className="h-3 w-3" />
-                          {tenant.dbName}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {tenant.maxUsers} usuários / {tenant.maxClients} clientes
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Features */}
-                    <div className="flex gap-1 mr-4">
-                      {tenant.featureWorkflowCR && (
-                        <Badge variant="secondary" className="text-xs">CR</Badge>
-                      )}
-                      {tenant.featureApostilamento && (
-                        <Badge variant="secondary" className="text-xs">APO</Badge>
-                      )}
-                      {tenant.featureRenovacao && (
-                        <Badge variant="secondary" className="text-xs">REN</Badge>
-                      )}
-                      {tenant.featureInsumos && (
-                        <Badge variant="secondary" className="text-xs">INS</Badge>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <Button variant="ghost" size="icon" title="Visualizar">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" title="Editar" onClick={() => setEditingTenant(tenant)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" title="Configurações">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700" title="Excluir">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+          {isLoadingTenants ? (
+            <Card className="text-center py-12">
+              <CardContent>
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3" />
+                <p className="text-gray-500">Carregando tenants...</p>
               </CardContent>
             </Card>
-          ))}
-        </div>
+          ) : filteredTenants.length > 0 ? (
+            filteredTenants.map((tenant) => (
+              <Card key={tenant.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {/* Color indicator */}
+                      <div 
+                        className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg"
+                        style={{ backgroundColor: tenant.primaryColor }}
+                      >
+                        {tenant.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-semibold">{tenant.name}</h3>
+                          {getStatusBadge(tenant.subscriptionStatus)}
+                          {getPlanBadge(tenant.plan)}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                          <span className="flex items-center gap-1">
+                            <Globe className="h-3 w-3" />
+                            {tenant.slug}.cac360.com.br
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Database className="h-3 w-3" />
+                            {tenant.dbName}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {tenant.maxUsers} usuários / {tenant.maxClients} clientes
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-        {filteredTenants.length === 0 && (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500">Nenhum tenant encontrado</p>
-            </CardContent>
-          </Card>
-        )}
+                    <div className="flex items-center gap-2">
+                      {/* Features */}
+                      <div className="flex gap-1 mr-4">
+                        {tenant.featureWorkflowCR && (
+                          <Badge variant="secondary" className="text-xs">CR</Badge>
+                        )}
+                        {tenant.featureApostilamento && (
+                          <Badge variant="secondary" className="text-xs">APO</Badge>
+                        )}
+                        {tenant.featureRenovacao && (
+                          <Badge variant="secondary" className="text-xs">REN</Badge>
+                        )}
+                        {tenant.featureInsumos && (
+                          <Badge variant="secondary" className="text-xs">INS</Badge>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <Button variant="ghost" size="icon" title="Visualizar">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Editar" onClick={() => setEditingTenant(tenant)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        title={tenant.subscriptionStatus === "suspended" ? "Ativar" : "Suspender"}
+                        onClick={() => toggleStatus(tenant)}
+                        disabled={setStatus.isLoading}
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-red-500 hover:text-red-700" 
+                        title="Excluir"
+                        onClick={() => handleDelete(tenant)}
+                        disabled={deleteTenant.isLoading}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card className="text-center py-12">
+              <CardContent>
+                <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500">Nenhum tenant encontrado</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </main>
 
       {/* Create Tenant Modal */}
@@ -539,8 +600,134 @@ export default function SuperAdminTenants() {
                 <Button variant="outline" onClick={() => setShowCreateModal(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={handleCreateTenant} className="bg-purple-600 hover:bg-purple-700">
+                <Button onClick={handleCreateTenant} className="bg-purple-600 hover:bg-purple-700" disabled={createTenant.isLoading}>
+                  {createTenant.isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Criar Tenant
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Tenant Modal */}
+      {editingTenant && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle>Editar Tenant</CardTitle>
+              <CardDescription>
+                Ajuste dados e módulos do tenant {editingTenant.name}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nome</Label>
+                  <Input
+                    value={editingTenant.name}
+                    onChange={(e) => setEditingTenant({ ...editingTenant, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Slug</Label>
+                  <Input value={editingTenant.slug} disabled />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Cor primária</Label>
+                  <Input
+                    value={editingTenant.primaryColor}
+                    onChange={(e) => setEditingTenant({ ...editingTenant, primaryColor: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cor secundária</Label>
+                  <Input
+                    value={editingTenant.secondaryColor}
+                    onChange={(e) => setEditingTenant({ ...editingTenant, secondaryColor: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Plano</Label>
+                  <select
+                    className="w-full p-2 border rounded-md"
+                    value={editingTenant.plan}
+                    onChange={(e) => setEditingTenant({ ...editingTenant, plan: e.target.value as Tenant["plan"] })}
+                  >
+                    <option value="starter">Starter</option>
+                    <option value="professional">Professional</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Máx. Usuários</Label>
+                  <Input
+                    type="number"
+                    value={editingTenant.maxUsers}
+                    onChange={(e) => setEditingTenant({ ...editingTenant, maxUsers: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Máx. Clientes</Label>
+                  <Input
+                    type="number"
+                    value={editingTenant.maxClients}
+                    onChange={(e) => setEditingTenant({ ...editingTenant, maxClients: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4 space-y-4">
+                <h4 className="font-medium">Módulos Habilitados</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editFeatureWorkflowCR">Workflow CR</Label>
+                    <Switch
+                      id="editFeatureWorkflowCR"
+                      checked={editingTenant.featureWorkflowCR}
+                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureWorkflowCR: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editFeatureApostilamento">Apostilamento</Label>
+                    <Switch
+                      id="editFeatureApostilamento"
+                      checked={editingTenant.featureApostilamento}
+                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureApostilamento: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editFeatureRenovacao">Renovação</Label>
+                    <Switch
+                      id="editFeatureRenovacao"
+                      checked={editingTenant.featureRenovacao}
+                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureRenovacao: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editFeatureInsumos">Insumos</Label>
+                    <Switch
+                      id="editFeatureInsumos"
+                      checked={editingTenant.featureInsumos}
+                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureInsumos: checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setEditingTenant(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleUpdateTenant} className="bg-purple-600 hover:bg-purple-700" disabled={updateTenant.isLoading}>
+                  {updateTenant.isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar alterações
                 </Button>
               </div>
             </CardContent>

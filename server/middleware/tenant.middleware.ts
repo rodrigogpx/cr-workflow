@@ -86,6 +86,14 @@ export async function requireTenant(c: Context, next: Next) {
     return c.json({ error: 'Tenant required' }, 400);
   }
 
+  // Revalidar status do tenant para rotas que exigem assinatura ativa
+  if (!isTenantActive(tenant)) {
+    return c.json({
+      error: 'Tenant suspended or expired',
+      status: tenant.subscriptionStatus,
+    }, 403);
+  }
+
   return next();
 }
 

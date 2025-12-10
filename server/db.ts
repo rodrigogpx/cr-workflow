@@ -17,9 +17,12 @@ import {
   emailLogs,
   InsertEmailLog,
   tenants,
-  InsertTenant
+  InsertTenant,
+  tenantActivityLogs,
+  InsertTenantActivityLog
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { encryptSecret } from "./config/crypto.util";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
@@ -535,10 +538,16 @@ export async function getTenantBySlug(slug: string) {
 export async function createTenant(tenant: InsertTenant) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  const payload = {
+    ...tenant,
+    dbPassword: tenant.dbPassword ? encryptSecret(tenant.dbPassword) : tenant.dbPassword,
+    smtpPassword: (tenant as any).smtpPassword ? encryptSecret((tenant as any).smtpPassword as string) : (tenant as any).smtpPassword,
+  };
   
   const [inserted] = await db
     .insert(tenants)
-    .values(tenant)
+    .values(payload)
     .returning({ id: tenants.id });
   return inserted.id;
 }
@@ -546,9 +555,17 @@ export async function createTenant(tenant: InsertTenant) {
 export async function updateTenant(id: number, updates: Partial<InsertTenant>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  const payload: Partial<InsertTenant> = { ...updates };
+  if (updates.dbPassword) {
+    payload.dbPassword = encryptSecret(updates.dbPassword);
+  }
+  if ((updates as any).smtpPassword) {
+    (payload as any).smtpPassword = encryptSecret((updates as any).smtpPassword as string);
+  }
   
   await db.update(tenants)
-    .set({ ...updates, updatedAt: new Date() })
+    .set({ ...payload, updatedAt: new Date() })
     .where(eq(tenants.id, id));
 }
 
@@ -560,4 +577,14 @@ export async function deleteTenant(id: number) {
   await db.update(tenants)
     .set({ isActive: false, subscriptionStatus: 'cancelled', updatedAt: new Date() })
     .where(eq(tenants.id, id));
+}
+
+// ===========================================
+// TENANT AUDIT LOGS
+// ===========================================
+export async function logTenantActivity(entry: InsertTenantActivityLog) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.insert(tenantActivityLogs).values(entry);
 }

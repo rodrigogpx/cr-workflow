@@ -7,6 +7,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { eq } from "drizzle-orm";
+import { decryptSecret, encryptSecret } from "./crypto.util";
 
 // Tenant interface que espelha a tabela no banco
 export interface TenantConfig {
@@ -117,6 +118,14 @@ export async function getTenantConfig(slug: string): Promise<TenantConfig | null
 
     const tenant = result[0] as unknown as TenantConfig;
 
+    // Descriptografar segredos sensíveis
+    if (tenant.dbPassword) {
+      tenant.dbPassword = decryptSecret(tenant.dbPassword);
+    }
+    if (tenant.smtpPassword) {
+      tenant.smtpPassword = decryptSecret(tenant.smtpPassword);
+    }
+
     // Cachear resultado
     tenantConfigCache.set(slug, { config: tenant, cachedAt: Date.now() });
 
@@ -140,8 +149,11 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
 
   try {
     const connectionString = `postgres://${tenant.dbUser}:${tenant.dbPassword}@${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
-    const client = postgres(connectionString);
+    const client = postgres(connectionString, { max: Number(process.env.TENANT_DB_POOL_MAX ?? 5) });
     const db = drizzle(client);
+
+    // Healthcheck rápida para validar credenciais/conectividade
+    await client`SELECT 1`;
 
     // Cachear conexão
     tenantDbConnections.set(cacheKey, db);
@@ -150,6 +162,7 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
     return db;
   } catch (error) {
     console.error(`[Tenant] Error connecting to database for tenant ${tenant.slug}:`, error);
+    tenantDbConnections.delete(cacheKey);
     return null;
   }
 }
