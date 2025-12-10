@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -6,16 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2, Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, Link2 } from "lucide-react";
+import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
 import Footer from "@/components/Footer";
 import { Switch } from "@/components/ui/switch";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import TiptapLink from "@tiptap/extension-link";
-import TextAlign from "@tiptap/extension-text-align";
 
 const MODULE_ID = 'workflow-cr';
 
@@ -29,139 +25,6 @@ interface TemplateState {
   subject: string;
   content: string;
   attachments: Attachment[];
-}
-
-// Componente de Editor Visual Tiptap
-function TiptapEmailEditor({ content, onChange }: { content: string; onChange: (html: string) => void }) {
-  // Extrai apenas o conteúdo do body para edição
-  const getBodyContent = (html: string) => {
-    const lower = html.toLowerCase();
-    const bodyStart = lower.indexOf("<body");
-    if (bodyStart === -1) return html;
-    const bodyOpenEnd = lower.indexOf(">", bodyStart);
-    if (bodyOpenEnd === -1) return html;
-    const bodyClose = lower.lastIndexOf("</body>");
-    if (bodyClose === -1) return html.slice(bodyOpenEnd + 1);
-    return html.slice(bodyOpenEnd + 1, bodyClose);
-  };
-
-  // Reconstrói o HTML completo preservando head e estrutura
-  const rebuildHtml = (bodyContent: string, originalHtml: string) => {
-    const lower = originalHtml.toLowerCase();
-    const bodyStart = lower.indexOf("<body");
-    if (bodyStart === -1) return bodyContent;
-    const bodyOpenEnd = lower.indexOf(">", bodyStart);
-    if (bodyOpenEnd === -1) return bodyContent;
-    const bodyClose = lower.lastIndexOf("</body>");
-    if (bodyClose === -1) return originalHtml.slice(0, bodyOpenEnd + 1) + bodyContent;
-    return originalHtml.slice(0, bodyOpenEnd + 1) + bodyContent + originalHtml.slice(bodyClose);
-  };
-
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      TiptapLink.configure({ openOnClick: false }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-    ],
-    content: getBodyContent(content),
-    onUpdate: ({ editor }) => {
-      const newBodyHtml = editor.getHTML();
-      const fullHtml = rebuildHtml(newBodyHtml, content);
-      onChange(fullHtml);
-    },
-  });
-
-  if (!editor) return null;
-
-  return (
-    <div className="border rounded-md overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/50">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={editor.isActive("bold") ? "bg-muted" : ""}
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={editor.isActive("italic") ? "bg-muted" : ""}
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={editor.isActive("bulletList") ? "bg-muted" : ""}
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={editor.isActive("orderedList") ? "bg-muted" : ""}
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-        <div className="w-px h-6 bg-border mx-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign("left").run()}
-          className={editor.isActive({ textAlign: "left" }) ? "bg-muted" : ""}
-        >
-          <AlignLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign("center").run()}
-          className={editor.isActive({ textAlign: "center" }) ? "bg-muted" : ""}
-        >
-          <AlignCenter className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign("right").run()}
-          className={editor.isActive({ textAlign: "right" }) ? "bg-muted" : ""}
-        >
-          <AlignRight className="h-4 w-4" />
-        </Button>
-        <div className="w-px h-6 bg-border mx-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            const url = window.prompt("URL do link:");
-            if (url) editor.chain().focus().setLink({ href: url }).run();
-          }}
-          className={editor.isActive("link") ? "bg-muted" : ""}
-        >
-          <Link2 className="h-4 w-4" />
-        </Button>
-      </div>
-      {/* Editor */}
-      <EditorContent
-        editor={editor}
-        className="prose prose-sm max-w-none p-4 min-h-[300px] focus:outline-none [&_.ProseMirror]:min-h-[280px] [&_.ProseMirror]:outline-none"
-      />
-    </div>
-  );
 }
 
 export default function WorkflowAdminEmails() {
@@ -832,19 +695,36 @@ export default function WorkflowAdminEmails() {
                     <div className="space-y-2">
                       <Label htmlFor="content">Conteúdo (HTML)</Label>
                       {useRichEditor ? (
-                        <TiptapEmailEditor
-                          content={templates[key]?.content ?? tplValue.content}
-                          onChange={(newContent: string) =>
-                            setTemplates((prev: Record<string, TemplateState>) => ({
-                              ...prev,
-                              [key]: {
-                                ...tplValue,
-                                ...(prev[key] || {}),
-                                content: newContent,
-                              },
-                            }))
-                          }
-                        />
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Código HTML</Label>
+                            <textarea
+                              id="content"
+                              className="w-full h-80 p-3 border rounded-md bg-background text-foreground font-mono text-xs"
+                              value={templates[key]?.content ?? tplValue.content}
+                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                                setTemplates((prev: Record<string, TemplateState>) => ({
+                                  ...prev,
+                                  [key]: {
+                                    ...tplValue,
+                                    ...(prev[key] || {}),
+                                    content: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Digite o conteúdo HTML do email..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Preview Visual</Label>
+                            <iframe
+                              title="Preview do Email"
+                              srcDoc={templates[key]?.content ?? tplValue.content}
+                              className="w-full h-80 border rounded-md bg-white"
+                              sandbox="allow-same-origin"
+                            />
+                          </div>
+                        </div>
                       ) : (
                         <textarea
                           id="content"
