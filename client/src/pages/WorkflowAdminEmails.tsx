@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
 import Footer from "@/components/Footer";
+import { Switch } from "@/components/ui/switch";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 const MODULE_ID = 'workflow-cr';
 
@@ -31,6 +34,10 @@ export default function WorkflowAdminEmails() {
   const [, setLocation] = useLocation();
   const [templates, setTemplates] = useState<Record<string, TemplateState>>({});
   const [activeTab, setActiveTab] = useState('welcome');
+  const [useRichEditor, setUseRichEditor] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("cac360-email-editor-mode") === "rich";
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
 
@@ -56,6 +63,14 @@ export default function WorkflowAdminEmails() {
     }
   }, [fetchedTemplates]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      "cac360-email-editor-mode",
+      useRichEditor ? "rich" : "plain"
+    );
+  }, [useRichEditor]);
+
   const saveTemplateMutation = trpc.emails.saveTemplate.useMutation({
     onSuccess: () => {
       toast.success("Template salvo com sucesso!");
@@ -69,7 +84,7 @@ export default function WorkflowAdminEmails() {
   const uploadAttachmentMutation = trpc.emails.uploadTemplateAttachment.useMutation({
     onSuccess: (data: any) => {
       const current = templates[activeTab] || { subject: "", content: "", attachments: [] };
-      setTemplates((prev) => ({
+      setTemplates((prev: Record<string, TemplateState>) => ({
         ...prev,
         [activeTab]: {
           ...current,
@@ -111,7 +126,7 @@ export default function WorkflowAdminEmails() {
   const getDefaultTemplate = (key: string): { subject: string; content: string } => {
     const defaults: Record<string, { subject: string; content: string }> = {
       welcome: {
-        subject: "Bem-vindo(a) ao CAC 360 - {{clientName}}",
+        subject: "Bem-vindo(a) ao CAC 360 - {{nome}}",
         content: `<!DOCTYPE html>
 <html>
 <head>
@@ -132,11 +147,23 @@ export default function WorkflowAdminEmails() {
       <p>Workflow CR - Certificado de Registro</p>
     </div>
     <div class="content">
-      <h2>Olá, {{clientName}}!</h2>
+      <p style="margin: 0 0 12px 0; font-size: 14px; color: #4b5563;">{{data}}</p>
+      <h2>Olá, {{nome}}!</h2>
       <p>Seja muito bem-vindo(a) à família <span class="highlight">CAC 360</span>!</p>
       <p>Estamos muito felizes em tê-lo(a) conosco nessa jornada para a obtenção do seu Certificado de Registro (CR) e se tornar um <strong>Colecionador, Atirador Desportivo e Caçador (CAC)</strong>.</p>
       <p>Nossa equipe está preparada para auxiliá-lo(a) em cada etapa desse processo, garantindo que você tenha todo o suporte necessário.</p>
       <p>Em breve, você receberá mais informações sobre os próximos passos.</p>
+
+      <div style="margin: 16px 0 20px 0; padding: 16px; border-radius: 8px; background: #f9fafb; border: 1px solid #e5e7eb;">
+        <p style="margin: 0 0 4px 0; font-size: 13px; color: #6b7280;">
+          Seus dados de contato cadastrados:
+        </p>
+        <p style="margin: 0; font-size: 13px; color: #111827; line-height: 1.5;">
+          <strong>Email:</strong> {{email}}<br />
+          <strong>Telefone:</strong> {{telefone}}
+        </p>
+      </div>
+
       <p>Qualquer dúvida, estamos à disposição!</p>
       <p>Atenciosamente,<br><strong>Equipe CAC 360</strong></p>
     </div>
@@ -148,7 +175,7 @@ export default function WorkflowAdminEmails() {
 </html>`
       },
       workflow_cr: {
-        subject: "Como funciona o processo de obtenção do CR - {{clientName}}",
+        subject: "Como funciona o processo de obtenção do CR - {{nome}}",
         content: `<!DOCTYPE html>
 <html>
 <head>
@@ -170,8 +197,9 @@ export default function WorkflowAdminEmails() {
       <p>Processo de Obtenção do CR</p>
     </div>
     <div class="content">
-      <h2>Olá, {{clientName}}!</h2>
+      <h2>Olá, {{nome}}!</h2>
       <p>Vamos explicar como funciona o processo para você se tornar um <strong>CAC (Colecionador, Atirador Desportivo e Caçador)</strong>:</p>
+      <p>Progresso atual do seu workflow: <strong>{{status}}</strong></p>
       
       <div class="step">
         <span class="step-number">1</span>
@@ -214,7 +242,7 @@ export default function WorkflowAdminEmails() {
 </html>`
       },
       psicotecnico: {
-        subject: "Encaminhamento para Avaliação Psicológica - {{clientName}}",
+        subject: "Encaminhamento para Avaliação Psicológica - {{nome}}",
         content: `<!DOCTYPE html>
 <html>
 <head>
@@ -236,7 +264,7 @@ export default function WorkflowAdminEmails() {
       <p>Avaliação Psicológica</p>
     </div>
     <div class="content">
-      <h2>Olá, {{clientName}}!</h2>
+      <h2>Olá, {{nome}}!</h2>
       <p>Chegou o momento de realizar a <strong>Avaliação Psicológica</strong>, etapa obrigatória para a obtenção do Certificado de Registro (CR).</p>
       
       <div class="info-box">
@@ -275,7 +303,7 @@ export default function WorkflowAdminEmails() {
 </html>`
       },
       laudo_tecnico: {
-        subject: "Agendamento do Laudo de Capacidade Técnica - {{clientName}}",
+        subject: "Agendamento do Laudo de Capacidade Técnica - {{nome}}",
         content: `<!DOCTYPE html>
 <html>
 <head>
@@ -297,15 +325,14 @@ export default function WorkflowAdminEmails() {
       <p>Laudo de Capacidade Técnica</p>
     </div>
     <div class="content">
-      <h2>Olá, {{clientName}}!</h2>
+      <h2>Olá, {{nome}}!</h2>
       <p>Está chegando uma das etapas mais importantes: o <strong>Laudo de Capacidade Técnica</strong> para a obtenção do seu Certificado de Registro (CR).</p>
       
       <div class="info-box">
         <h3>🎯 Informações do Agendamento</h3>
-        <p><strong>Data:</strong> [INSERIR DATA]</p>
-        <p><strong>Horário:</strong> [INSERIR HORÁRIO]</p>
+        <p><strong>Data e horário:</strong> {{data_agendamento}}</p>
         <p><strong>Local:</strong> [INSERIR ENDEREÇO DO CLUBE/STAND]</p>
-        <p><strong>Instrutor:</strong> [NOME DO INSTRUTOR]</p>
+        <p><strong>Instrutor:</strong> {{examinador}}</p>
       </div>
       
       <div class="checklist">
@@ -337,7 +364,7 @@ export default function WorkflowAdminEmails() {
 </html>`
       },
       juntada_documentos: {
-        subject: "Documentos Necessários para o Processo CR - {{clientName}}",
+        subject: "Documentos Necessários para o Processo CR - {{nome}}",
         content: `<!DOCTYPE html>
 <html>
 <head>
@@ -361,7 +388,7 @@ export default function WorkflowAdminEmails() {
       <p>Juntada de Documentos</p>
     </div>
     <div class="content">
-      <h2>Olá, {{clientName}}!</h2>
+      <h2>Olá, {{nome}}!</h2>
       <p>Para dar continuidade ao seu processo de obtenção do <strong>Certificado de Registro (CR)</strong>, precisamos que você providencie os seguintes documentos:</p>
       
       <div class="doc-list">
@@ -424,7 +451,7 @@ export default function WorkflowAdminEmails() {
 </html>`
       },
       acompanhamento_sinarm: {
-        subject: "Acompanhamento do Processo SINARM/CAC - {{clientName}}",
+        subject: "Acompanhamento do Processo SINARM/CAC - {{nome}}",
         content: `<!DOCTYPE html>
 <html>
 <head>
@@ -449,13 +476,16 @@ export default function WorkflowAdminEmails() {
       <p>Acompanhamento SINARM/CAC</p>
     </div>
     <div class="content">
-      <h2>Olá, {{clientName}}!</h2>
+      <h2>Olá, {{nome}}!</h2>
       <p>Temos novidades sobre o seu processo de registro no <strong>SINARM/CAC</strong>!</p>
       
       <div class="status-box">
         <h3>📋 Status do Processo</h3>
-        <p style="font-size: 24px; color: #4d9702; font-weight: bold;">[STATUS ATUAL]</p>
+        <p style="font-size: 24px; color: #4d9702; font-weight: bold;">{{status_sinarm}}</p>
         <p>Número do Protocolo: <strong>[NÚMERO DO PROTOCOLO]</strong></p>
+        <p style="margin-top: 8px; font-size: 13px; color: #166534;">
+          Progresso geral do seu workflow no CAC 360: <strong>{{status}}</strong>
+        </p>
       </div>
       
       <div class="timeline">
@@ -495,6 +525,31 @@ export default function WorkflowAdminEmails() {
     return defaults[key] || { subject: "", content: "" };
   };
 
+  const getBodySegments = (html: string) => {
+    const lower = html.toLowerCase();
+    const bodyStart = lower.indexOf("<body");
+    if (bodyStart === -1) {
+      return { prefix: "", body: html, suffix: "" };
+    }
+    const bodyOpenEnd = lower.indexOf(">", bodyStart);
+    if (bodyOpenEnd === -1) {
+      return { prefix: html, body: "", suffix: "" };
+    }
+    const bodyClose = lower.lastIndexOf("</body>");
+    if (bodyClose === -1) {
+      return {
+        prefix: html.slice(0, bodyOpenEnd + 1),
+        body: html.slice(bodyOpenEnd + 1),
+        suffix: "",
+      };
+    }
+    return {
+      prefix: html.slice(0, bodyOpenEnd + 1),
+      body: html.slice(bodyOpenEnd + 1, bodyClose),
+      suffix: html.slice(bodyClose),
+    };
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -514,11 +569,11 @@ export default function WorkflowAdminEmails() {
   const removeAttachment = (index: number) => {
     const current = templates[activeTab];
     if (!current) return;
-    setTemplates((prev) => ({
+    setTemplates((prev: Record<string, TemplateState>) => ({
       ...prev,
       [activeTab]: {
         ...current,
-        attachments: current.attachments.filter((_, i) => i !== index),
+        attachments: current.attachments.filter((_, i: number) => i !== index),
       },
     }));
   };
@@ -597,9 +652,19 @@ export default function WorkflowAdminEmails() {
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
             ) : (
+              <>
+              <div className="flex items-center justify-end gap-2 mb-4">
+                <span className="text-xs text-muted-foreground">
+                  Editor visual (beta)
+                </span>
+                <Switch
+                  checked={useRichEditor}
+                  onCheckedChange={setUseRichEditor}
+                />
+              </div>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="mb-4 flex flex-wrap h-auto gap-1">
-                  {allTemplateKeys.map((key) => (
+                  {allTemplateKeys.map((key: string) => (
                     <TabsTrigger key={key} value={key} className="text-xs sm:text-sm">
                       {getTemplateTitle(key)}
                     </TabsTrigger>
@@ -615,8 +680,8 @@ export default function WorkflowAdminEmails() {
                       <Input
                         id="subject"
                         value={templates[key]?.subject ?? tplValue.subject}
-                        onChange={(e) =>
-                          setTemplates((prev) => ({
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setTemplates((prev: Record<string, TemplateState>) => ({
                             ...prev,
                             [key]: {
                               ...tplValue,
@@ -631,31 +696,58 @@ export default function WorkflowAdminEmails() {
 
                     <div className="space-y-2">
                       <Label htmlFor="content">Conteúdo (HTML)</Label>
-                      <textarea
-                        id="content"
-                        className="w-full h-64 p-3 border rounded-md bg-background text-foreground font-mono text-sm"
-                        value={templates[key]?.content ?? tplValue.content}
-                        onChange={(e) =>
-                          setTemplates((prev) => ({
-                            ...prev,
-                            [key]: {
-                              ...tplValue,
-                              ...(prev[key] || {}),
-                              content: e.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="Digite o conteúdo HTML do email..."
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Variáveis disponíveis: {"{{clientName}}"}, {"{{clientEmail}}"}, {"{{progress}}"}, {"{{operatorName}}"}
-                      </p>
+                      {useRichEditor ? (
+                        <>
+                          <ReactQuill
+                            theme="snow"
+                            value={getBodySegments(templates[key]?.content ?? tplValue.content).body}
+                            onChange={(value: string) => {
+                              const currentHtml = templates[key]?.content ?? tplValue.content;
+                              const segments = getBodySegments(currentHtml);
+                              const newContent = segments.prefix + value + segments.suffix;
+                              setTemplates((prev: Record<string, TemplateState>) => ({
+                                ...prev,
+                                [key]: {
+                                  ...tplValue,
+                                  ...(prev[key] || {}),
+                                  content: newContent,
+                                },
+                              }));
+                            }}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Variáveis disponíveis: {"{{nome}}"}, {"{{data}}"}, {"{{status}}"}, {"{{status_sinarm}}"}, {"{{email}}"}, {"{{cpf}}"}, {"{{telefone}}"}, {"{{data_agendamento}}"}, {"{{examinador}}"}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <textarea
+                            id="content"
+                            className="w-full h-64 p-3 border rounded-md bg-background text-foreground font-mono text-sm"
+                            value={templates[key]?.content ?? tplValue.content}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                              setTemplates((prev: Record<string, TemplateState>) => ({
+                                ...prev,
+                                [key]: {
+                                  ...tplValue,
+                                  ...(prev[key] || {}),
+                                  content: e.target.value,
+                                },
+                              }))
+                            }
+                            placeholder="Digite o conteúdo HTML do email..."
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Variáveis disponíveis: {"{{nome}}"}, {"{{data}}"}, {"{{status}}"}, {"{{status_sinarm}}"}, {"{{email}}"}, {"{{cpf}}"}, {"{{telefone}}"}, {"{{data_agendamento}}"}, {"{{examinador}}"}
+                          </p>
+                        </>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label>Anexos</Label>
                       <div className="flex flex-wrap gap-2">
-                        {(templates[key]?.attachments || []).map((att, i) => (
+                        {(templates[key]?.attachments || []).map((att: Attachment, i: number) => (
                           <div key={i} className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full text-sm">
                             <FileText className="h-4 w-4" />
                             <span>{att.fileName}</span>
@@ -700,6 +792,7 @@ export default function WorkflowAdminEmails() {
                   );
                 })}
               </Tabs>
+              </>
             )}
           </CardContent>
         </Card>

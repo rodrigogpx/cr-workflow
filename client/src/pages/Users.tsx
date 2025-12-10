@@ -45,6 +45,27 @@ export default function Users() {
   });
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'operator' | 'pending'>("all");
   
+  const getFriendlyErrorMessage = (error: any, fallback: string) => {
+    const message = error?.message;
+    if (typeof message === "string" && message.trim()) {
+      try {
+        const parsed = JSON.parse(message);
+        if (Array.isArray(parsed)) {
+          const messages = parsed
+            .map((item) => (item && typeof item.message === "string" ? item.message : null))
+            .filter((m): m is string => !!m);
+          if (messages.length > 0) {
+            return messages.join("\n");
+          }
+        }
+      } catch {
+        return message;
+      }
+      return message;
+    }
+    return fallback;
+  };
+
   const { data: users, refetch } = trpc.users.list.useQuery();
   const { data: currentUser } = trpc.auth.me.useQuery();
   
@@ -54,8 +75,8 @@ export default function Users() {
       refetch();
       setIsCreateOpen(false);
     },
-    onError: (error) => {
-      toast.error(error.message || "Erro ao criar usuário");
+    onError: (error: any) => {
+      toast.error(getFriendlyErrorMessage(error, "Erro ao criar usuário"));
     },
   });
 
@@ -65,8 +86,8 @@ export default function Users() {
       refetch();
       setEditingUser(null);
     },
-    onError: (error) => {
-      toast.error(error.message || "Erro ao atualizar usuário");
+    onError: (error: any) => {
+      toast.error(getFriendlyErrorMessage(error, "Erro ao atualizar usuário"));
     },
   });
 
@@ -76,8 +97,8 @@ export default function Users() {
       refetch();
       setUserToDelete(null);
     },
-    onError: (error) => {
-      toast.error(error.message || "Erro ao excluir usuário");
+    onError: (error: any) => {
+      toast.error(getFriendlyErrorMessage(error, "Erro ao excluir usuário"));
     },
   });
 

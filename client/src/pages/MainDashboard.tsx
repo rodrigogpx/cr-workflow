@@ -2,12 +2,17 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { APP_LOGO } from "@/const";
-import { Target, Shield, Activity, RefreshCcw, Inbox, MapPin, ChevronRight } from "lucide-react";
+import { Target, Shield, Activity, RefreshCcw, Inbox, MapPin, ChevronRight, LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function MainDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
+
+  const handleLogout = async () => {
+    await logout();
+    setLocation("/login");
+  };
 
   const roleLabel = !user?.role
     ? "Pendente"
@@ -58,6 +63,14 @@ export default function MainDashboard() {
                 Administração
               </Button>
             )}
+            <Button
+              variant="ghost"
+              onClick={handleLogout}
+              className="mt-1 h-8 px-3 text-[0.65rem] sm:text-[0.7rem] font-semibold uppercase tracking-wide text-red-300 hover:text-red-100 hover:bg-red-500/10 flex items-center gap-1"
+            >
+              <LogOut className="h-3 w-3" />
+              Sair
+            </Button>
           </div>
         </header>
 
