@@ -135,6 +135,14 @@ export default function SuperAdminTenants() {
     onError: (err) => toast.error(err.message || "Erro ao remover tenant"),
   });
 
+  const seedMocks = trpc.tenants.seedMocks.useMutation({
+    onSuccess: (res) => {
+      toast.success(`Seed concluído: ${res.tenants} tenants, ${res.users} usuários, ${res.clients} clientes`);
+      utils.tenants.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Erro ao rodar seed"),
+  });
+
   const filteredTenants = useMemo(
     () =>
       tenants.filter(
@@ -319,6 +327,19 @@ export default function SuperAdminTenants() {
             />
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => seedMocks.mutate()}
+              disabled={seedMocks.isLoading}
+              className="flex items-center gap-2"
+            >
+              {seedMocks.isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Database className="h-4 w-4" />
+              )}
+              Rodar seed mock
+            </Button>
             {isFetching && <Loader className="h-4 w-4 animate-spin text-gray-500" />}
             <Button onClick={() => setShowCreateModal(true)} className="bg-purple-600 hover:bg-purple-700">
               <Plus className="h-4 w-4 mr-2" />

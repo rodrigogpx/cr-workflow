@@ -1104,6 +1104,19 @@ export const appRouter = router({
   // TENANTS (Super Admin - Multi-Tenant)
   // ===========================================
   tenants: router({
+    // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
+    seedMocks: adminProcedure.mutation(async ({ ctx }) => {
+      const result = await db.seedMockTenants();
+      invalidateTenantCache();
+
+      console.log("[AUDIT] Seed mock tenants executed", {
+        actorId: ctx.user.id,
+        result,
+      });
+
+      return { success: true, ...result };
+    }),
+
     // Listar todos os tenants
     list: adminProcedure.query(async () => {
       const tenantsList = await db.getAllTenants();

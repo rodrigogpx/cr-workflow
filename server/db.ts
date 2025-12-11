@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { 
@@ -23,6 +23,7 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
+import bcrypt from "bcryptjs";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
@@ -587,4 +588,173 @@ export async function logTenantActivity(entry: InsertTenantActivityLog) {
   if (!db) throw new Error("Database not available");
 
   await db.insert(tenantActivityLogs).values(entry);
+}
+
+// ===========================================
+// SEED MOCK TENANTS/USERS/CLIENTS
+// ===========================================
+export async function seedMockTenants() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const mocks = [
+    {
+      slug: "tiroesp",
+      name: "Clube de Tiro Esportivo SP",
+      dbHost: "localhost",
+      dbPort: 5432,
+      dbName: "cac360_tiroesp",
+      dbUser: "tiroesp_user",
+      dbPassword: "tiroesp_pass",
+      primaryColor: "#1a5c00",
+      secondaryColor: "#4d9702",
+      featureWorkflowCR: true,
+      featureApostilamento: true,
+      featureRenovacao: true,
+      featureInsumos: false,
+      plan: "professional" as const,
+      subscriptionStatus: "active" as const,
+      subscriptionExpiresAt: null,
+      maxUsers: 20,
+      maxClients: 1000,
+      maxStorageGB: 100,
+      isActive: true,
+    },
+    {
+      slug: "cluberio",
+      name: "Clube Tiro Rio",
+      dbHost: "localhost",
+      dbPort: 5432,
+      dbName: "cac360_cluberio",
+      dbUser: "cluberio_user",
+      dbPassword: "cluberio_pass",
+      primaryColor: "#002366",
+      secondaryColor: "#4169E1",
+      featureWorkflowCR: true,
+      featureApostilamento: false,
+      featureRenovacao: false,
+      featureInsumos: false,
+      plan: "starter" as const,
+      subscriptionStatus: "trial" as const,
+      subscriptionExpiresAt: null,
+      maxUsers: 5,
+      maxClients: 100,
+      maxStorageGB: 50,
+      isActive: true,
+    },
+    {
+      slug: "norteclub",
+      name: "Clube Norte CAC",
+      dbHost: "localhost",
+      dbPort: 5432,
+      dbName: "cac360_norteclub",
+      dbUser: "norte_user",
+      dbPassword: "norte_pass",
+      primaryColor: "#0f172a",
+      secondaryColor: "#10b981",
+      featureWorkflowCR: true,
+      featureApostilamento: true,
+      featureRenovacao: false,
+      featureInsumos: true,
+      plan: "enterprise" as const,
+      subscriptionStatus: "active" as const,
+      subscriptionExpiresAt: null,
+      maxUsers: 50,
+      maxClients: 5000,
+      maxStorageGB: 500,
+      isActive: true,
+    },
+  ];
+
+  // Limpar dados mockados anteriores (emails @example.com e tenants de mock)
+  const mockSlugs = mocks.map(m => m.slug);
+  await db.execute(sql`DELETE FROM ${clients} WHERE ${clients.email} LIKE ${"%@example.com"}`);
+  await db.execute(sql`DELETE FROM ${users} WHERE ${users.email} LIKE ${"%@example.com"}`);
+  await db.delete(tenants).where(inArray(tenants.slug, mockSlugs));
+
+  // Inserir tenants (usa encryptSecret na camada createTenant)
+  const tenantIds: Record<string, number> = {};
+  for (const t of mocks) {
+    const tenantId = await createTenant({
+      ...t,
+      dbPassword: t.dbPassword,
+    });
+    tenantIds[t.slug] = tenantId;
+  }
+
+  // Seed platform users (2 admins + 3 operadores por tenant)
+  const passwordHash = bcrypt.hashSync("123456", 10);
+  const tenantUserIds: Record<string, { admins: number[]; operators: number[] }> = {};
+
+  for (const t of mocks) {
+    const admins: number[] = [];
+    const operators: number[] = [];
+
+    for (let i = 1; i <= 2; i++) {
+      const email = `${t.slug}.admin${i}@example.com`;
+      const [inserted] = await db
+        .insert(users)
+        .values({
+          name: `${t.name} Admin ${i}`,
+          email,
+          hashedPassword: passwordHash,
+          role: "admin",
+        })
+        .onConflictDoNothing()
+        .returning({ id: users.id });
+      if (inserted?.id) admins.push(inserted.id);
+    }
+
+    for (let i = 1; i <= 3; i++) {
+      const email = `${t.slug}.op${i}@example.com`;
+      const [inserted] = await db
+        .insert(users)
+        .values({
+          name: `${t.name} Operador ${i}`,
+          email,
+          hashedPassword: passwordHash,
+          role: "operator",
+        })
+        .onConflictDoNothing()
+        .returning({ id: users.id });
+      if (inserted?.id) operators.push(inserted.id);
+    }
+
+    tenantUserIds[t.slug] = { admins, operators };
+  }
+
+  // Seed clients (15 por tenant)
+  let clientsInserted = 0;
+  for (const t of mocks) {
+    const { operators } = tenantUserIds[t.slug];
+    if (!operators || operators.length === 0) continue;
+
+    for (let i = 1; i <= 15; i++) {
+      const cpf = `${String(i).padStart(3, "0")}${String(i).padStart(3, "0")}0000${String(i).padStart(2, "0")}`;
+      const email = `${t.slug}.cliente${i}@example.com`;
+
+      await db
+        .insert(clients)
+        .values({
+          name: `Cliente ${i} - ${t.name}`,
+          cpf,
+          phone: `11999${String(i).padStart(4, "0")}`,
+          email,
+          operatorId: operators[(i - 1) % operators.length],
+          address: "Rua Exemplo",
+          addressNumber: `${100 + i}`,
+          neighborhood: "Centro",
+          city: "São Paulo",
+          cep: "01000-000",
+        })
+        .onConflictDoNothing();
+      clientsInserted += 1;
+    }
+  }
+
+  return {
+    tenants: mocks.length,
+    users: Object.values(tenantUserIds).reduce((acc, v) => acc + v.admins.length + v.operators.length, 0),
+    clients: clientsInserted,
+  };
 }
