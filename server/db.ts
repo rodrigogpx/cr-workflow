@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { 
@@ -668,8 +668,8 @@ export async function seedMockTenants() {
 
   // Limpar dados mockados anteriores (emails @example.com e tenants de mock)
   const mockSlugs = mocks.map(m => m.slug);
-  await db.execute(sql`DELETE FROM ${clients} WHERE ${clients.email} LIKE ${"%@example.com"}`);
-  await db.execute(sql`DELETE FROM ${users} WHERE ${users.email} LIKE ${"%@example.com"}`);
+  await db.delete(clients).where(like(clients.email, "%@example.com"));
+  await db.delete(users).where(like(users.email, "%@example.com"));
   await db.delete(tenants).where(inArray(tenants.slug, mockSlugs));
 
   // Inserir tenants (usa encryptSecret na camada createTenant)
