@@ -1106,15 +1106,27 @@ export const appRouter = router({
   tenants: router({
     // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
     seedMocks: adminProcedure.mutation(async ({ ctx }) => {
-      const result = await db.seedMockTenants();
-      invalidateTenantCache();
+      try {
+        const result = await db.seedMockTenants();
+        invalidateTenantCache();
 
-      console.log("[AUDIT] Seed mock tenants executed", {
-        actorId: ctx.user.id,
-        result,
-      });
+        console.log("[AUDIT] Seed mock tenants executed", {
+          actorId: ctx.user.id,
+          result,
+        });
 
-      return { success: true, ...result };
+        return { success: true, ...result };
+      } catch (error: any) {
+        console.error("[ERROR] Seed mock tenants failed", {
+          actorId: ctx.user.id,
+          error: error?.message || String(error),
+        });
+
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error?.message || "Falha ao executar seed de tenants mock",
+        });
+      }
     }),
 
     // Listar todos os tenants
