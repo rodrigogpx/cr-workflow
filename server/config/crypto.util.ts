@@ -5,9 +5,14 @@ const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
 function getKey(): Buffer {
-  const secret = process.env.SECRET_KEY || process.env.ENCRYPTION_KEY;
+  const secret =
+    process.env.SECRET_KEY ||
+    process.env.ENCRYPTION_KEY ||
+    process.env.JWT_SECRET ||
+    process.env.COOKIE_SECRET;
+
   if (!secret) {
-    throw new Error("SECRET_KEY/ENCRYPTION_KEY not configured for crypto.util");
+    throw new Error("SECRET_KEY/ENCRYPTION_KEY/JWT_SECRET not configured for crypto.util");
   }
   // Derive 32 bytes key
   return crypto.createHash("sha256").update(secret).digest();
