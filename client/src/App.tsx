@@ -163,7 +163,9 @@ function Router() {
           </AdminRoute>
         </Route>
         <Route path={"/super-admin/tenants"}>
-          <SuperAdminTenants />
+          <AdminRoute>
+            <SuperAdminTenants />
+          </AdminRoute>
         </Route>
         <Route path={"/admin/email-templates"}>
           <Redirect to="/platform-admin/email-templates" />
