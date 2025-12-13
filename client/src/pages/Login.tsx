@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Email inválido" }),
@@ -21,6 +22,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
   const { user, loading, refresh } = useAuth();
   const loginMutation = trpc.auth.login.useMutation();
 
@@ -35,7 +37,7 @@ export default function Login() {
 
   useEffect(() => {
     if (user && !loading) {
-      setLocation("/dashboard");
+      setLocation(buildTenantPath(tenantSlug, "/dashboard"));
     }
   }, [user, loading, setLocation]);
 

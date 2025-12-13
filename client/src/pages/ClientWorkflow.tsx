@@ -38,6 +38,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 const formatCPF = (value: string): string => {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -64,6 +65,7 @@ const formatCEP = (value: string): string => {
 export default function ClientWorkflow() {
   const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
   const { user, isAuthenticated } = useAuth();
   const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
   const [schedulingData, setSchedulingData] = useState<{[key: number]: {date: string, examiner: string}}>({});
@@ -351,7 +353,7 @@ export default function ClientWorkflow() {
                 size="icon"
                 style={{color: '#cfcece'}}
                 className="hover:bg-gray-700"
-                onClick={() => setLocation("/cr-workflow")}
+                onClick={() => setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>

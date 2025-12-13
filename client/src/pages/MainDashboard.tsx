@@ -4,14 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { APP_LOGO } from "@/const";
 import { Target, Shield, Activity, RefreshCcw, Inbox, MapPin, ChevronRight, LogOut } from "lucide-react";
 import { useLocation } from "wouter";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 export default function MainDashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
 
   const handleLogout = async () => {
     await logout();
-    setLocation("/login");
+    setLocation(buildTenantPath(tenantSlug, "/login"));
   };
 
   const roleLabel = !user?.role
@@ -55,7 +57,7 @@ export default function MainDashboard() {
             {user?.role === "admin" && (
               <Button
                 variant="outline"
-                onClick={() => setLocation("/platform-admin/users")}
+                onClick={() => setLocation(buildTenantPath(tenantSlug, "/platform-admin/users"))}
                 style={{ color: "#c2c1c1" }}
                 className="mt-1 h-8 px-3 text-[0.65rem] sm:text-[0.7rem] font-semibold uppercase tracking-wide border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10 flex items-center gap-1"
               >
@@ -100,7 +102,7 @@ export default function MainDashboard() {
               </p>
               <Button
                 className="w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide border-2 border-dashed border-white/40"
-                onClick={() => setLocation("/cr-workflow")}
+                onClick={() => setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
               >
                 Acessar Workflow CR
                 <ChevronRight className="h-4 w-4 ml-2" />

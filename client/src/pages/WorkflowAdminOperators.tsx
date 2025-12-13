@@ -12,10 +12,12 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 export default function WorkflowAdminOperators() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<{ id: number; name: string; operatorId: number | null } | null>(null);
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>("");
@@ -60,7 +62,7 @@ export default function WorkflowAdminOperators() {
   }
 
   if (!user || user.role !== "admin") {
-    setLocation("/cr-workflow");
+    setLocation(buildTenantPath(tenantSlug, "/cr-workflow"));
     return null;
   }
 
@@ -84,7 +86,7 @@ export default function WorkflowAdminOperators() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation("/cr-workflow")}
+              onClick={() => setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />

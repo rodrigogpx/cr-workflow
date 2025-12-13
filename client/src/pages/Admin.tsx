@@ -6,10 +6,12 @@ import { ArrowLeft, Loader2, Target, Users, Shield, TrendingUp, Clock, CheckCirc
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 export default function Admin() {
   const [, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const tenantSlug = useTenantSlug();
 
   const { data: users, isLoading: usersLoading, refetch: refetchUsers } = trpc.users.list.useQuery();
   const { data: clients, isLoading: clientsLoading, refetch: refetchClients } = trpc.clients.list.useQuery();
@@ -46,7 +48,7 @@ export default function Admin() {
   }
 
   if (!user || user.role !== 'admin') {
-    setLocation("/dashboard");
+    setLocation(buildTenantPath(tenantSlug, "/dashboard"));
     return null;
   }
 
@@ -68,7 +70,7 @@ export default function Admin() {
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard">
+              <Link href={buildTenantPath(tenantSlug, "/dashboard")}>
                 <Button variant="ghost" size="icon" className="text-white hover:text-primary">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -102,7 +104,7 @@ export default function Admin() {
                   </div>
                 </div>
                 <Button
-                  onClick={() => setLocation("/platform-admin/email-templates")}
+                  onClick={() => setLocation(buildTenantPath(tenantSlug, "/platform-admin/email-templates"))}
                   className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
                 >
                   Gerenciar →
@@ -124,7 +126,7 @@ export default function Admin() {
                   </div>
                 </div>
                 <Button
-                  onClick={() => setLocation("/platform-admin/users")}
+                  onClick={() => setLocation(buildTenantPath(tenantSlug, "/platform-admin/users"))}
                   className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
                 >
                   Gerenciar →

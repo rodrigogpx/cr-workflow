@@ -41,19 +41,28 @@ export async function createContext(
   }
 
   // ==========================
-  // Resolver tenant por hostname
+  // Resolver tenant (URI primeiro, hostname como fallback)
   // ==========================
   const host = opts.req.headers.host ?? "localhost";
   let tenantSlug: string | null = null;
   let tenant: TenantConfig | null = null;
 
-  const isLocalHost = host === "localhost" || host.startsWith("127.0.0.1");
-  const appDomain = process.env.DOMAIN;
-  const isAppDomain = appDomain ? host.endsWith(appDomain) : false;
+  // 1) Tentar obter o slug a partir do header enviado pelo frontend
+  const headerSlug = opts.req.headers["x-tenant-slug"];
+  if (typeof headerSlug === "string" && headerSlug.trim() !== "") {
+    tenantSlug = headerSlug.trim();
+  }
 
-  // Só tenta resolver tenant em localhost (dev) ou quando estiver no domínio oficial da aplicação.
-  if (isLocalHost || isAppDomain) {
-    tenantSlug = resolveTenantSlug(host);
+  // 2) Fallback: resolução antiga por hostname/subdomínio
+  if (!tenantSlug) {
+    const isLocalHost = host === "localhost" || host.startsWith("127.0.0.1");
+    const appDomain = process.env.DOMAIN;
+    const isAppDomain = appDomain ? host.endsWith(appDomain) : false;
+
+    // Só tenta resolver tenant em localhost (dev) ou quando estiver no domínio oficial da aplicação.
+    if (isLocalHost || isAppDomain) {
+      tenantSlug = resolveTenantSlug(host);
+    }
   }
 
   if (tenantSlug) {

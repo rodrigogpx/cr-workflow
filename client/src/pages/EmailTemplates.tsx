@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 // Editor simples usando Textarea
 
 interface Attachment {
@@ -26,6 +27,7 @@ interface TemplateState {
 
 export default function EmailTemplates() {
   const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
   const { data: user } = trpc.auth.me.useQuery();
   const { data: smtpConfig, isLoading: isLoadingSmtp } = trpc.emails.getSmtpConfig.useQuery();
   const [templates, setTemplates] = useState<Record<string, TemplateState>>({});
@@ -218,6 +220,7 @@ export default function EmailTemplates() {
   };
 
   if (user && user.role !== 'admin') {
+    const dashboardPath = buildTenantPath(tenantSlug, "/dashboard");
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="max-w-md">
@@ -226,7 +229,7 @@ export default function EmailTemplates() {
             <CardDescription>Apenas administradores podem acessar esta página.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => setLocation("/dashboard")}>Voltar ao Dashboard</Button>
+            <Button onClick={() => setLocation(dashboardPath)}>Voltar ao Dashboard</Button>
           </CardContent>
         </Card>
       </div>
@@ -239,7 +242,7 @@ export default function EmailTemplates() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => setLocation("/admin")}>
+              <Button variant="ghost" size="sm" onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin"))}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Voltar
               </Button>

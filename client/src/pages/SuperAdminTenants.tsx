@@ -250,7 +250,7 @@ export default function SuperAdminTenants() {
             <Button 
               variant="outline" 
               className="text-white border-white/50 hover:bg-white/10"
-              onClick={() => setLocation("/platform-admin")}
+              onClick={() => setLocation("/platform-admin/users")}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar

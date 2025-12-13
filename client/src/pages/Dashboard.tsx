@@ -11,10 +11,12 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
 import { APP_LOGO } from "@/const";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 export default function Dashboard() {
   const { user, loading: authLoading, logout } = useAuth();
   const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<'all' | 'inProgress' | 'completed'>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -63,7 +65,8 @@ export default function Dashboard() {
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
-      setLocation("/login");
+      const target = buildTenantPath(tenantSlug, "/login");
+      setLocation(target);
     },
   });
 
@@ -85,7 +88,8 @@ export default function Dashboard() {
   }
 
   if (!user) {
-    setLocation("/login");
+    const target = buildTenantPath(tenantSlug, "/login");
+    setLocation(target);
     return null;
   }
 
@@ -134,7 +138,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
-                onClick={() => setLocation("/dashboard")}
+                onClick={() => setLocation(buildTenantPath(tenantSlug, "/dashboard"))}
                 className="text-white hover:text-primary"
               >
                 Voltar para módulos
@@ -143,7 +147,7 @@ export default function Dashboard() {
                 <>
                   <Button 
                     variant="outline" 
-                    onClick={() => setLocation("/workflow-admin/operators")}
+                    onClick={() => setLocation(buildTenantPath(tenantSlug, "/workflow-admin/operators"))}
                     style={{color: '#c2c1c1'}}
                     className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
                   >
@@ -152,7 +156,7 @@ export default function Dashboard() {
                   </Button>
                   <Button 
                     variant="outline" 
-                    onClick={() => setLocation("/workflow-admin/emails")}
+                    onClick={() => setLocation(buildTenantPath(tenantSlug, "/workflow-admin/emails"))}
                     style={{color: '#c2c1c1'}}
                     className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
                   >
@@ -161,7 +165,7 @@ export default function Dashboard() {
                   </Button>
                   <Button 
                     variant="outline" 
-                    onClick={() => setLocation("/platform-admin/users")}
+                    onClick={() => setLocation(buildTenantPath(tenantSlug, "/platform-admin/users"))}
                     style={{color: '#c2c1c1'}}
                     className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
                   >
@@ -378,7 +382,7 @@ export default function Dashboard() {
                 key={client.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => setLocation(`/client/${client.id}`)}
+                onClick={() => setLocation(buildTenantPath(tenantSlug, `/client/${client.id}`))}
                 className="cursor-pointer border-2 border-dashed border-white/20 bg-white/95 hover:border-primary transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
                 <CardHeader>

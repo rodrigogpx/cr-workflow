@@ -6,6 +6,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import React, { Suspense, lazy } from "react";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
@@ -25,7 +26,12 @@ const SuperAdminTenants = lazy(() => import("./pages/SuperAdminTenants"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function getBackgroundForPath(path: string) {
-  if (path.startsWith("/cr-workflow") || path.startsWith("/client/") || path.startsWith("/workflow-admin")) {
+  // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
+  if (
+    path.includes("/cr-workflow") ||
+    path.includes("/client/") ||
+    path.includes("/workflow-admin")
+  ) {
     return "/backgrond-02.webp";
   }
   return "/background-01.webp";
@@ -33,6 +39,7 @@ function getBackgroundForPath(path: string) {
 
 function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const tenantSlug = useTenantSlug();
 
   if (loading) {
     return (
@@ -43,7 +50,8 @@ function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Redirect to="/login" />;
+    const target = buildTenantPath(tenantSlug, "/login");
+    return <Redirect to={target} />;
   }
 
   return <>{children}</>;
@@ -51,6 +59,7 @@ function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
 
 function ApprovedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const tenantSlug = useTenantSlug();
   console.log("[FRONT DEBUG] ApprovedRoute - User:", user, "Loading:", loading);
 
   if (loading) {
@@ -62,11 +71,13 @@ function ApprovedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Redirect to="/login" />;
+    const target = buildTenantPath(tenantSlug, "/login");
+    return <Redirect to={target} />;
   }
 
   if (!user.role) {
-    return <Redirect to="/pending-approval" />;
+    const target = buildTenantPath(tenantSlug, "/pending-approval");
+    return <Redirect to={target} />;
   }
 
   return <>{children}</>;
@@ -74,6 +85,7 @@ function ApprovedRoute({ children }: { children: React.ReactNode }) {
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const tenantSlug = useTenantSlug();
 
   if (loading) {
     return (
@@ -92,7 +104,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (user.role !== "admin") {
-    return <Redirect to="/dashboard" />;
+    const target = buildTenantPath(tenantSlug, "/dashboard");
+    return <Redirect to={target} />;
   }
 
   return <>{children}</>;
@@ -108,8 +121,15 @@ function Router() {
       }>
       <Switch>
         <Route path={"/login"} component={Login} />
+        <Route path={"/:tenantSlug/login"} component={Login} />
         <Route path={"/register"} component={Register} />
+        <Route path={"/:tenantSlug/register"} component={Register} />
         <Route path={"/pending-approval"}>
+          <AuthenticatedRoute>
+            <PendingApproval />
+          </AuthenticatedRoute>
+        </Route>
+        <Route path={"/:tenantSlug/pending-approval"}>
           <AuthenticatedRoute>
             <PendingApproval />
           </AuthenticatedRoute>
@@ -117,9 +137,24 @@ function Router() {
         <Route path={"/"}>
           <Redirect to="/dashboard" />
         </Route>
+        <Route path={"/:tenantSlug"}>
+          {({ tenantSlug }: { tenantSlug: string }) => (
+            <Redirect to={buildTenantPath(tenantSlug, "/dashboard")} />
+          )}
+        </Route>
+        <Route path={"/:tenantSlug/dashboard"}>
+          <ApprovedRoute>
+            <MainDashboard />
+          </ApprovedRoute>
+        </Route>
         <Route path={"/dashboard"}>
           <ApprovedRoute>
             <MainDashboard />
+          </ApprovedRoute>
+        </Route>
+        <Route path={"/:tenantSlug/cr-workflow"}>
+          <ApprovedRoute>
+            <Dashboard />
           </ApprovedRoute>
         </Route>
         <Route path={"/cr-workflow"}>
@@ -127,14 +162,29 @@ function Router() {
             <Dashboard />
           </ApprovedRoute>
         </Route>
+        <Route path={"/:tenantSlug/client/:id"}>
+          <ApprovedRoute>
+            <ClientWorkflow />
+          </ApprovedRoute>
+        </Route>
         <Route path={"/client/:id"}>
           <ApprovedRoute>
             <ClientWorkflow />
           </ApprovedRoute>
         </Route>
+        <Route path={"/:tenantSlug/workflow-admin/operators"}>
+          <AdminRoute>
+            <WorkflowAdminOperators />
+          </AdminRoute>
+        </Route>
         <Route path={"/workflow-admin/operators"}>
           <AdminRoute>
             <WorkflowAdminOperators />
+          </AdminRoute>
+        </Route>
+        <Route path={"/:tenantSlug/workflow-admin/emails"}>
+          <AdminRoute>
+            <WorkflowAdminEmails />
           </AdminRoute>
         </Route>
         <Route path={"/workflow-admin/emails"}>
@@ -142,9 +192,19 @@ function Router() {
             <WorkflowAdminEmails />
           </AdminRoute>
         </Route>
+        <Route path={"/:tenantSlug/admin"}>
+          <AdminRoute>
+            <Admin />
+          </AdminRoute>
+        </Route>
         <Route path={"/admin"}>
           <AdminRoute>
             <Admin />
+          </AdminRoute>
+        </Route>
+        <Route path={"/:tenantSlug/platform-admin/users"}>
+          <AdminRoute>
+            <PlatformAdminUsers />
           </AdminRoute>
         </Route>
         <Route path={"/platform-admin/users"}>
@@ -152,12 +212,17 @@ function Router() {
             <PlatformAdminUsers />
           </AdminRoute>
         </Route>
+        <Route path={"/:tenantSlug/platform-admin/email-templates"}>
+          <AdminRoute>
+            <PlatformAdminEmailTemplates />
+          </AdminRoute>
+        </Route>
         <Route path={"/platform-admin/email-templates"}>
           <AdminRoute>
             <PlatformAdminEmailTemplates />
           </AdminRoute>
         </Route>
-        <Route path={"/platform-admin/settings"}>
+        <Route path={"/:tenantSlug/platform-admin/settings"}>
           <AdminRoute>
             <PlatformAdminSettings />
           </AdminRoute>

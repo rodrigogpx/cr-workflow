@@ -2,12 +2,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Home } from "lucide-react";
 import { useLocation } from "wouter";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 export default function NotFound() {
   const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
 
   const handleGoHome = () => {
-    setLocation("/");
+    const target = buildTenantPath(tenantSlug, "/dashboard");
+    setLocation(target);
   };
 
   return (

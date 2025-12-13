@@ -12,6 +12,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
 import Footer from "@/components/Footer";
 import { Switch } from "@/components/ui/switch";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 const MODULE_ID = 'workflow-cr';
 
@@ -30,6 +31,7 @@ interface TemplateState {
 export default function WorkflowAdminEmails() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
   const [templates, setTemplates] = useState<Record<string, TemplateState>>({});
   const [activeTab, setActiveTab] = useState('welcome');
   const [useRichEditor, setUseRichEditor] = useState<boolean>(() => {
@@ -585,7 +587,7 @@ export default function WorkflowAdminEmails() {
   }
 
   if (!user || user.role !== "admin") {
-    setLocation("/cr-workflow");
+    setLocation(buildTenantPath(tenantSlug, "/cr-workflow"));
     return null;
   }
 
@@ -622,7 +624,7 @@ export default function WorkflowAdminEmails() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation("/cr-workflow")}
+              onClick={() => setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
               className="gap-2 text-white border-white/50 hover:bg-white/10 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />

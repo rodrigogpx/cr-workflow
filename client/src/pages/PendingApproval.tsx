@@ -6,9 +6,13 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Redirect } from "wouter";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 export default function PendingApproval() {
   const { user, loading } = useAuth();
+  const tenantSlug = useTenantSlug();
+  const loginPath = buildTenantPath(tenantSlug, "/login");
+  const dashboardPath = buildTenantPath(tenantSlug, "/dashboard");
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
       window.location.href = "/";
@@ -30,11 +34,11 @@ export default function PendingApproval() {
   }
 
   if (!user) {
-    return <Redirect to="/login" />;
+    return <Redirect to={loginPath} />;
   }
 
   if (user.role) {
-    return <Redirect to="/dashboard" />;
+    return <Redirect to={dashboardPath} />;
   }
 
   const handleLogout = () => {

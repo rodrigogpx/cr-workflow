@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 const registerSchema = z.object({
   name: z.string().min(2, { message: "Nome deve ter pelo menos 2 caracteres" }),
@@ -27,6 +28,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function Register() {
   const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
   const { user, loading } = useAuth();
   const registerMutation = trpc.auth.register.useMutation();
 
@@ -42,9 +44,9 @@ export default function Register() {
   useEffect(() => {
     if (user && !loading) {
       if (user.role) {
-        setLocation("/dashboard");
+        setLocation(buildTenantPath(tenantSlug, "/dashboard"));
       } else {
-        setLocation("/pending-approval");
+        setLocation(buildTenantPath(tenantSlug, "/pending-approval"));
       }
     }
   }, [user, loading, setLocation]);
@@ -57,7 +59,7 @@ export default function Register() {
     }, {
       onSuccess: (result) => {
         toast.success(result.message);
-        setLocation("/login");
+        setLocation(buildTenantPath(tenantSlug, "/login"));
       },
       onError: (error) => {
         setError("root", { message: error.message });

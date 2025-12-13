@@ -4,6 +4,7 @@ import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Shield, Users, Mail, Settings, ChevronRight } from "lucide-react";
 import { useLocation } from "wouter";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 interface PlatformAdminLayoutProps {
   children: ReactNode;
@@ -13,6 +14,7 @@ interface PlatformAdminLayoutProps {
 export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutProps) {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
 
   const items = [
     {
@@ -68,7 +70,7 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
               <button
                 key={item.id}
                 disabled={!item.enabled}
-                onClick={() => item.enabled && setLocation(item.path)}
+                onClick={() => item.enabled && setLocation(buildTenantPath(tenantSlug, item.path))}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-3 transition-all border border-transparent ${
                   isActive
                     ? "bg-white text-black border-white/60 shadow"
@@ -107,7 +109,7 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation("/dashboard")}
+              onClick={() => setLocation(buildTenantPath(tenantSlug, "/dashboard"))}
               className="h-8 px-3 text-[0.65rem] font-semibold uppercase tracking-wide border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
             >
               Voltar para módulos
