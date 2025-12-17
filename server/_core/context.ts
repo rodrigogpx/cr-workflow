@@ -22,11 +22,15 @@ export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
   let user: User | null = null;
+  let sessionTenantSlug: string | null = null;
 
   try {
-    user = await sdk.authenticateRequest(opts.req);
+    const auth = await sdk.authenticateRequestWithTenant(opts.req);
+    user = auth.user;
+    sessionTenantSlug = auth.tenantSlug;
   } catch {
     user = null;
+    sessionTenantSlug = null;
   }
 
   // Fallback de desenvolvimento: se não houver sessão válida, usar o admin
@@ -47,10 +51,18 @@ export async function createContext(
   let tenantSlug: string | null = null;
   let tenant: TenantConfig | null = null;
 
+  // Se a sessão já tem tenantSlug, ela é a fonte de verdade.
+  // Isso evita que um usuário logado em um tenant seja "movido" de tenant só alterando a URL.
+  if (sessionTenantSlug) {
+    tenantSlug = sessionTenantSlug;
+  }
+
   // 1) Tentar obter o slug a partir do header enviado pelo frontend
-  const headerSlug = opts.req.headers["x-tenant-slug"];
-  if (typeof headerSlug === "string" && headerSlug.trim() !== "") {
-    tenantSlug = headerSlug.trim();
+  if (!tenantSlug) {
+    const headerSlug = opts.req.headers["x-tenant-slug"];
+    if (typeof headerSlug === "string" && headerSlug.trim() !== "") {
+      tenantSlug = headerSlug.trim();
+    }
   }
 
   // 2) Fallback: resolução antiga por hostname/subdomínio

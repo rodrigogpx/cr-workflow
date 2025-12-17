@@ -6,6 +6,7 @@ import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
+import { getTenantConfig, getTenantDb } from "../config/tenant.config";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -21,6 +22,7 @@ const isNonEmptyString = (value: unknown): value is string =>
 export type SessionPayload = {
   userId: string;
   name: string;
+  tenantSlug?: string | null;
 };
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
@@ -165,12 +167,13 @@ class SDKServer {
    */
   async createSessionToken(
     userId: string,
-    options: { expiresInMs?: number; name?: string } = {}
+    options: { expiresInMs?: number; name?: string; tenantSlug?: string | null } = {}
   ): Promise<string> {
     return this.signSession(
       {
         userId,
         name: options.name || "",
+        tenantSlug: options.tenantSlug ?? null,
       },
       options
     );
@@ -188,6 +191,7 @@ class SDKServer {
     return new SignJWT({
       userId: payload.userId,
       name: payload.name,
+      tenantSlug: payload.tenantSlug ?? null,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
@@ -196,7 +200,7 @@ class SDKServer {
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ userId: string; name: string } | null> {
+  ): Promise<{ userId: string; name: string; tenantSlug: string | null } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -207,21 +211,69 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { userId, name } = payload as Record<string, unknown>;
+      const { userId, name, tenantSlug } = payload as Record<string, unknown>;
 
       if (!isNonEmptyString(userId) || typeof name !== 'string') {
         console.warn("[Auth] Session payload missing required fields");
         return null;
       }
 
+      const normalizedTenantSlug = isNonEmptyString(tenantSlug)
+        ? tenantSlug
+        : null;
+
       return {
         userId,
         name,
+        tenantSlug: normalizedTenantSlug,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
       return null;
     }
+  }
+
+  async authenticateRequestWithTenant(req: Request): Promise<{ user: User; tenantSlug: string | null }> {
+    const cookies = this.parseCookies(req.headers.cookie);
+    const sessionCookie = cookies.get(COOKIE_NAME);
+    const session = await this.verifySession(sessionCookie);
+
+    if (!session) {
+      throw new ForbiddenError("Invalid session cookie");
+    }
+
+    const userId = parseInt(session.userId, 10);
+    if (isNaN(userId)) {
+      throw new ForbiddenError("Invalid user ID in session");
+    }
+
+    // Quando houver tenantSlug na sessão, o usuário é autenticado no DB do tenant.
+    if (session.tenantSlug) {
+      const tenant = await getTenantConfig(session.tenantSlug);
+      if (!tenant) {
+        throw new ForbiddenError("Tenant not found");
+      }
+
+      const tenantDb = await getTenantDb(tenant);
+      if (!tenantDb) {
+        throw new ForbiddenError("Tenant database not available");
+      }
+
+      const user = await db.getUserByIdFromDb(tenantDb, userId);
+      if (!user) {
+        throw new ForbiddenError("User not found");
+      }
+
+      return { user, tenantSlug: session.tenantSlug };
+    }
+
+    // Fallback de compatibilidade (sessões antigas / modo single-DB)
+    const user = await db.getUserById(userId);
+    if (!user) {
+      throw new ForbiddenError("User not found");
+    }
+
+    return { user, tenantSlug: null };
   }
 
   async getUserInfoWithJwt(
@@ -249,29 +301,7 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<User> {
-    const cookies = this.parseCookies(req.headers.cookie);
-    const sessionCookie = cookies.get(COOKIE_NAME);
-    const session = await this.verifySession(sessionCookie);
-
-    if (!session) {
-      throw new ForbiddenError("Invalid session cookie");
-    }
-
-    const userId = parseInt(session.userId, 10);
-    if (isNaN(userId)) {
-      throw new ForbiddenError("Invalid user ID in session");
-    }
-
-    const user = await db.getUserById(userId);
-
-    if (!user) {
-      throw new ForbiddenError("User not found");
-    }
-
-    // Opcional: atualizar 'lastSignedIn' a cada requisição
-    // Para evitar escritas excessivas no banco, isso pode ser feito com menos frequência
-    // await db.upsertUser({ id: user.id, lastSignedIn: new Date() });
-
+    const { user } = await this.authenticateRequestWithTenant(req);
     return user;
   }
 }

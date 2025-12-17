@@ -60,6 +60,50 @@ export async function upsertUser(user: InsertUser & { id?: number }): Promise<nu
   }
 }
 
+export async function saveEmailTemplateToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  template: InsertEmailTemplate & { module?: string }
+) {
+  const moduleValue = template.module || 'workflow-cr';
+  const existing = await getEmailTemplateFromDb(tenantDb, template.templateKey, moduleValue);
+
+  if (existing) {
+    await tenantDb
+      .update(emailTemplates)
+      .set({
+        templateTitle: template.templateTitle || null,
+        subject: template.subject,
+        content: template.content,
+        attachments: template.attachments || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(emailTemplates.id, existing.id));
+    return existing.id;
+  }
+
+  const [inserted] = await tenantDb
+    .insert(emailTemplates)
+    .values({ ...template, module: moduleValue })
+    .returning({ id: emailTemplates.id });
+  return inserted.id;
+}
+
+export async function upsertWorkflowStepToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  step: InsertWorkflowStep & { id?: number }
+) {
+  if (step.id) {
+    await tenantDb.update(workflowSteps).set(step).where(eq(workflowSteps.id, step.id));
+    return step.id;
+  }
+
+  const [inserted] = await tenantDb
+    .insert(workflowSteps)
+    .values(step)
+    .returning({ id: workflowSteps.id });
+  return inserted.id;
+}
+
 export async function getUserByEmail(email: string) {
   const db = await getDb();
   if (!db) {
@@ -70,6 +114,67 @@ export async function getUserByEmail(email: string) {
   const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getEmailTemplateFromDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  templateKey: string,
+  module?: string
+) {
+  if (module) {
+    const result = await tenantDb
+      .select()
+      .from(emailTemplates)
+      .where(and(
+        eq(emailTemplates.templateKey, templateKey),
+        eq(emailTemplates.module, module)
+      ))
+      .limit(1);
+    return result.length > 0 ? result[0] : undefined;
+  }
+
+  const result = await tenantDb
+    .select()
+    .from(emailTemplates)
+    .where(eq(emailTemplates.templateKey, templateKey))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByIdFromDb(tenantDb: ReturnType<typeof drizzle>, id: number) {
+  const result = await tenantDb.select().from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByEmailFromDb(tenantDb: ReturnType<typeof drizzle>, email: string) {
+  const result = await tenantDb.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function upsertUserToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  user: InsertUser & { id?: number }
+): Promise<number> {
+  if (user.id) {
+    await tenantDb.update(users).set(user).where(eq(users.id, user.id));
+    return user.id;
+  }
+
+  const [inserted] = await tenantDb
+    .insert(users)
+    .values(user)
+    .returning({ id: users.id });
+  return inserted.id;
+}
+
+export async function createClientToDb(tenantDb: ReturnType<typeof drizzle>, client: InsertClient) {
+  const [inserted] = await tenantDb
+    .insert(clients)
+    .values(client)
+    .returning({ id: clients.id });
+
+  return inserted.id;
 }
 
 export async function getUserById(id: number) {
@@ -119,11 +224,23 @@ export async function getClientsByOperator(operatorId: number) {
   return await db.select().from(clients).where(eq(clients.operatorId, operatorId)).orderBy(desc(clients.createdAt));
 }
 
+export async function getClientsByOperatorFromDb(tenantDb: ReturnType<typeof drizzle>, operatorId: number) {
+  return await tenantDb
+    .select()
+    .from(clients)
+    .where(eq(clients.operatorId, operatorId))
+    .orderBy(desc(clients.createdAt));
+}
+
 export async function getAllClients() {
   const db = await getDb();
   if (!db) return [];
   
   return await db.select().from(clients).orderBy(desc(clients.createdAt));
+}
+
+export async function getAllClientsFromDb(tenantDb: ReturnType<typeof drizzle>) {
+  return await tenantDb.select().from(clients).orderBy(desc(clients.createdAt));
 }
 
 export async function getClientById(clientId: number) {
@@ -134,11 +251,24 @@ export async function getClientById(clientId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getClientByIdFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
+  const result = await tenantDb.select().from(clients).where(eq(clients.id, clientId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function updateClient(clientId: number, data: Partial<InsertClient>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   await db.update(clients).set(data).where(eq(clients.id, clientId));
+}
+
+export async function updateClientToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  clientId: number,
+  data: Partial<InsertClient>
+) {
+  await tenantDb.update(clients).set(data).where(eq(clients.id, clientId));
 }
 
 export async function deleteClient(clientId: number) {
@@ -152,6 +282,19 @@ export async function deleteClient(clientId: number) {
   }
   await db.delete(workflowSteps).where(eq(workflowSteps.clientId, clientId));
   await db.delete(clients).where(eq(clients.id, clientId));
+}
+
+export async function deleteClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
+  await tenantDb.delete(documents).where(eq(documents.clientId, clientId));
+  const clientWorkflowSteps = await tenantDb
+    .select()
+    .from(workflowSteps)
+    .where(eq(workflowSteps.clientId, clientId));
+  for (const step of clientWorkflowSteps) {
+    await tenantDb.delete(subTasks).where(eq(subTasks.workflowStepId, step.id));
+  }
+  await tenantDb.delete(workflowSteps).where(eq(workflowSteps.clientId, clientId));
+  await tenantDb.delete(clients).where(eq(clients.id, clientId));
 }
 
 // Workflow operations
@@ -207,6 +350,51 @@ export async function getWorkflowByClient(clientId: number) {
   return steps;
 }
 
+export async function getWorkflowByClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
+  const steps = await tenantDb
+    .select()
+    .from(workflowSteps)
+    .where(eq(workflowSteps.clientId, clientId))
+    .orderBy(workflowSteps.id);
+
+  const hasCorruptedSteps = steps.some(
+    (s: any) => !s.stepId || !s.stepTitle
+  );
+
+  if (hasCorruptedSteps && steps.length === 6) {
+    const canonicalSteps = [
+      { stepId: 'boas-vindas', stepTitle: 'Central de Mensagens' },
+      { stepId: 'cadastro', stepTitle: 'Cadastro' },
+      { stepId: 'agendamento-psicotecnico', stepTitle: 'Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo' },
+      { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)' },
+      { stepId: 'juntada-documento', stepTitle: 'Juntada de Documentos' },
+      { stepId: 'acompanhamento-sinarm', stepTitle: 'Acompanhamento Sinarm-CAC' },
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      const step: any = steps[i];
+      const canonical = canonicalSteps[i];
+      if (!step.stepId || !step.stepTitle) {
+        await tenantDb
+          .update(workflowSteps)
+          .set({
+            stepId: step.stepId || canonical.stepId,
+            stepTitle: step.stepTitle || canonical.stepTitle,
+          })
+          .where(eq(workflowSteps.id, step.id));
+      }
+    }
+
+    return await tenantDb
+      .select()
+      .from(workflowSteps)
+      .where(eq(workflowSteps.clientId, clientId))
+      .orderBy(workflowSteps.id);
+  }
+
+  return steps;
+}
+
 export async function getSubTasksByWorkflowStep(workflowStepId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -214,11 +402,30 @@ export async function getSubTasksByWorkflowStep(workflowStepId: number) {
   return await db.select().from(subTasks).where(eq(subTasks.workflowStepId, workflowStepId));
 }
 
+export async function getSubTasksByWorkflowStepFromDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  workflowStepId: number
+) {
+  return await tenantDb
+    .select()
+    .from(subTasks)
+    .where(eq(subTasks.workflowStepId, workflowStepId));
+}
+
 export async function getWorkflowStepById(stepId: number) {
   const db = await getDb();
   if (!db) return undefined;
   
   const result = await db.select().from(workflowSteps).where(eq(workflowSteps.id, stepId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getWorkflowStepByIdFromDb(tenantDb: ReturnType<typeof drizzle>, stepId: number) {
+  const result = await tenantDb
+    .select()
+    .from(workflowSteps)
+    .where(eq(workflowSteps.id, stepId))
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -254,6 +461,22 @@ export async function upsertSubTask(task: InsertSubTask & { id?: number }) {
   }
 }
 
+export async function upsertSubTaskToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  task: InsertSubTask & { id?: number }
+) {
+  if (task.id) {
+    await tenantDb.update(subTasks).set(task).where(eq(subTasks.id, task.id));
+    return task.id;
+  }
+
+  const [inserted] = await tenantDb
+    .insert(subTasks)
+    .values(task)
+    .returning({ id: subTasks.id });
+  return inserted.id;
+}
+
 export async function updateSubTaskCompleted(subTaskId: number, completed: boolean) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -262,6 +485,20 @@ export async function updateSubTaskCompleted(subTaskId: number, completed: boole
     .set({ 
       completed, 
       completedAt: completed ? new Date() : null 
+    })
+    .where(eq(subTasks.id, subTaskId));
+}
+
+export async function updateSubTaskCompletedToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  subTaskId: number,
+  completed: boolean
+) {
+  await tenantDb
+    .update(subTasks)
+    .set({
+      completed,
+      completedAt: completed ? new Date() : null,
     })
     .where(eq(subTasks.id, subTaskId));
 }
@@ -278,11 +515,27 @@ export async function createDocument(doc: InsertDocument) {
   return inserted.id;
 }
 
+export async function createDocumentToDb(tenantDb: ReturnType<typeof drizzle>, doc: InsertDocument) {
+  const [inserted] = await tenantDb
+    .insert(documents)
+    .values(doc)
+    .returning({ id: documents.id });
+  return inserted.id;
+}
+
 export async function getDocumentsByClient(clientId: number) {
   const db = await getDb();
   if (!db) return [];
   
   return await db.select().from(documents).where(eq(documents.clientId, clientId)).orderBy(desc(documents.createdAt));
+}
+
+export async function getDocumentsByClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
+  return await tenantDb
+    .select()
+    .from(documents)
+    .where(eq(documents.clientId, clientId))
+    .orderBy(desc(documents.createdAt));
 }
 
 export async function getDocumentById(documentId: number) {
@@ -293,11 +546,24 @@ export async function getDocumentById(documentId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getDocumentByIdFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number) {
+  const result = await tenantDb
+    .select()
+    .from(documents)
+    .where(eq(documents.id, documentId))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function deleteDocument(documentId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   await db.delete(documents).where(eq(documents.id, documentId));
+}
+
+export async function deleteDocumentFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number) {
+  await tenantDb.delete(documents).where(eq(documents.id, documentId));
 }
 
 // User management
@@ -308,11 +574,23 @@ export async function getAllUsers() {
   return await db.select().from(users).orderBy(desc(users.createdAt));
 }
 
+export async function getAllUsersFromDb(tenantDb: ReturnType<typeof drizzle>) {
+  return await tenantDb.select().from(users).orderBy(desc(users.createdAt));
+}
+
 export async function updateUser(userId: number, data: Partial<InsertUser>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   await db.update(users).set(data).where(eq(users.id, userId));
+}
+
+export async function updateUserToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  userId: number,
+  data: Partial<InsertUser>
+) {
+  await tenantDb.update(users).set(data).where(eq(users.id, userId));
 }
 
 export async function updateUserRole(userId: number, role: "operator" | "admin") {
@@ -322,11 +600,23 @@ export async function updateUserRole(userId: number, role: "operator" | "admin")
   await db.update(users).set({ role }).where(eq(users.id, userId));
 }
 
+export async function updateUserRoleToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  userId: number,
+  role: "operator" | "admin"
+) {
+  await tenantDb.update(users).set({ role }).where(eq(users.id, userId));
+}
+
 export async function deleteUser(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   await db.delete(users).where(eq(users.id, userId));
+}
+
+export async function deleteUserFromDb(tenantDb: ReturnType<typeof drizzle>, userId: number) {
+  await tenantDb.delete(users).where(eq(users.id, userId));
 }
 
 // Email settings (SMTP) - stored in a dedicated table managed via raw SQL
@@ -383,6 +673,32 @@ export async function getEmailSettings(): Promise<EmailSettings | null> {
   };
 }
 
+export async function getEmailSettingsFromDb(tenantDb: ReturnType<typeof drizzle>): Promise<EmailSettings | null> {
+  await ensureEmailSettingsTable(tenantDb);
+
+  const result: any = await tenantDb.execute(sql`
+    SELECT smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom, useSecure
+    FROM emailSettings
+    WHERE id = 1
+    LIMIT 1
+  `);
+
+  const rows = result[0] as any[];
+  if (!rows || rows.length === 0) {
+    return null;
+  }
+
+  const row = rows[0];
+  return {
+    smtpHost: row.smtpHost,
+    smtpPort: Number(row.smtpPort),
+    smtpUser: row.smtpUser,
+    smtpPass: row.smtpPass,
+    smtpFrom: row.smtpFrom,
+    useSecure: !!row.useSecure,
+  };
+}
+
 export async function saveEmailSettings(settings: EmailSettings): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -390,6 +706,25 @@ export async function saveEmailSettings(settings: EmailSettings): Promise<void> 
   await ensureEmailSettingsTable(db);
 
   await db.execute(sql`
+    INSERT INTO "emailSettings" (id, "smtpHost", "smtpPort", "smtpUser", "smtpPass", "smtpFrom", "useSecure")
+    VALUES (1, ${settings.smtpHost}, ${settings.smtpPort}, ${settings.smtpUser}, ${settings.smtpPass}, ${settings.smtpFrom}, ${settings.useSecure})
+    ON CONFLICT (id) DO UPDATE SET
+      "smtpHost" = EXCLUDED."smtpHost",
+      "smtpPort" = EXCLUDED."smtpPort",
+      "smtpUser" = EXCLUDED."smtpUser",
+      "smtpPass" = EXCLUDED."smtpPass",
+      "smtpFrom" = EXCLUDED."smtpFrom",
+      "useSecure" = EXCLUDED."useSecure";
+  `);
+}
+
+export async function saveEmailSettingsToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  settings: EmailSettings
+): Promise<void> {
+  await ensureEmailSettingsTable(tenantDb);
+
+  await tenantDb.execute(sql`
     INSERT INTO "emailSettings" (id, "smtpHost", "smtpPort", "smtpUser", "smtpPass", "smtpFrom", "useSecure")
     VALUES (1, ${settings.smtpHost}, ${settings.smtpPort}, ${settings.smtpUser}, ${settings.smtpPass}, ${settings.smtpFrom}, ${settings.useSecure})
     ON CONFLICT (id) DO UPDATE SET
@@ -414,6 +749,22 @@ export async function getAllEmailTemplates(module?: string) {
   }
   
   const result = await db.select().from(emailTemplates);
+  return result;
+}
+
+export async function getAllEmailTemplatesFromDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  module?: string
+) {
+  if (module) {
+    const result = await tenantDb
+      .select()
+      .from(emailTemplates)
+      .where(eq(emailTemplates.module, module));
+    return result;
+  }
+
+  const result = await tenantDb.select().from(emailTemplates);
   return result;
 }
 
@@ -480,11 +831,27 @@ export async function logEmailSent(log: InsertEmailLog) {
   return inserted.id;
 }
 
+export async function logEmailSentToDb(tenantDb: ReturnType<typeof drizzle>, log: InsertEmailLog) {
+  const [inserted] = await tenantDb
+    .insert(emailLogs)
+    .values(log)
+    .returning({ id: emailLogs.id });
+  return inserted.id;
+}
+
 export async function getEmailLogsByClient(clientId: number) {
   const db = await getDb();
   if (!db) return [];
   
   return await db.select().from(emailLogs)
+    .where(eq(emailLogs.clientId, clientId))
+    .orderBy(desc(emailLogs.sentAt));
+}
+
+export async function getEmailLogsByClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
+  return await tenantDb
+    .select()
+    .from(emailLogs)
     .where(eq(emailLogs.clientId, clientId))
     .orderBy(desc(emailLogs.sentAt));
 }
@@ -501,6 +868,24 @@ export async function getEmailLog(clientId: number, templateKey: string) {
     .orderBy(desc(emailLogs.sentAt))
     .limit(1);
   
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getEmailLogFromDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  clientId: number,
+  templateKey: string
+) {
+  const result = await tenantDb
+    .select()
+    .from(emailLogs)
+    .where(and(
+      eq(emailLogs.clientId, clientId),
+      eq(emailLogs.templateKey, templateKey)
+    ))
+    .orderBy(desc(emailLogs.sentAt))
+    .limit(1);
+
   return result.length > 0 ? result[0] : null;
 }
 
@@ -593,81 +978,96 @@ export async function logTenantActivity(entry: InsertTenantActivityLog) {
 // ===========================================
 // SEED MOCK TENANTS/USERS/CLIENTS
 // ===========================================
+const mockTenants = [
+  {
+    slug: "tiroesp",
+    name: "Clube de Tiro Esportivo SP",
+    dbHost: "localhost",
+    dbPort: 5432,
+    dbName: "cac360_tiroesp",
+    dbUser: "tiroesp_user",
+    dbPassword: "tiroesp_pass",
+    primaryColor: "#1a5c00",
+    secondaryColor: "#4d9702",
+    featureWorkflowCR: true,
+    featureApostilamento: true,
+    featureRenovacao: true,
+    featureInsumos: false,
+    plan: "professional" as const,
+    subscriptionStatus: "active" as const,
+    subscriptionExpiresAt: null,
+    maxUsers: 20,
+    maxClients: 1000,
+    maxStorageGB: 100,
+    isActive: true,
+  },
+  {
+    slug: "cluberio",
+    name: "Clube Tiro Rio",
+    dbHost: "localhost",
+    dbPort: 5432,
+    dbName: "cac360_cluberio",
+    dbUser: "cluberio_user",
+    dbPassword: "cluberio_pass",
+    primaryColor: "#002366",
+    secondaryColor: "#4169E1",
+    featureWorkflowCR: true,
+    featureApostilamento: false,
+    featureRenovacao: false,
+    featureInsumos: false,
+    plan: "starter" as const,
+    subscriptionStatus: "trial" as const,
+    subscriptionExpiresAt: null,
+    maxUsers: 5,
+    maxClients: 100,
+    maxStorageGB: 50,
+    isActive: true,
+  },
+  {
+    slug: "norteclub",
+    name: "Clube Norte CAC",
+    dbHost: "localhost",
+    dbPort: 5432,
+    dbName: "cac360_norteclub",
+    dbUser: "norte_user",
+    dbPassword: "norte_pass",
+    primaryColor: "#0f172a",
+    secondaryColor: "#10b981",
+    featureWorkflowCR: true,
+    featureApostilamento: true,
+    featureRenovacao: false,
+    featureInsumos: true,
+    plan: "enterprise" as const,
+    subscriptionStatus: "active" as const,
+    subscriptionExpiresAt: null,
+    maxUsers: 50,
+    maxClients: 5000,
+    maxStorageGB: 500,
+    isActive: true,
+  },
+] as const;
+
+export async function clearMockTenants() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const mockSlugs = mockTenants.map((m) => m.slug);
+
+  await db.delete(clients).where(like(clients.email, "%@example.com"));
+  await db.delete(users).where(like(users.email, "%@example.com"));
+  await db.delete(tenants).where(inArray(tenants.slug, mockSlugs));
+
+  return { tenants: mockSlugs.length };
+}
+
 export async function seedMockTenants() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const mocks = [
-    {
-      slug: "tiroesp",
-      name: "Clube de Tiro Esportivo SP",
-      dbHost: "localhost",
-      dbPort: 5432,
-      dbName: "cac360_tiroesp",
-      dbUser: "tiroesp_user",
-      dbPassword: "tiroesp_pass",
-      primaryColor: "#1a5c00",
-      secondaryColor: "#4d9702",
-      featureWorkflowCR: true,
-      featureApostilamento: true,
-      featureRenovacao: true,
-      featureInsumos: false,
-      plan: "professional" as const,
-      subscriptionStatus: "active" as const,
-      subscriptionExpiresAt: null,
-      maxUsers: 20,
-      maxClients: 1000,
-      maxStorageGB: 100,
-      isActive: true,
-    },
-    {
-      slug: "cluberio",
-      name: "Clube Tiro Rio",
-      dbHost: "localhost",
-      dbPort: 5432,
-      dbName: "cac360_cluberio",
-      dbUser: "cluberio_user",
-      dbPassword: "cluberio_pass",
-      primaryColor: "#002366",
-      secondaryColor: "#4169E1",
-      featureWorkflowCR: true,
-      featureApostilamento: false,
-      featureRenovacao: false,
-      featureInsumos: false,
-      plan: "starter" as const,
-      subscriptionStatus: "trial" as const,
-      subscriptionExpiresAt: null,
-      maxUsers: 5,
-      maxClients: 100,
-      maxStorageGB: 50,
-      isActive: true,
-    },
-    {
-      slug: "norteclub",
-      name: "Clube Norte CAC",
-      dbHost: "localhost",
-      dbPort: 5432,
-      dbName: "cac360_norteclub",
-      dbUser: "norte_user",
-      dbPassword: "norte_pass",
-      primaryColor: "#0f172a",
-      secondaryColor: "#10b981",
-      featureWorkflowCR: true,
-      featureApostilamento: true,
-      featureRenovacao: false,
-      featureInsumos: true,
-      plan: "enterprise" as const,
-      subscriptionStatus: "active" as const,
-      subscriptionExpiresAt: null,
-      maxUsers: 50,
-      maxClients: 5000,
-      maxStorageGB: 500,
-      isActive: true,
-    },
-  ];
+  const mocks = mockTenants;
 
   // Limpar dados mockados anteriores (emails @example.com e tenants de mock)
-  const mockSlugs = mocks.map(m => m.slug);
+  const mockSlugs = mocks.map((m) => m.slug);
   await db.delete(clients).where(like(clients.email, "%@example.com"));
   await db.delete(users).where(like(users.email, "%@example.com"));
   await db.delete(tenants).where(inArray(tenants.slug, mockSlugs));

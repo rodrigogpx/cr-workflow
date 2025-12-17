@@ -135,6 +135,14 @@ export default function SuperAdminTenants() {
     onError: (err) => toast.error(err.message || "Erro ao remover tenant"),
   });
 
+  const clearMocks = trpc.tenants.clearMocks.useMutation({
+    onSuccess: (res) => {
+      toast.success(`Mocks limpos: ${res.tenants} tenants de mock removidos`);
+      utils.tenants.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Erro ao limpar mocks"),
+  });
+
   const seedMocks = trpc.tenants.seedMocks.useMutation({
     onSuccess: (res) => {
       toast.success(`Seed concluído: ${res.tenants} tenants, ${res.users} usuários, ${res.clients} clientes`);
@@ -327,6 +335,24 @@ export default function SuperAdminTenants() {
             />
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!confirm("Tem certeza que deseja limpar todos os dados de tenants/usuários/clientes de mock?")) {
+                  return;
+                }
+                clearMocks.mutate();
+              }}
+              disabled={clearMocks.isLoading || seedMocks.isLoading}
+              className="flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
+            >
+              {clearMocks.isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              Limpar mocks
+            </Button>
             <Button
               variant="outline"
               onClick={() => seedMocks.mutate()}

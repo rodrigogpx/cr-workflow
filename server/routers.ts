@@ -11,6 +11,18 @@ import { saveClientDocumentFile } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
+import { getTenantDb } from "./config/tenant.config";
+
+async function getTenantDbOrNull(ctx: any) {
+  if (ctx?.tenantSlug && ctx?.tenant) {
+    const tenantDb = await getTenantDb(ctx.tenant);
+    if (!tenantDb) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
+    }
+    return tenantDb;
+  }
+  return null;
+}
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -23,7 +35,18 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const user = await db.getUserByEmail(input.email);
+        const tenantSlug = ctx.tenantSlug;
+
+        const user = tenantSlug && ctx.tenant
+          ? await (async () => {
+              const tenantDb = await getTenantDb(ctx.tenant);
+              if (!tenantDb) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
+              }
+              return await db.getUserByEmailFromDb(tenantDb, input.email);
+            })()
+          : await db.getUserByEmail(input.email);
+
         if (!user) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
@@ -36,6 +59,7 @@ export const appRouter = router({
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
           name: user.name || "",
           expiresInMs: ONE_YEAR_MS,
+          tenantSlug,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -79,9 +103,20 @@ export const appRouter = router({
         email: z.string().email("Email inválido"),
         password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const tenantSlug = ctx.tenantSlug;
+
         // Verificar se email já existe
-        const existingUser = await db.getUserByEmail(input.email);
+        const existingUser = tenantSlug && ctx.tenant
+          ? await (async () => {
+              const tenantDb = await getTenantDb(ctx.tenant);
+              if (!tenantDb) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
+              }
+              return await db.getUserByEmailFromDb(tenantDb, input.email);
+            })()
+          : await db.getUserByEmail(input.email);
+
         if (existingUser) {
           throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
         }
@@ -90,12 +125,25 @@ export const appRouter = router({
         const hashedPassword = await hashPassword(input.password);
 
         // Criar usuário sem role (aguardando aprovação)
-        const userId = await db.upsertUser({
-          name: input.name,
-          email: input.email,
-          hashedPassword,
-          role: null, // Aguardando aprovação do admin
-        });
+        const userId = tenantSlug && ctx.tenant
+          ? await (async () => {
+              const tenantDb = await getTenantDb(ctx.tenant);
+              if (!tenantDb) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
+              }
+              return await db.upsertUserToDb(tenantDb, {
+                name: input.name,
+                email: input.email,
+                hashedPassword,
+                role: null, // Aguardando aprovação do admin
+              });
+            })()
+          : await db.upsertUser({
+              name: input.name,
+              email: input.email,
+              hashedPassword,
+              role: null, // Aguardando aprovação do admin
+            });
 
         return {
           success: true,
@@ -108,15 +156,18 @@ export const appRouter = router({
   // Clients router
   clients: router({
     list: protectedProcedure.query(async ({ ctx }) => {
+      const tenantDb = await getTenantDbOrNull(ctx);
       // Admin vê todos os clientes, operador vê apenas os seus
       const clients = ctx.user.role === 'admin' 
-        ? await db.getAllClients()
-        : await db.getClientsByOperator(ctx.user.id);
+        ? (tenantDb ? await db.getAllClientsFromDb(tenantDb) : await db.getAllClients())
+        : (tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id) : await db.getClientsByOperator(ctx.user.id));
       
       // Adicionar estatísticas de workflow para cada cliente
       const clientsWithProgress = await Promise.all(
         clients.map(async (client) => {
-          const workflow = await db.getWorkflowByClient(client.id);
+          const workflow = tenantDb
+            ? await db.getWorkflowByClientFromDb(tenantDb, client.id)
+            : await db.getWorkflowByClient(client.id);
           const totalSteps = workflow.length;
           const completedSteps = workflow.filter((s: any) => s.completed).length;
           const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
@@ -136,7 +187,10 @@ export const appRouter = router({
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
-        const client = await db.getClientById(input.id);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.id)
+          : await db.getClientById(input.id);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -158,6 +212,7 @@ export const appRouter = router({
         operatorId: z.number().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
         // Admin pode atribuir a qualquer operador, operador cria para si mesmo
         const operatorId = ctx.user.role === 'admin' && input.operatorId 
           ? input.operatorId 
@@ -165,10 +220,15 @@ export const appRouter = router({
         
         let clientId: number;
         try {
-          clientId = await db.createClient({
-            ...input,
-            operatorId,
-          });
+          clientId = tenantDb
+            ? await db.createClientToDb(tenantDb, {
+                ...input,
+                operatorId,
+              })
+            : await db.createClient({
+                ...input,
+                operatorId,
+              });
         } catch (error: any) {
           // Check for duplicate CPF error (MySQL error code 1062)
           if (error.message && error.message.includes('Duplicate entry')) {
@@ -191,12 +251,19 @@ export const appRouter = router({
         ];
 
         for (const step of initialSteps) {
-          const workflowStepId = await db.upsertWorkflowStep({
-            clientId,
-            stepId: step.stepId,
-            stepTitle: step.stepTitle,
-            completed: false,
-          });
+          const workflowStepId = tenantDb
+            ? await db.upsertWorkflowStepToDb(tenantDb, {
+                clientId,
+                stepId: step.stepId,
+                stepTitle: step.stepTitle,
+                completed: false,
+              })
+            : await db.upsertWorkflowStep({
+                clientId,
+                stepId: step.stepId,
+                stepTitle: step.stepTitle,
+                completed: false,
+              });
 
           // Se for a etapa "Juntada de Documento", criar as 16 subtarefas (documentos)
           if (step.stepId === 'juntada-documento') {
@@ -220,12 +287,21 @@ export const appRouter = router({
             ];
 
             for (let i = 0; i < documents.length; i++) {
-              await db.upsertSubTask({
-                workflowStepId,
-                subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
-                label: documents[i],
-                completed: false,
-              });
+              if (tenantDb) {
+                await db.upsertSubTaskToDb(tenantDb, {
+                  workflowStepId,
+                  subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
+                  label: documents[i],
+                  completed: false,
+                });
+              } else {
+                await db.upsertSubTask({
+                  workflowStepId,
+                  subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
+                  label: documents[i],
+                  completed: false,
+                });
+              }
             }
           }
         }
@@ -275,7 +351,10 @@ export const appRouter = router({
             complement: z.string().optional(),
           }))
           .mutation(async ({ ctx, input }) => {
-            const client = await db.getClientById(input.id);
+            const tenantDb = await getTenantDbOrNull(ctx);
+            const client = tenantDb
+              ? await db.getClientByIdFromDb(tenantDb, input.id)
+              : await db.getClientById(input.id);
             if (!client) {
               throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
             }
@@ -291,20 +370,31 @@ export const appRouter = router({
             }
             
             const { id, ...updateData } = input;
-            await db.updateClient(id, updateData);
+            if (tenantDb) {
+              await db.updateClientToDb(tenantDb, id, updateData);
+            } else {
+              await db.updateClient(id, updateData);
+            }
             return { success: true };
           }),
 
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const client = await db.getClientById(input.id);
+      .mutation(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.id)
+          : await db.getClientById(input.id);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
         // Apenas admin pode deletar clientes
-        await db.deleteClient(input.id);
+        if (tenantDb) {
+          await db.deleteClientFromDb(tenantDb, input.id);
+        } else {
+          await db.deleteClient(input.id);
+        }
         return { success: true };
       }),
   }),
@@ -314,7 +404,10 @@ export const appRouter = router({
     getByClient: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
-        const client = await db.getClientById(input.clientId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -324,12 +417,16 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
-        const steps = await db.getWorkflowByClient(input.clientId);
+        const steps = tenantDb
+          ? await db.getWorkflowByClientFromDb(tenantDb, input.clientId)
+          : await db.getWorkflowByClient(input.clientId);
         
         // Buscar subtarefas para cada step
         const stepsWithSubTasks = await Promise.all(
           steps.map(async (step) => {
-            const subTasksList = await db.getSubTasksByWorkflowStep(step.id);
+            const subTasksList = tenantDb
+              ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, step.id)
+              : await db.getSubTasksByWorkflowStep(step.id);
             return {
               ...step,
               subTasks: subTasksList,
@@ -349,13 +446,18 @@ export const appRouter = router({
         protocolNumber: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
         // Buscar etapa atual
-        const currentStep = await db.getWorkflowStepById(input.stepId);
+        const currentStep = tenantDb
+          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
+          : await db.getWorkflowStepById(input.stepId);
         if (!currentStep) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
         }
         
-        const client = await db.getClientById(currentStep.clientId);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, currentStep.clientId)
+          : await db.getClientById(currentStep.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -377,7 +479,11 @@ export const appRouter = router({
         if (input.sinarmStatus !== undefined) updateData.sinarmStatus = input.sinarmStatus;
         if (input.protocolNumber !== undefined) updateData.protocolNumber = input.protocolNumber;
         
-        await db.upsertWorkflowStep(updateData);
+        if (tenantDb) {
+          await db.upsertWorkflowStepToDb(tenantDb, updateData);
+        } else {
+          await db.upsertWorkflowStep(updateData);
+        }
         
         return { success: true };
       }),
@@ -389,7 +495,10 @@ export const appRouter = router({
         completed: z.boolean(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const client = await db.getClientById(input.clientId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -399,7 +508,11 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
-        await db.updateSubTaskCompleted(input.subTaskId, input.completed);
+        if (tenantDb) {
+          await db.updateSubTaskCompletedToDb(tenantDb, input.subTaskId, input.completed);
+        } else {
+          await db.updateSubTaskCompleted(input.subTaskId, input.completed);
+        }
         
         return { success: true };
       }),
@@ -407,7 +520,10 @@ export const appRouter = router({
     generateWelcomePDF: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        const client = await db.getClientById(input.clientId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -435,7 +551,10 @@ export const appRouter = router({
         examinerName: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const client = await db.getClientById(input.clientId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -445,20 +564,33 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
-        const currentStep = await db.getWorkflowStepById(input.stepId);
+        const currentStep = tenantDb
+          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
+          : await db.getWorkflowStepById(input.stepId);
         if (!currentStep) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
         }
 
         // Atualizar apenas campos de agendamento, preservando identificadores e título da etapa
-        await db.upsertWorkflowStep({
-          id: currentStep.id,
-          clientId: currentStep.clientId,
-          stepId: currentStep.stepId,
-          stepTitle: currentStep.stepTitle,
-          scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
-          examinerName: input.examinerName || null,
-        });
+        if (tenantDb) {
+          await db.upsertWorkflowStepToDb(tenantDb, {
+            id: currentStep.id,
+            clientId: currentStep.clientId,
+            stepId: currentStep.stepId,
+            stepTitle: currentStep.stepTitle,
+            scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
+            examinerName: input.examinerName || null,
+          });
+        } else {
+          await db.upsertWorkflowStep({
+            id: currentStep.id,
+            clientId: currentStep.clientId,
+            stepId: currentStep.stepId,
+            stepTitle: currentStep.stepTitle,
+            scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
+            examinerName: input.examinerName || null,
+          });
+        }
         
         return { success: true };
       }),
@@ -469,7 +601,10 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
-        const client = await db.getClientById(input.clientId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -479,7 +614,9 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
-        return await db.getDocumentsByClient(input.clientId);
+        return tenantDb
+          ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
+          : await db.getDocumentsByClient(input.clientId);
       }),
 
     upload: protectedProcedure
@@ -492,7 +629,10 @@ export const appRouter = router({
         mimeType: z.string(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const client = await db.getClientById(input.clientId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -528,17 +668,29 @@ export const appRouter = router({
         }
 
         // Salvar no banco
-        const documentId = await db.createDocument({
-          clientId: input.clientId,
-          workflowStepId: input.workflowStepId || null,
-          subTaskId: input.subTaskId || null,
-          fileName: input.fileName,
-          fileKey,
-          fileUrl,
-          mimeType: input.mimeType,
-          fileSize,
-          uploadedBy: ctx.user.id,
-        });
+        const documentId = tenantDb
+          ? await db.createDocumentToDb(tenantDb, {
+              clientId: input.clientId,
+              workflowStepId: input.workflowStepId || null,
+              subTaskId: input.subTaskId || null,
+              fileName: input.fileName,
+              fileKey,
+              fileUrl,
+              mimeType: input.mimeType,
+              fileSize,
+              uploadedBy: ctx.user.id,
+            })
+          : await db.createDocument({
+              clientId: input.clientId,
+              workflowStepId: input.workflowStepId || null,
+              subTaskId: input.subTaskId || null,
+              fileName: input.fileName,
+              fileKey,
+              fileUrl,
+              mimeType: input.mimeType,
+              fileSize,
+              uploadedBy: ctx.user.id,
+            });
         
         return { id: documentId, url: fileUrl };
       }),
@@ -546,13 +698,18 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        const doc = await db.getDocumentById(input.id);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const doc = tenantDb
+          ? await db.getDocumentByIdFromDb(tenantDb, input.id)
+          : await db.getDocumentById(input.id);
         
         if (!doc) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Documento não encontrado' });
         }
         
-        const client = await db.getClientById(doc.clientId);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, doc.clientId)
+          : await db.getClientById(doc.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -562,14 +719,21 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
-        await db.deleteDocument(input.id);
+        if (tenantDb) {
+          await db.deleteDocumentFromDb(tenantDb, input.id);
+        } else {
+          await db.deleteDocument(input.id);
+        }
         return { success: true };
       }),
 
     downloadEnxoval: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
-        const client = await db.getClientById(input.clientId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
@@ -579,7 +743,9 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
-        const docs = await db.getDocumentsByClient(input.clientId);
+        const docs = tenantDb
+          ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
+          : await db.getDocumentsByClient(input.clientId);
         
         return {
           clientName: client.name,
@@ -619,8 +785,11 @@ export const appRouter = router({
   emails: router({
     // SMTP configuration - admin only
     getSmtpConfig: adminProcedure
-      .query(async () => {
-        const settings = await db.getEmailSettings();
+      .query(async ({ ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const settings = tenantDb
+          ? await db.getEmailSettingsFromDb(tenantDb)
+          : await db.getEmailSettings();
 
         const fallbackFromEnv = {
           smtpHost: process.env.SMTP_HOST || "",
@@ -658,8 +827,11 @@ export const appRouter = router({
         smtpFrom: z.string().min(1),
         useSecure: z.boolean(),
       }))
-      .mutation(async ({ input }) => {
-        const existing = await db.getEmailSettings();
+      .mutation(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const existing = tenantDb
+          ? await db.getEmailSettingsFromDb(tenantDb)
+          : await db.getEmailSettings();
 
         const smtpPass = input.smtpPass !== undefined
           ? input.smtpPass
@@ -672,21 +844,35 @@ export const appRouter = router({
           });
         }
 
-        await db.saveEmailSettings({
-          smtpHost: input.smtpHost,
-          smtpPort: input.smtpPort,
-          smtpUser: input.smtpUser,
-          smtpPass,
-          smtpFrom: input.smtpFrom,
-          useSecure: input.useSecure,
-        });
+        if (tenantDb) {
+          await db.saveEmailSettingsToDb(tenantDb, {
+            smtpHost: input.smtpHost,
+            smtpPort: input.smtpPort,
+            smtpUser: input.smtpUser,
+            smtpPass,
+            smtpFrom: input.smtpFrom,
+            useSecure: input.useSecure,
+          });
+        } else {
+          await db.saveEmailSettings({
+            smtpHost: input.smtpHost,
+            smtpPort: input.smtpPort,
+            smtpUser: input.smtpUser,
+            smtpPass,
+            smtpFrom: input.smtpFrom,
+            useSecure: input.useSecure,
+          });
+        }
 
         return { success: true };
       }),
 
     testSmtpConnection: adminProcedure
-      .mutation(async () => {
-        const ok = await verifyConnection();
+      .mutation(async ({ ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const ok = tenantDb
+          ? await verifyConnection(tenantDb)
+          : await verifyConnection();
         if (!ok) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
@@ -703,7 +889,11 @@ export const appRouter = router({
         templateKey: z.string(),
         module: z.string().optional(),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        if (tenantDb) {
+          return await db.getEmailTemplateFromDb(tenantDb, input.templateKey, input.module);
+        }
         return await db.getEmailTemplate(input.templateKey, input.module);
       }),
 
@@ -712,7 +902,11 @@ export const appRouter = router({
       .input(z.object({
         module: z.string().optional(),
       }).optional())
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        if (tenantDb) {
+          return await db.getAllEmailTemplatesFromDb(tenantDb, input?.module);
+        }
         return await db.getAllEmailTemplates(input?.module);
       }),
 
@@ -726,8 +920,11 @@ export const appRouter = router({
         content: z.string(),
         attachments: z.string().optional(), // JSON string of attachments
       }))
-      .mutation(async ({ input }) => {
-        const templateId = await db.saveEmailTemplate(input);
+      .mutation(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const templateId = tenantDb
+          ? await db.saveEmailTemplateToDb(tenantDb, input)
+          : await db.saveEmailTemplate(input);
         return { success: true, templateId };
       }),
 
@@ -737,7 +934,11 @@ export const appRouter = router({
         clientId: z.number(),
         templateKey: z.string(),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        if (tenantDb) {
+          return await db.getEmailLogFromDb(tenantDb, input.clientId, input.templateKey);
+        }
         return await db.getEmailLog(input.clientId, input.templateKey);
       }),
 
@@ -751,16 +952,23 @@ export const appRouter = router({
         content: z.string(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const client = await db.getClientById(input.clientId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
 
-        const template = await db.getEmailTemplate(input.templateKey);
+        const template = tenantDb
+          ? await db.getEmailTemplateFromDb(tenantDb, input.templateKey)
+          : await db.getEmailTemplate(input.templateKey);
         const attachments = template?.attachments ? JSON.parse(template.attachments) : [];
 
         // Calcular progresso do workflow
-        const workflow = await db.getWorkflowByClient(input.clientId);
+        const workflow = tenantDb
+          ? await db.getWorkflowByClientFromDb(tenantDb, input.clientId)
+          : await db.getWorkflowByClient(input.clientId);
         const totalSteps = workflow.length;
         const completedSteps = workflow.filter((s: any) => s.completed).length;
         const progressPercentage = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
@@ -810,12 +1018,21 @@ export const appRouter = router({
         const finalContent = replaceVariables(input.content, client);
 
         try {
-          await sendEmail({
-            to: input.recipientEmail,
-            subject: finalSubject,
-            html: finalContent,
-            attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }))
-          });
+          if (tenantDb) {
+            await sendEmail({
+              to: input.recipientEmail,
+              subject: finalSubject,
+              html: finalContent,
+              attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }))
+            }, tenantDb);
+          } else {
+            await sendEmail({
+              to: input.recipientEmail,
+              subject: finalSubject,
+              html: finalContent,
+              attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }))
+            });
+          }
         } catch (error) {
           console.error("Email sending failed:", error);
           throw new TRPCError({ 
@@ -824,14 +1041,23 @@ export const appRouter = router({
           });
         }
 
-        const logId = await db.logEmailSent({
-          clientId: input.clientId,
-          templateKey: input.templateKey,
-          recipientEmail: input.recipientEmail,
-          subject: finalSubject,
-          content: finalContent,
-          sentBy: ctx.user.id,
-        });
+        const logId = tenantDb
+          ? await db.logEmailSentToDb(tenantDb, {
+              clientId: input.clientId,
+              templateKey: input.templateKey,
+              recipientEmail: input.recipientEmail,
+              subject: finalSubject,
+              content: finalContent,
+              sentBy: ctx.user.id,
+            })
+          : await db.logEmailSent({
+              clientId: input.clientId,
+              templateKey: input.templateKey,
+              recipientEmail: input.recipientEmail,
+              subject: finalSubject,
+              content: finalContent,
+              sentBy: ctx.user.id,
+            });
 
         return { success: true, logId };
       }),
@@ -841,15 +1067,20 @@ export const appRouter = router({
       .input(z.object({
         clientId: z.number(),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        if (tenantDb) {
+          return await db.getEmailLogsByClientFromDb(tenantDb, input.clientId);
+        }
         return await db.getEmailLogsByClient(input.clientId);
       }),
   }),
 
   // Users router (admin only)
   users: router({
-    list: adminProcedure.query(async () => {
-      return await db.getAllUsers();
+    list: adminProcedure.query(async ({ ctx }) => {
+      const tenantDb = await getTenantDbOrNull(ctx);
+      return tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers();
     }),
 
     create: adminProcedure
@@ -860,18 +1091,28 @@ export const appRouter = router({
         role: z.enum(['operator', 'admin']),
       }))
       .mutation(async ({ input, ctx }) => {
-        const existingUser = await db.getUserByEmail(input.email);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const existingUser = tenantDb
+          ? await db.getUserByEmailFromDb(tenantDb, input.email)
+          : await db.getUserByEmail(input.email);
         if (existingUser) {
           throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
         }
 
         const hashedPassword = await hashPassword(input.password);
-        const userId = await db.upsertUser({
-          name: input.name,
-          email: input.email,
-          hashedPassword,
-          role: input.role,
-        });
+        const userId = tenantDb
+          ? await db.upsertUserToDb(tenantDb, {
+              name: input.name,
+              email: input.email,
+              hashedPassword,
+              role: input.role,
+            })
+          : await db.upsertUser({
+              name: input.name,
+              email: input.email,
+              hashedPassword,
+              role: input.role,
+            });
 
         console.log('[AUDIT] User created', {
           actorId: ctx.user.id,
@@ -892,12 +1133,15 @@ export const appRouter = router({
         password: z.string().min(6).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const user = await db.getUserById(input.userId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const user = tenantDb
+          ? await db.getUserByIdFromDb(tenantDb, input.userId)
+          : await db.getUserById(input.userId);
         if (!user) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
         }
 
-        const admins = (await db.getAllUsers()).filter((u: any) => u.role === 'admin');
+        const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
         const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
 
         const updateData: any = {};
@@ -907,7 +1151,9 @@ export const appRouter = router({
         }
 
         if (input.email !== undefined) {
-          const other = await db.getUserByEmail(input.email);
+          const other = tenantDb
+            ? await db.getUserByEmailFromDb(tenantDb, input.email)
+            : await db.getUserByEmail(input.email);
           if (other && other.id !== input.userId) {
             throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está em uso por outro usuário' });
           }
@@ -932,7 +1178,11 @@ export const appRouter = router({
           return { success: true };
         }
 
-        await db.updateUser(input.userId, updateData);
+        if (tenantDb) {
+          await db.updateUserToDb(tenantDb, input.userId, updateData);
+        } else {
+          await db.updateUser(input.userId, updateData);
+        }
 
         console.log('[AUDIT] User updated', {
           actorId: ctx.user.id,
@@ -949,12 +1199,15 @@ export const appRouter = router({
         role: z.enum(['operator', 'admin']),
       }))
       .mutation(async ({ input, ctx }) => {
-        const user = await db.getUserById(input.userId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const user = tenantDb
+          ? await db.getUserByIdFromDb(tenantDb, input.userId)
+          : await db.getUserById(input.userId);
         if (!user) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
         }
 
-        const admins = (await db.getAllUsers()).filter((u: any) => u.role === 'admin');
+        const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
         const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
 
         if (isLastAdmin && input.role !== 'admin') {
@@ -964,7 +1217,11 @@ export const appRouter = router({
           });
         }
 
-        await db.updateUserRole(input.userId, input.role);
+        if (tenantDb) {
+          await db.updateUserRoleToDb(tenantDb, input.userId, input.role);
+        } else {
+          await db.updateUserRole(input.userId, input.role);
+        }
 
         console.log('[AUDIT] User role updated', {
           actorId: ctx.user.id,
@@ -981,12 +1238,15 @@ export const appRouter = router({
         role: z.enum(['operator', 'admin']),
       }))
       .mutation(async ({ input, ctx }) => {
-        const user = await db.getUserById(input.userId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const user = tenantDb
+          ? await db.getUserByIdFromDb(tenantDb, input.userId)
+          : await db.getUserById(input.userId);
         if (!user) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
         }
 
-        const admins = (await db.getAllUsers()).filter((u: any) => u.role === 'admin');
+        const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
         const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
 
         if (isLastAdmin && input.role !== 'admin') {
@@ -996,7 +1256,11 @@ export const appRouter = router({
           });
         }
 
-        await db.updateUserRole(input.userId, input.role);
+        if (tenantDb) {
+          await db.updateUserRoleToDb(tenantDb, input.userId, input.role);
+        } else {
+          await db.updateUserRole(input.userId, input.role);
+        }
 
         console.log('[AUDIT] User role assigned', {
           actorId: ctx.user.id,
@@ -1012,17 +1276,20 @@ export const appRouter = router({
         userId: z.number(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
         // Impedir exclusão do próprio usuário
         if (input.userId === ctx.user.id) {
           throw new Error('Você não pode excluir seu próprio usuário');
         }
 
-        const user = await db.getUserById(input.userId);
+        const user = tenantDb
+          ? await db.getUserByIdFromDb(tenantDb, input.userId)
+          : await db.getUserById(input.userId);
         if (!user) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
         }
 
-        const admins = (await db.getAllUsers()).filter((u: any) => u.role === 'admin');
+        const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
         const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
 
         if (isLastAdmin) {
@@ -1032,7 +1299,11 @@ export const appRouter = router({
           });
         }
         
-        await db.deleteUser(input.userId);
+        if (tenantDb) {
+          await db.deleteUserFromDb(tenantDb, input.userId);
+        } else {
+          await db.deleteUser(input.userId);
+        }
 
         console.log('[AUDIT] User deleted', {
           actorId: ctx.user.id,
@@ -1043,10 +1314,11 @@ export const appRouter = router({
       }),
 
     // Listar operadores com estatísticas de clientes
-    listOperatorsWithStats: adminProcedure.query(async () => {
-      const allUsers = await db.getAllUsers();
+    listOperatorsWithStats: adminProcedure.query(async ({ ctx }) => {
+      const tenantDb = await getTenantDbOrNull(ctx);
+      const allUsers = tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers();
       const operators = allUsers.filter((u: any) => u.role === 'operator' || u.role === 'admin');
-      const allClients = await db.getAllClients();
+      const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb) : await db.getAllClients();
 
       return operators.map((operator: any) => {
         const operatorClients = allClients.filter((c: any) => c.operatorId === operator.id);
@@ -1061,8 +1333,9 @@ export const appRouter = router({
     }),
 
     // Listar clientes disponíveis para atribuição
-    listClientsForAssignment: adminProcedure.query(async () => {
-      const allClients = await db.getAllClients();
+    listClientsForAssignment: adminProcedure.query(async ({ ctx }) => {
+      const tenantDb = await getTenantDbOrNull(ctx);
+      const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb) : await db.getAllClients();
       return allClients.map((c: any) => ({
         id: c.id,
         name: c.name,
@@ -1078,17 +1351,26 @@ export const appRouter = router({
         operatorId: z.number(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const client = await db.getClientById(input.clientId);
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
 
-        const operator = await db.getUserById(input.operatorId);
+        const operator = tenantDb
+          ? await db.getUserByIdFromDb(tenantDb, input.operatorId)
+          : await db.getUserById(input.operatorId);
         if (!operator) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Operador não encontrado' });
         }
 
-        await db.updateClient(input.clientId, { operatorId: input.operatorId });
+        if (tenantDb) {
+          await db.updateClientToDb(tenantDb, input.clientId, { operatorId: input.operatorId });
+        } else {
+          await db.updateClient(input.clientId, { operatorId: input.operatorId });
+        }
 
         console.log('[AUDIT] Client assigned to operator', {
           actorId: ctx.user.id,
@@ -1104,6 +1386,31 @@ export const appRouter = router({
   // TENANTS (Super Admin - Multi-Tenant)
   // ===========================================
   tenants: router({
+    // Limpar dados de mocks (tenants/users/clients @example.com)
+    clearMocks: adminProcedure.mutation(async ({ ctx }) => {
+      try {
+        const result = await db.clearMockTenants();
+        invalidateTenantCache();
+
+        console.log("[AUDIT] Clear mock tenants executed", {
+          actorId: ctx.user.id,
+          result,
+        });
+
+        return { success: true, ...result };
+      } catch (error: any) {
+        console.error("[ERROR] Clear mock tenants failed", {
+          actorId: ctx.user.id,
+          error: error?.message || String(error),
+        });
+
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error?.message || "Falha ao limpar dados de tenants mock",
+        });
+      }
+    }),
+
     // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
     seedMocks: adminProcedure.mutation(async ({ ctx }) => {
       try {

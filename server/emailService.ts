@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import type { Attachment } from 'nodemailer/lib/mailer';
-import { getEmailSettings, type EmailSettings } from './db';
+import { getEmailSettings, getEmailSettingsFromDb, type EmailSettings } from './db';
 
 // Create reusable transporter with support for DB-backed configuration
 let transporter: nodemailer.Transporter | null = null;
@@ -15,8 +15,10 @@ interface SmtpConfig {
   useSecure: boolean;
 }
 
-async function resolveSmtpConfig(): Promise<SmtpConfig> {
-  const dbConfig: EmailSettings | null = await getEmailSettings();
+async function resolveSmtpConfig(tenantDb?: any): Promise<SmtpConfig> {
+  const dbConfig: EmailSettings | null = tenantDb
+    ? await getEmailSettingsFromDb(tenantDb)
+    : await getEmailSettings();
 
   if (dbConfig) {
     return {
@@ -43,8 +45,8 @@ async function resolveSmtpConfig(): Promise<SmtpConfig> {
   };
 }
 
-async function getTransporterWithConfig(): Promise<{ transporter: nodemailer.Transporter; config: SmtpConfig }> {
-  const config = await resolveSmtpConfig();
+async function getTransporterWithConfig(tenantDb?: any): Promise<{ transporter: nodemailer.Transporter; config: SmtpConfig }> {
+  const config = await resolveSmtpConfig(tenantDb);
   const configKey = `${config.smtpHost}:${config.smtpPort}:${config.smtpUser}:${config.useSecure}`;
 
   if (!transporter || currentConfigKey !== configKey) {
@@ -79,9 +81,9 @@ export interface SendEmailOptions {
 /**
  * Send email via SMTP
  */
-export async function sendEmail(options: SendEmailOptions): Promise<{ success: boolean; messageId?: string }> {
+export async function sendEmail(options: SendEmailOptions, tenantDb?: any): Promise<{ success: boolean; messageId?: string }> {
   try {
-    const { transporter: transport, config } = await getTransporterWithConfig();
+    const { transporter: transport, config } = await getTransporterWithConfig(tenantDb);
 
     // Prepare attachments for Nodemailer
     const attachments: Attachment[] = options.attachments?.map(att => ({
@@ -109,9 +111,9 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
 /**
  * Verify SMTP connection
  */
-export async function verifyConnection(): Promise<boolean> {
+export async function verifyConnection(tenantDb?: any): Promise<boolean> {
   try {
-    const { transporter: transport } = await getTransporterWithConfig();
+    const { transporter: transport } = await getTransporterWithConfig(tenantDb);
     await transport.verify();
     console.log('[EmailService] SMTP connection verified');
     return true;
