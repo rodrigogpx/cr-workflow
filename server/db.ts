@@ -978,15 +978,34 @@ export async function logTenantActivity(entry: InsertTenantActivityLog) {
 // ===========================================
 // SEED MOCK TENANTS/USERS/CLIENTS
 // ===========================================
+ const defaultMockTenantDbConfig = (() => {
+   const rawUrl = process.env.MOCK_TENANT_DATABASE_URL || process.env.DATABASE_URL;
+   if (!rawUrl) return null;
+ 
+   try {
+     const url = new URL(rawUrl);
+     const dbName = (url.pathname || "").replace(/^\//, "");
+     return {
+       dbHost: url.hostname,
+       dbPort: Number(url.port || 5432),
+       dbName,
+       dbUser: decodeURIComponent(url.username || ""),
+       dbPassword: decodeURIComponent(url.password || ""),
+     };
+   } catch {
+     return null;
+   }
+ })();
+
 const mockTenants = [
   {
     slug: "tiroesp",
     name: "Clube de Tiro Esportivo SP",
-    dbHost: "localhost",
-    dbPort: 5432,
-    dbName: "cac360_tiroesp",
-    dbUser: "tiroesp_user",
-    dbPassword: "tiroesp_pass",
+    dbHost: defaultMockTenantDbConfig?.dbHost ?? "localhost",
+    dbPort: defaultMockTenantDbConfig?.dbPort ?? 5432,
+    dbName: defaultMockTenantDbConfig?.dbName ?? "cac360_tiroesp",
+    dbUser: defaultMockTenantDbConfig?.dbUser ?? "tiroesp_user",
+    dbPassword: defaultMockTenantDbConfig?.dbPassword ?? "tiroesp_pass",
     primaryColor: "#1a5c00",
     secondaryColor: "#4d9702",
     featureWorkflowCR: true,
@@ -1004,11 +1023,11 @@ const mockTenants = [
   {
     slug: "cluberio",
     name: "Clube Tiro Rio",
-    dbHost: "localhost",
-    dbPort: 5432,
-    dbName: "cac360_cluberio",
-    dbUser: "cluberio_user",
-    dbPassword: "cluberio_pass",
+    dbHost: defaultMockTenantDbConfig?.dbHost ?? "localhost",
+    dbPort: defaultMockTenantDbConfig?.dbPort ?? 5432,
+    dbName: defaultMockTenantDbConfig?.dbName ?? "cac360_cluberio",
+    dbUser: defaultMockTenantDbConfig?.dbUser ?? "cluberio_user",
+    dbPassword: defaultMockTenantDbConfig?.dbPassword ?? "cluberio_pass",
     primaryColor: "#002366",
     secondaryColor: "#4169E1",
     featureWorkflowCR: true,
@@ -1026,11 +1045,11 @@ const mockTenants = [
   {
     slug: "norteclub",
     name: "Clube Norte CAC",
-    dbHost: "localhost",
-    dbPort: 5432,
-    dbName: "cac360_norteclub",
-    dbUser: "norte_user",
-    dbPassword: "norte_pass",
+    dbHost: defaultMockTenantDbConfig?.dbHost ?? "localhost",
+    dbPort: defaultMockTenantDbConfig?.dbPort ?? 5432,
+    dbName: defaultMockTenantDbConfig?.dbName ?? "cac360_norteclub",
+    dbUser: defaultMockTenantDbConfig?.dbUser ?? "norte_user",
+    dbPassword: defaultMockTenantDbConfig?.dbPassword ?? "norte_pass",
     primaryColor: "#0f172a",
     secondaryColor: "#10b981",
     featureWorkflowCR: true,
