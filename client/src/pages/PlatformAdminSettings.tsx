@@ -1,197 +1,53 @@
-import { useState, useEffect } from "react";
 import { PlatformAdminLayout } from "@/components/PlatformAdminLayout";
-import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Mail, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Settings, Mail, Building2 } from "lucide-react";
 
 export default function PlatformAdminSettings() {
-  const { data: smtpConfig, isLoading: isLoadingSmtp } = trpc.emails.getSmtpConfig.useQuery();
-  const utils = trpc.useUtils();
-
-  const [smtpHost, setSmtpHost] = useState('');
-  const [smtpPort, setSmtpPort] = useState('587');
-  const [smtpUser, setSmtpUser] = useState('');
-  const [smtpFrom, setSmtpFrom] = useState('');
-  const [useSecure, setUseSecure] = useState(false);
-  const [smtpPass, setSmtpPass] = useState('');
-  const [smtpPassDirty, setSmtpPassDirty] = useState(false);
-
-  useEffect(() => {
-    if (smtpConfig) {
-      setSmtpHost(smtpConfig.smtpHost || "");
-      setSmtpPort(String(smtpConfig.smtpPort || 587));
-      setSmtpUser(smtpConfig.smtpUser || "");
-      setSmtpFrom(smtpConfig.smtpFrom || "");
-      setUseSecure(!!smtpConfig.useSecure);
-      setSmtpPass("");
-      setSmtpPassDirty(false);
-    }
-  }, [smtpConfig]);
-
-  const updateSmtpConfigMutation = trpc.emails.updateSmtpConfig.useMutation({
-    onSuccess: () => {
-      toast.success("Configurações de email salvas com sucesso!");
-      utils.emails.getSmtpConfig.invalidate();
-    },
-    onError: (error) => {
-      toast.error(`Erro ao salvar configurações: ${error.message}`);
-    },
-  });
-
-  const testSmtpConnectionMutation = trpc.emails.testSmtpConnection.useMutation({
-    onSuccess: () => {
-      toast.success("Conexão SMTP verificada com sucesso!");
-    },
-    onError: (error) => {
-      toast.error(`Falha ao testar conexão SMTP: ${error.message}`);
-    },
-  });
-
-  const handleSaveSmtpConfig = () => {
-    if (!smtpHost || !smtpPort || !smtpUser || !smtpFrom) {
-      toast.error("Preencha todos os campos obrigatórios de SMTP.");
-      return;
-    }
-
-    const portNumber = parseInt(smtpPort, 10);
-    if (Number.isNaN(portNumber) || portNumber <= 0) {
-      toast.error("Porta SMTP inválida.");
-      return;
-    }
-
-    updateSmtpConfigMutation.mutate({
-      smtpHost,
-      smtpPort: portNumber,
-      smtpUser,
-      smtpFrom,
-      useSecure,
-      smtpPass: smtpPassDirty && smtpPass ? smtpPass : undefined,
-    });
-  };
-
   return (
     <PlatformAdminLayout active="settings">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Configurações da Plataforma</h1>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Área reservada para parâmetros globais da plataforma CAC 360: compliance, prazos de vencimento, clubes e integrações futuras.
+            Área reservada para parâmetros globais da plataforma CAC 360: compliance, prazos de vencimento e integrações futuras.
           </p>
         </div>
 
-        {/* Configuração SMTP */}
+        {/* Aviso sobre SMTP por tenant */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" />
-              Configuração de Envio de Emails (SMTP)
+              Configuração de Emails (SMTP)
             </CardTitle>
             <CardDescription>
-              Defina as credenciais de envio de email usadas para disparar os templates.
+              As configurações de email SMTP são isoladas por tenant. Cada clube configura seu próprio servidor SMTP
+              através da página <strong>Administração → Configurações</strong> dentro do seu ambiente.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {isLoadingSmtp ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpHost">Servidor SMTP</Label>
-                    <Input
-                      id="smtpHost"
-                      placeholder="smtp.gmail.com"
-                      value={smtpHost}
-                      onChange={(e) => setSmtpHost(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpPort">Porta</Label>
-                    <Input
-                      id="smtpPort"
-                      placeholder="587"
-                      value={smtpPort}
-                      onChange={(e) => setSmtpPort(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpUser">Usuário</Label>
-                    <Input
-                      id="smtpUser"
-                      placeholder="seu-email@gmail.com"
-                      value={smtpUser}
-                      onChange={(e) => setSmtpUser(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpPass">Senha</Label>
-                    <Input
-                      id="smtpPass"
-                      type="password"
-                      placeholder={smtpConfig?.hasPassword ? '******** (deixe em branco para manter)' : 'Senha ou App Password'}
-                      value={smtpPass}
-                      onChange={(e) => {
-                        setSmtpPass(e.target.value);
-                        setSmtpPassDirty(true);
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpFrom">Remetente (From)</Label>
-                    <Input
-                      id="smtpFrom"
-                      placeholder='"CAC 360" <no-reply@seu-dominio.com>'
-                      value={smtpFrom}
-                      onChange={(e) => setSmtpFrom(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 pt-2">
-                    <input
-                      id="useSecure"
-                      type="checkbox"
-                      checked={useSecure}
-                      onChange={(e) => setUseSecure(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    <Label htmlFor="useSecure" className="text-sm font-normal">
-                      Usar conexão segura (SSL/TLS)
-                    </Label>
-                  </div>
-                  <div className="flex flex-col gap-2 pt-4">
-                    <Button
-                      onClick={handleSaveSmtpConfig}
-                      disabled={updateSmtpConfigMutation.isPending}
-                    >
-                      {updateSmtpConfigMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => testSmtpConnectionMutation.mutate()}
-                      disabled={testSmtpConnectionMutation.isPending}
-                    >
-                      {testSmtpConnectionMutation.isPending ? 'Testando conexão...' : 'Testar Conexão SMTP'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
         </Card>
 
         {/* Placeholder para futuras configurações */}
         <Card className="border-dashed">
           <CardHeader>
-            <CardTitle className="text-muted-foreground">Outras Configurações</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-muted-foreground">
+              <Settings className="h-5 w-5" />
+              Configurações Globais
+            </CardTitle>
             <CardDescription>
               Em breve: prazos de compliance, integrações com sistemas externos, configurações de backup e mais.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-muted-foreground">
+              <Building2 className="h-5 w-5" />
+              Gestão de Tenants
+            </CardTitle>
+            <CardDescription>
+              Para gerenciar tenants (clubes), acesse a área de Super Admin em <strong>/super-admin/tenants</strong>.
             </CardDescription>
           </CardHeader>
         </Card>

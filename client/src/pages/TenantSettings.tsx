@@ -48,11 +48,11 @@ export default function TenantSettings() {
   });
 
   const testSmtpConnectionMutation = trpc.emails.testSmtpConnection.useMutation({
-    onSuccess: () => {
-      toast.success("Conexão SMTP verificada com sucesso!");
+    onSuccess: (data) => {
+      toast.success(`Email de teste enviado para ${data.sentTo}!`);
     },
     onError: (error) => {
-      toast.error(`Falha ao testar conexão SMTP: ${error.message}`);
+      toast.error(`Falha ao enviar email de teste: ${error.message}`);
     },
   });
 
@@ -216,10 +216,10 @@ export default function TenantSettings() {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => testSmtpConnectionMutation.mutate()}
+                      onClick={() => testSmtpConnectionMutation.mutate({})}
                       disabled={testSmtpConnectionMutation.isPending || !smtpHost}
                     >
-                      {testSmtpConnectionMutation.isPending ? 'Testando...' : 'Testar Conexão SMTP'}
+                      {testSmtpConnectionMutation.isPending ? 'Enviando email de teste...' : 'Enviar Email de Teste'}
                     </Button>
                   </div>
                 </div>
