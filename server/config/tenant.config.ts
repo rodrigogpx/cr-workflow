@@ -140,7 +140,8 @@ export async function getTenantConfig(slug: string): Promise<TenantConfig | null
  * Obtem conexão de banco de dados para um tenant específico
  */
 export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<typeof drizzle> | null> {
-  const cacheKey = `${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
+  const isSingleDbMode = process.env.TENANT_DB_MODE === 'single';
+  const cacheKey = isSingleDbMode ? 'single_db' : `${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
 
   // Verificar cache de conexões
   if (tenantDbConnections.has(cacheKey)) {
@@ -148,8 +149,19 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
   }
 
   try {
-    const connectionString = `postgres://${tenant.dbUser}:${tenant.dbPassword}@${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
-    const client = postgres(connectionString, { max: Number(process.env.TENANT_DB_POOL_MAX ?? 5) });
+    const platformDbUrl = process.env.PLATFORM_DATABASE_URL || process.env.DATABASE_URL;
+    const connectionString = isSingleDbMode
+      ? (platformDbUrl ?? '')
+      : `postgres://${tenant.dbUser}:${tenant.dbPassword}@${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
+
+    if (!connectionString) {
+      console.error('[Tenant] Platform database URL not configured');
+      return null;
+    }
+    const client = postgres(connectionString, {
+      max: Number(process.env.TENANT_DB_POOL_MAX ?? 5),
+      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+    });
     const db = drizzle(client);
 
     // Healthcheck rápida para validar credenciais/conectividade
