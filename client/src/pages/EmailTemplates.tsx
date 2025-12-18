@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
+import { PlatformAdminLayout } from "@/components/PlatformAdminLayout";
 // Editor simples usando Textarea
 
 interface Attachment {
@@ -29,21 +30,12 @@ export default function EmailTemplates() {
   const [, setLocation] = useLocation();
   const tenantSlug = useTenantSlug();
   const { data: user } = trpc.auth.me.useQuery();
-  const { data: smtpConfig, isLoading: isLoadingSmtp } = trpc.emails.getSmtpConfig.useQuery();
   const [templates, setTemplates] = useState<Record<string, TemplateState>>({});
   const [activeTab, setActiveTab] = useState('welcome');
   const [newTemplateKey, setNewTemplateKey] = useState('');
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
   const [showNewTemplateDialog, setShowNewTemplateDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [smtpHost, setSmtpHost] = useState('');
-  const [smtpPort, setSmtpPort] = useState('587');
-  const [smtpUser, setSmtpUser] = useState('');
-  const [smtpFrom, setSmtpFrom] = useState('');
-  const [useSecure, setUseSecure] = useState(false);
-  const [smtpPass, setSmtpPass] = useState('');
-  const [smtpPassDirty, setSmtpPassDirty] = useState(false);
   
   const utils = trpc.useUtils();
 
@@ -80,25 +72,6 @@ export default function EmailTemplates() {
     return [...(fetchedTemplates || []), ...defaultsAsTemplates];
   })();
 
-  const updateSmtpConfigMutation = trpc.emails.updateSmtpConfig.useMutation({
-    onSuccess: () => {
-      toast.success("Configurações de email salvas com sucesso!");
-      utils.emails.getSmtpConfig.invalidate();
-    },
-    onError: (error) => {
-      toast.error(`Erro ao salvar configurações: ${error.message}`);
-    },
-  });
-
-  const testSmtpConnectionMutation = trpc.emails.testSmtpConnection.useMutation({
-    onSuccess: () => {
-      toast.success("Conexão SMTP verificada com sucesso!");
-    },
-    onError: (error) => {
-      toast.error(`Falha ao testar conexão SMTP: ${error.message}`);
-    },
-  });
-
   useEffect(() => {
     if (fetchedTemplates && fetchedTemplates.length > 0) {
       const initialTemplates: Record<string, TemplateState> = {};
@@ -116,18 +89,6 @@ export default function EmailTemplates() {
       }
     }
   }, [fetchedTemplates, activeTab]);
-
-  useEffect(() => {
-    if (smtpConfig) {
-      setSmtpHost(smtpConfig.smtpHost || "");
-      setSmtpPort(String(smtpConfig.smtpPort || 587));
-      setSmtpUser(smtpConfig.smtpUser || "");
-      setSmtpFrom(smtpConfig.smtpFrom || "");
-      setUseSecure(!!smtpConfig.useSecure);
-      setSmtpPass("");
-      setSmtpPassDirty(false);
-    }
-  }, [smtpConfig]);
 
   const saveTemplateMutation = trpc.emails.saveTemplate.useMutation({
     onSuccess: () => {
@@ -161,28 +122,6 @@ export default function EmailTemplates() {
         [field]: value,
       },
     }));
-  };
-
-  const handleSaveSmtpConfig = () => {
-    if (!smtpHost || !smtpPort || !smtpUser || !smtpFrom) {
-      toast.error("Preencha todos os campos obrigatórios de SMTP.");
-      return;
-    }
-
-    const portNumber = parseInt(smtpPort, 10);
-    if (Number.isNaN(portNumber) || portNumber <= 0) {
-      toast.error("Porta SMTP inválida.");
-      return;
-    }
-
-    updateSmtpConfigMutation.mutate({
-      smtpHost,
-      smtpPort: portNumber,
-      smtpUser,
-      smtpFrom,
-      useSecure,
-      smtpPass: smtpPassDirty && smtpPass ? smtpPass : undefined,
-    });
   };
 
   const handleSaveTemplate = () => {
@@ -260,105 +199,6 @@ export default function EmailTemplates() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Configuração de Envio de Emails (SMTP)
-            </CardTitle>
-            <CardDescription>
-              Defina as credenciais de envio de email usadas para disparar os templates.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingSmtp ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="smtpHost">Servidor SMTP</Label>
-                    <Input
-                      id="smtpHost"
-                      value={smtpHost}
-                      onChange={(e) => setSmtpHost(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="smtpPort">Porta</Label>
-                    <Input
-                      id="smtpPort"
-                      value={smtpPort}
-                      onChange={(e) => setSmtpPort(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="smtpUser">Usuário</Label>
-                    <Input
-                      id="smtpUser"
-                      value={smtpUser}
-                      onChange={(e) => setSmtpUser(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="smtpPass">Senha</Label>
-                    <Input
-                      id="smtpPass"
-                      type="password"
-                      placeholder={smtpConfig?.hasPassword ? '******** (deixe em branco para manter)' : ''}
-                      value={smtpPass}
-                      onChange={(e) => {
-                        setSmtpPass(e.target.value);
-                        setSmtpPassDirty(true);
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="smtpFrom">Remetente (From)</Label>
-                    <Input
-                      id="smtpFrom"
-                      placeholder='Ex: "CAC 360" <no-reply@seu-dominio.com>'
-                      value={smtpFrom}
-                      onChange={(e) => setSmtpFrom(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <input
-                      id="useSecure"
-                      type="checkbox"
-                      checked={useSecure}
-                      onChange={(e) => setUseSecure(e.target.checked)}
-                      className="h-4 w-4"
-                    />
-                    <Label htmlFor="useSecure" className="text-sm">
-                      Usar conexão segura (SSL/TLS)
-                    </Label>
-                  </div>
-                  <div className="flex flex-col gap-2 mt-6">
-                    <Button
-                      onClick={handleSaveSmtpConfig}
-                      disabled={updateSmtpConfigMutation.isPending}
-                    >
-                      {updateSmtpConfigMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => testSmtpConnectionMutation.mutate()}
-                      disabled={testSmtpConnectionMutation.isPending}
-                    >
-                      {testSmtpConnectionMutation.isPending ? 'Testando conexão...' : 'Testar Conexão SMTP'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
