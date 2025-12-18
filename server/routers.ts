@@ -246,10 +246,12 @@ export const appRouter = router({
             ? await db.createClientToDb(tenantDb, {
                 ...input,
                 operatorId,
+                tenantId: ctx.tenant?.id,
               })
             : await db.createClient({
                 ...input,
                 operatorId,
+                tenantId: ctx.tenant?.id,
               });
         } catch (error: any) {
           // Check for duplicate CPF error (MySQL error code 1062)
