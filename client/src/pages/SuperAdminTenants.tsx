@@ -69,11 +69,11 @@ export default function SuperAdminTenants() {
   const [newTenant, setNewTenant] = useState({
     slug: "",
     name: "",
-    dbHost: "localhost",
-    dbPort: 5432,
-    dbName: "",
-    dbUser: "",
-    dbPassword: "",
+    // Admin credentials
+    adminName: "",
+    adminEmail: "",
+    adminPassword: "",
+    // Plan & Features
     plan: "starter" as const,
     maxUsers: 10,
     maxClients: 500,
@@ -92,11 +92,9 @@ export default function SuperAdminTenants() {
       setNewTenant({
         slug: "",
         name: "",
-        dbHost: "localhost",
-        dbPort: 5432,
-        dbName: "",
-        dbUser: "",
-        dbPassword: "",
+        adminName: "",
+        adminEmail: "",
+        adminPassword: "",
         plan: "starter",
         maxUsers: 10,
         maxClients: 500,
@@ -191,23 +189,32 @@ export default function SuperAdminTenants() {
 
   const handleCreateTenant = () => {
     // Validate
-    if (!newTenant.slug || !newTenant.name || !newTenant.dbName) {
+    if (!newTenant.slug || !newTenant.name || !newTenant.adminName || !newTenant.adminEmail || !newTenant.adminPassword) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
+    if (newTenant.adminPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
     createTenant.mutate({
-      ...newTenant,
-      dbPort: Number(newTenant.dbPort),
+      slug: newTenant.slug,
+      name: newTenant.name,
+      adminName: newTenant.adminName,
+      adminEmail: newTenant.adminEmail,
+      adminPassword: newTenant.adminPassword,
       maxUsers: Number(newTenant.maxUsers),
       maxClients: Number(newTenant.maxClients),
-      maxStorageGB: 50, // default
-      secondaryColor: newTenant.secondaryColor || "#4d9702",
-      primaryColor: newTenant.primaryColor || "#1a5c00",
+      maxStorageGB: 50,
+      primaryColor: "#1a5c00",
+      secondaryColor: "#4d9702",
       featureWorkflowCR: Boolean(newTenant.featureWorkflowCR),
       featureApostilamento: Boolean(newTenant.featureApostilamento),
       featureRenovacao: Boolean(newTenant.featureRenovacao),
       featureInsumos: Boolean(newTenant.featureInsumos),
+      plan: newTenant.plan,
     });
   };
 
@@ -512,57 +519,46 @@ export default function SuperAdminTenants() {
                 </div>
               </div>
 
-              {/* Database */}
+              {/* Admin Credentials */}
               <div className="border rounded-lg p-4 space-y-4">
                 <h4 className="font-medium flex items-center gap-2">
-                  <Database className="h-4 w-4" />
-                  Configuração do Banco de Dados
+                  <Users className="h-4 w-4" />
+                  Administrador do Tenant
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dbHost">Host</Label>
-                    <Input
-                      id="dbHost"
-                      value={newTenant.dbHost}
-                      onChange={(e) => setNewTenant({ ...newTenant, dbHost: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dbPort">Porta</Label>
-                    <Input
-                      id="dbPort"
-                      type="number"
-                      value={newTenant.dbPort}
-                      onChange={(e) => setNewTenant({ ...newTenant, dbPort: parseInt(e.target.value) })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dbName">Nome do Banco*</Label>
-                    <Input
-                      id="dbName"
-                      placeholder="cac360_meuclube"
-                      value={newTenant.dbName}
-                      onChange={(e) => setNewTenant({ ...newTenant, dbName: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dbUser">Usuário</Label>
-                    <Input
-                      id="dbUser"
-                      value={newTenant.dbUser}
-                      onChange={(e) => setNewTenant({ ...newTenant, dbUser: e.target.value })}
-                    />
-                  </div>
                   <div className="col-span-2 space-y-2">
-                    <Label htmlFor="dbPassword">Senha</Label>
+                    <Label htmlFor="adminName">Nome do Admin*</Label>
                     <Input
-                      id="dbPassword"
+                      id="adminName"
+                      placeholder="João Silva"
+                      value={newTenant.adminName}
+                      onChange={(e) => setNewTenant({ ...newTenant, adminName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adminEmail">Email do Admin*</Label>
+                    <Input
+                      id="adminEmail"
+                      type="email"
+                      placeholder="admin@meuclube.com"
+                      value={newTenant.adminEmail}
+                      onChange={(e) => setNewTenant({ ...newTenant, adminEmail: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adminPassword">Senha do Admin*</Label>
+                    <Input
+                      id="adminPassword"
                       type="password"
-                      value={newTenant.dbPassword}
-                      onChange={(e) => setNewTenant({ ...newTenant, dbPassword: e.target.value })}
+                      placeholder="Mínimo 6 caracteres"
+                      value={newTenant.adminPassword}
+                      onChange={(e) => setNewTenant({ ...newTenant, adminPassword: e.target.value })}
                     />
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Este será o primeiro administrador do tenant. Ele poderá criar novos usuários depois.
+                </p>
               </div>
 
               {/* Plan & Limits */}
