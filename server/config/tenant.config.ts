@@ -95,7 +95,10 @@ export async function getTenantConfig(slug: string): Promise<TenantConfig | null
   }
 
   // Buscar no banco da plataforma
-  const platformDbUrl = process.env.PLATFORM_DATABASE_URL || process.env.DATABASE_URL;
+  const isSingleDbMode = process.env.TENANT_DB_MODE === 'single';
+  const platformDbUrl = isSingleDbMode
+    ? process.env.DATABASE_URL
+    : (process.env.PLATFORM_DATABASE_URL || process.env.DATABASE_URL);
   if (!platformDbUrl) {
     console.error('[Tenant] Platform database URL not configured');
     return null;
@@ -149,7 +152,7 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
   }
 
   try {
-    const platformDbUrl = process.env.PLATFORM_DATABASE_URL || process.env.DATABASE_URL;
+    const platformDbUrl = process.env.DATABASE_URL;
     const connectionString = isSingleDbMode
       ? (platformDbUrl ?? '')
       : `postgres://${tenant.dbUser}:${tenant.dbPassword}@${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;

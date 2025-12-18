@@ -36,6 +36,13 @@ export const appRouter = router({
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const tenantSlug = ctx.tenantSlug;
+        console.log("[auth.login] attempt", {
+          email: input.email,
+          tenantSlug,
+          hasTenantConfig: Boolean(ctx.tenant),
+          tenantDbMode: process.env.TENANT_DB_MODE,
+          nodeEnv: process.env.NODE_ENV,
+        });
 
         const user = tenantSlug && ctx.tenant
           ? await (async () => {
@@ -47,11 +54,25 @@ export const appRouter = router({
             })()
           : await db.getUserByEmail(input.email);
 
+        console.log("[auth.login] user lookup", {
+          email: input.email,
+          found: Boolean(user),
+          userId: user?.id,
+          role: (user as any)?.role,
+          hashLen: user?.hashedPassword?.length,
+          hashPrefix: user?.hashedPassword?.slice?.(0, 10),
+        });
+
         if (!user) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
 
         const passwordMatch = await comparePassword(input.password, user.hashedPassword);
+        console.log("[auth.login] password match", {
+          email: input.email,
+          userId: user.id,
+          passwordMatch,
+        });
         if (!passwordMatch) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
