@@ -664,8 +664,8 @@ export async function getEmailSettings(): Promise<EmailSettings | null> {
   await ensureEmailSettingsTable(db);
 
   const result: any = await db.execute(sql`
-    SELECT smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom, useSecure
-    FROM emailSettings
+    SELECT "smtpHost", "smtpPort", "smtpUser", "smtpPass", "smtpFrom", "useSecure"
+    FROM "emailSettings"
     WHERE id = 1
     LIMIT 1
   `);
@@ -690,8 +690,8 @@ export async function getEmailSettingsFromDb(tenantDb: ReturnType<typeof drizzle
   await ensureEmailSettingsTable(tenantDb);
 
   const result: any = await tenantDb.execute(sql`
-    SELECT smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom, useSecure
-    FROM emailSettings
+    SELECT "smtpHost", "smtpPort", "smtpUser", "smtpPass", "smtpFrom", "useSecure"
+    FROM "emailSettings"
     WHERE id = 1
     LIMIT 1
   `);
