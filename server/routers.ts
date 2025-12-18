@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { sendEmail, verifyConnection } from "./emailService";
+import { sendEmail, verifyConnection, verifyConnectionWithSettings } from "./emailService";
 import * as db from "./db";
 import { invalidateTenantCache } from "./config/tenant.config";
 import { storagePut } from "./storage";
@@ -807,38 +807,47 @@ export const appRouter = router({
 
   // Email router
   emails: router({
-    // SMTP configuration - admin only
+    // SMTP configuration - admin only (tenant-isolated)
     getSmtpConfig: adminProcedure
       .query(async ({ ctx }) => {
-        const tenantDb = await getTenantDbOrNull(ctx);
-        const settings = tenantDb
-          ? await db.getEmailSettingsFromDb(tenantDb)
-          : await db.getEmailSettings();
+        const tenantId = ctx.tenant?.id;
+        
+        // Se tem tenantId, busca da tabela tenants
+        if (tenantId) {
+          const settings = await db.getTenantSmtpSettings(tenantId);
+          
+          if (!settings || !settings.smtpHost) {
+            return {
+              smtpHost: "",
+              smtpPort: 587,
+              smtpUser: "",
+              smtpFrom: "",
+              useSecure: false,
+              hasPassword: false,
+              source: "none",
+            };
+          }
 
-        const fallbackFromEnv = {
-          smtpHost: process.env.SMTP_HOST || "",
-          smtpPort: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
-          smtpUser: process.env.SMTP_USER || "",
-          smtpFrom: process.env.SMTP_FROM || (process.env.SMTP_USER ? `"Firing Range" <${process.env.SMTP_USER}>` : ""),
-          useSecure: process.env.SMTP_PORT === "465",
-        };
-
-        if (!settings) {
           return {
-            ...fallbackFromEnv,
-            hasPassword: Boolean(process.env.SMTP_PASS),
-            source: process.env.SMTP_HOST ? "env" : "none",
+            smtpHost: settings.smtpHost || "",
+            smtpPort: settings.smtpPort || 587,
+            smtpUser: settings.smtpUser || "",
+            smtpFrom: settings.smtpFrom || "",
+            useSecure: settings.smtpPort === 465,
+            hasPassword: Boolean(settings.smtpPassword),
+            source: "tenant",
           };
         }
 
+        // Fallback para env vars (sem tenant)
         return {
-          smtpHost: settings.smtpHost,
-          smtpPort: settings.smtpPort,
-          smtpUser: settings.smtpUser,
-          smtpFrom: settings.smtpFrom,
-          useSecure: settings.useSecure,
-          hasPassword: true,
-          source: "database",
+          smtpHost: process.env.SMTP_HOST || "",
+          smtpPort: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
+          smtpUser: process.env.SMTP_USER || "",
+          smtpFrom: process.env.SMTP_FROM || "",
+          useSecure: process.env.SMTP_PORT === "465",
+          hasPassword: Boolean(process.env.SMTP_PASS),
+          source: process.env.SMTP_HOST ? "env" : "none",
         };
       }),
 
@@ -852,51 +861,67 @@ export const appRouter = router({
         useSecure: z.boolean(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const tenantDb = await getTenantDbOrNull(ctx);
-        const existing = tenantDb
-          ? await db.getEmailSettingsFromDb(tenantDb)
-          : await db.getEmailSettings();
+        const tenantId = ctx.tenant?.id;
+        
+        if (!tenantId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Tenant não identificado. Faça login novamente.",
+          });
+        }
 
-        const smtpPass = input.smtpPass !== undefined
+        // Busca configuração existente para manter senha se não informada
+        const existing = await db.getTenantSmtpSettings(tenantId);
+        const smtpPassword = input.smtpPass !== undefined && input.smtpPass !== ""
           ? input.smtpPass
-          : existing?.smtpPass || process.env.SMTP_PASS || "";
+          : existing?.smtpPassword || "";
 
-        if (!smtpPass) {
+        if (!smtpPassword) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Informe a senha SMTP.",
           });
         }
 
-        if (tenantDb) {
-          await db.saveEmailSettingsToDb(tenantDb, {
-            smtpHost: input.smtpHost,
-            smtpPort: input.smtpPort,
-            smtpUser: input.smtpUser,
-            smtpPass,
-            smtpFrom: input.smtpFrom,
-            useSecure: input.useSecure,
-          });
-        } else {
-          await db.saveEmailSettings({
-            smtpHost: input.smtpHost,
-            smtpPort: input.smtpPort,
-            smtpUser: input.smtpUser,
-            smtpPass,
-            smtpFrom: input.smtpFrom,
-            useSecure: input.useSecure,
-          });
-        }
+        await db.updateTenantSmtpSettings(tenantId, {
+          smtpHost: input.smtpHost,
+          smtpPort: input.smtpPort,
+          smtpUser: input.smtpUser,
+          smtpPassword,
+          smtpFrom: input.smtpFrom,
+        });
 
         return { success: true };
       }),
 
     testSmtpConnection: adminProcedure
       .mutation(async ({ ctx }) => {
-        const tenantDb = await getTenantDbOrNull(ctx);
-        const ok = tenantDb
-          ? await verifyConnection(tenantDb)
-          : await verifyConnection();
+        const tenantId = ctx.tenant?.id;
+        
+        if (!tenantId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Tenant não identificado.",
+          });
+        }
+
+        const settings = await db.getTenantSmtpSettings(tenantId);
+        if (!settings?.smtpHost || !settings?.smtpUser || !settings?.smtpPassword) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Configure as credenciais SMTP antes de testar.",
+          });
+        }
+
+        // Testar conexão com as configurações do tenant
+        const ok = await verifyConnectionWithSettings({
+          host: settings.smtpHost,
+          port: settings.smtpPort || 587,
+          user: settings.smtpUser,
+          pass: settings.smtpPassword,
+          secure: settings.smtpPort === 465,
+        });
+        
         if (!ok) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",

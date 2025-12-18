@@ -632,7 +632,56 @@ export async function deleteUserFromDb(tenantDb: ReturnType<typeof drizzle>, use
   await tenantDb.delete(users).where(eq(users.id, userId));
 }
 
-// Email settings (SMTP) - stored in a dedicated table managed via raw SQL
+// Tenant SMTP settings - stored directly in tenants table
+export interface TenantSmtpSettings {
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpUser: string | null;
+  smtpPassword: string | null;
+  smtpFrom: string | null;
+}
+
+export async function getTenantSmtpSettings(tenantId: number): Promise<TenantSmtpSettings | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [tenant] = await db
+    .select({
+      smtpHost: tenants.smtpHost,
+      smtpPort: tenants.smtpPort,
+      smtpUser: tenants.smtpUser,
+      smtpPassword: tenants.smtpPassword,
+      smtpFrom: tenants.smtpFrom,
+    })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+
+  if (!tenant) return null;
+  return tenant;
+}
+
+export async function updateTenantSmtpSettings(
+  tenantId: number,
+  settings: Partial<TenantSmtpSettings>
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(tenants)
+    .set({
+      smtpHost: settings.smtpHost,
+      smtpPort: settings.smtpPort,
+      smtpUser: settings.smtpUser,
+      smtpPassword: settings.smtpPassword,
+      smtpFrom: settings.smtpFrom,
+      updatedAt: new Date(),
+    })
+    .where(eq(tenants.id, tenantId));
+}
+
+// Email settings (SMTP) - legacy table for non-tenant mode
 export interface EmailSettings {
   smtpHost: string;
   smtpPort: number;

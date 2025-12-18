@@ -1,0 +1,233 @@
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Mail, Loader2, Settings } from "lucide-react";
+import { toast } from "sonner";
+import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
+import { useAuth } from "@/_core/hooks/useAuth";
+
+export default function TenantSettings() {
+  const [, setLocation] = useLocation();
+  const tenantSlug = useTenantSlug();
+  const { user, loading: authLoading } = useAuth();
+  const { data: smtpConfig, isLoading: isLoadingSmtp } = trpc.emails.getSmtpConfig.useQuery();
+  const utils = trpc.useUtils();
+
+  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpFrom, setSmtpFrom] = useState('');
+  const [useSecure, setUseSecure] = useState(false);
+  const [smtpPass, setSmtpPass] = useState('');
+  const [smtpPassDirty, setSmtpPassDirty] = useState(false);
+
+  useEffect(() => {
+    if (smtpConfig) {
+      setSmtpHost(smtpConfig.smtpHost || "");
+      setSmtpPort(String(smtpConfig.smtpPort || 587));
+      setSmtpUser(smtpConfig.smtpUser || "");
+      setSmtpFrom(smtpConfig.smtpFrom || "");
+      setUseSecure(smtpConfig.useSecure || false);
+      setSmtpPass("");
+      setSmtpPassDirty(false);
+    }
+  }, [smtpConfig]);
+
+  const updateSmtpConfigMutation = trpc.emails.updateSmtpConfig.useMutation({
+    onSuccess: () => {
+      toast.success("Configurações SMTP salvas com sucesso!");
+      utils.emails.getSmtpConfig.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao salvar configurações: ${error.message}`);
+    },
+  });
+
+  const testSmtpConnectionMutation = trpc.emails.testSmtpConnection.useMutation({
+    onSuccess: () => {
+      toast.success("Conexão SMTP verificada com sucesso!");
+    },
+    onError: (error) => {
+      toast.error(`Falha ao testar conexão SMTP: ${error.message}`);
+    },
+  });
+
+  const handleSaveSmtpConfig = () => {
+    if (!smtpHost || !smtpPort || !smtpUser || !smtpFrom) {
+      toast.error("Preencha todos os campos obrigatórios de SMTP.");
+      return;
+    }
+
+    const portNumber = parseInt(smtpPort, 10);
+    if (Number.isNaN(portNumber) || portNumber <= 0) {
+      toast.error("Porta SMTP inválida.");
+      return;
+    }
+
+    updateSmtpConfigMutation.mutate({
+      smtpHost,
+      smtpPort: portNumber,
+      smtpUser,
+      smtpFrom,
+      useSecure,
+      smtpPass: smtpPassDirty && smtpPass ? smtpPass : undefined,
+    });
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'admin') {
+    setLocation(buildTenantPath(tenantSlug, "/dashboard"));
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: '#f0f0f0' }}>
+      {/* Header */}
+      <header className="border-b-2 border-dashed border-white/20 bg-black sticky top-0 z-10">
+        <div className="container py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-white hover:text-primary"
+                onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin"))}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-white uppercase tracking-tight flex items-center gap-2">
+                  <Settings className="h-6 w-6" />
+                  Configurações
+                </h1>
+                <p className="text-sm text-muted-foreground">Configurações do seu clube</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="container py-8">
+        {/* Configuração SMTP */}
+        <Card className="max-w-4xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Configuração de Envio de Emails (SMTP)
+            </CardTitle>
+            <CardDescription>
+              Defina as credenciais de envio de email usadas para disparar os templates para seus clientes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingSmtp ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="smtpHost">Servidor SMTP *</Label>
+                    <Input
+                      id="smtpHost"
+                      placeholder="smtp.gmail.com"
+                      value={smtpHost}
+                      onChange={(e) => setSmtpHost(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="smtpPort">Porta *</Label>
+                    <Input
+                      id="smtpPort"
+                      placeholder="587"
+                      value={smtpPort}
+                      onChange={(e) => setSmtpPort(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="smtpUser">Usuário *</Label>
+                    <Input
+                      id="smtpUser"
+                      placeholder="seu-email@gmail.com"
+                      value={smtpUser}
+                      onChange={(e) => setSmtpUser(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="smtpPass">Senha *</Label>
+                    <Input
+                      id="smtpPass"
+                      type="password"
+                      placeholder={smtpConfig?.hasPassword ? '******** (deixe em branco para manter)' : 'Senha ou App Password'}
+                      value={smtpPass}
+                      onChange={(e) => {
+                        setSmtpPass(e.target.value);
+                        setSmtpPassDirty(true);
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Gmail: use uma "Senha de App" em vez da senha normal
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="smtpFrom">Remetente (From) *</Label>
+                    <Input
+                      id="smtpFrom"
+                      placeholder='"Meu Clube" <contato@meuclube.com>'
+                      value={smtpFrom}
+                      onChange={(e) => setSmtpFrom(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Formato: "Nome" &lt;email@dominio.com&gt;
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <input
+                      id="useSecure"
+                      type="checkbox"
+                      checked={useSecure}
+                      onChange={(e) => setUseSecure(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="useSecure" className="text-sm font-normal">
+                      Usar conexão segura (SSL/TLS)
+                    </Label>
+                  </div>
+                  <div className="flex flex-col gap-2 pt-4">
+                    <Button
+                      onClick={handleSaveSmtpConfig}
+                      disabled={updateSmtpConfigMutation.isPending}
+                    >
+                      {updateSmtpConfigMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => testSmtpConnectionMutation.mutate()}
+                      disabled={testSmtpConnectionMutation.isPending || !smtpHost}
+                    >
+                      {testSmtpConnectionMutation.isPending ? 'Testando...' : 'Testar Conexão SMTP'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

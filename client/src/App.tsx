@@ -23,6 +23,7 @@ const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings")
 const WorkflowAdminOperators = lazy(() => import("./pages/WorkflowAdminOperators"));
 const WorkflowAdminEmails = lazy(() => import("./pages/WorkflowAdminEmails"));
 const SuperAdminTenants = lazy(() => import("./pages/SuperAdminTenants"));
+const TenantSettings = lazy(() => import("./pages/TenantSettings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function getBackgroundForPath(path: string) {
@@ -200,6 +201,16 @@ function Router() {
         <Route path={"/admin"}>
           <AdminRoute>
             <Admin />
+          </AdminRoute>
+        </Route>
+        <Route path={"/:tenantSlug/admin/settings"}>
+          <AdminRoute>
+            <TenantSettings />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/settings"}>
+          <AdminRoute>
+            <TenantSettings />
           </AdminRoute>
         </Route>
         <Route path={"/:tenantSlug/platform-admin/users"}>

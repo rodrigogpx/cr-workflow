@@ -122,3 +122,32 @@ export async function verifyConnection(tenantDb?: any): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Verify SMTP connection with explicit settings (tenant-isolated)
+ */
+export async function verifyConnectionWithSettings(settings: {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  secure: boolean;
+}): Promise<boolean> {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: settings.host,
+      port: settings.port,
+      secure: settings.secure,
+      auth: {
+        user: settings.user,
+        pass: settings.pass,
+      },
+    });
+    await transporter.verify();
+    console.log('[EmailService] SMTP connection verified with custom settings');
+    return true;
+  } catch (error) {
+    console.error('[EmailService] SMTP connection failed:', error);
+    return false;
+  }
+}
