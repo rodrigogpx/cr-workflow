@@ -178,10 +178,11 @@ export const appRouter = router({
   clients: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
+      const tenantId = ctx.tenant?.id;
       // Admin vê todos os clientes, operador vê apenas os seus
       const clients = ctx.user.role === 'admin' 
-        ? (tenantDb ? await db.getAllClientsFromDb(tenantDb) : await db.getAllClients())
-        : (tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id) : await db.getClientsByOperator(ctx.user.id));
+        ? (tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients())
+        : (tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id));
       
       // Adicionar estatísticas de workflow para cada cliente
       const clientsWithProgress = await Promise.all(
@@ -1101,7 +1102,8 @@ export const appRouter = router({
   users: router({
     list: adminProcedure.query(async ({ ctx }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
-      return tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers();
+      const tenantId = ctx.tenant?.id;
+      return tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
     }),
 
     create: adminProcedure
@@ -1337,9 +1339,10 @@ export const appRouter = router({
     // Listar operadores com estatísticas de clientes
     listOperatorsWithStats: adminProcedure.query(async ({ ctx }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
-      const allUsers = tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers();
+      const tenantId = ctx.tenant?.id;
+      const allUsers = tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
       const operators = allUsers.filter((u: any) => u.role === 'operator' || u.role === 'admin');
-      const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb) : await db.getAllClients();
+      const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
 
       return operators.map((operator: any) => {
         const operatorClients = allClients.filter((c: any) => c.operatorId === operator.id);
@@ -1356,7 +1359,8 @@ export const appRouter = router({
     // Listar clientes disponíveis para atribuição
     listClientsForAssignment: adminProcedure.query(async ({ ctx }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
-      const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb) : await db.getAllClients();
+      const tenantId = ctx.tenant?.id;
+      const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
       return allClients.map((c: any) => ({
         id: c.id,
         name: c.name,

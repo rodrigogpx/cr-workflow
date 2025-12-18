@@ -7,6 +7,7 @@ import { relations } from "drizzle-orm";
  */
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenantId"), // null = platform user, populated = tenant user
   name: text("name"),
   email: varchar("email", { length: 320 }).notNull().unique(),
   hashedPassword: text("hashedPassword").notNull(),
@@ -29,6 +30,7 @@ export type InsertUser = typeof users.$inferInsert;
  */
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(), // tenant isolation
   name: varchar("name", { length: 255 }).notNull(),
   cpf: varchar("cpf", { length: 14 }).notNull().unique(),
   phone: varchar("phone", { length: 20 }).notNull(),

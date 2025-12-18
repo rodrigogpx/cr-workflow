@@ -224,7 +224,14 @@ export async function getClientsByOperator(operatorId: number) {
   return await db.select().from(clients).where(eq(clients.operatorId, operatorId)).orderBy(desc(clients.createdAt));
 }
 
-export async function getClientsByOperatorFromDb(tenantDb: ReturnType<typeof drizzle>, operatorId: number) {
+export async function getClientsByOperatorFromDb(tenantDb: ReturnType<typeof drizzle>, operatorId: number, tenantId?: number) {
+  if (tenantId) {
+    return await tenantDb
+      .select()
+      .from(clients)
+      .where(and(eq(clients.operatorId, operatorId), eq(clients.tenantId, tenantId)))
+      .orderBy(desc(clients.createdAt));
+  }
   return await tenantDb
     .select()
     .from(clients)
@@ -239,7 +246,10 @@ export async function getAllClients() {
   return await db.select().from(clients).orderBy(desc(clients.createdAt));
 }
 
-export async function getAllClientsFromDb(tenantDb: ReturnType<typeof drizzle>) {
+export async function getAllClientsFromDb(tenantDb: ReturnType<typeof drizzle>, tenantId?: number) {
+  if (tenantId) {
+    return await tenantDb.select().from(clients).where(eq(clients.tenantId, tenantId)).orderBy(desc(clients.createdAt));
+  }
   return await tenantDb.select().from(clients).orderBy(desc(clients.createdAt));
 }
 
@@ -574,7 +584,10 @@ export async function getAllUsers() {
   return await db.select().from(users).orderBy(desc(users.createdAt));
 }
 
-export async function getAllUsersFromDb(tenantDb: ReturnType<typeof drizzle>) {
+export async function getAllUsersFromDb(tenantDb: ReturnType<typeof drizzle>, tenantId?: number) {
+  if (tenantId) {
+    return await tenantDb.select().from(users).where(eq(users.tenantId, tenantId)).orderBy(desc(users.createdAt));
+  }
   return await tenantDb.select().from(users).orderBy(desc(users.createdAt));
 }
 
@@ -1114,6 +1127,7 @@ export async function seedMockTenants() {
       const [inserted] = await db
         .insert(users)
         .values({
+          tenantId: tenantIds[t.slug],
           name: `${t.name} Admin ${i}`,
           email,
           hashedPassword: passwordHash,
@@ -1129,6 +1143,7 @@ export async function seedMockTenants() {
       const [inserted] = await db
         .insert(users)
         .values({
+          tenantId: tenantIds[t.slug],
           name: `${t.name} Operador ${i}`,
           email,
           hashedPassword: passwordHash,
@@ -1155,6 +1170,7 @@ export async function seedMockTenants() {
       await db
         .insert(clients)
         .values({
+          tenantId: tenantIds[t.slug],
           name: `Cliente ${i} - ${t.name}`,
           cpf,
           phone: `11999${String(i).padStart(4, "0")}`,
