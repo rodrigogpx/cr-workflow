@@ -151,3 +151,53 @@ export async function verifyConnectionWithSettings(settings: {
     return false;
   }
 }
+
+/**
+ * Send a test email with explicit SMTP settings (tenant-isolated)
+ */
+export async function sendTestEmailWithSettings(settings: {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  secure: boolean;
+  from: string;
+  toEmail: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: settings.host,
+      port: settings.port,
+      secure: settings.secure,
+      auth: {
+        user: settings.user,
+        pass: settings.pass,
+      },
+    });
+
+    const info = await transporter.sendMail({
+      from: settings.from,
+      to: settings.toEmail,
+      subject: '✅ Teste de Configuração SMTP - CAC 360',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #1a5c00;">✅ Configuração SMTP Funcionando!</h2>
+          <p>Este é um email de teste enviado pelo sistema <strong>CAC 360</strong>.</p>
+          <p>Se você recebeu este email, suas configurações SMTP estão corretas.</p>
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+          <p style="color: #666; font-size: 12px;">
+            Servidor: ${settings.host}:${settings.port}<br/>
+            Usuário: ${settings.user}<br/>
+            Conexão segura: ${settings.secure ? 'Sim' : 'Não'}
+          </p>
+        </div>
+      `,
+    });
+
+    console.log('[EmailService] Test email sent successfully:', info.messageId);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[EmailService] Failed to send test email:', error);
+    return { success: false, error: error.message || 'Erro desconhecido ao enviar email' };
+  }
+}

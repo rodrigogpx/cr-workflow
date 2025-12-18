@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { sendEmail, verifyConnection, verifyConnectionWithSettings } from "./emailService";
+import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings } from "./emailService";
 import * as db from "./db";
 import { invalidateTenantCache } from "./config/tenant.config";
 import { storagePut } from "./storage";
@@ -895,7 +895,10 @@ export const appRouter = router({
       }),
 
     testSmtpConnection: adminProcedure
-      .mutation(async ({ ctx }) => {
+      .input(z.object({
+        testEmail: z.string().email().optional(),
+      }).optional())
+      .mutation(async ({ ctx, input }) => {
         const tenantId = ctx.tenant?.id;
         
         if (!tenantId) {
@@ -913,23 +916,34 @@ export const appRouter = router({
           });
         }
 
-        // Testar conexão com as configurações do tenant
-        const ok = await verifyConnectionWithSettings({
+        // Email destinatário: usa o email informado, ou o email do usuário logado
+        const toEmail = input?.testEmail || ctx.user?.email;
+        if (!toEmail) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Informe um email para receber o teste.",
+          });
+        }
+
+        // Enviar email de teste real
+        const result = await sendTestEmailWithSettings({
           host: settings.smtpHost,
           port: settings.smtpPort || 587,
           user: settings.smtpUser,
           pass: settings.smtpPassword,
           secure: settings.smtpPort === 465,
+          from: settings.smtpFrom || settings.smtpUser,
+          toEmail,
         });
         
-        if (!ok) {
+        if (!result.success) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: "Falha ao conectar ao servidor SMTP. Verifique as configurações.",
+            message: result.error || "Falha ao enviar email de teste. Verifique as configurações.",
           });
         }
 
-        return { success: true };
+        return { success: true, sentTo: toEmail };
       }),
 
     // Get email template
