@@ -1159,12 +1159,15 @@ export async function seedMockTenants() {
 
   // Seed clients (15 por tenant)
   let clientsInserted = 0;
+  let tenantIndex = 0;
   for (const t of mocks) {
+    tenantIndex++;
     const { operators } = tenantUserIds[t.slug];
     if (!operators || operators.length === 0) continue;
 
     for (let i = 1; i <= 15; i++) {
-      const cpf = `${String(i).padStart(3, "0")}${String(i).padStart(3, "0")}0000${String(i).padStart(2, "0")}`;
+      // CPF único por tenant: prefixo baseado no índice do tenant
+      const cpf = `${String(tenantIndex).padStart(3, "0")}${String(i).padStart(3, "0")}${String(tenantIndex).padStart(4, "0")}${String(i).padStart(2, "0")}`;
       const email = `${t.slug}.cliente${i}@example.com`;
 
       await db
