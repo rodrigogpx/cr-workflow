@@ -121,15 +121,15 @@ export function EmailPreview({
                 Visualizar
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
-              <DialogHeader>
+            <DialogContent className="w-[80vw] max-w-[80vw] h-[90vh] flex flex-col">
+              <DialogHeader className="px-6 pt-6">
                 <DialogTitle>{title}</DialogTitle>
                 <DialogDescription>
                   Preview do email que será enviado para {clientEmail}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 px-6 pb-6">
                 {/* Assunto */}
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-700">Assunto:</p>
