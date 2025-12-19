@@ -179,10 +179,21 @@ export const appRouter = router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
+      
+      console.log('[clients.list] DEBUG:', {
+        tenantSlug: ctx.tenantSlug,
+        tenantId,
+        userId: ctx.user.id,
+        userRole: ctx.user.role,
+        hasTenantDb: Boolean(tenantDb),
+      });
+      
       // Admin vê todos os clientes, operador vê apenas os seus
       const clients = ctx.user.role === 'admin' 
         ? (tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients())
         : (tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id));
+      
+      console.log('[clients.list] Found', clients.length, 'clients for tenant', tenantId);
       
       // Adicionar estatísticas de workflow para cada cliente
       const clientsWithProgress = await Promise.all(
