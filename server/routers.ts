@@ -1796,6 +1796,41 @@ export const appRouter = router({
           lastActivity: null,
         };
       }),
+
+    // Impersonate: entrar como admin de um tenant específico
+    impersonate: adminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        if (!tenant.isActive) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant inativo' });
+        }
+
+        // Buscar o admin do tenant
+        const tenantAdmin = await db.getTenantAdmin(input.tenantId);
+        if (!tenantAdmin) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Admin do tenant não encontrado' });
+        }
+
+        console.log('[AUDIT] Super Admin impersonating tenant', {
+          superAdminId: ctx.user.id,
+          tenantId: input.tenantId,
+          tenantSlug: tenant.slug,
+          impersonatedUserId: tenantAdmin.id,
+        });
+
+        return {
+          success: true,
+          tenantSlug: tenant.slug,
+          adminId: tenantAdmin.id,
+          adminEmail: tenantAdmin.email,
+          adminName: tenantAdmin.name,
+        };
+      }),
   }),
 });
 

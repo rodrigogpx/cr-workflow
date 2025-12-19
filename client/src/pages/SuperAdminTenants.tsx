@@ -149,6 +149,15 @@ export default function SuperAdminTenants() {
     onError: (err) => toast.error(err.message || "Erro ao rodar seed"),
   });
 
+  const impersonate = trpc.tenants.impersonate.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Entrando como admin de ${data.adminName || data.tenantSlug}...`);
+      // Redirecionar para o tenant
+      window.location.href = `/${data.tenantSlug}/cr-workflow`;
+    },
+    onError: (err) => toast.error(err.message || "Erro ao acessar tenant"),
+  });
+
   const filteredTenants = useMemo(
     () =>
       tenants.filter(
@@ -444,7 +453,13 @@ export default function SuperAdminTenants() {
                       </div>
 
                       {/* Actions */}
-                      <Button variant="ghost" size="icon" title="Visualizar">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        title="Entrar como Admin"
+                        onClick={() => impersonate.mutate({ tenantId: tenant.id })}
+                        disabled={impersonate.isLoading || !tenant.isActive}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" title="Editar" onClick={() => setEditingTenant(tenant)}>

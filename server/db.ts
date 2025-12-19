@@ -986,6 +986,19 @@ export async function getTenantBySlug(slug: string) {
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getTenantAdmin(tenantId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(users)
+    .where(and(
+      eq(users.tenantId, tenantId),
+      eq(users.role, 'admin')
+    ))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
 export async function createTenant(tenant: InsertTenant) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
