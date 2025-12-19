@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone, User, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, Plus, Search, Mail, Phone, User, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -141,39 +141,8 @@ export default function Dashboard() {
                 onClick={() => setLocation(buildTenantPath(tenantSlug, "/dashboard"))}
                 className="text-white hover:text-primary"
               >
-                Voltar para módulos
+                Home
               </Button>
-              {user.role === 'admin' && (
-                <>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setLocation(buildTenantPath(tenantSlug, "/workflow-admin/operators"))}
-                    style={{color: '#c2c1c1'}}
-                    className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Operadores
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setLocation(buildTenantPath(tenantSlug, "/workflow-admin/emails"))}
-                    style={{color: '#c2c1c1'}}
-                    className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Emails
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setLocation(buildTenantPath(tenantSlug, "/platform-admin/users"))}
-                    style={{color: '#c2c1c1'}}
-                    className="border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10"
-                  >
-                    <Target className="h-4 w-4 mr-2" />
-                    Admin
-                  </Button>
-                </>
-              )}
               <Button 
                 variant="ghost" 
                 onClick={handleLogout}

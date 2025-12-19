@@ -341,6 +341,61 @@ export const appRouter = router({
           }
         }
 
+        // Enviar email de boas-vindas automaticamente
+        try {
+          const welcomeTemplate = tenantDb
+            ? await db.getEmailTemplateFromDb(tenantDb, 'boasvindas-filiado')
+            : await db.getEmailTemplate('boasvindas-filiado');
+          
+          if (welcomeTemplate && input.email) {
+            // Substituir variáveis no template
+            const replaceVariables = (text: string) => {
+              let result = text;
+              result = result.replace(/{{nome}}/g, input.name || '');
+              result = result.replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'));
+              result = result.replace(/{{email}}/g, input.email || '');
+              result = result.replace(/{{cpf}}/g, input.cpf || '');
+              result = result.replace(/{{telefone}}/g, input.phone || '');
+              return result;
+            };
+
+            const finalSubject = replaceVariables(welcomeTemplate.subject);
+            const finalContent = replaceVariables(welcomeTemplate.content);
+
+            await sendEmail({
+              to: input.email,
+              subject: finalSubject,
+              html: finalContent,
+            }, tenantDb);
+
+            // Registrar envio do email
+            if (tenantDb) {
+              await db.logEmailSentToDb(tenantDb, {
+                clientId,
+                templateKey: 'boasvindas-filiado',
+                recipientEmail: input.email,
+                subject: finalSubject,
+                content: finalContent,
+                sentBy: ctx.user.id,
+              });
+            } else {
+              await db.logEmailSent({
+                clientId,
+                templateKey: 'boasvindas-filiado',
+                recipientEmail: input.email,
+                subject: finalSubject,
+                content: finalContent,
+                sentBy: ctx.user.id,
+              });
+            }
+
+            console.log(`[Clients] Welcome email sent to ${input.email} for new client ${clientId}`);
+          }
+        } catch (emailError) {
+          // Não falhar a criação do cliente se o email falhar
+          console.error('[Clients] Failed to send welcome email:', emailError);
+        }
+
         return { id: clientId };
       }),
 
