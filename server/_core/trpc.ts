@@ -34,7 +34,7 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-// Middleware opcional de tenant: só aplica regras quando houver slug resolvido
+// Middleware opcional de tenant: valida tenant se presente, mas não bloqueia se ausente
 const requireTenantIfPresent = t.middleware(async opts => {
   const { ctx, next } = opts;
 
@@ -43,8 +43,11 @@ const requireTenantIfPresent = t.middleware(async opts => {
     return next({ ctx });
   }
 
+  // Se slug existe mas tenant não foi encontrado, apenas logar e continuar
+  // As procedures individuais decidem se tenant é obrigatório
   if (!ctx.tenant) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant não encontrado" });
+    console.warn(`[TenantMiddleware] Tenant slug "${ctx.tenantSlug}" provided but tenant not found`);
+    return next({ ctx });
   }
 
   if (!isTenantActive(ctx.tenant)) {
