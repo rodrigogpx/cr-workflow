@@ -121,7 +121,7 @@ export function EmailPreview({
                 Visualizar
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-full max-w-[95vw] sm:max-w-[80vw] h-[90vh] flex flex-col">
+            <DialogContent className="w-full max-w-[95vw] sm:max-w-[70vw] h-[90vh] flex flex-col">
               <DialogHeader className="px-6 pt-6">
                 <DialogTitle>{title}</DialogTitle>
                 <DialogDescription>
