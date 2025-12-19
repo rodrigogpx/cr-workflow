@@ -901,14 +901,24 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const tenantId = ctx.tenant?.id;
         
-        if (!tenantId) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Tenant não identificado.",
-          });
+        let settings: { smtpHost: string | null; smtpPort: number; smtpUser: string | null; smtpPassword: string | null; smtpFrom: string | null } | null = null;
+        
+        // Buscar settings do tenant ou usar env vars como fallback
+        if (tenantId) {
+          settings = await db.getTenantSmtpSettings(tenantId);
+        }
+        
+        // Fallback para variáveis de ambiente (modo global/dev)
+        if (!settings?.smtpHost || !settings?.smtpUser) {
+          settings = {
+            smtpHost: process.env.SMTP_HOST || null,
+            smtpPort: Number(process.env.SMTP_PORT) || 587,
+            smtpUser: process.env.SMTP_USER || null,
+            smtpPassword: process.env.SMTP_PASS || null,
+            smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER || null,
+          };
         }
 
-        const settings = await db.getTenantSmtpSettings(tenantId);
         if (!settings?.smtpHost || !settings?.smtpUser || !settings?.smtpPassword) {
           throw new TRPCError({
             code: "BAD_REQUEST",
