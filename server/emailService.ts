@@ -2,6 +2,9 @@ import nodemailer from 'nodemailer';
 import type { Attachment } from 'nodemailer/lib/mailer';
 import { getEmailSettings, getEmailSettingsFromDb, type EmailSettings } from './db';
 
+// Gateway de Email Manus (contorna restrições SMTP do Railway)
+const EMAIL_GATEWAY_URL = process.env.EMAIL_GATEWAY_URL || 'https://5000-ii462mn0wybzgbhgi63xz-a2535f82.manusvm.computer';
+
 // Create reusable transporter with support for DB-backed configuration
 let transporter: nodemailer.Transporter | null = null;
 let currentConfigKey: string | null = null;
@@ -153,7 +156,47 @@ export async function verifyConnectionWithSettings(settings: {
 }
 
 /**
- * Send a test email with explicit SMTP settings (tenant-isolated)
+ * Send email via Manus Gateway (HTTP) - contorna restrições SMTP do Railway
+ */
+async function sendEmailViaGateway(options: {
+  to: string;
+  subject: string;
+  body: string;
+  isHtml?: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('[EmailService] Sending email via Manus Gateway to:', options.to);
+    
+    const response = await fetch(`${EMAIL_GATEWAY_URL}/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: options.to,
+        subject: options.subject,
+        body: options.body,
+        is_html: options.isHtml ?? true,
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (response.ok && data.status === 'success') {
+      console.log('[EmailService] Email sent via Gateway successfully');
+      return { success: true };
+    } else {
+      console.error('[EmailService] Gateway error:', data);
+      return { success: false, error: data.message || 'Erro no gateway de email' };
+    }
+  } catch (error: any) {
+    console.error('[EmailService] Gateway request failed:', error);
+    return { success: false, error: error.message || 'Falha na conexão com gateway de email' };
+  }
+}
+
+/**
+ * Send a test email - usa Gateway Manus (Railway) ou SMTP direto (local)
  */
 export async function sendTestEmailWithSettings(settings: {
   host: string;
@@ -166,7 +209,37 @@ export async function sendTestEmailWithSettings(settings: {
   subject?: string;
   body?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  const defaultSubject = '✅ Teste de Configuração - CAC 360';
+  const defaultBodyText = 'Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações estão corretas.';
+  
+  const subject = settings.subject || defaultSubject;
+  const bodyText = settings.body || defaultBodyText;
+  
+  const htmlBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #1a5c00;">✅ ${subject}</h2>
+      <p>${bodyText.replace(/\n/g, '<br/>')}</p>
+      <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+      <p style="color: #666; font-size: 12px;">Enviado via CAC 360</p>
+    </div>
+  `;
+
+  // Sempre usar Gateway em produção (Railway bloqueia SMTP outbound)
+  const useGateway = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true';
+  
+  if (useGateway) {
+    console.log('[EmailService] Using Manus Gateway (production mode)');
+    return sendEmailViaGateway({
+      to: settings.toEmail,
+      subject,
+      body: htmlBody,
+      isHtml: true,
+    });
+  }
+
+  // Fallback para SMTP direto (desenvolvimento local)
   try {
+    console.log('[EmailService] Using direct SMTP (development mode)');
     console.log('[EmailService] Creating transporter with settings:', {
       host: settings.host,
       port: settings.port,
@@ -176,7 +249,6 @@ export async function sendTestEmailWithSettings(settings: {
       to: settings.toEmail,
     });
 
-    // Para Gmail na porta 587, secure deve ser false e usar STARTTLS
     const useSecure = settings.port === 465;
     
     const transporter = nodemailer.createTransport({
@@ -195,45 +267,20 @@ export async function sendTestEmailWithSettings(settings: {
       socketTimeout: 15000,
     });
 
-    // Verificar conexão antes de enviar
-    console.log('[EmailService] Verifying SMTP connection...');
     await transporter.verify();
-    console.log('[EmailService] SMTP connection verified successfully');
-
-    const defaultSubject = '✅ Teste de Configuração SMTP - CAC 360';
-    const defaultBody = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a5c00;">✅ Configuração SMTP Funcionando!</h2>
-        <p>Este é um email de teste enviado pelo sistema <strong>CAC 360</strong>.</p>
-        <p>Se você recebeu este email, suas configurações SMTP estão corretas.</p>
-        <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
-        <p style="color: #666; font-size: 12px;">
-          Servidor: ${settings.host}:${settings.port}<br/>
-          Usuário: ${settings.user}<br/>
-          Conexão segura: ${settings.secure ? 'Sim' : 'Não'}
-        </p>
-      </div>
-    `;
-
-    const customBody = settings.body ? `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <p>${settings.body.replace(/\n/g, '<br/>')}</p>
-        <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
-        <p style="color: #666; font-size: 12px;">Enviado via CAC 360</p>
-      </div>
-    ` : defaultBody;
+    console.log('[EmailService] SMTP connection verified');
 
     const info = await transporter.sendMail({
       from: settings.from,
       to: settings.toEmail,
-      subject: settings.subject || defaultSubject,
-      html: customBody,
+      subject,
+      html: htmlBody,
     });
 
     console.log('[EmailService] Test email sent successfully:', info.messageId);
     return { success: true };
   } catch (error: any) {
-    console.error('[EmailService] Failed to send test email:', error);
+    console.error('[EmailService] Failed to send test email via SMTP:', error);
     return { success: false, error: error.message || 'Erro desconhecido ao enviar email' };
   }
 }
