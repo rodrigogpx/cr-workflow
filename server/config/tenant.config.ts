@@ -116,8 +116,11 @@ export async function getTenantConfig(slug: string): Promise<TenantConfig | null
     await client.end();
 
     if (result.length === 0) {
+      console.warn(`[Tenant] Tenant with slug "${slug}" not found or inactive`);
       return null;
     }
+    
+    console.log(`[Tenant] Found tenant: id=${result[0].id}, slug=${result[0].slug}`);
 
     const tenant = result[0] as unknown as TenantConfig;
 
