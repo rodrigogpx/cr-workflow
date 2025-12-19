@@ -30,13 +30,36 @@ export function encryptSecret(value: string): string {
 
 export function decryptSecret(payload: string): string {
   if (!payload) return payload;
-  const buffer = Buffer.from(payload, "base64");
-  const iv = buffer.subarray(0, IV_LENGTH);
-  const authTag = buffer.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
-  const data = buffer.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
-  const key = getKey();
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
-  decipher.setAuthTag(authTag);
-  const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
-  return decrypted.toString("utf8");
+  
+  try {
+    const buffer = Buffer.from(payload, "base64");
+    
+    // Verificar se o buffer tem tamanho mínimo esperado (iv + authTag + pelo menos 1 byte)
+    const minLength = IV_LENGTH + AUTH_TAG_LENGTH + 1;
+    if (buffer.length < minLength) {
+      // Valor não está criptografado ou está malformado - retornar como está
+      console.warn('[Crypto] Value too short to be encrypted, returning as-is');
+      return payload;
+    }
+    
+    const iv = buffer.subarray(0, IV_LENGTH);
+    const authTag = buffer.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
+    const data = buffer.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
+    
+    // Verificar se authTag tem o tamanho correto
+    if (authTag.length !== AUTH_TAG_LENGTH) {
+      console.warn('[Crypto] Invalid authTag length, returning as-is');
+      return payload;
+    }
+    
+    const key = getKey();
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
+    decipher.setAuthTag(authTag);
+    const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
+    return decrypted.toString("utf8");
+  } catch (error: any) {
+    // Se falhar a decriptação, o valor provavelmente não está criptografado
+    console.warn('[Crypto] Decryption failed, returning value as-is:', error.message);
+    return payload;
+  }
 }
