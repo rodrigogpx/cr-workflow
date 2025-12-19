@@ -13,17 +13,14 @@ const Register = lazy(() => import("./pages/Register"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MainDashboard = lazy(() => import("./pages/MainDashboard"));
 const ClientWorkflow = lazy(() => import("./pages/ClientWorkflow"));
-const Admin = lazy(() => import("./pages/Admin"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
-const EmailTemplates = lazy(() => import("./pages/EmailTemplates"));
-const Users = lazy(() => import("./pages/Users"));
-const PlatformAdminUsers = lazy(() => import("./pages/PlatformAdminUsers"));
-const PlatformAdminEmailTemplates = lazy(() => import("./pages/PlatformAdminEmailTemplates"));
-const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings"));
-const WorkflowAdminOperators = lazy(() => import("./pages/WorkflowAdminOperators"));
-const WorkflowAdminEmails = lazy(() => import("./pages/WorkflowAdminEmails"));
 const SuperAdminTenants = lazy(() => import("./pages/SuperAdminTenants"));
-const TenantSettings = lazy(() => import("./pages/TenantSettings"));
+// Tenant Admin pages (unified)
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const AdminOperators = lazy(() => import("./pages/AdminOperators"));
+const AdminEmails = lazy(() => import("./pages/AdminEmails"));
+const AdminSettings = lazy(() => import("./pages/TenantSettings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function getBackgroundForPath(path: string) {
@@ -173,78 +170,83 @@ function Router() {
             <ClientWorkflow />
           </ApprovedRoute>
         </Route>
-        <Route path={"/:tenantSlug/workflow-admin/operators"}>
-          <AdminRoute>
-            <WorkflowAdminOperators />
-          </AdminRoute>
-        </Route>
-        <Route path={"/workflow-admin/operators"}>
-          <AdminRoute>
-            <WorkflowAdminOperators />
-          </AdminRoute>
-        </Route>
-        <Route path={"/:tenantSlug/workflow-admin/emails"}>
-          <AdminRoute>
-            <WorkflowAdminEmails />
-          </AdminRoute>
-        </Route>
-        <Route path={"/workflow-admin/emails"}>
-          <AdminRoute>
-            <WorkflowAdminEmails />
-          </AdminRoute>
-        </Route>
+        {/* Tenant Admin - Unified */}
         <Route path={"/:tenantSlug/admin"}>
           <AdminRoute>
-            <Admin />
+            <AdminDashboard />
           </AdminRoute>
         </Route>
         <Route path={"/admin"}>
           <AdminRoute>
-            <Admin />
+            <AdminDashboard />
+          </AdminRoute>
+        </Route>
+        <Route path={"/:tenantSlug/admin/users"}>
+          <AdminRoute>
+            <AdminUsers />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/users"}>
+          <AdminRoute>
+            <AdminUsers />
+          </AdminRoute>
+        </Route>
+        <Route path={"/:tenantSlug/admin/operators"}>
+          <AdminRoute>
+            <AdminOperators />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/operators"}>
+          <AdminRoute>
+            <AdminOperators />
+          </AdminRoute>
+        </Route>
+        <Route path={"/:tenantSlug/admin/emails"}>
+          <AdminRoute>
+            <AdminEmails />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/emails"}>
+          <AdminRoute>
+            <AdminEmails />
           </AdminRoute>
         </Route>
         <Route path={"/:tenantSlug/admin/settings"}>
           <AdminRoute>
-            <TenantSettings />
+            <AdminSettings />
           </AdminRoute>
         </Route>
         <Route path={"/admin/settings"}>
           <AdminRoute>
-            <TenantSettings />
+            <AdminSettings />
           </AdminRoute>
         </Route>
-        <Route path={"/:tenantSlug/platform-admin/users"}>
-          <AdminRoute>
-            <PlatformAdminUsers />
-          </AdminRoute>
-        </Route>
-        <Route path={"/platform-admin/users"}>
-          <AdminRoute>
-            <PlatformAdminUsers />
-          </AdminRoute>
-        </Route>
-        <Route path={"/:tenantSlug/platform-admin/email-templates"}>
-          <AdminRoute>
-            <PlatformAdminEmailTemplates />
-          </AdminRoute>
-        </Route>
-        <Route path={"/platform-admin/email-templates"}>
-          <AdminRoute>
-            <PlatformAdminEmailTemplates />
-          </AdminRoute>
-        </Route>
-        <Route path={"/:tenantSlug/platform-admin/settings"}>
-          <AdminRoute>
-            <PlatformAdminSettings />
-          </AdminRoute>
-        </Route>
+        {/* Super Admin */}
         <Route path={"/super-admin/tenants"}>
           <AdminRoute>
             <SuperAdminTenants />
           </AdminRoute>
         </Route>
-        <Route path={"/admin/email-templates"}>
-          <Redirect to="/platform-admin/email-templates" />
+        {/* Legacy redirects */}
+        <Route path={"/:tenantSlug/platform-admin/users"}>
+          {({ tenantSlug }: { tenantSlug: string }) => (
+            <Redirect to={buildTenantPath(tenantSlug, "/admin/users")} />
+          )}
+        </Route>
+        <Route path={"/:tenantSlug/platform-admin/email-templates"}>
+          {({ tenantSlug }: { tenantSlug: string }) => (
+            <Redirect to={buildTenantPath(tenantSlug, "/admin/emails")} />
+          )}
+        </Route>
+        <Route path={"/:tenantSlug/platform-admin/settings"}>
+          {({ tenantSlug }: { tenantSlug: string }) => (
+            <Redirect to={buildTenantPath(tenantSlug, "/admin/settings")} />
+          )}
+        </Route>
+        <Route path={"/:tenantSlug/workflow-admin/operators"}>
+          {({ tenantSlug }: { tenantSlug: string }) => (
+            <Redirect to={buildTenantPath(tenantSlug, "/admin/operators")} />
+          )}
         </Route>
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />

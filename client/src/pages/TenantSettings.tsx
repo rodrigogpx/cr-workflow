@@ -1,19 +1,14 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { TenantAdminLayout } from "@/components/TenantAdminLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Mail, Loader2, Settings } from "lucide-react";
+import { Mail, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
-import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function TenantSettings() {
-  const [, setLocation] = useLocation();
-  const tenantSlug = useTenantSlug();
-  const { user, loading: authLoading } = useAuth();
   const { data: smtpConfig, isLoading: isLoadingSmtp } = trpc.emails.getSmtpConfig.useQuery();
   const utils = trpc.useUtils();
 
@@ -42,16 +37,16 @@ export default function TenantSettings() {
       toast.success("Configurações SMTP salvas com sucesso!");
       utils.emails.getSmtpConfig.invalidate();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Erro ao salvar configurações: ${error.message}`);
     },
   });
 
   const testSmtpConnectionMutation = trpc.emails.testSmtpConnection.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       toast.success(`Email de teste enviado para ${data.sentTo}!`);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Falha ao enviar email de teste: ${error.message}`);
     },
   });
@@ -78,49 +73,18 @@ export default function TenantSettings() {
     });
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user || user.role !== 'admin') {
-    setLocation(buildTenantPath(tenantSlug, "/dashboard"));
-    return null;
-  }
-
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f0f0f0' }}>
-      {/* Header */}
-      <header className="border-b-2 border-dashed border-white/20 bg-black sticky top-0 z-10">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-white hover:text-primary"
-                onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin"))}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-white uppercase tracking-tight flex items-center gap-2">
-                  <Settings className="h-6 w-6" />
-                  Configurações
-                </h1>
-                <p className="text-sm text-muted-foreground">Configurações do seu clube</p>
-              </div>
-            </div>
-          </div>
+    <TenantAdminLayout active="settings">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
+          <p className="text-sm text-muted-foreground">
+            Configurações do seu clube
+          </p>
         </div>
-      </header>
 
-      <div className="container py-8">
         {/* Configuração SMTP */}
-        <Card className="max-w-4xl">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" />
@@ -228,6 +192,6 @@ export default function TenantSettings() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </TenantAdminLayout>
   );
 }
