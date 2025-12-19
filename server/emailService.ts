@@ -167,15 +167,38 @@ export async function sendTestEmailWithSettings(settings: {
   body?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const transporter = nodemailer.createTransport({
+    console.log('[EmailService] Creating transporter with settings:', {
       host: settings.host,
       port: settings.port,
       secure: settings.secure,
+      user: settings.user,
+      from: settings.from,
+      to: settings.toEmail,
+    });
+
+    // Para Gmail na porta 587, secure deve ser false e usar STARTTLS
+    const useSecure = settings.port === 465;
+    
+    const transporter = nodemailer.createTransport({
+      host: settings.host,
+      port: settings.port,
+      secure: useSecure,
       auth: {
         user: settings.user,
         pass: settings.pass,
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
+
+    // Verificar conexão antes de enviar
+    console.log('[EmailService] Verifying SMTP connection...');
+    await transporter.verify();
+    console.log('[EmailService] SMTP connection verified successfully');
 
     const defaultSubject = '✅ Teste de Configuração SMTP - CAC 360';
     const defaultBody = `
