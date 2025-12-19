@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, Clock, Loader2, Plus, Search, Mail, Phone, User, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone, User, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
