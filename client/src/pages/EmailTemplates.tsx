@@ -258,7 +258,7 @@ export default function EmailTemplates() {
                       <div>
                         <Label>Anexos</Label>
                         <div className="border rounded-md p-4 space-y-2">
-                          {templates[activeTab]?.attachments.map((att, index) => (
+                          {(templates[activeTab]?.attachments || []).map((att, index) => (
                             <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-5 w-5 text-gray-500" />
