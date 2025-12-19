@@ -121,35 +121,56 @@ export function EmailPreview({
                 Visualizar
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>{title}</DialogTitle>
-                  {attachments.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Anexos:</p>
-                      <div className="space-y-2">
-                        {attachments.map((att: any, index: number) => (
-                          <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" key={index} className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                            <FileText className="h-4 w-4" />
-                            <span>{att.fileName}</span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 <DialogDescription>
                   Preview do email que será enviado para {clientEmail}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Assunto:</p>
-                  <p className="text-sm bg-gray-50 p-3 rounded border">{previewSubject}</p>
+
+              <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+                {/* Assunto */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Assunto:</p>
+                  <div className="p-3 bg-gray-50 border rounded-md text-sm font-medium text-gray-900">
+                    {previewSubject}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Conteúdo:</p>
-                  <div className="text-sm bg-gray-50 p-4 rounded border" dangerouslySetInnerHTML={{ __html: previewContent.replace(/\n/g, '<br />') }} />
+
+                {/* Conteúdo */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Conteúdo:</p>
+                  <div 
+                    className="p-6 bg-white border rounded-lg shadow-sm prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: previewContent }} 
+                  />
                 </div>
+
+                {/* Anexos */}
+                {attachments.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-700">Anexos ({attachments.length}):</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {attachments.map((att: any, index: number) => (
+                        <a 
+                          href={att.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          key={index} 
+                          className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 border rounded-md transition-colors group"
+                        >
+                          <div className="p-2 bg-white rounded border group-hover:border-primary/50 transition-colors">
+                            <FileText className="h-4 w-4 text-primary" />
+                          </div>
+                          <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 truncate">
+                            {att.fileName}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>
