@@ -82,9 +82,29 @@ export interface SendEmailOptions {
 }
 
 /**
- * Send email via SMTP
+ * Send email via Gateway (production) or SMTP (development)
  */
 export async function sendEmail(options: SendEmailOptions, tenantDb?: any): Promise<{ success: boolean; messageId?: string }> {
+  // Em produção, usar Gateway para contornar restrições SMTP do Railway
+  const useGateway = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true';
+  
+  if (useGateway) {
+    console.log('[EmailService] Using Gateway for sendEmail (production mode)');
+    const result = await sendEmailViaGateway({
+      to: options.to,
+      subject: options.subject,
+      body: options.html,
+      isHtml: true,
+    });
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Falha ao enviar email via Gateway');
+    }
+    
+    return { success: true, messageId: 'gateway-' + Date.now() };
+  }
+  
+  // Desenvolvimento: usar SMTP direto
   try {
     const { transporter: transport, config } = await getTransporterWithConfig(tenantDb);
 
