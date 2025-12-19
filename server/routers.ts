@@ -897,6 +897,8 @@ export const appRouter = router({
     testSmtpConnection: adminProcedure
       .input(z.object({
         testEmail: z.string().email().optional(),
+        subject: z.string().optional(),
+        body: z.string().optional(),
       }).optional())
       .mutation(async ({ ctx, input }) => {
         const tenantId = ctx.tenant?.id;
@@ -944,6 +946,8 @@ export const appRouter = router({
           secure: settings.smtpPort === 465,
           from: settings.smtpFrom || settings.smtpUser,
           toEmail,
+          subject: input?.subject,
+          body: input?.body,
         });
         
         if (!result.success) {

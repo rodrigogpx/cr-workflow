@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Mail, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export default function TenantSettings() {
@@ -19,6 +21,12 @@ export default function TenantSettings() {
   const [useSecure, setUseSecure] = useState(false);
   const [smtpPass, setSmtpPass] = useState('');
   const [smtpPassDirty, setSmtpPassDirty] = useState(false);
+
+  // Modal de email de teste
+  const [testEmailModalOpen, setTestEmailModalOpen] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState('');
+  const [testEmailSubject, setTestEmailSubject] = useState('Teste de Email - CAC 360');
+  const [testEmailBody, setTestEmailBody] = useState('Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações SMTP estão funcionando corretamente.');
 
   useEffect(() => {
     if (smtpConfig) {
@@ -45,11 +53,24 @@ export default function TenantSettings() {
   const testSmtpConnectionMutation = trpc.emails.testSmtpConnection.useMutation({
     onSuccess: (data: any) => {
       toast.success(`Email de teste enviado para ${data.sentTo}!`);
+      setTestEmailModalOpen(false);
     },
     onError: (error: any) => {
       toast.error(`Falha ao enviar email de teste: ${error.message}`);
     },
   });
+
+  const handleSendTestEmail = () => {
+    if (!testEmailTo) {
+      toast.error("Informe o email do destinatário.");
+      return;
+    }
+    testSmtpConnectionMutation.mutate({
+      testEmail: testEmailTo,
+      subject: testEmailSubject,
+      body: testEmailBody,
+    });
+  };
 
   const handleSaveSmtpConfig = () => {
     if (!smtpHost || !smtpPort || !smtpUser || !smtpFrom) {
@@ -178,13 +199,74 @@ export default function TenantSettings() {
                     >
                       {updateSmtpConfigMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => testSmtpConnectionMutation.mutate({})}
-                      disabled={testSmtpConnectionMutation.isPending || !smtpHost}
-                    >
-                      {testSmtpConnectionMutation.isPending ? 'Enviando email de teste...' : 'Enviar Email de Teste'}
-                    </Button>
+                    <Dialog open={testEmailModalOpen} onOpenChange={setTestEmailModalOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" disabled={!smtpHost}>
+                          <Send className="h-4 w-4 mr-2" />
+                          Enviar Email de Teste
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle>Enviar Email de Teste</DialogTitle>
+                          <DialogDescription>
+                            Envie um email de teste para verificar se as configurações SMTP estão corretas.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="testEmailTo">Email do Destinatário *</Label>
+                            <Input
+                              id="testEmailTo"
+                              type="email"
+                              placeholder="destinatario@exemplo.com"
+                              value={testEmailTo}
+                              onChange={(e) => setTestEmailTo(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="testEmailSubject">Assunto</Label>
+                            <Input
+                              id="testEmailSubject"
+                              placeholder="Assunto do email"
+                              value={testEmailSubject}
+                              onChange={(e) => setTestEmailSubject(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="testEmailBody">Mensagem</Label>
+                            <Textarea
+                              id="testEmailBody"
+                              placeholder="Conteúdo do email de teste..."
+                              value={testEmailBody}
+                              onChange={(e) => setTestEmailBody(e.target.value)}
+                              rows={4}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setTestEmailModalOpen(false)}>
+                            Cancelar
+                          </Button>
+                          <Button 
+                            onClick={handleSendTestEmail}
+                            disabled={testSmtpConnectionMutation.isPending || !testEmailTo}
+                          >
+                            {testSmtpConnectionMutation.isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Enviando...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4 mr-2" />
+                                Enviar
+                              </>
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
               </div>

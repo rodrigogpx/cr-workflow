@@ -163,6 +163,8 @@ export async function sendTestEmailWithSettings(settings: {
   secure: boolean;
   from: string;
   toEmail: string;
+  subject?: string;
+  body?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const transporter = nodemailer.createTransport({
@@ -175,23 +177,34 @@ export async function sendTestEmailWithSettings(settings: {
       },
     });
 
+    const defaultSubject = '✅ Teste de Configuração SMTP - CAC 360';
+    const defaultBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #1a5c00;">✅ Configuração SMTP Funcionando!</h2>
+        <p>Este é um email de teste enviado pelo sistema <strong>CAC 360</strong>.</p>
+        <p>Se você recebeu este email, suas configurações SMTP estão corretas.</p>
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+        <p style="color: #666; font-size: 12px;">
+          Servidor: ${settings.host}:${settings.port}<br/>
+          Usuário: ${settings.user}<br/>
+          Conexão segura: ${settings.secure ? 'Sim' : 'Não'}
+        </p>
+      </div>
+    `;
+
+    const customBody = settings.body ? `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <p>${settings.body.replace(/\n/g, '<br/>')}</p>
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+        <p style="color: #666; font-size: 12px;">Enviado via CAC 360</p>
+      </div>
+    ` : defaultBody;
+
     const info = await transporter.sendMail({
       from: settings.from,
       to: settings.toEmail,
-      subject: '✅ Teste de Configuração SMTP - CAC 360',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #1a5c00;">✅ Configuração SMTP Funcionando!</h2>
-          <p>Este é um email de teste enviado pelo sistema <strong>CAC 360</strong>.</p>
-          <p>Se você recebeu este email, suas configurações SMTP estão corretas.</p>
-          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
-          <p style="color: #666; font-size: 12px;">
-            Servidor: ${settings.host}:${settings.port}<br/>
-            Usuário: ${settings.user}<br/>
-            Conexão segura: ${settings.secure ? 'Sim' : 'Não'}
-          </p>
-        </div>
-      `,
+      subject: settings.subject || defaultSubject,
+      html: customBody,
     });
 
     console.log('[EmailService] Test email sent successfully:', info.messageId);
