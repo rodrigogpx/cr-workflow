@@ -816,8 +816,9 @@ export const appRouter = router({
         if (tenantId) {
           const settings = await db.getTenantSmtpSettings(tenantId);
           
-          if (!settings || !settings.smtpHost) {
+          if (!settings) {
             return {
+              emailMethod: "gateway" as const,
               smtpHost: "",
               smtpPort: 587,
               smtpUser: "",
@@ -829,6 +830,7 @@ export const appRouter = router({
           }
 
           return {
+            emailMethod: settings.emailMethod || "gateway",
             smtpHost: settings.smtpHost || "",
             smtpPort: settings.smtpPort || 587,
             smtpUser: settings.smtpUser || "",
@@ -841,6 +843,7 @@ export const appRouter = router({
 
         // Fallback para env vars (sem tenant)
         return {
+          emailMethod: "gateway" as const,
           smtpHost: process.env.SMTP_HOST || "",
           smtpPort: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
           smtpUser: process.env.SMTP_USER || "",
@@ -853,12 +856,13 @@ export const appRouter = router({
 
     updateSmtpConfig: adminProcedure
       .input(z.object({
-        smtpHost: z.string().min(1),
-        smtpPort: z.number().int().positive(),
-        smtpUser: z.string().min(1),
+        emailMethod: z.enum(["smtp", "gateway"]),
+        smtpHost: z.string().optional(),
+        smtpPort: z.number().int().positive().optional(),
+        smtpUser: z.string().optional(),
         smtpPass: z.string().optional(),
         smtpFrom: z.string().min(1),
-        useSecure: z.boolean(),
+        useSecure: z.boolean().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const tenantId = ctx.tenant?.id;
@@ -870,26 +874,43 @@ export const appRouter = router({
           });
         }
 
-        // Busca configuração existente para manter senha se não informada
-        const existing = await db.getTenantSmtpSettings(tenantId);
-        const smtpPassword = input.smtpPass !== undefined && input.smtpPass !== ""
-          ? input.smtpPass
-          : existing?.smtpPassword || "";
+        // Se método é SMTP, valida campos obrigatórios
+        if (input.emailMethod === "smtp") {
+          if (!input.smtpHost || !input.smtpUser) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Configure host e usuário SMTP.",
+            });
+          }
 
-        if (!smtpPassword) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Informe a senha SMTP.",
+          // Busca configuração existente para manter senha se não informada
+          const existing = await db.getTenantSmtpSettings(tenantId);
+          const smtpPassword = input.smtpPass !== undefined && input.smtpPass !== ""
+            ? input.smtpPass
+            : existing?.smtpPassword || "";
+
+          if (!smtpPassword) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Informe a senha SMTP.",
+            });
+          }
+
+          await db.updateTenantSmtpSettings(tenantId, {
+            emailMethod: "smtp",
+            smtpHost: input.smtpHost,
+            smtpPort: input.smtpPort || 587,
+            smtpUser: input.smtpUser,
+            smtpPassword,
+            smtpFrom: input.smtpFrom,
+          });
+        } else {
+          // Método gateway - só precisa do smtpFrom (remetente visual)
+          await db.updateTenantSmtpSettings(tenantId, {
+            emailMethod: "gateway",
+            smtpFrom: input.smtpFrom,
           });
         }
-
-        await db.updateTenantSmtpSettings(tenantId, {
-          smtpHost: input.smtpHost,
-          smtpPort: input.smtpPort,
-          smtpUser: input.smtpUser,
-          smtpPassword,
-          smtpFrom: input.smtpFrom,
-        });
 
         return { success: true };
       }),
@@ -899,36 +920,18 @@ export const appRouter = router({
         testEmail: z.string().email().optional(),
         subject: z.string().optional(),
         body: z.string().optional(),
+        useMethod: z.enum(["smtp", "gateway"]).optional(),
       }).optional())
       .mutation(async ({ ctx, input }) => {
         const tenantId = ctx.tenant?.id;
         
-        let settings: { smtpHost: string | null; smtpPort: number; smtpUser: string | null; smtpPassword: string | null; smtpFrom: string | null } | null = null;
+        // Buscar settings do tenant
+        const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
         
-        // Buscar settings do tenant ou usar env vars como fallback
-        if (tenantId) {
-          settings = await db.getTenantSmtpSettings(tenantId);
-        }
-        
-        // Fallback para variáveis de ambiente (modo global/dev)
-        if (!settings?.smtpHost || !settings?.smtpUser) {
-          settings = {
-            smtpHost: process.env.SMTP_HOST || null,
-            smtpPort: Number(process.env.SMTP_PORT) || 587,
-            smtpUser: process.env.SMTP_USER || null,
-            smtpPassword: process.env.SMTP_PASS || null,
-            smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER || null,
-          };
-        }
+        // Determinar método: usa o informado no input ou o configurado no tenant
+        const method = input?.useMethod || tenantSettings?.emailMethod || "gateway";
 
-        if (!settings?.smtpHost || !settings?.smtpUser || !settings?.smtpPassword) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Configure as credenciais SMTP antes de testar.",
-          });
-        }
-
-        // Email destinatário: usa o email informado, ou o email do usuário logado
+        // Email destinatário
         const toEmail = input?.testEmail || ctx.user?.email;
         if (!toEmail) {
           throw new TRPCError({
@@ -937,17 +940,18 @@ export const appRouter = router({
           });
         }
 
-        // Enviar email de teste real
+        // Enviar email de teste via método escolhido
         const result = await sendTestEmailWithSettings({
-          host: settings.smtpHost,
-          port: settings.smtpPort || 587,
-          user: settings.smtpUser,
-          pass: settings.smtpPassword,
-          secure: settings.smtpPort === 465,
-          from: settings.smtpFrom || settings.smtpUser,
+          host: tenantSettings?.smtpHost || process.env.SMTP_HOST || "",
+          port: tenantSettings?.smtpPort || Number(process.env.SMTP_PORT) || 587,
+          user: tenantSettings?.smtpUser || process.env.SMTP_USER || "",
+          pass: tenantSettings?.smtpPassword || process.env.SMTP_PASS || "",
+          secure: (tenantSettings?.smtpPort || 587) === 465,
+          from: tenantSettings?.smtpFrom || process.env.SMTP_FROM || "",
           toEmail,
           subject: input?.subject,
           body: input?.body,
+          useGateway: method === "gateway",
         });
         
         if (!result.success) {

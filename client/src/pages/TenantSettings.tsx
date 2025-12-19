@@ -7,13 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Mail, Loader2, Send } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Mail, Loader2, Send, Cloud, Server } from "lucide-react";
 import { toast } from "sonner";
 
 export default function TenantSettings() {
   const { data: smtpConfig, isLoading: isLoadingSmtp } = trpc.emails.getSmtpConfig.useQuery();
   const utils = trpc.useUtils();
 
+  const [emailMethod, setEmailMethod] = useState<'gateway' | 'smtp'>('gateway');
   const [smtpHost, setSmtpHost] = useState('');
   const [smtpPort, setSmtpPort] = useState('587');
   const [smtpUser, setSmtpUser] = useState('');
@@ -26,10 +28,11 @@ export default function TenantSettings() {
   const [testEmailModalOpen, setTestEmailModalOpen] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState('');
   const [testEmailSubject, setTestEmailSubject] = useState('Teste de Email - CAC 360');
-  const [testEmailBody, setTestEmailBody] = useState('Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações SMTP estão funcionando corretamente.');
+  const [testEmailBody, setTestEmailBody] = useState('Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações estão funcionando corretamente.');
 
   useEffect(() => {
     if (smtpConfig) {
+      setEmailMethod((smtpConfig.emailMethod as 'gateway' | 'smtp') || 'gateway');
       setSmtpHost(smtpConfig.smtpHost || "");
       setSmtpPort(String(smtpConfig.smtpPort || 587));
       setSmtpUser(smtpConfig.smtpUser || "");
@@ -73,25 +76,38 @@ export default function TenantSettings() {
   };
 
   const handleSaveSmtpConfig = () => {
-    if (!smtpHost || !smtpPort || !smtpUser || !smtpFrom) {
-      toast.error("Preencha todos os campos obrigatórios de SMTP.");
+    if (!smtpFrom) {
+      toast.error("Informe o remetente (From).");
       return;
     }
 
-    const portNumber = parseInt(smtpPort, 10);
-    if (Number.isNaN(portNumber) || portNumber <= 0) {
-      toast.error("Porta SMTP inválida.");
-      return;
-    }
+    if (emailMethod === 'smtp') {
+      if (!smtpHost || !smtpPort || !smtpUser) {
+        toast.error("Preencha todos os campos obrigatórios de SMTP.");
+        return;
+      }
 
-    updateSmtpConfigMutation.mutate({
-      smtpHost,
-      smtpPort: portNumber,
-      smtpUser,
-      smtpFrom,
-      useSecure,
-      smtpPass: smtpPassDirty && smtpPass ? smtpPass : undefined,
-    });
+      const portNumber = parseInt(smtpPort, 10);
+      if (Number.isNaN(portNumber) || portNumber <= 0) {
+        toast.error("Porta SMTP inválida.");
+        return;
+      }
+
+      updateSmtpConfigMutation.mutate({
+        emailMethod: 'smtp',
+        smtpHost,
+        smtpPort: portNumber,
+        smtpUser,
+        smtpFrom,
+        useSecure,
+        smtpPass: smtpPassDirty && smtpPass ? smtpPass : undefined,
+      });
+    } else {
+      updateSmtpConfigMutation.mutate({
+        emailMethod: 'gateway',
+        smtpFrom,
+      });
+    }
   };
 
   return (
@@ -104,15 +120,15 @@ export default function TenantSettings() {
           </p>
         </div>
 
-        {/* Configuração SMTP */}
+        {/* Configuração de Email */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" />
-              Configuração de Envio de Emails (SMTP)
+              Configuração de Envio de Emails
             </CardTitle>
             <CardDescription>
-              Defina as credenciais de envio de email usadas para disparar os templates para seus clientes.
+              Escolha o método de envio e configure as credenciais para disparar emails para seus clientes.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -121,77 +137,116 @@ export default function TenantSettings() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpHost">Servidor SMTP *</Label>
-                    <Input
-                      id="smtpHost"
-                      placeholder="smtp.gmail.com"
-                      value={smtpHost}
-                      onChange={(e) => setSmtpHost(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpPort">Porta *</Label>
-                    <Input
-                      id="smtpPort"
-                      placeholder="587"
-                      value={smtpPort}
-                      onChange={(e) => setSmtpPort(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpUser">Usuário *</Label>
-                    <Input
-                      id="smtpUser"
-                      placeholder="seu-email@gmail.com"
-                      value={smtpUser}
-                      onChange={(e) => setSmtpUser(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpPass">Senha *</Label>
-                    <Input
-                      id="smtpPass"
-                      type="password"
-                      placeholder={smtpConfig?.hasPassword ? '******** (deixe em branco para manter)' : 'Senha ou App Password'}
-                      value={smtpPass}
-                      onChange={(e) => {
-                        setSmtpPass(e.target.value);
-                        setSmtpPassDirty(true);
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Gmail: use uma "Senha de App" em vez da senha normal
-                    </p>
-                  </div>
+              <div className="space-y-6">
+                {/* Seletor de Método */}
+                <div className="space-y-2">
+                  <Label>Método de Envio *</Label>
+                  <Select value={emailMethod} onValueChange={(v: 'gateway' | 'smtp') => setEmailMethod(v)}>
+                    <SelectTrigger className="w-full md:w-[300px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gateway">
+                        <div className="flex items-center gap-2">
+                          <Cloud className="h-4 w-4" />
+                          <span>Gateway HTTP (Recomendado)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="smtp">
+                        <div className="flex items-center gap-2">
+                          <Server className="h-4 w-4" />
+                          <span>SMTP Direto</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {emailMethod === 'gateway' 
+                      ? 'Usa o serviço de relay HTTP (funciona em ambientes cloud como Railway)'
+                      : 'Conexão direta com servidor SMTP (requer portas abertas)'}
+                  </p>
                 </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="smtpFrom">Remetente (From) *</Label>
-                    <Input
-                      id="smtpFrom"
-                      placeholder='"Meu Clube" <contato@meuclube.com>'
-                      value={smtpFrom}
-                      onChange={(e) => setSmtpFrom(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Formato: "Nome" &lt;email@dominio.com&gt;
-                    </p>
+
+                {/* Remetente (comum a ambos métodos) */}
+                <div className="space-y-2">
+                  <Label htmlFor="smtpFrom">Remetente (From) *</Label>
+                  <Input
+                    id="smtpFrom"
+                    placeholder='"Meu Clube" <contato@meuclube.com>'
+                    value={smtpFrom}
+                    onChange={(e) => setSmtpFrom(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Nome e email que aparecerão como remetente. Formato: "Nome" &lt;email@dominio.com&gt;
+                  </p>
+                </div>
+
+                {/* Campos SMTP (apenas se método = smtp) */}
+                {emailMethod === 'smtp' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="smtpHost">Servidor SMTP *</Label>
+                        <Input
+                          id="smtpHost"
+                          placeholder="smtp.gmail.com"
+                          value={smtpHost}
+                          onChange={(e) => setSmtpHost(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="smtpPort">Porta *</Label>
+                        <Input
+                          id="smtpPort"
+                          placeholder="587"
+                          value={smtpPort}
+                          onChange={(e) => setSmtpPort(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="smtpUser">Usuário *</Label>
+                        <Input
+                          id="smtpUser"
+                          placeholder="seu-email@gmail.com"
+                          value={smtpUser}
+                          onChange={(e) => setSmtpUser(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="smtpPass">Senha *</Label>
+                        <Input
+                          id="smtpPass"
+                          type="password"
+                          placeholder={smtpConfig?.hasPassword ? '******** (deixe em branco para manter)' : 'Senha ou App Password'}
+                          value={smtpPass}
+                          onChange={(e) => {
+                            setSmtpPass(e.target.value);
+                            setSmtpPassDirty(true);
+                          }}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Gmail: use uma "Senha de App" em vez da senha normal
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          id="useSecure"
+                          type="checkbox"
+                          checked={useSecure}
+                          onChange={(e) => setUseSecure(e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <Label htmlFor="useSecure" className="text-sm font-normal">
+                          Usar conexão segura (SSL/TLS)
+                        </Label>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 pt-2">
-                    <input
-                      id="useSecure"
-                      type="checkbox"
-                      checked={useSecure}
-                      onChange={(e) => setUseSecure(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    <Label htmlFor="useSecure" className="text-sm font-normal">
-                      Usar conexão segura (SSL/TLS)
-                    </Label>
-                  </div>
+                )}
+
+                {/* Botões */}
                   <div className="flex flex-col gap-2 pt-4">
                     <Button
                       onClick={handleSaveSmtpConfig}
@@ -201,7 +256,7 @@ export default function TenantSettings() {
                     </Button>
                     <Dialog open={testEmailModalOpen} onOpenChange={setTestEmailModalOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="outline" disabled={!smtpHost}>
+                        <Button variant="outline" disabled={emailMethod === 'smtp' && !smtpHost}>
                           <Send className="h-4 w-4 mr-2" />
                           Enviar Email de Teste
                         </Button>
@@ -268,7 +323,6 @@ export default function TenantSettings() {
                       </DialogContent>
                     </Dialog>
                   </div>
-                </div>
               </div>
             )}
           </CardContent>

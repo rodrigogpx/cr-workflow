@@ -208,6 +208,7 @@ export async function sendTestEmailWithSettings(settings: {
   toEmail: string;
   subject?: string;
   body?: string;
+  useGateway?: boolean;
 }): Promise<{ success: boolean; error?: string }> {
   const defaultSubject = '✅ Teste de Configuração - CAC 360';
   const defaultBodyText = 'Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações estão corretas.';
@@ -224,10 +225,12 @@ export async function sendTestEmailWithSettings(settings: {
     </div>
   `;
 
-  // Sempre usar Gateway em produção (Railway bloqueia SMTP outbound)
-  const useGateway = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true';
+  // Usar Gateway se explicitamente solicitado, ou se em produção e não definido
+  const shouldUseGateway = settings.useGateway !== undefined 
+    ? settings.useGateway 
+    : (process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true');
   
-  if (useGateway) {
+  if (shouldUseGateway) {
     console.log('[EmailService] Using Manus Gateway (production mode)');
     return sendEmailViaGateway({
       to: settings.toEmail,

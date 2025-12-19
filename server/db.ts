@@ -634,6 +634,7 @@ export async function deleteUserFromDb(tenantDb: ReturnType<typeof drizzle>, use
 
 // Tenant SMTP settings - stored directly in tenants table
 export interface TenantSmtpSettings {
+  emailMethod: 'smtp' | 'gateway' | null;
   smtpHost: string | null;
   smtpPort: number | null;
   smtpUser: string | null;
@@ -647,6 +648,7 @@ export async function getTenantSmtpSettings(tenantId: number): Promise<TenantSmt
 
   const [tenant] = await db
     .select({
+      emailMethod: tenants.emailMethod,
       smtpHost: tenants.smtpHost,
       smtpPort: tenants.smtpPort,
       smtpUser: tenants.smtpUser,
@@ -671,6 +673,7 @@ export async function updateTenantSmtpSettings(
   await db
     .update(tenants)
     .set({
+      emailMethod: settings.emailMethod,
       smtpHost: settings.smtpHost,
       smtpPort: settings.smtpPort,
       smtpUser: settings.smtpUser,

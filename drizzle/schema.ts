@@ -256,7 +256,8 @@ export const tenants = pgTable("tenants", {
   featureApostilamento: boolean("featureApostilamento").default(false),
   featureRenovacao: boolean("featureRenovacao").default(false),
   featureInsumos: boolean("featureInsumos").default(false),
-  // SMTP Settings (per tenant)
+  // Email Settings (per tenant)
+  emailMethod: varchar("emailMethod", { length: 20 }).default("gateway").$type<"smtp" | "gateway">(), // smtp = direto, gateway = HTTP relay
   smtpHost: varchar("smtpHost", { length: 255 }),
   smtpPort: integer("smtpPort").default(587),
   smtpUser: varchar("smtpUser", { length: 255 }),
