@@ -166,6 +166,7 @@ async function sendEmailViaGateway(options: {
 }): Promise<{ success: boolean; error?: string }> {
   try {
     console.log('[EmailService] Sending email via Manus Gateway to:', options.to);
+    console.log('[EmailService] Gateway URL:', EMAIL_GATEWAY_URL);
     
     const response = await fetch(`${EMAIL_GATEWAY_URL}/send-email`, {
       method: 'POST',
@@ -180,6 +181,17 @@ async function sendEmailViaGateway(options: {
       }),
     });
 
+    // Verificar se a resposta é JSON válido
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('[EmailService] Gateway returned non-JSON response:', text.substring(0, 200));
+      return { 
+        success: false, 
+        error: `Gateway indisponível ou retornou resposta inválida (HTTP ${response.status}). Verifique se o serviço está ativo.` 
+      };
+    }
+
     const data = await response.json();
     
     if (response.ok && data.status === 'success') {
@@ -191,7 +203,7 @@ async function sendEmailViaGateway(options: {
     }
   } catch (error: any) {
     console.error('[EmailService] Gateway request failed:', error);
-    return { success: false, error: error.message || 'Falha na conexão com gateway de email' };
+    return { success: false, error: `Falha na conexão com gateway: ${error.message}` };
   }
 }
 
