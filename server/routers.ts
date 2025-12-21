@@ -1427,18 +1427,21 @@ export const appRouter = router({
         }
 
         const hashedPassword = await hashPassword(input.password);
+        const tenantId = ctx.tenant?.id || ctx.user?.tenantId;
         const userId = tenantDb
           ? await db.upsertUserToDb(tenantDb, {
               name: input.name,
               email: input.email,
               hashedPassword,
               role: input.role,
+              tenantId,
             })
           : await db.upsertUser({
               name: input.name,
               email: input.email,
               hashedPassword,
               role: input.role,
+              tenantId,
             });
 
         // Log audit entry for user creation
