@@ -129,7 +129,7 @@ export default function Users() {
       name: formData.name.trim(),
       email: formData.email.trim(),
       password: formData.password,
-      role: formData.role as "operator" | "admin",
+      role: formData.role as "operator" | "admin" | "despachante",
     });
   };
 
@@ -324,7 +324,7 @@ export default function Users() {
                 <SelectContent>
                   <SelectItem value="operator">Operador</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
+                <SelectItem value="despachante">Despachante</SelectItem></SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
