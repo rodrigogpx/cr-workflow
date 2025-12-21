@@ -94,6 +94,19 @@ export const appRouter = router({
 
         console.log(`DEBUG Login success for ${user.email}, role: ${user.role}`);
 
+        // Log audit entry for login
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: user.id,
+            action: 'LOGIN',
+            entity: 'AUTH',
+            details: JSON.stringify({ email: user.email, role: user.role }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
+
         return {
           success: true,
           user: {
@@ -396,6 +409,20 @@ export const appRouter = router({
           console.error('[Clients] Failed to send welcome email:', emailError);
         }
 
+        // Log audit entry for client creation
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: 'CREATE',
+            entity: 'CLIENT',
+            entityId: clientId,
+            details: JSON.stringify({ name: input.name, cpf: input.cpf, operatorId }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
+
         return { id: clientId };
       }),
 
@@ -465,6 +492,21 @@ export const appRouter = router({
             } else {
               await db.updateClient(id, updateData);
             }
+
+            // Log audit entry for client update
+            if (ctx.tenant?.id) {
+              const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+              await db.logAudit({
+                tenantId: ctx.tenant.id,
+                userId: ctx.user.id,
+                action: 'UPDATE',
+                entity: 'CLIENT',
+                entityId: id,
+                details: JSON.stringify({ updatedFields: Object.keys(updateData) }),
+                ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+              });
+            }
+
             return { success: true };
           }),
 
@@ -485,6 +527,21 @@ export const appRouter = router({
         } else {
           await db.deleteClient(input.id);
         }
+
+        // Log audit entry for client deletion
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: 'DELETE',
+            entity: 'CLIENT',
+            entityId: input.id,
+            details: JSON.stringify({ name: client.name, cpf: client.cpf }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
+
         return { success: true };
       }),
   }),
@@ -502,8 +559,8 @@ export const appRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
+        // Verificar permissão (despachante pode ver clientes do operador a que está vinculado)
+        if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
@@ -511,9 +568,23 @@ export const appRouter = router({
           ? await db.getWorkflowByClientFromDb(tenantDb, input.clientId)
           : await db.getWorkflowByClient(input.clientId);
         
+        // Etapas visíveis para despachante (por stepId ou título)
+        const DESPACHANTE_VISIBLE_STEPS = [1, 2, 6]; // Cadastro, Juntada de Documentos, Acompanhamento Sinarm-CAC
+        const DESPACHANTE_VISIBLE_TITLES = ['cadastro', 'juntada', 'documentos', 'sinarm', 'acompanhamento'];
+        
+        // Filtrar etapas se for despachante
+        const filteredSteps = ctx.user.role === 'despachante'
+          ? steps.filter(step => 
+              DESPACHANTE_VISIBLE_STEPS.includes(step.stepId) ||
+              DESPACHANTE_VISIBLE_TITLES.some(title => 
+                step.stepTitle?.toLowerCase().includes(title)
+              )
+            )
+          : steps;
+        
         // Buscar subtarefas para cada step
         const stepsWithSubTasks = await Promise.all(
-          steps.map(async (step) => {
+          filteredSteps.map(async (step) => {
             const subTasksList = tenantDb
               ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, step.id)
               : await db.getSubTasksByWorkflowStep(step.id);
@@ -573,6 +644,41 @@ export const appRouter = router({
           await db.upsertWorkflowStepToDb(tenantDb, updateData);
         } else {
           await db.upsertWorkflowStep(updateData);
+        }
+
+        // Log de auditoria
+        const ipAddress = ctx.req?.headers?.['x-forwarded-for']?.toString().split(',')[0] || 
+                          ctx.req?.headers?.['x-real-ip']?.toString() || 
+                          ctx.req?.socket?.remoteAddress || 'unknown';
+        const auditDetails: Record<string, unknown> = {
+          clientId: currentStep.clientId,
+          stepId: input.stepId,
+          stepTitle: currentStep.stepTitle,
+        };
+        if (input.completed !== undefined) auditDetails.completed = input.completed;
+        if (input.sinarmStatus !== undefined) auditDetails.sinarmStatus = input.sinarmStatus;
+        if (input.protocolNumber !== undefined) auditDetails.protocolNumber = input.protocolNumber;
+
+        if (tenantDb) {
+          await db.logAuditToDb(tenantDb, {
+            tenantId: ctx.user.tenantId!,
+            userId: ctx.user.id,
+            action: 'UPDATE',
+            entity: 'WORKFLOW',
+            entityId: input.stepId,
+            details: JSON.stringify(auditDetails),
+            ipAddress,
+          });
+        } else {
+          await db.logAudit({
+            tenantId: ctx.user.tenantId!,
+            userId: ctx.user.id,
+            action: 'UPDATE',
+            entity: 'WORKFLOW',
+            entityId: input.stepId,
+            details: JSON.stringify(auditDetails),
+            ipAddress,
+          });
         }
         
         return { success: true };
@@ -731,6 +837,11 @@ export const appRouter = router({
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
+
+        // Despachante não pode fazer upload de documentos
+        if (ctx.user.role === 'despachante') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode fazer upload de documentos' });
+        }
         
         const buffer = Buffer.from(input.fileData, "base64");
 
@@ -781,6 +892,38 @@ export const appRouter = router({
               fileSize,
               uploadedBy: ctx.user.id,
             });
+
+        // Log de auditoria - UPLOAD
+        const ipAddress = ctx.req?.headers?.['x-forwarded-for']?.toString().split(',')[0] || 
+                          ctx.req?.headers?.['x-real-ip']?.toString() || 
+                          ctx.req?.socket?.remoteAddress || 'unknown';
+        const auditDetails = {
+          clientId: input.clientId,
+          fileName: input.fileName,
+          mimeType: input.mimeType,
+          fileSize,
+        };
+        if (tenantDb) {
+          await db.logAuditToDb(tenantDb, {
+            tenantId: ctx.user.tenantId!,
+            userId: ctx.user.id,
+            action: 'UPLOAD',
+            entity: 'DOCUMENT',
+            entityId: documentId,
+            details: JSON.stringify(auditDetails),
+            ipAddress,
+          });
+        } else {
+          await db.logAudit({
+            tenantId: ctx.user.tenantId!,
+            userId: ctx.user.id,
+            action: 'UPLOAD',
+            entity: 'DOCUMENT',
+            entityId: documentId,
+            details: JSON.stringify(auditDetails),
+            ipAddress,
+          });
+        }
         
         return { id: documentId, url: fileUrl };
       }),
@@ -808,7 +951,43 @@ export const appRouter = router({
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
+
+        // Despachante não pode excluir documentos
+        if (ctx.user.role === 'despachante') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode excluir documentos' });
+        }
         
+        // Log de auditoria - DELETE (antes de deletar para ter os dados)
+        const ipAddress = ctx.req?.headers?.['x-forwarded-for']?.toString().split(',')[0] || 
+                          ctx.req?.headers?.['x-real-ip']?.toString() || 
+                          ctx.req?.socket?.remoteAddress || 'unknown';
+        const auditDetails = {
+          clientId: doc.clientId,
+          fileName: doc.fileName,
+          fileKey: doc.fileKey,
+        };
+        if (tenantDb) {
+          await db.logAuditToDb(tenantDb, {
+            tenantId: ctx.user.tenantId!,
+            userId: ctx.user.id,
+            action: 'DELETE',
+            entity: 'DOCUMENT',
+            entityId: input.id,
+            details: JSON.stringify(auditDetails),
+            ipAddress,
+          });
+        } else {
+          await db.logAudit({
+            tenantId: ctx.user.tenantId!,
+            userId: ctx.user.id,
+            action: 'DELETE',
+            entity: 'DOCUMENT',
+            entityId: input.id,
+            details: JSON.stringify(auditDetails),
+            ipAddress,
+          });
+        }
+
         if (tenantDb) {
           await db.deleteDocumentFromDb(tenantDb, input.id);
         } else {
@@ -1236,7 +1415,7 @@ export const appRouter = router({
         name: z.string().min(1, "Nome é obrigatório"),
         email: z.string().email("Email inválido"),
         password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
-        role: z.enum(['operator', 'admin']),
+        role: z.enum(['operator', 'admin', 'despachante']),
       }))
       .mutation(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -1262,12 +1441,19 @@ export const appRouter = router({
               role: input.role,
             });
 
-        console.log('[AUDIT] User created', {
-          actorId: ctx.user.id,
-          targetUserId: userId,
-          email: input.email,
-          role: input.role,
-        });
+        // Log audit entry for user creation
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: 'CREATE',
+            entity: 'USER',
+            entityId: userId,
+            details: JSON.stringify({ email: input.email, role: input.role }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
 
         return { success: true, userId };
       }),
@@ -1277,7 +1463,7 @@ export const appRouter = router({
         userId: z.number(),
         name: z.string().min(1).optional(),
         email: z.string().email().optional(),
-        role: z.enum(['operator', 'admin']).optional(),
+        role: z.enum(['operator', 'admin', 'despachante']).optional(),
         password: z.string().min(6).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -1332,11 +1518,19 @@ export const appRouter = router({
           await db.updateUser(input.userId, updateData);
         }
 
-        console.log('[AUDIT] User updated', {
-          actorId: ctx.user.id,
-          targetUserId: input.userId,
-          updatedFields: Object.keys(updateData),
-        });
+        // Log audit entry for user update
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: 'UPDATE',
+            entity: 'USER',
+            entityId: input.userId,
+            details: JSON.stringify({ updatedFields: Object.keys(updateData) }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
 
         return { success: true };
       }),
@@ -1344,7 +1538,7 @@ export const appRouter = router({
     updateRole: adminProcedure
       .input(z.object({
         userId: z.number(),
-        role: z.enum(['operator', 'admin']),
+        role: z.enum(['operator', 'admin', 'despachante']),
       }))
       .mutation(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -1371,11 +1565,19 @@ export const appRouter = router({
           await db.updateUserRole(input.userId, input.role);
         }
 
-        console.log('[AUDIT] User role updated', {
-          actorId: ctx.user.id,
-          targetUserId: input.userId,
-          newRole: input.role,
-        });
+        // Log audit entry for user role update
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: 'UPDATE',
+            entity: 'USER',
+            entityId: input.userId,
+            details: JSON.stringify({ roleChange: input.role }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
 
         return { success: true };
       }),
@@ -1383,7 +1585,7 @@ export const appRouter = router({
     assignRole: adminProcedure
       .input(z.object({
         userId: z.number(),
-        role: z.enum(['operator', 'admin']),
+        role: z.enum(['operator', 'admin', 'despachante']),
       }))
       .mutation(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -1884,6 +2086,127 @@ export const appRouter = router({
           adminId: tenantAdmin.id,
           adminEmail: tenantAdmin.email,
           adminName: tenantAdmin.name,
+        };
+      }),
+  }),
+
+  // ===========================================
+  // AUDIT LOGS ROUTER
+  // ===========================================
+  audit: router({
+    getLogs: adminProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        userId: z.number().optional(),
+        action: z.enum(['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'DOWNLOAD', 'UPLOAD', 'EXPORT']).optional(),
+        entity: z.enum(['CLIENT', 'DOCUMENT', 'USER', 'WORKFLOW', 'SETTINGS', 'AUTH']).optional(),
+        limit: z.number().min(1).max(100).default(50),
+        offset: z.number().min(0).default(0),
+      }))
+      .query(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id;
+
+        if (!tenantId) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
+        }
+
+        const params: db.GetAuditLogsParams = {
+          tenantId,
+          limit: input.limit,
+          offset: input.offset,
+        };
+
+        if (input.startDate) {
+          params.startDate = new Date(input.startDate);
+        }
+        if (input.endDate) {
+          params.endDate = new Date(input.endDate);
+        }
+        if (input.userId) {
+          params.userId = input.userId;
+        }
+        if (input.action) {
+          params.action = input.action;
+        }
+        if (input.entity) {
+          params.entity = input.entity;
+        }
+
+        const result = tenantDb
+          ? await db.getAuditLogsFromDb(tenantDb, params)
+          : await db.getAuditLogs(params);
+
+        // Enrich logs with user names
+        const allUsers = tenantDb
+          ? await db.getAllUsersFromDb(tenantDb, tenantId)
+          : await db.getAllUsers();
+
+        const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
+
+        const enrichedLogs = result.logs.map(log => ({
+          ...log,
+          userName: log.userId ? userMap.get(log.userId) || 'Usuário removido' : 'Sistema',
+        }));
+
+        return {
+          logs: enrichedLogs,
+          total: result.total,
+          limit: input.limit,
+          offset: input.offset,
+        };
+      }),
+
+    exportCsv: adminProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        userId: z.number().optional(),
+        action: z.enum(['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'DOWNLOAD', 'UPLOAD', 'EXPORT']).optional(),
+        entity: z.enum(['CLIENT', 'DOCUMENT', 'USER', 'WORKFLOW', 'SETTINGS', 'AUTH']).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id;
+
+        if (!tenantId) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
+        }
+
+        const params: db.GetAuditLogsParams = {
+          tenantId,
+          limit: 10000,
+          offset: 0,
+        };
+
+        if (input.startDate) params.startDate = new Date(input.startDate);
+        if (input.endDate) params.endDate = new Date(input.endDate);
+        if (input.userId) params.userId = input.userId;
+        if (input.action) params.action = input.action;
+        if (input.entity) params.entity = input.entity;
+
+        const result = tenantDb
+          ? await db.getAuditLogsFromDb(tenantDb, params)
+          : await db.getAuditLogs(params);
+
+        const allUsers = tenantDb
+          ? await db.getAllUsersFromDb(tenantDb, tenantId)
+          : await db.getAllUsers();
+
+        const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
+
+        const csvHeader = 'Data/Hora,Usuário,Ação,Entidade,ID Entidade,Detalhes,IP\n';
+        const csvRows = result.logs.map(log => {
+          const userName = log.userId ? userMap.get(log.userId) || 'Usuário removido' : 'Sistema';
+          const date = new Date(log.createdAt).toLocaleString('pt-BR');
+          const details = (log.details || '').replace(/"/g, '""');
+          return `"${date}","${userName}","${log.action}","${log.entity}","${log.entityId || ''}","${details}","${log.ipAddress || ''}"`;
+        }).join('\n');
+
+        return {
+          csv: csvHeader + csvRows,
+          filename: `audit-log-${new Date().toISOString().split('T')[0]}.csv`,
         };
       }),
   }),

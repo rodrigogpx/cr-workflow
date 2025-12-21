@@ -21,6 +21,7 @@ const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminOperators = lazy(() => import("./pages/AdminOperators"));
 const AdminEmails = lazy(() => import("./pages/AdminEmails"));
 const AdminSettings = lazy(() => import("./pages/TenantSettings"));
+const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function getBackgroundForPath(path: string) {
@@ -219,6 +220,16 @@ function Router() {
         <Route path={"/admin/settings"}>
           <AdminRoute>
             <AdminSettings />
+          </AdminRoute>
+        </Route>
+        <Route path={"/:tenantSlug/admin/audit"}>
+          <AdminRoute>
+            <AdminAudit />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/audit"}>
+          <AdminRoute>
+            <AdminAudit />
           </AdminRoute>
         </Route>
         {/* Super Admin */}

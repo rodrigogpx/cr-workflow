@@ -35,7 +35,7 @@ export default function Users() {
   const [formData, setFormData] = useState<{
     name: string;
     email: string;
-    role: "operator" | "admin" | "";
+    role: "operator" | "admin" | "despachante" | "";
     password: string;
   }>({
     name: "",
@@ -43,7 +43,7 @@ export default function Users() {
     role: "operator",
     password: "",
   });
-  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'operator' | 'pending'>("all");
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'operator' | 'despachante' | 'pending'>("all");
   
   const getFriendlyErrorMessage = (error: any, fallback: string) => {
     const message = error?.message;
@@ -112,7 +112,7 @@ export default function Users() {
     setFormData({
       name: user.name || "",
       email: user.email || "",
-      role: (user.role as "operator" | "admin" | "") || "",
+      role: (user.role as "operator" | "admin" | "despachante" | "") || "",
       password: "",
     });
   };
@@ -377,7 +377,7 @@ export default function Users() {
               <Select
                 value={formData.role || "operator"}
                 onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, role: value as "operator" | "admin" }))
+                  setFormData((prev) => ({ ...prev, role: value as "operator" | "admin" | "despachante" }))
                 }
               >
                 <SelectTrigger>
@@ -386,6 +386,7 @@ export default function Users() {
                 <SelectContent>
                   <SelectItem value="operator">Operador</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="despachante">Despachante</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -2,13 +2,13 @@ import { ReactNode } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, Mail, Settings, UserCheck, LayoutDashboard } from "lucide-react";
+import { Shield, Users, Mail, Settings, UserCheck, LayoutDashboard, FileText } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 interface TenantAdminLayoutProps {
   children: ReactNode;
-  active: "dashboard" | "users" | "operators" | "emails" | "settings";
+  active: "dashboard" | "users" | "operators" | "emails" | "settings" | "audit";
 }
 
 export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) {
@@ -55,6 +55,14 @@ export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) 
       description: "SMTP e parâmetros",
       icon: Settings,
       path: "/admin/settings",
+      enabled: true,
+    },
+    {
+      id: "audit" as const,
+      label: "Auditoria",
+      description: "Histórico de ações",
+      icon: FileText,
+      path: "/admin/audit",
       enabled: true,
     },
   ];

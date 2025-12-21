@@ -19,7 +19,10 @@ import {
   tenants,
   InsertTenant,
   tenantActivityLogs,
-  InsertTenantActivityLog
+  InsertTenantActivityLog,
+  auditLogs,
+  InsertAuditLog,
+  AuditLog
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
@@ -1051,6 +1054,158 @@ export async function logTenantActivity(entry: InsertTenantActivityLog) {
   if (!db) throw new Error("Database not available");
 
   await db.insert(tenantActivityLogs).values(entry);
+}
+
+// ===========================================
+// AUDIT LOGS (Per-Tenant Security Audit Trail)
+// ===========================================
+export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'DOWNLOAD' | 'UPLOAD' | 'EXPORT';
+export type AuditEntity = 'CLIENT' | 'DOCUMENT' | 'USER' | 'WORKFLOW' | 'SETTINGS' | 'AUTH';
+
+export interface LogAuditParams {
+  tenantId: number;
+  userId?: number | null;
+  action: AuditAction;
+  entity: AuditEntity;
+  entityId?: number | null;
+  details?: string | null;
+  ipAddress?: string | null;
+}
+
+export async function logAudit(params: LogAuditParams): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) {
+      console.warn('[AUDIT] Database not available, skipping audit log');
+      return;
+    }
+
+    await db.insert(auditLogs).values({
+      tenantId: params.tenantId,
+      userId: params.userId ?? null,
+      action: params.action,
+      entity: params.entity,
+      entityId: params.entityId ?? null,
+      details: params.details ?? null,
+      ipAddress: params.ipAddress ?? null,
+    });
+  } catch (error) {
+    console.error('[AUDIT] Failed to log audit entry:', error);
+  }
+}
+
+export async function logAuditToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  params: LogAuditParams
+): Promise<void> {
+  try {
+    await tenantDb.insert(auditLogs).values({
+      tenantId: params.tenantId,
+      userId: params.userId ?? null,
+      action: params.action,
+      entity: params.entity,
+      entityId: params.entityId ?? null,
+      details: params.details ?? null,
+      ipAddress: params.ipAddress ?? null,
+    });
+  } catch (error) {
+    console.error('[AUDIT] Failed to log audit entry to tenant db:', error);
+  }
+}
+
+export interface GetAuditLogsParams {
+  tenantId: number;
+  startDate?: Date;
+  endDate?: Date;
+  userId?: number;
+  action?: AuditAction;
+  entity?: AuditEntity;
+  limit?: number;
+  offset?: number;
+}
+
+export async function getAuditLogs(params: GetAuditLogsParams): Promise<{ logs: AuditLog[]; total: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const conditions = [eq(auditLogs.tenantId, params.tenantId)];
+
+  if (params.startDate) {
+    conditions.push(sql`${auditLogs.createdAt} >= ${params.startDate}`);
+  }
+  if (params.endDate) {
+    conditions.push(sql`${auditLogs.createdAt} <= ${params.endDate}`);
+  }
+  if (params.userId) {
+    conditions.push(eq(auditLogs.userId, params.userId));
+  }
+  if (params.action) {
+    conditions.push(eq(auditLogs.action, params.action));
+  }
+  if (params.entity) {
+    conditions.push(eq(auditLogs.entity, params.entity));
+  }
+
+  const whereClause = and(...conditions);
+
+  const [logs, countResult] = await Promise.all([
+    db.select()
+      .from(auditLogs)
+      .where(whereClause)
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(params.limit ?? 50)
+      .offset(params.offset ?? 0),
+    db.select({ count: sql<number>`count(*)` })
+      .from(auditLogs)
+      .where(whereClause)
+  ]);
+
+  return {
+    logs,
+    total: Number(countResult[0]?.count ?? 0)
+  };
+}
+
+export async function getAuditLogsFromDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  params: GetAuditLogsParams
+): Promise<{ logs: AuditLog[]; total: number }> {
+  const conditions = [eq(auditLogs.tenantId, params.tenantId)];
+
+  if (params.startDate) {
+    conditions.push(sql`${auditLogs.createdAt} >= ${params.startDate}`);
+  }
+  if (params.endDate) {
+    conditions.push(sql`${auditLogs.createdAt} <= ${params.endDate}`);
+  }
+  if (params.userId) {
+    conditions.push(eq(auditLogs.userId, params.userId));
+  }
+  if (params.action) {
+    conditions.push(eq(auditLogs.action, params.action));
+  }
+  if (params.entity) {
+    conditions.push(eq(auditLogs.entity, params.entity));
+  }
+
+  const whereClause = and(...conditions);
+
+  const [logs, countResult] = await Promise.all([
+    tenantDb.select()
+      .from(auditLogs)
+      .where(whereClause)
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(params.limit ?? 50)
+      .offset(params.offset ?? 0),
+    tenantDb.select({ count: sql<number>`count(*)` })
+      .from(auditLogs)
+      .where(whereClause)
+  ]);
+
+  return {
+    logs,
+    total: Number(countResult[0]?.count ?? 0)
+  };
 }
 
 // ===========================================
