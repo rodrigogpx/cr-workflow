@@ -202,9 +202,16 @@ export const appRouter = router({
       });
       
       // Admin vê todos os clientes, operador vê apenas os seus
-      const clients = ctx.user.role === 'admin' 
-        ? (tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients())
-        : (tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id));
+      // Despachante vê clientes com "Juntada de Documentos" concluída
+      let clients;
+      if (ctx.user.role === 'admin') {
+        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+      } else if (ctx.user.role === 'despachante') {
+        // Despachante vê TODOS os clientes, mas filtraremos depois pela etapa concluída
+        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+      } else {
+        clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
+      }
       
       console.log('[clients.list] Found', clients.length, 'clients for tenant', tenantId);
       
@@ -218,16 +225,30 @@ export const appRouter = router({
           const completedSteps = workflow.filter((s: any) => s.completed).length;
           const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
           
+          // Verificar se "Juntada de Documentos" está concluída (stepId 2 ou título contendo "juntada"/"documentos")
+          const juntadaStep = workflow.find((s: any) => 
+            s.stepId === 2 || 
+            s.stepTitle?.toLowerCase().includes('juntada') ||
+            s.stepTitle?.toLowerCase().includes('documentos')
+          );
+          const juntadaConcluida = juntadaStep?.completed === true;
+          
           return {
             ...client,
             progress,
             totalSteps,
             completedSteps,
+            juntadaConcluida,
           };
         })
       );
       
-      return clientsWithProgress;
+      // Se for despachante, filtrar apenas clientes com juntada concluída
+      const filteredClients = ctx.user.role === 'despachante'
+        ? clientsWithProgress.filter(c => c.juntadaConcluida)
+        : clientsWithProgress;
+      
+      return filteredClients;
     }),
 
     getById: protectedProcedure
