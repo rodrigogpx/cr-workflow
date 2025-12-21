@@ -12,7 +12,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   hashedPassword: text("hashedPassword").notNull(),
   // role pode ser null para usuários pendentes
-  role: varchar("role", { length: 20 }).$type<"operator" | "admin">(),
+  role: varchar("role", { length: 20 }).$type<"operator" | "admin" | "despachante">(),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn", { withTimezone: false }).defaultNow().notNull(),
@@ -315,3 +315,28 @@ export const tenantActivityLogs = pgTable("tenantActivityLogs", {
 
 export type TenantActivityLog = typeof tenantActivityLogs.$inferSelect;
 export type InsertTenantActivityLog = typeof tenantActivityLogs.$inferInsert;
+
+/**
+ * Audit Logs - Security and compliance audit trail
+ */
+export const auditLogs = pgTable("auditLogs", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  userId: integer("userId"), // Nullable for system actions or deleted users
+  action: varchar("action", { length: 50 }).notNull(), // CREATE, UPDATE, DELETE, LOGIN, DOWNLOAD, etc
+  entity: varchar("entity", { length: 50 }).notNull(), // CLIENT, DOCUMENT, USER, WORKFLOW, SETTINGS
+  entityId: integer("entityId"), // ID of the affected entity
+  details: text("details"), // JSON string or text description
+  ipAddress: varchar("ipAddress", { length: 45 }), // IPv4 or IPv6
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [auditLogs.userId],
+    references: [users.id],
+  }),
+}));
