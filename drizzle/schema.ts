@@ -228,6 +228,93 @@ export const emailLogsRelations = relations(emailLogs, ({ one }) => ({
 }));
 
 /**
+ * Email Triggers table - automation rules for sending emails
+ */
+export const emailTriggers = pgTable("emailTriggers", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId"),
+  name: varchar("name", { length: 100 }).notNull(),
+  triggerEvent: varchar("triggerEvent", { length: 100 }).notNull(), // 'CLIENT_CREATED', 'STEP_COMPLETED:2', 'SCHEDULE_CREATED', etc
+  // Destinatários
+  recipientType: varchar("recipientType", { length: 20 }).notNull().default('client'), // 'client', 'users', 'both', 'operator'
+  recipientUserIds: text("recipientUserIds"), // JSON array: [1, 5, 12]
+  // Agendamento
+  sendImmediate: boolean("sendImmediate").default(true).notNull(),
+  sendBeforeHours: integer("sendBeforeHours"), // Horas antes do evento (ex: 24)
+  // Status
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type EmailTrigger = typeof emailTriggers.$inferSelect;
+export type InsertEmailTrigger = typeof emailTriggers.$inferInsert;
+
+/**
+ * Email Trigger Templates - links triggers to templates (N:N)
+ */
+export const emailTriggerTemplates = pgTable("emailTriggerTemplates", {
+  id: serial("id").primaryKey(),
+  triggerId: integer("triggerId").notNull(),
+  templateId: integer("templateId").notNull(),
+  sendOrder: integer("sendOrder").default(1).notNull(),
+  isForReminder: boolean("isForReminder").default(false).notNull(), // true = lembrete (24h antes)
+});
+
+export type EmailTriggerTemplate = typeof emailTriggerTemplates.$inferSelect;
+export type InsertEmailTriggerTemplate = typeof emailTriggerTemplates.$inferInsert;
+
+export const emailTriggerTemplatesRelations = relations(emailTriggerTemplates, ({ one }) => ({
+  trigger: one(emailTriggers, {
+    fields: [emailTriggerTemplates.triggerId],
+    references: [emailTriggers.id],
+  }),
+  template: one(emailTemplates, {
+    fields: [emailTriggerTemplates.templateId],
+    references: [emailTemplates.id],
+  }),
+}));
+
+/**
+ * Email Scheduled - emails to be sent later (reminders)
+ */
+export const emailScheduled = pgTable("emailScheduled", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId"),
+  clientId: integer("clientId").notNull(),
+  triggerId: integer("triggerId").notNull(),
+  templateId: integer("templateId").notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  recipientName: varchar("recipientName", { length: 255 }),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  scheduledFor: timestamp("scheduledFor", { withTimezone: false }).notNull(),
+  referenceDate: timestamp("referenceDate", { withTimezone: false }),
+  status: varchar("status", { length: 20 }).default('pending').notNull(), // 'pending', 'sent', 'cancelled', 'failed'
+  sentAt: timestamp("sentAt", { withTimezone: false }),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type EmailScheduled = typeof emailScheduled.$inferSelect;
+export type InsertEmailScheduled = typeof emailScheduled.$inferInsert;
+
+export const emailScheduledRelations = relations(emailScheduled, ({ one }) => ({
+  client: one(clients, {
+    fields: [emailScheduled.clientId],
+    references: [clients.id],
+  }),
+  trigger: one(emailTriggers, {
+    fields: [emailScheduled.triggerId],
+    references: [emailTriggers.id],
+  }),
+  template: one(emailTemplates, {
+    fields: [emailScheduled.templateId],
+    references: [emailTemplates.id],
+  }),
+}));
+
+/**
  * ============================================
  * MULTI-TENANT TABLES (Platform Admin Database)
  * ============================================

@@ -2234,6 +2234,203 @@ export const appRouter = router({
         };
       }),
   }),
+
+  // Email Triggers Router - Automação de emails
+  emailTriggers: router({
+    list: adminProcedure.query(async ({ ctx }) => {
+      const tenantDb = await getTenantDbOrNull(ctx);
+      const tenantId = ctx.tenant?.id;
+      const triggers = tenantDb
+        ? await db.getEmailTriggersFromDb(tenantDb, tenantId)
+        : await db.getEmailTriggers(tenantId);
+      
+      // Load templates for each trigger
+      const triggersWithTemplates = await Promise.all(
+        triggers.map(async (trigger) => {
+          const templates = tenantDb
+            ? await db.getTemplatesByTriggerIdFromDb(tenantDb, trigger.id)
+            : await db.getTemplatesByTriggerId(trigger.id);
+          return { ...trigger, templates };
+        })
+      );
+      
+      return triggersWithTemplates;
+    }),
+
+    getById: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const trigger = tenantDb
+          ? await db.getEmailTriggerByIdFromDb(tenantDb, input.id)
+          : await db.getEmailTriggerById(input.id);
+        
+        if (!trigger) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Trigger não encontrado' });
+        }
+        
+        const templates = tenantDb
+          ? await db.getTemplatesByTriggerIdFromDb(tenantDb, input.id)
+          : await db.getTemplatesByTriggerId(input.id);
+        
+        return { ...trigger, templates };
+      }),
+
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        triggerEvent: z.string().min(1),
+        recipientType: z.enum(['client', 'users', 'both', 'operator']).default('client'),
+        recipientUserIds: z.array(z.number()).optional(),
+        sendImmediate: z.boolean().default(true),
+        sendBeforeHours: z.number().optional(),
+        isActive: z.boolean().default(true),
+        templateIds: z.array(z.object({
+          templateId: z.number(),
+          sendOrder: z.number().default(1),
+          isForReminder: z.boolean().default(false),
+        })).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id;
+        
+        const triggerData = {
+          tenantId,
+          name: input.name,
+          triggerEvent: input.triggerEvent,
+          recipientType: input.recipientType,
+          recipientUserIds: input.recipientUserIds ? JSON.stringify(input.recipientUserIds) : null,
+          sendImmediate: input.sendImmediate,
+          sendBeforeHours: input.sendBeforeHours,
+          isActive: input.isActive,
+        };
+        
+        const trigger = tenantDb
+          ? await db.createEmailTriggerToDb(tenantDb, triggerData)
+          : await db.createEmailTrigger(triggerData);
+        
+        // Add templates
+        if (input.templateIds && input.templateIds.length > 0) {
+          for (const t of input.templateIds) {
+            const templateLink = {
+              triggerId: trigger.id,
+              templateId: t.templateId,
+              sendOrder: t.sendOrder,
+              isForReminder: t.isForReminder,
+            };
+            tenantDb
+              ? await db.addTemplateToTriggerToDb(tenantDb, templateLink)
+              : await db.addTemplateToTrigger(templateLink);
+          }
+        }
+        
+        return trigger;
+      }),
+
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        triggerEvent: z.string().min(1).optional(),
+        recipientType: z.enum(['client', 'users', 'both', 'operator']).optional(),
+        recipientUserIds: z.array(z.number()).optional(),
+        sendImmediate: z.boolean().optional(),
+        sendBeforeHours: z.number().nullable().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const { id, ...data } = input;
+        
+        const updateData: any = { ...data };
+        if (data.recipientUserIds !== undefined) {
+          updateData.recipientUserIds = data.recipientUserIds ? JSON.stringify(data.recipientUserIds) : null;
+        }
+        
+        tenantDb
+          ? await db.updateEmailTriggerToDb(tenantDb, id, updateData)
+          : await db.updateEmailTrigger(id, updateData);
+        
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        tenantDb
+          ? await db.deleteEmailTriggerFromDb(tenantDb, input.id)
+          : await db.deleteEmailTrigger(input.id);
+        return { success: true };
+      }),
+
+    // Template management
+    addTemplate: adminProcedure
+      .input(z.object({
+        triggerId: z.number(),
+        templateId: z.number(),
+        sendOrder: z.number().default(1),
+        isForReminder: z.boolean().default(false),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const result = tenantDb
+          ? await db.addTemplateToTriggerToDb(tenantDb, input)
+          : await db.addTemplateToTrigger(input);
+        return result;
+      }),
+
+    removeTemplate: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        tenantDb
+          ? await db.removeTemplateFromTriggerToDb(tenantDb, input.id)
+          : await db.removeTemplateFromTrigger(input.id);
+        return { success: true };
+      }),
+
+    // Get available trigger events
+    getAvailableEvents: adminProcedure.query(() => {
+      return [
+        { value: 'CLIENT_CREATED', label: 'Cliente cadastrado', hasSchedule: false },
+        { value: 'STEP_COMPLETED:1', label: 'Etapa 1 - Cadastro concluído', hasSchedule: false },
+        { value: 'STEP_COMPLETED:2', label: 'Etapa 2 - Juntada de Documentos concluída', hasSchedule: false },
+        { value: 'STEP_COMPLETED:3', label: 'Etapa 3 - Central de Mensagens concluída', hasSchedule: false },
+        { value: 'STEP_COMPLETED:4', label: 'Etapa 4 - Avaliação Psicológica concluída', hasSchedule: false },
+        { value: 'STEP_COMPLETED:5', label: 'Etapa 5 - Laudo Técnico concluído', hasSchedule: false },
+        { value: 'STEP_COMPLETED:6', label: 'Etapa 6 - Acompanhamento Sinarm concluído', hasSchedule: false },
+        { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
+        { value: 'SCHEDULE_TECH_CREATED', label: 'Agendamento de Laudo Técnico', hasSchedule: true },
+        { value: 'SINARM_STATUS:EM_ANALISE', label: 'Sinarm - Em Análise', hasSchedule: false },
+        { value: 'SINARM_STATUS:APROVADO', label: 'Sinarm - Aprovado', hasSchedule: false },
+        { value: 'SINARM_STATUS:REPROVADO', label: 'Sinarm - Reprovado', hasSchedule: false },
+        { value: 'SINARM_STATUS:EXIGENCIA', label: 'Sinarm - Exigência', hasSchedule: false },
+        { value: 'WORKFLOW_COMPLETE', label: 'Processo concluído (todas etapas)', hasSchedule: false },
+      ];
+    }),
+
+    // Scheduled emails management
+    getScheduledByClient: adminProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        return tenantDb
+          ? await db.getScheduledEmailsByClientFromDb(tenantDb, input.clientId)
+          : await db.getScheduledEmailsByClient(input.clientId);
+      }),
+
+    cancelScheduledByClient: adminProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        tenantDb
+          ? await db.cancelScheduledEmailsByClientToDb(tenantDb, input.clientId)
+          : await db.cancelScheduledEmailsByClient(input.clientId);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

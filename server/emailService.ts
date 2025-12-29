@@ -319,3 +319,245 @@ export async function sendTestEmailWithSettings(settings: {
     return { success: false, error: error.message || 'Erro desconhecido ao enviar email' };
   }
 }
+
+// ============================================
+// EMAIL TRIGGER AUTOMATION
+// ============================================
+
+import * as db from './db';
+import type { Client, User } from '../drizzle/schema';
+
+interface TriggerContext {
+  tenantDb?: any;
+  tenantId?: number;
+  client: Client;
+  users?: User[];
+  scheduledDate?: Date; // For scheduled events (e.g., appointments)
+  extraData?: Record<string, any>;
+}
+
+/**
+ * Process email triggers for a specific event
+ * @param event - The trigger event (e.g., 'CLIENT_CREATED', 'STEP_COMPLETED:2')
+ * @param context - Context containing client, users, and optional scheduled date
+ */
+export async function triggerEmails(event: string, context: TriggerContext): Promise<void> {
+  try {
+    const { tenantDb, tenantId, client, users = [], scheduledDate, extraData } = context;
+    
+    console.log(`[EmailTrigger] Processing event: ${event} for client ${client.id}`);
+    
+    // Get active triggers for this event
+    const triggers = tenantDb
+      ? await db.getActiveTriggersByEventFromDb(tenantDb, event, tenantId)
+      : await db.getActiveTriggersByEvent(event, tenantId);
+    
+    if (triggers.length === 0) {
+      console.log(`[EmailTrigger] No active triggers for event: ${event}`);
+      return;
+    }
+    
+    console.log(`[EmailTrigger] Found ${triggers.length} trigger(s) for event: ${event}`);
+    
+    for (const trigger of triggers) {
+      // Get templates for this trigger
+      const templates = tenantDb
+        ? await db.getTemplatesByTriggerIdFromDb(tenantDb, trigger.id)
+        : await db.getTemplatesByTriggerId(trigger.id);
+      
+      if (templates.length === 0) {
+        console.log(`[EmailTrigger] No templates configured for trigger: ${trigger.name}`);
+        continue;
+      }
+      
+      // Determine recipients
+      const recipients = await resolveRecipients(trigger, client, users, tenantDb);
+      
+      if (recipients.length === 0) {
+        console.log(`[EmailTrigger] No recipients for trigger: ${trigger.name}`);
+        continue;
+      }
+      
+      // Process each template
+      for (const templateLink of templates) {
+        const template = templateLink.template;
+        if (!template) continue;
+        
+        // Render template with client data
+        const renderedSubject = renderTemplate(template.subject, client, extraData);
+        const renderedContent = renderTemplate(template.content, client, extraData);
+        
+        // Check if this is a reminder template and we have a scheduled date
+        if (templateLink.isForReminder && scheduledDate && trigger.sendBeforeHours) {
+          // Schedule the reminder email
+          const reminderDate = new Date(scheduledDate);
+          reminderDate.setHours(reminderDate.getHours() - trigger.sendBeforeHours);
+          
+          // Only schedule if the reminder date is in the future
+          if (reminderDate > new Date()) {
+            for (const recipient of recipients) {
+              const scheduledData = {
+                tenantId,
+                clientId: client.id,
+                triggerId: trigger.id,
+                templateId: template.id,
+                recipientEmail: recipient.email,
+                recipientName: recipient.name,
+                subject: renderedSubject,
+                content: renderedContent,
+                scheduledFor: reminderDate,
+                referenceDate: scheduledDate,
+                status: 'pending' as const,
+              };
+              
+              tenantDb
+                ? await db.scheduleEmailToDb(tenantDb, scheduledData)
+                : await db.scheduleEmail(scheduledData);
+              
+              console.log(`[EmailTrigger] Scheduled reminder for ${recipient.email} at ${reminderDate.toISOString()}`);
+            }
+          }
+        }
+        
+        // Send immediate email if configured
+        if (trigger.sendImmediate && !templateLink.isForReminder) {
+          for (const recipient of recipients) {
+            try {
+              await sendEmail({
+                to: recipient.email,
+                subject: renderedSubject,
+                html: renderedContent,
+                tenantDb,
+              });
+              console.log(`[EmailTrigger] Sent immediate email to ${recipient.email}`);
+            } catch (error) {
+              console.error(`[EmailTrigger] Failed to send email to ${recipient.email}:`, error);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[EmailTrigger] Error processing triggers:', error);
+  }
+}
+
+/**
+ * Resolve recipients based on trigger configuration
+ */
+async function resolveRecipients(
+  trigger: any,
+  client: Client,
+  users: User[],
+  tenantDb?: any
+): Promise<Array<{ email: string; name: string | null }>> {
+  const recipients: Array<{ email: string; name: string | null }> = [];
+  
+  // Add client if recipientType includes client
+  if (trigger.recipientType === 'client' || trigger.recipientType === 'both') {
+    recipients.push({ email: client.email, name: client.name });
+  }
+  
+  // Add operator if recipientType is operator
+  if (trigger.recipientType === 'operator') {
+    const operator = tenantDb
+      ? await db.getUserByIdFromDb(tenantDb, client.operatorId)
+      : await db.getUserById(client.operatorId);
+    if (operator) {
+      recipients.push({ email: operator.email, name: operator.name });
+    }
+  }
+  
+  // Add specific users if recipientType includes users
+  if (trigger.recipientType === 'users' || trigger.recipientType === 'both') {
+    if (trigger.recipientUserIds) {
+      const userIds: number[] = JSON.parse(trigger.recipientUserIds);
+      for (const userId of userIds) {
+        const user = users.find(u => u.id === userId) || (tenantDb
+          ? await db.getUserByIdFromDb(tenantDb, userId)
+          : await db.getUserById(userId));
+        if (user) {
+          recipients.push({ email: user.email, name: user.name });
+        }
+      }
+    }
+  }
+  
+  // Remove duplicates
+  const uniqueRecipients = recipients.filter((r, i, arr) => 
+    arr.findIndex(x => x.email === r.email) === i
+  );
+  
+  return uniqueRecipients;
+}
+
+/**
+ * Render template with client data (replace placeholders)
+ */
+function renderTemplate(template: string, client: Client, extraData?: Record<string, any>): string {
+  let rendered = template;
+  
+  // Client placeholders
+  rendered = rendered.replace(/\{\{nome\}\}/gi, client.name || '');
+  rendered = rendered.replace(/\{\{email\}\}/gi, client.email || '');
+  rendered = rendered.replace(/\{\{cpf\}\}/gi, client.cpf || '');
+  rendered = rendered.replace(/\{\{telefone\}\}/gi, client.phone || '');
+  rendered = rendered.replace(/\{\{endereco\}\}/gi, client.address || '');
+  rendered = rendered.replace(/\{\{cidade\}\}/gi, client.city || '');
+  rendered = rendered.replace(/\{\{cep\}\}/gi, client.cep || '');
+  
+  // Extra data placeholders
+  if (extraData) {
+    for (const [key, value] of Object.entries(extraData)) {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+      rendered = rendered.replace(regex, String(value || ''));
+    }
+  }
+  
+  // Date placeholder
+  rendered = rendered.replace(/\{\{data\}\}/gi, new Date().toLocaleDateString('pt-BR'));
+  
+  return rendered;
+}
+
+/**
+ * Process pending scheduled emails (should be called periodically)
+ */
+export async function processScheduledEmails(tenantDb?: any): Promise<number> {
+  try {
+    const pendingEmails = tenantDb
+      ? await db.getPendingScheduledEmailsFromDb(tenantDb)
+      : await db.getPendingScheduledEmails();
+    
+    console.log(`[EmailTrigger] Processing ${pendingEmails.length} scheduled email(s)`);
+    
+    let sent = 0;
+    for (const scheduled of pendingEmails) {
+      try {
+        await sendEmail({
+          to: scheduled.recipientEmail,
+          subject: scheduled.subject,
+          html: scheduled.content,
+          tenantDb,
+        });
+        
+        tenantDb
+          ? await db.markScheduledEmailSentToDb(tenantDb, scheduled.id)
+          : await db.markScheduledEmailSent(scheduled.id);
+        
+        sent++;
+        console.log(`[EmailTrigger] Sent scheduled email ${scheduled.id} to ${scheduled.recipientEmail}`);
+      } catch (error: any) {
+        console.error(`[EmailTrigger] Failed to send scheduled email ${scheduled.id}:`, error);
+        tenantDb
+          ? await db.markScheduledEmailFailedToDb(tenantDb, scheduled.id, error.message)
+          : await db.markScheduledEmailFailed(scheduled.id, error.message);
+      }
+    }
+    
+    return sent;
+  } catch (error) {
+    console.error('[EmailTrigger] Error processing scheduled emails:', error);
+    return 0;
+  }
+}

@@ -22,7 +22,13 @@ import {
   InsertTenantActivityLog,
   auditLogs,
   InsertAuditLog,
-  AuditLog
+  AuditLog,
+  emailTriggers,
+  InsertEmailTrigger,
+  emailTriggerTemplates,
+  InsertEmailTriggerTemplate,
+  emailScheduled,
+  InsertEmailScheduled,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
@@ -1415,4 +1421,225 @@ export async function seedMockTenants() {
     users: Object.values(tenantUserIds).reduce((acc, v) => acc + v.admins.length + v.operators.length, 0),
     clients: clientsInserted,
   };
+}
+
+// ============================================
+// EMAIL TRIGGERS FUNCTIONS
+// ============================================
+
+export async function createEmailTrigger(data: InsertEmailTrigger) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [inserted] = await db.insert(emailTriggers).values(data).returning();
+  return inserted;
+}
+
+export async function createEmailTriggerToDb(tenantDb: ReturnType<typeof drizzle>, data: InsertEmailTrigger) {
+  const [inserted] = await tenantDb.insert(emailTriggers).values(data).returning();
+  return inserted;
+}
+
+export async function getEmailTriggers(tenantId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (tenantId) {
+    return await db.select().from(emailTriggers).where(eq(emailTriggers.tenantId, tenantId)).orderBy(desc(emailTriggers.createdAt));
+  }
+  return await db.select().from(emailTriggers).orderBy(desc(emailTriggers.createdAt));
+}
+
+export async function getEmailTriggersFromDb(tenantDb: ReturnType<typeof drizzle>, tenantId?: number) {
+  if (tenantId) {
+    return await tenantDb.select().from(emailTriggers).where(eq(emailTriggers.tenantId, tenantId)).orderBy(desc(emailTriggers.createdAt));
+  }
+  return await tenantDb.select().from(emailTriggers).orderBy(desc(emailTriggers.createdAt));
+}
+
+export async function getEmailTriggerById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(emailTriggers).where(eq(emailTriggers.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getEmailTriggerByIdFromDb(tenantDb: ReturnType<typeof drizzle>, id: number) {
+  const result = await tenantDb.select().from(emailTriggers).where(eq(emailTriggers.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getActiveTriggersByEvent(event: string, tenantId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(emailTriggers.triggerEvent, event), eq(emailTriggers.isActive, true)];
+  if (tenantId) conditions.push(eq(emailTriggers.tenantId, tenantId));
+  return await db.select().from(emailTriggers).where(and(...conditions));
+}
+
+export async function getActiveTriggersByEventFromDb(tenantDb: ReturnType<typeof drizzle>, event: string, tenantId?: number) {
+  const conditions = [eq(emailTriggers.triggerEvent, event), eq(emailTriggers.isActive, true)];
+  if (tenantId) conditions.push(eq(emailTriggers.tenantId, tenantId));
+  return await tenantDb.select().from(emailTriggers).where(and(...conditions));
+}
+
+export async function updateEmailTrigger(id: number, data: Partial<InsertEmailTrigger>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(emailTriggers).set({ ...data, updatedAt: new Date() }).where(eq(emailTriggers.id, id));
+}
+
+export async function updateEmailTriggerToDb(tenantDb: ReturnType<typeof drizzle>, id: number, data: Partial<InsertEmailTrigger>) {
+  await tenantDb.update(emailTriggers).set({ ...data, updatedAt: new Date() }).where(eq(emailTriggers.id, id));
+}
+
+export async function deleteEmailTrigger(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Delete associated templates first
+  await db.delete(emailTriggerTemplates).where(eq(emailTriggerTemplates.triggerId, id));
+  // Delete scheduled emails
+  await db.delete(emailScheduled).where(eq(emailScheduled.triggerId, id));
+  // Delete trigger
+  await db.delete(emailTriggers).where(eq(emailTriggers.id, id));
+}
+
+export async function deleteEmailTriggerFromDb(tenantDb: ReturnType<typeof drizzle>, id: number) {
+  await tenantDb.delete(emailTriggerTemplates).where(eq(emailTriggerTemplates.triggerId, id));
+  await tenantDb.delete(emailScheduled).where(eq(emailScheduled.triggerId, id));
+  await tenantDb.delete(emailTriggers).where(eq(emailTriggers.id, id));
+}
+
+// ============================================
+// EMAIL TRIGGER TEMPLATES FUNCTIONS
+// ============================================
+
+export async function addTemplateToTrigger(data: InsertEmailTriggerTemplate) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [inserted] = await db.insert(emailTriggerTemplates).values(data).returning();
+  return inserted;
+}
+
+export async function addTemplateToTriggerToDb(tenantDb: ReturnType<typeof drizzle>, data: InsertEmailTriggerTemplate) {
+  const [inserted] = await tenantDb.insert(emailTriggerTemplates).values(data).returning();
+  return inserted;
+}
+
+export async function getTemplatesByTriggerId(triggerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select({
+      id: emailTriggerTemplates.id,
+      triggerId: emailTriggerTemplates.triggerId,
+      templateId: emailTriggerTemplates.templateId,
+      sendOrder: emailTriggerTemplates.sendOrder,
+      isForReminder: emailTriggerTemplates.isForReminder,
+      template: emailTemplates,
+    })
+    .from(emailTriggerTemplates)
+    .leftJoin(emailTemplates, eq(emailTriggerTemplates.templateId, emailTemplates.id))
+    .where(eq(emailTriggerTemplates.triggerId, triggerId))
+    .orderBy(emailTriggerTemplates.sendOrder);
+}
+
+export async function getTemplatesByTriggerIdFromDb(tenantDb: ReturnType<typeof drizzle>, triggerId: number) {
+  return await tenantDb
+    .select({
+      id: emailTriggerTemplates.id,
+      triggerId: emailTriggerTemplates.triggerId,
+      templateId: emailTriggerTemplates.templateId,
+      sendOrder: emailTriggerTemplates.sendOrder,
+      isForReminder: emailTriggerTemplates.isForReminder,
+      template: emailTemplates,
+    })
+    .from(emailTriggerTemplates)
+    .leftJoin(emailTemplates, eq(emailTriggerTemplates.templateId, emailTemplates.id))
+    .where(eq(emailTriggerTemplates.triggerId, triggerId))
+    .orderBy(emailTriggerTemplates.sendOrder);
+}
+
+export async function removeTemplateFromTrigger(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(emailTriggerTemplates).where(eq(emailTriggerTemplates.id, id));
+}
+
+export async function removeTemplateFromTriggerToDb(tenantDb: ReturnType<typeof drizzle>, id: number) {
+  await tenantDb.delete(emailTriggerTemplates).where(eq(emailTriggerTemplates.id, id));
+}
+
+// ============================================
+// EMAIL SCHEDULED FUNCTIONS
+// ============================================
+
+export async function scheduleEmail(data: InsertEmailScheduled) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [inserted] = await db.insert(emailScheduled).values(data).returning();
+  return inserted;
+}
+
+export async function scheduleEmailToDb(tenantDb: ReturnType<typeof drizzle>, data: InsertEmailScheduled) {
+  const [inserted] = await tenantDb.insert(emailScheduled).values(data).returning();
+  return inserted;
+}
+
+export async function getPendingScheduledEmails() {
+  const db = await getDb();
+  if (!db) return [];
+  const now = new Date();
+  return await db
+    .select()
+    .from(emailScheduled)
+    .where(and(eq(emailScheduled.status, 'pending'), sql`${emailScheduled.scheduledFor} <= ${now}`))
+    .orderBy(emailScheduled.scheduledFor);
+}
+
+export async function getPendingScheduledEmailsFromDb(tenantDb: ReturnType<typeof drizzle>) {
+  const now = new Date();
+  return await tenantDb
+    .select()
+    .from(emailScheduled)
+    .where(and(eq(emailScheduled.status, 'pending'), sql`${emailScheduled.scheduledFor} <= ${now}`))
+    .orderBy(emailScheduled.scheduledFor);
+}
+
+export async function markScheduledEmailSent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(emailScheduled).set({ status: 'sent', sentAt: new Date() }).where(eq(emailScheduled.id, id));
+}
+
+export async function markScheduledEmailSentToDb(tenantDb: ReturnType<typeof drizzle>, id: number) {
+  await tenantDb.update(emailScheduled).set({ status: 'sent', sentAt: new Date() }).where(eq(emailScheduled.id, id));
+}
+
+export async function markScheduledEmailFailed(id: number, errorMessage: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(emailScheduled).set({ status: 'failed', errorMessage }).where(eq(emailScheduled.id, id));
+}
+
+export async function markScheduledEmailFailedToDb(tenantDb: ReturnType<typeof drizzle>, id: number, errorMessage: string) {
+  await tenantDb.update(emailScheduled).set({ status: 'failed', errorMessage }).where(eq(emailScheduled.id, id));
+}
+
+export async function cancelScheduledEmailsByClient(clientId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(emailScheduled).set({ status: 'cancelled' }).where(and(eq(emailScheduled.clientId, clientId), eq(emailScheduled.status, 'pending')));
+}
+
+export async function cancelScheduledEmailsByClientToDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
+  await tenantDb.update(emailScheduled).set({ status: 'cancelled' }).where(and(eq(emailScheduled.clientId, clientId), eq(emailScheduled.status, 'pending')));
+}
+
+export async function getScheduledEmailsByClient(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(emailScheduled).where(eq(emailScheduled.clientId, clientId)).orderBy(desc(emailScheduled.scheduledFor));
+}
+
+export async function getScheduledEmailsByClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
+  return await tenantDb.select().from(emailScheduled).where(eq(emailScheduled.clientId, clientId)).orderBy(desc(emailScheduled.scheduledFor));
 }
