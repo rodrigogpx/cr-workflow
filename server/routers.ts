@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings } from "./emailService";
+import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails } from "./emailService";
 import * as db from "./db";
 import { invalidateTenantCache } from "./config/tenant.config";
 import { storagePut } from "./storage";
@@ -442,6 +442,22 @@ export const appRouter = router({
             details: JSON.stringify({ name: input.name, cpf: input.cpf, operatorId }),
             ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
           });
+        }
+
+        // Trigger email automation for CLIENT_CREATED event
+        try {
+          const newClient = tenantDb
+            ? await db.getClientByIdFromDb(tenantDb, clientId)
+            : await db.getClientById(clientId);
+          if (newClient) {
+            await triggerEmails('CLIENT_CREATED', {
+              tenantDb,
+              tenantId: ctx.tenant?.id,
+              client: newClient,
+            });
+          }
+        } catch (triggerError) {
+          console.error('[Clients] Failed to process email triggers:', triggerError);
         }
 
         return { id: clientId };
