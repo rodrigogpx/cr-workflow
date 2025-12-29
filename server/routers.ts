@@ -717,6 +717,31 @@ export const appRouter = router({
             ipAddress,
           });
         }
+
+        // Trigger email automation
+        try {
+          // Step completed trigger
+          if (input.completed === true) {
+            const stepNumber = currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
+            await triggerEmails(`STEP_COMPLETED:${stepNumber}`, {
+              tenantDb,
+              tenantId: ctx.tenant?.id,
+              client,
+            });
+          }
+          
+          // Sinarm status change trigger
+          if (input.sinarmStatus) {
+            await triggerEmails(`SINARM_STATUS:${input.sinarmStatus}`, {
+              tenantDb,
+              tenantId: ctx.tenant?.id,
+              client,
+              extraData: { sinarmStatus: input.sinarmStatus, protocolNumber: input.protocolNumber },
+            });
+          }
+        } catch (triggerError) {
+          console.error('[Workflow] Failed to process email triggers:', triggerError);
+        }
         
         return { success: true };
       }),
@@ -823,6 +848,29 @@ export const appRouter = router({
             scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
             examinerName: input.examinerName || null,
           });
+        }
+
+        // Trigger email automation for scheduling
+        if (input.scheduledDate) {
+          try {
+            const scheduledDate = new Date(input.scheduledDate);
+            const isPsych = currentStep.stepId.includes('psico') || currentStep.stepTitle.toLowerCase().includes('psico');
+            const eventType = isPsych ? 'SCHEDULE_PSYCH_CREATED' : 'SCHEDULE_TECH_CREATED';
+            
+            await triggerEmails(eventType, {
+              tenantDb,
+              tenantId: ctx.tenant?.id,
+              client,
+              scheduledDate,
+              extraData: {
+                dataAgendamento: scheduledDate.toLocaleString('pt-BR'),
+                examinador: input.examinerName || '',
+                tipoAgendamento: isPsych ? 'Avaliação Psicológica' : 'Laudo Técnico',
+              },
+            });
+          } catch (triggerError) {
+            console.error('[Workflow] Failed to process scheduling email triggers:', triggerError);
+          }
         }
         
         return { success: true };
