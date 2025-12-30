@@ -2,13 +2,13 @@ import { ReactNode } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, Mail, Settings, UserCheck, LayoutDashboard, FileText } from "lucide-react";
+import { Shield, Users, Mail, Settings, UserCheck, LayoutDashboard, FileText, Zap } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 interface TenantAdminLayoutProps {
   children: ReactNode;
-  active: "dashboard" | "users" | "operators" | "emails" | "settings" | "audit";
+  active: "dashboard" | "users" | "operators" | "emails" | "email-triggers" | "settings" | "audit";
 }
 
 export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) {
@@ -47,6 +47,14 @@ export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) 
       description: "Comunicação com clientes",
       icon: Mail,
       path: "/admin/emails",
+      enabled: true,
+    },
+    {
+      id: "email-triggers" as const,
+      label: "Automação de Emails",
+      description: "Triggers automáticos",
+      icon: Zap,
+      path: "/admin/email-triggers",
       enabled: true,
     },
     {

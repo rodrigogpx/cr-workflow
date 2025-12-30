@@ -20,6 +20,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminOperators = lazy(() => import("./pages/AdminOperators"));
 const AdminEmails = lazy(() => import("./pages/AdminEmails"));
+const AdminEmailTriggers = lazy(() => import("./pages/AdminEmailTriggers"));
 const AdminSettings = lazy(() => import("./pages/TenantSettings"));
 const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -210,6 +211,16 @@ function Router() {
         <Route path={"/admin/emails"}>
           <AdminRoute>
             <AdminEmails />
+          </AdminRoute>
+        </Route>
+        <Route path={"/:tenantSlug/admin/email-triggers"}>
+          <AdminRoute>
+            <AdminEmailTriggers />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/email-triggers"}>
+          <AdminRoute>
+            <AdminEmailTriggers />
           </AdminRoute>
         </Route>
         <Route path={"/:tenantSlug/admin/settings"}>
