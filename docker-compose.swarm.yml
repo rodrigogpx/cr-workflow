@@ -1,0 +1,159 @@
+# Docker Compose para Docker Swarm - CAC 360
+# Desenvolvido por ACR Digital
+#
+# Deploy: docker stack deploy -c docker-compose.swarm.yml cac360
+# Remove: docker stack rm cac360
+
+version: '3.8'
+
+services:
+  # ============================================
+  # APLICAÇÃO CAC 360
+  # ============================================
+  app:
+    image: ghcr.io/${GITHUB_REPOSITORY:-rodrigogpx/cr-workflow}:${IMAGE_TAG:-latest}
+    networks:
+      - cac360-public
+      - cac360-internal
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-cac360}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cac360}
+      JWT_SECRET: ${JWT_SECRET}
+      # Cloudflare R2 Storage
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+      # App config
+      VITE_APP_TITLE: ${VITE_APP_TITLE:-CAC 360}
+      VITE_APP_LOGO: ${VITE_APP_LOGO:-/logo.png}
+    deploy:
+      mode: replicated
+      replicas: ${APP_REPLICAS:-2}
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=cac360-public"
+        # HTTP Router
+        - "traefik.http.routers.cac360.rule=Host(`${DOMAIN:-cac360.com.br}`) || Host(`www.${DOMAIN:-cac360.com.br}`)"
+        - "traefik.http.routers.cac360.entrypoints=websecure"
+        - "traefik.http.routers.cac360.tls=true"
+        - "traefik.http.routers.cac360.tls.certresolver=letsencrypt"
+        # Service
+        - "traefik.http.services.cac360.loadbalancer.server.port=3000"
+        - "traefik.http.services.cac360.loadbalancer.sticky.cookie=true"
+        - "traefik.http.services.cac360.loadbalancer.sticky.cookie.name=cac360_server"
+        - "traefik.http.services.cac360.loadbalancer.healthcheck.path=/api/health"
+        - "traefik.http.services.cac360.loadbalancer.healthcheck.interval=30s"
+        # Wildcard para multi-tenant
+        - "traefik.http.routers.cac360-wildcard.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.${DOMAIN:-cac360.com.br}`)"
+        - "traefik.http.routers.cac360-wildcard.entrypoints=websecure"
+        - "traefik.http.routers.cac360-wildcard.tls=true"
+        - "traefik.http.routers.cac360-wildcard.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.cac360-wildcard.service=cac360"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - postgres
+
+  # ============================================
+  # POSTGRESQL DATABASE
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    networks:
+      - cac360-internal
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cac360}
+      POSTGRES_USER: ${POSTGRES_USER:-cac360}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cac360} -d ${POSTGRES_DB:-cac360}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # DATABASE MIGRATIONS (run-once job)
+  # ============================================
+  migrations:
+    image: ghcr.io/${GITHUB_REPOSITORY:-rodrigogpx/cr-workflow}:${IMAGE_TAG:-latest}
+    networks:
+      - cac360-internal
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-cac360}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cac360}
+    command: sh -c "sleep 10 && pnpm db:push && pnpm db:seed"
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+      labels:
+        - "traefik.enable=false"
+    depends_on:
+      - postgres
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  cac360-public:
+    external: true
+    name: traefik-public
+  cac360-internal:
+    driver: overlay
+    attachable: true
+    internal: true
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  postgres-data:
+    driver: local

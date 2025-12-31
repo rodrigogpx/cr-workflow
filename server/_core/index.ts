@@ -40,8 +40,11 @@ async function startServer() {
     })
   );
 
-  // Health check endpoint para Railway/Docker
+  // Health check endpoint para Railway/Docker/Swarm
   app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+  app.get('/api/health', (_req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
