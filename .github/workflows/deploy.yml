@@ -107,8 +107,14 @@ jobs:
                 # Se já é um repositório, apenas fazer pull
                 git pull origin hml
               fi && \
-              # Fazer deploy do stack
-              docker stack deploy -c docker-compose.swarm.yml cr-workflow
+              # Garantir Swarm ativo
+              docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}") && \
+              # Garantir rede traefik-public
+              docker network ls | grep -q "traefik-public" || docker network create --driver overlay --attachable traefik-public && \
+              # Exportar variáveis e fazer deploy
+              export IMAGE_TAG=hml && \
+              export $(grep -v "^#" /opt/cac360/config/.env | xargs) && \
+              docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360
             '
   deploy-production:
     name: Deploy Production (Docker Swarm)
@@ -147,6 +153,12 @@ jobs:
                 # Se já é um repositório, apenas fazer pull
                 git pull origin main
               fi && \
-              # Fazer deploy do stack
-              docker stack deploy -c docker-compose.swarm.yml cr-workflow
+              # Garantir Swarm ativo
+              docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}") && \
+              # Garantir rede traefik-public
+              docker network ls | grep -q "traefik-public" || docker network create --driver overlay --attachable traefik-public && \
+              # Exportar variáveis e fazer deploy
+              export IMAGE_TAG=latest && \
+              export $(grep -v "^#" /opt/cac360/config/.env | xargs) && \
+              docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360
             '
