@@ -93,8 +93,21 @@ jobs:
             --zone=us-west1-a \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --command='
+              # Criar diretório se não existir
+              mkdir -p /home/rodrigogpx/app && \
               cd /home/rodrigogpx/app && \
-              git pull origin hml && \
+              # Verificar se é um repositório Git válido
+              if [ ! -d .git ]; then
+                # Se não é um repositório, clonar do GitHub
+                cd /home/rodrigogpx && \
+                rm -rf app && \
+                git clone -b hml https://github.com/rodrigogpx/cr-workflow.git app && \
+                cd app
+              else
+                # Se já é um repositório, apenas fazer pull
+                git pull origin hml
+              fi && \
+              # Fazer deploy do stack
               docker stack deploy -c docker-compose.swarm.yml cr-workflow
             '
   deploy-production:
@@ -120,7 +133,20 @@ jobs:
             --zone=us-west1-a \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --command='
+              # Criar diretório se não existir
+              mkdir -p /home/rodrigogpx/app && \
               cd /home/rodrigogpx/app && \
-              git pull origin main && \
+              # Verificar se é um repositório Git válido
+              if [ ! -d .git ]; then
+                # Se não é um repositório, clonar do GitHub
+                cd /home/rodrigogpx && \
+                rm -rf app && \
+                git clone -b main https://github.com/rodrigogpx/cr-workflow.git app && \
+                cd app
+              else
+                # Se já é um repositório, apenas fazer pull
+                git pull origin main
+              fi && \
+              # Fazer deploy do stack
               docker stack deploy -c docker-compose.swarm.yml cr-workflow
             '
