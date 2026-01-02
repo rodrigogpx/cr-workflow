@@ -51,8 +51,26 @@ export interface TenantConfig {
   isActive: boolean;
 }
 
-// Cache de conexões de banco por tenant
-const tenantDbConnections: Map<string, ReturnType<typeof drizzle>> = new Map();
+// Cache de conexões de banco por tenant (com client para cleanup)
+interface TenantDbConnection {
+  db: ReturnType<typeof drizzle>;
+  client: ReturnType<typeof postgres>;
+  lastUsed: number;
+}
+const tenantDbConnections: Map<string, TenantDbConnection> = new Map();
+
+// Cleanup de conexões inativas (a cada 10 minutos)
+const CONNECTION_IDLE_TIMEOUT = 10 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, conn] of tenantDbConnections.entries()) {
+    if (now - conn.lastUsed > CONNECTION_IDLE_TIMEOUT) {
+      conn.client.end().catch(() => {});
+      tenantDbConnections.delete(key);
+      console.log(`[Tenant] Closed idle connection: ${key}`);
+    }
+  }
+}, CONNECTION_IDLE_TIMEOUT);
 
 // Cache de configurações de tenant
 const tenantConfigCache: Map<string, { config: TenantConfig; cachedAt: number }> = new Map();
@@ -120,7 +138,9 @@ export async function getTenantConfig(slug: string): Promise<TenantConfig | null
       return null;
     }
     
-    console.log(`[Tenant] Found tenant: id=${result[0].id}, slug=${result[0].slug}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Tenant] Found tenant: id=${result[0].id}, slug=${result[0].slug}`);
+    }
 
     const tenant = result[0] as unknown as TenantConfig;
 
@@ -150,8 +170,10 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
   const cacheKey = isSingleDbMode ? 'single_db' : `${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
 
   // Verificar cache de conexões
-  if (tenantDbConnections.has(cacheKey)) {
-    return tenantDbConnections.get(cacheKey)!;
+  const cached = tenantDbConnections.get(cacheKey);
+  if (cached) {
+    cached.lastUsed = Date.now();
+    return cached.db;
   }
 
   try {
@@ -167,16 +189,20 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
     const client = postgres(connectionString, {
       max: Number(process.env.TENANT_DB_POOL_MAX ?? 5),
       ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+      idle_timeout: 60,
+      connect_timeout: 10,
     });
     const db = drizzle(client);
 
     // Healthcheck rápida para validar credenciais/conectividade
     await client`SELECT 1`;
 
-    // Cachear conexão
-    tenantDbConnections.set(cacheKey, db);
+    // Cachear conexão com metadata
+    tenantDbConnections.set(cacheKey, { db, client, lastUsed: Date.now() });
 
-    console.log(`[Tenant] Connected to database for tenant: ${tenant.slug}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Tenant] Connected to database for tenant: ${tenant.slug}`);
+    }
     return db;
   } catch (error) {
     console.error(`[Tenant] Error connecting to database for tenant ${tenant.slug}:`, error);
