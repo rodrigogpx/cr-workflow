@@ -99,22 +99,24 @@ jobs:
       - name: Deploy to Docker Swarm via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SWARM_HOST }}
+          host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 120s
+          command_timeout: 10m
           script: |
             set -e
-            echo "🚀 Iniciando deploy HML no Docker Swarm..."
+            echo "🚀 Iniciando deploy HML no Docker Swarm (GCP)..."
             
             # Variáveis
-            export IMAGE_TAG="hml-${{ github.sha }}"
+            export IMAGE_TAG="hml"
             export GITHUB_REPOSITORY="${{ github.repository }}"
             
-            # Login no GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Login no GHCR usando PAT
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             # Pull da nova imagem
-            docker pull ghcr.io/${{ github.repository }}:$IMAGE_TAG
+            docker pull ghcr.io/${{ github.repository }}:$IMAGE_TAG || docker pull ghcr.io/${{ github.repository }}:hml-${{ github.sha }}
             
             # Atualizar serviço no Swarm
             if docker service ls | grep -q "cac360-hml_app"; then
@@ -128,6 +130,7 @@ jobs:
             else
               echo "Stack não encontrada. Deploy inicial..."
               cd /opt/cac360
+              export $(grep -v '^#' .env | xargs)
               docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360-hml
             fi
             
@@ -156,26 +159,28 @@ jobs:
       - name: Deploy to Docker Swarm via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SWARM_HOST }}
+          host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 120s
+          command_timeout: 15m
           script: |
             set -e
-            echo "🚀 Iniciando deploy PRODUÇÃO no Docker Swarm..."
+            echo "🚀 Iniciando deploy PRODUÇÃO no Docker Swarm (GCP)..."
             
             # Variáveis
-            export IMAGE_TAG="prod-${{ github.sha }}"
+            export IMAGE_TAG="latest"
             export GITHUB_REPOSITORY="${{ github.repository }}"
             
-            # Login no GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Login no GHCR usando PAT
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             # Pull da nova imagem
-            docker pull ghcr.io/${{ github.repository }}:$IMAGE_TAG
-            docker pull ghcr.io/${{ github.repository }}:latest
+            docker pull ghcr.io/${{ github.repository }}:$IMAGE_TAG || docker pull ghcr.io/${{ github.repository }}:main-${{ github.sha }}
             
             # Salvar imagem atual para rollback
             CURRENT_IMAGE=$(docker service inspect cac360_app --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' 2>/dev/null || echo "none")
+            mkdir -p /opt/cac360/config
             echo "$CURRENT_IMAGE" > /opt/cac360/config/.rollback-image
             
             # Atualizar serviço no Swarm
@@ -190,6 +195,7 @@ jobs:
             else
               echo "Stack não encontrada. Deploy inicial..."
               cd /opt/cac360
+              export $(grep -v '^#' .env | xargs)
               docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360
             fi
             
@@ -227,12 +233,13 @@ jobs:
   # ============================================
   notify:
     name: Notify
-    needs: [build, deploy-hml, deploy-production]
+    needs: [build]
     runs-on: ubuntu-latest
-    if: always()
+    if: failure()
     steps:
-      - name: Deploy Status
+      - name: Build Failed Notification
         run: |
-          echo "Build: ${{ needs.build.result }}"
-          echo "Deploy HML: ${{ needs.deploy-hml.result }}"
-          echo "Deploy Prod: ${{ needs.deploy-production.result }}"
+          echo "❌ Build falhou!"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Autor: ${{ github.actor }}"
