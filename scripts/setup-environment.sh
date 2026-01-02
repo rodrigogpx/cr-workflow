@@ -55,9 +55,9 @@ touch /opt/cac360/config/traefik/acme.json
 chmod 600 /opt/cac360/config/traefik/acme.json
 
 # 6. Criação da Rede Overlay
-if ! docker network ls | grep -q "cac360_public"; then
-    echo -e "${GREEN}🌐 Criando rede overlay cac360_public...${NC}"
-    docker network create --driver overlay --attachable cac360_public
+if ! docker network ls | grep -q "traefik-public"; then
+    echo -e "${GREEN}🌐 Criando rede overlay traefik-public...${NC}"
+    docker network create --driver overlay --attachable traefik-public
 fi
 
 # 7. Configuração do arquivo .env inicial
