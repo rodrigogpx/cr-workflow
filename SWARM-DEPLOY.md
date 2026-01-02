@@ -111,6 +111,7 @@ Configure em **Settings → Secrets and variables → Actions**:
 | `SWARM_HOST` | IP do manager do Swarm | `34.95.123.45` |
 | `SSH_USER` | Usuário SSH | `deploy` |
 | `SSH_PRIVATE_KEY` | Chave privada SSH | `-----BEGIN OPENSSH...` |
+| `GHCR_TOKEN` | Token de Acesso Pessoal (PAT) com escopo `read:packages` | `ghp_...` |
 | `GITHUB_TOKEN` | Automático | - |
 
 ### Variáveis de Ambiente (.env)
