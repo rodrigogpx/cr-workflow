@@ -54,7 +54,7 @@ export interface TenantConfig {
 // Cache de conexões de banco por tenant (com client para cleanup)
 interface TenantDbConnection {
   db: ReturnType<typeof drizzle>;
-  client: ReturnType<typeof postgres>;
+  client: postgres.Sql;
   lastUsed: number;
 }
 const tenantDbConnections: Map<string, TenantDbConnection> = new Map();
@@ -65,9 +65,11 @@ setInterval(() => {
   const now = Date.now();
   for (const [key, conn] of tenantDbConnections.entries()) {
     if (now - conn.lastUsed > CONNECTION_IDLE_TIMEOUT) {
-      conn.client.end().catch(() => {});
+      void conn.client.end();
       tenantDbConnections.delete(key);
-      console.log(`[Tenant] Closed idle connection: ${key}`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Tenant] Closed idle connection: ${key}`);
+      }
     }
   }
 }, CONNECTION_IDLE_TIMEOUT);
