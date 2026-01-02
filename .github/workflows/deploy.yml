@@ -1,6 +1,8 @@
 name: CI/CD - Docker Swarm Deploy
 
 
+
+
 on:
   push:
     branches:
@@ -18,9 +20,13 @@ on:
           - production
 
 
+
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+
+
 
 
 jobs:
@@ -38,9 +44,13 @@ jobs:
       version: ${{ steps.version.outputs.version }}
 
 
+
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+
 
 
       - name: Set version
@@ -53,8 +63,12 @@ jobs:
           fi
 
 
+
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+
 
 
       - name: Login to GitHub Container Registry
@@ -65,12 +79,36 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
 
+
+
       - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
+
+  # ============================================
+  # DEPLOY TO DOCKER SWARM
+  # ============================================
+  deploy-hml:
+    name: Deploy HML (Swarm)
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/hml'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Docker Swarm via SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+          host: ${{ secrets.INSTANCE_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 120s
+          command_timeout: 60s
+          script: |
+            set -e
+            cd /home/ubuntu/app
+            git pull origin hml
+            export REGISTRY=ghcr.io
+            export IMAGE_NAME=${{ github.repository }}
+            export IMAGE_TAG=hml-${{ github.sha }}
+            docker stack deploy -c docker-compose.swarm.yml cac360-hml-app
+            echo "✅ Deploy HML concluído!"
