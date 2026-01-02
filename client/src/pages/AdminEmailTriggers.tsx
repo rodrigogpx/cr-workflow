@@ -10,10 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Zap, Mail, Clock, Users, User } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export default function AdminEmailTriggers() {
-  const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTrigger, setEditingTrigger] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -34,30 +33,30 @@ export default function AdminEmailTriggers() {
 
   const createMutation = trpc.emailTriggers.create.useMutation({
     onSuccess: () => {
-      toast({ title: "Trigger criado com sucesso" });
+      toast.success("Trigger criado com sucesso");
       setIsCreateOpen(false);
       resetForm();
       refetch();
     },
-    onError: (err) => toast({ title: "Erro ao criar trigger", description: err.message, variant: "destructive" }),
+    onError: (err) => toast.error("Erro ao criar trigger", { description: err.message }),
   });
 
   const updateMutation = trpc.emailTriggers.update.useMutation({
     onSuccess: () => {
-      toast({ title: "Trigger atualizado com sucesso" });
+      toast.success("Trigger atualizado com sucesso");
       setEditingTrigger(null);
       resetForm();
       refetch();
     },
-    onError: (err) => toast({ title: "Erro ao atualizar trigger", description: err.message, variant: "destructive" }),
+    onError: (err) => toast.error("Erro ao atualizar trigger", { description: err.message }),
   });
 
   const deleteMutation = trpc.emailTriggers.delete.useMutation({
     onSuccess: () => {
-      toast({ title: "Trigger excluído com sucesso" });
+      toast.success("Trigger excluído com sucesso");
       refetch();
     },
-    onError: (err) => toast({ title: "Erro ao excluir trigger", description: err.message, variant: "destructive" }),
+    onError: (err) => toast.error("Erro ao excluir trigger", { description: err.message }),
   });
 
   const addTemplateMutation = trpc.emailTriggers.addTemplate.useMutation({
