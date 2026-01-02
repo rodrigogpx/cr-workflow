@@ -63,7 +63,7 @@ fi
 # 7. Configuração do arquivo .env inicial
 if [ ! -f /opt/cac360/config/.env ]; then
     echo -e "${YELLOW}📝 Criando arquivo .env base (POR FAVOR, EDITE-O DEPOIS)...${NC}"
-    cat <<EOF > /opt/cac360/config/.env
+    cat <<'EOF' > /opt/cac360/config/.env
 # Configurações Obrigatórias
 DOMAIN=seu-dominio.com.br
 ACME_EMAIL=seu-email@dominio.com
@@ -72,9 +72,11 @@ JWT_SECRET=$(openssl rand -hex 32)
 
 # Configurações do App
 GITHUB_REPOSITORY=rodrigogpx/cr-workflow
-IMAGE_TAG=latest
+IMAGE_TAG=hml
 APP_REPLICAS=2
 EOF
+    # Remover possíveis caracteres CRLF (padrão Windows) do arquivo recém-criado
+    sed -i 's/\r$//' /opt/cac360/config/.env
     echo -e "${RED}⚠️ ATENÇÃO: Edite o arquivo /opt/cac360/config/.env com seus dados reais!${NC}"
 else
     echo -e "${YELLOW}✅ Arquivo .env já existe.${NC}"
@@ -85,4 +87,4 @@ echo -e "${YELLOW}Próximos passos:${NC}"
 echo -e "1. Edite as variáveis: ${CYAN}nano /opt/cac360/config/.env${NC}"
 echo -e "2. Faça login no GHCR: ${CYAN}docker login ghcr.io${NC}"
 echo -e "3. Entre na pasta do projeto: ${CYAN}cd /opt/cac360/cr-workflow${NC}"
-echo -e "4. Execute o deploy: ${CYAN}set -a && source /opt/cac360/config/.env && set +a && export IMAGE_TAG=hml && docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360${NC}"
+echo -e "4. Execute o deploy: ${CYAN}export IMAGE_TAG=hml && export \$(grep -v '^#' /opt/cac360/config/.env | xargs) && docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360${NC}"
