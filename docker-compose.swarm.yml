@@ -54,19 +54,37 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=cac360-public"
-        # HTTP Router
-        - "traefik.http.routers.cac360.rule=Host(`${DOMAIN:-cac360.com.br}`) || Host(`www.${DOMAIN:-cac360.com.br}`)"
-        - "traefik.http.routers.cac360.entrypoints=websecure"
-        - "traefik.http.routers.cac360.tls=true"
-        - "traefik.http.routers.cac360.tls.certresolver=letsencrypt"
-        # Service
+        # ============================================
+        # ROTEADOR PARA PRODUÇÃO (cac360.com.br)
+        # ============================================
+        - "traefik.http.routers.cac360-prod.rule=Host(`cac360.com.br`) || Host(`www.cac360.com.br`)"
+        - "traefik.http.routers.cac360-prod.entrypoints=websecure"
+        - "traefik.http.routers.cac360-prod.tls=true"
+        - "traefik.http.routers.cac360-prod.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.cac360-prod.service=cac360"
+
+        # ============================================
+        # ROTEADOR PARA HOMOLOGAÇÃO (hml.cac360.com.br)
+        # ============================================
+        - "traefik.http.routers.cac360-hml.rule=Host(`hml.cac360.com.br`) || Host(`www.hml.cac360.com.br`)"
+        - "traefik.http.routers.cac360-hml.entrypoints=websecure"
+        - "traefik.http.routers.cac360-hml.tls=true"
+        - "traefik.http.routers.cac360-hml.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.cac360-hml.service=cac360"
+
+        # ============================================
+        # SERVIÇO (Load Balancer)
+        # ============================================
         - "traefik.http.services.cac360.loadbalancer.server.port=3000"
         - "traefik.http.services.cac360.loadbalancer.sticky.cookie=true"
         - "traefik.http.services.cac360.loadbalancer.sticky.cookie.name=cac360_server"
         - "traefik.http.services.cac360.loadbalancer.healthcheck.path=/api/health"
         - "traefik.http.services.cac360.loadbalancer.healthcheck.interval=30s"
-        # Wildcard para multi-tenant
-        - "traefik.http.routers.cac360-wildcard.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.${DOMAIN:-cac360.com.br}`)"
+
+        # ============================================
+        # WILDCARD PARA MULTI-TENANT
+        # ============================================
+        - "traefik.http.routers.cac360-wildcard.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.cac360.com.br`)"
         - "traefik.http.routers.cac360-wildcard.entrypoints=websecure"
         - "traefik.http.routers.cac360-wildcard.tls=true"
         - "traefik.http.routers.cac360-wildcard.tls.certresolver=letsencrypt"
