@@ -12,7 +12,25 @@ Este documento descreve os passos necessários para realizar o deploy manual do 
 
 ---
 
+## 🚀 Preparação do Ambiente (Automatizada)
+
+Para configurar rapidamente o servidor (instalação do Docker, inicialização do Swarm, redes e diretórios), execute o comando abaixo como **root**:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/rodrigogpx/cr-workflow/hml/scripts/setup-environment.sh | sudo bash
+```
+
+Este script irá:
+1.  Instalar Docker e Git.
+2.  Inicializar o cluster Docker Swarm.
+3.  Criar a rede overlay `cac360_public`.
+4.  Configurar a estrutura de pastas em `/opt/cac360`.
+5.  Gerar um arquivo `.env` inicial com senhas aleatórias.
+
+---
+
 ## 🚀 Passo a Passo (Manual)
+
 
 ### 1. Conectar ao Servidor
 ```bash
