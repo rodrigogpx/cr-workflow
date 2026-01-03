@@ -50,7 +50,7 @@ networks:
 
 volumes:
   nginx-certs:
-    driver: local
+    external: true
 
 configs:
   nginx-conf:
