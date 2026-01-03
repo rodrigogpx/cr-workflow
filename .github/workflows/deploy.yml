@@ -119,6 +119,9 @@ jobs:
               # Exportar variáveis e preparar ambiente
               export IMAGE_TAG=hml && \
               export $(grep -v "^#" /opt/cac360/config/.env | xargs) && \
+              # Remover stack edge para atualizar config (configs são imutáveis)
+              docker stack rm edge || true && \
+              sleep 5 && \
               # Deploy do Nginx + Certbot
               docker stack deploy -c docker-compose.nginx.yml edge && \
               # Emitir/renovar certificados para hml/prod (sem wildcard)
