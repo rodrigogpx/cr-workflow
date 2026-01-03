@@ -13,8 +13,7 @@ services:
         protocol: tcp
         mode: host
     networks:
-      - nginx-public
-      - cac360-internal
+      - cac360-public
     volumes:
       - nginx-certs:/etc/letsencrypt:ro
     configs:
@@ -46,10 +45,7 @@ services:
       start_period: 15s
 
 networks:
-  nginx-public:
-    external: true
-    name: traefik-public
-  cac360-internal:
+  cac360-public:
     external: true
 
 volumes:

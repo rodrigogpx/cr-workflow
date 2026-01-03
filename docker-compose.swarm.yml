@@ -13,7 +13,7 @@ services:
   app:
     image: ghcr.io/${GITHUB_REPOSITORY:-rodrigogpx/cr-workflow}:${IMAGE_TAG:-latest}
     networks:
-      - nginx-public
+      - cac360-public
       - cac360-internal
     environment:
       NODE_ENV: production
@@ -123,13 +123,10 @@ services:
 # NETWORKS
 # ============================================
 networks:
-  nginx-public:
+  cac360-public:
     external: true
-    name: traefik-public
   cac360-internal:
-    driver: overlay
-    attachable: true
-    internal: true
+    external: true
 
 # ============================================
 # VOLUMES
