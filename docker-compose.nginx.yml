@@ -50,7 +50,11 @@ networks:
 
 volumes:
   nginx-certs:
-    external: true
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/cac360/nginx-certs
 
 configs:
   nginx-conf:

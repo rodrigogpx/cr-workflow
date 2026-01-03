@@ -100,7 +100,9 @@ jobs:
             docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}")
             docker network ls | grep -q cac360-public || docker network create --driver overlay --attachable cac360-public || true
             docker network ls | grep -q cac360-internal || docker network create --driver overlay --attachable cac360-internal || true
-            docker volume ls | grep -q nginx-certs || docker volume create nginx-certs || true
+            mkdir -p /opt/cac360/nginx-certs /opt/cac360/postgres-data
+            docker volume inspect nginx-certs >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-certs nginx-certs
+            docker volume inspect postgres-data >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/postgres-data postgres-data
 
             export IMAGE_TAG=hml
             export $(grep -v "^#" /opt/cac360/config/.env | xargs)
