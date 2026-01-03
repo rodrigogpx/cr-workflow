@@ -104,16 +104,16 @@ jobs:
             export IMAGE_TAG=hml
             export $(grep -v "^#" /opt/cac360/config/.env | xargs)
 
-            # Gerar certificados autoassinados (sem Certbot)
-            docker run --rm -v nginx-certs:/certs alpine sh -c "
-              apk add --no-cache openssl
+            # Gerar certificados autoassinados (sem depender de apk/dns)
+            docker run --rm --entrypoint sh -v nginx-certs:/etc/letsencrypt certbot/certbot:latest -c "
+              set -e
               for domain in cac360.com.br hml.cac360.com.br; do
-                dir=/certs/live/\$domain
+                dir=/etc/letsencrypt/live/\$domain
                 mkdir -p \$dir
                 if [ ! -f \$dir/fullchain.pem ]; then
                   openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
                     -keyout \$dir/privkey.pem -out \$dir/fullchain.pem \
-                    -subj \"/CN=\$domain\" 2>/dev/null
+                    -subj '/CN=\$domain' 2>/dev/null
                   cp \$dir/fullchain.pem \$dir/chain.pem
                   echo \"Certificado autoassinado criado para \$domain\"
                 fi
