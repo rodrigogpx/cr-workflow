@@ -89,7 +89,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
       - name: Deploy to Docker Swarm via gcloud compute ssh
         run: |
-          REMOTE_CMD='set -euo pipefail; set -x
+          REMOTE_CMD='set -eo pipefail; set -x
             cd /home/rodrigogpx
             rm -rf app || true
             git clone -b hml https://github.com/rodrigogpx/cr-workflow.git app
