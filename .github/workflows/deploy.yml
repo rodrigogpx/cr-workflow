@@ -149,12 +149,21 @@ jobs:
                     done"; \
               fi && \
               # Recarregar Nginx para carregar novos certificados
-              (docker service update --force edge_nginx || (docker stack rm edge && sleep 5 && docker stack deploy -c docker-compose.nginx.yml edge)) && \
+              (docker service update --force edge_nginx || ( \
+                docker stack rm edge || true; \
+                # aguardar liberação de portas 80/443 (host-mode)
+                for i in 1 2 3 4 5; do \
+                  sleep 5; \
+                  if ! docker ps --format '{{.Names}} {{.Ports}}' | grep -E 'edge_nginx|:80->|:443->'; then break; fi; \
+                done; \
+                docker stack deploy -c docker-compose.nginx.yml edge \
+              )) && \
               # Deploy da aplicação
               docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360 && \
               # Healthcheck pós-deploy
               sleep 10 && \
-              curl -fsS -H "Host: hml.cac360.com.br" https://hml.cac360.com.br/api/health
+              # Healthcheck pós-deploy (usa -k e --resolve para evitar falha de DNS/autoassinado)
+              curl -fsSk --resolve hml.cac360.com.br:443:127.0.0.1 https://hml.cac360.com.br/api/health
             '
   deploy-production:
     name: Deploy Production (Docker Swarm)
