@@ -114,8 +114,8 @@ jobs:
               # Garantir Swarm ativo
               docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}") && \
               # Garantir redes overlay necessárias
-              docker network ls | grep -q "traefik-public" || docker network create --driver overlay --attachable traefik-public && \
-              docker network ls | grep -q "cac360-internal" || docker network create --driver overlay --attachable --internal cac360-internal && \
+              (docker network ls | grep -q "traefik-public" || docker network create --driver overlay --attachable traefik-public || true) && \
+              (docker network ls | grep -q "cac360-internal" || docker network create --driver overlay --attachable --internal cac360-internal || true) && \
               # Exportar variáveis e preparar ambiente
               export IMAGE_TAG=hml && \
               export $(grep -v "^#" /opt/cac360/config/.env | xargs) && \
