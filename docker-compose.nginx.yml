@@ -50,6 +50,9 @@ services:
     image: certbot/certbot:latest
     networks:
       - edge-public
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     volumes:
       - nginx-certs:/etc/letsencrypt
       - nginx-webroot:/var/www/certbot

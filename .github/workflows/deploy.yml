@@ -125,14 +125,28 @@ jobs:
               # Deploy do Nginx + Certbot
               docker stack deploy -c docker-compose.nginx.yml edge && \
               # Emitir/renovar certificados para hml/prod (sem wildcard)
-              docker run --rm \
+              if ! docker run --rm \
                 -v nginx-certs:/etc/letsencrypt \
                 -v nginx-webroot:/var/www/certbot \
+                --dns 1.1.1.1 --dns 8.8.8.8 \
                 --network traefik-public \
                 certbot/certbot:latest certonly --webroot -w /var/www/certbot \
                   --non-interactive --agree-tos -m "${ACME_EMAIL:-admin@cac360.com.br}" \
                   -d cac360.com.br \
-                  -d hml.cac360.com.br && \
+                  -d hml.cac360.com.br; then \
+                echo "Certbot falhou, gerando certificados autoassinados..."; \
+                docker run --rm -v nginx-certs:/etc/letsencrypt alpine sh -c " \
+                  set -e; \
+                  apk add --no-cache openssl >/dev/null; \
+                  for domain in cac360.com.br hml.cac360.com.br; do \
+                    dir=/etc/letsencrypt/live/\$domain; \
+                    mkdir -p \$dir; \
+                    openssl req -x509 -nodes -newkey rsa:2048 -days 30 \
+                      -keyout \$dir/privkey.pem -out \$dir/fullchain.pem \
+                      -subj \"/CN=\$domain\" >/dev/null 2>&1; \
+                    cp \$dir/fullchain.pem \$dir/chain.pem; \
+                  done"; \
+              fi && \
               # Recarregar Nginx para carregar novos certificados
               docker service update --force edge_nginx && \
               # Deploy da aplicação
