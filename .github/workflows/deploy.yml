@@ -165,18 +165,33 @@ jobs:
           docker volume inspect nginx-certs >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-certs nginx-certs
           docker volume inspect nginx-webroot >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-webroot nginx-webroot
 
-          # Tentar emitir Let's Encrypt usando webroot no host
-          docker run --rm \
-            --network host \
-            -v /opt/cac360/nginx-certs:/etc/letsencrypt \
-            -v /opt/cac360/nginx-webroot:/var/www/certbot \
-            --dns 1.1.1.1 --dns 8.8.8.8 \
-            certbot/certbot:latest certonly --webroot -w /var/www/certbot --non-interactive --agree-tos \
-            -m "${ACME_EMAIL:-admin@cac360.com.br}" \
-            -d cac360.com.br -d hml.cac360.com.br || true
+          CID=$(docker ps --filter name=edge_nginx --format '{{.ID}}' | head -1)
+          if [ -z "$CID" ]; then
+            echo "edge_nginx container not running; aborting LE issuance."
+            exit 1
+          fi
 
-          # Reload do Nginx para aplicar LE caso tenha sucesso
-          docker service update --force edge_nginx || true
+          # Validar certificado atual e só emitir se autoassinado ou expirado
+          docker exec "$CID" sh -c '
+            apk add --no-cache openssl certbot
+            CERT=/etc/letsencrypt/live/cac360.com.br/fullchain.pem
+            NEED_LE=1
+            if [ -f "$CERT" ]; then
+              SUBJ=$(openssl x509 -in "$CERT" -noout -subject || true)
+              ISS=$(openssl x509 -in "$CERT" -noout -issuer || true)
+              if [ "$SUBJ" != "" ] && [ "$SUBJ" != "$ISS" ]; then
+                # Não é autoassinado; checar validade (30 dias)
+                if openssl x509 -checkend 2592000 -in "$CERT" -noout; then
+                  echo "Certificado LE válido e não expirado encontrado; pulando emissão."
+                  NEED_LE=0
+                fi
+              fi
+            fi
+            if [ "$NEED_LE" -eq 1 ]; then
+              certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos -m "${ACME_EMAIL:-admin@cac360.com.br}" -d cac360.com.br -d hml.cac360.com.br || true
+              nginx -s reload || true
+            fi
+          '
           EOF
           )"
 
