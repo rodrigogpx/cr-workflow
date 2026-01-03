@@ -149,7 +149,7 @@ jobs:
                     done"; \
               fi && \
               # Recarregar Nginx para carregar novos certificados
-              docker service update --force edge_nginx && \
+              (docker service update --force edge_nginx || (docker stack rm edge && sleep 5 && docker stack deploy -c docker-compose.nginx.yml edge)) && \
               # Deploy da aplicação
               docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360 && \
               # Healthcheck pós-deploy
