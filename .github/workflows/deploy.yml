@@ -89,82 +89,30 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
       - name: Deploy to Docker Swarm via gcloud compute ssh
         run: |
+          REMOTE_CMD="set -euo pipefail; set -x; \
+            mkdir -p /home/rodrigogpx/app; \
+            cd /home/rodrigogpx/app; \
+            if [ ! -d .git ]; then cd /home/rodrigogpx && rm -rf app && git clone -b hml https://github.com/rodrigogpx/cr-workflow.git app && cd app; else git pull origin hml; fi; \
+            echo \"${{ secrets.GHCR_DEPLOY_PAT }}\" | docker login ghcr.io -u rodrigogpx --password-stdin; \
+            docker info --format \"{{.Swarm.LocalNodeState}}\" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk '{print \$1}'); \
+            (docker network ls | grep -q 'traefik-public' || docker network create --driver overlay --attachable traefik-public || true); \
+            (docker network ls | grep -q 'cac360-internal' || docker network create --driver overlay --attachable --internal cac360-internal || true); \
+            export IMAGE_TAG=hml; export $(grep -v '^#' /opt/cac360/config/.env | xargs); \
+            docker stack rm edge || true; sleep 5; \
+            docker stack deploy -c docker-compose.nginx.yml edge; \
+            if ! docker run --rm -v nginx-certs:/etc/letsencrypt -v nginx-webroot:/var/www/certbot --dns 1.1.1.1 --dns 8.8.8.8 --network traefik-public certbot/certbot:latest certonly --webroot -w /var/www/certbot --non-interactive --agree-tos -m \"${ACME_EMAIL:-admin@cac360.com.br}\" -d cac360.com.br -d hml.cac360.com.br; then \
+              echo 'Certbot falhou, gerando certificados autoassinados...'; \
+              docker run --rm --entrypoint sh -v nginx-certs:/etc/letsencrypt certbot/certbot:latest -c \"set -e; for domain in cac360.com.br hml.cac360.com.br; do dir=/etc/letsencrypt/live/\\$domain; mkdir -p \\$dir; openssl req -x509 -nodes -newkey rsa:2048 -days 30 -keyout \\$dir/privkey.pem -out \\$dir/fullchain.pem -subj '/CN=\\$domain' >/dev/null 2>&1; cp \\$dir/fullchain.pem \\$dir/chain.pem; done\"; \
+            fi; \
+            if ! docker service update --force edge_nginx; then docker stack rm edge || true; for i in 1 2 3 4 5; do sleep 5; if ! docker ps --format '{{.Names}} {{.Ports}}' | grep -E 'edge_nginx|:80->|:443->'; then break; fi; done; docker stack deploy -c docker-compose.nginx.yml edge; fi; \
+            docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360; \
+            sleep 10; \
+            curl -fsSk --resolve hml.cac360.com.br:443:127.0.0.1 https://hml.cac360.com.br/api/health"
+
           gcloud compute ssh rodrigogpx@dockerserver01 \
             --zone=us-west1-a \
             --project=${{ secrets.GCP_PROJECT_ID }} \
-            --command='
-              set -euo pipefail
-              set -x
-              # Criar diretório se não existir
-              mkdir -p /home/rodrigogpx/app && \
-              cd /home/rodrigogpx/app && \
-              # Verificar se é um repositório Git válido
-              if [ ! -d .git ]; then
-                # Se não é um repositório, clonar do GitHub
-                cd /home/rodrigogpx && \
-                rm -rf app && \
-                git clone -b hml https://github.com/rodrigogpx/cr-workflow.git app && \
-                cd app
-              else
-                # Se já é um repositório, apenas fazer pull
-                git pull origin hml
-              fi && \
-              # Login no GHCR para puxar imagens privadas
-              echo "${{ secrets.GHCR_DEPLOY_PAT }}" | docker login ghcr.io -u rodrigogpx --password-stdin && \
-              # Garantir Swarm ativo
-              docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}") && \
-              # Garantir redes overlay necessárias
-              (docker network ls | grep -q "traefik-public" || docker network create --driver overlay --attachable traefik-public || true) && \
-              (docker network ls | grep -q "cac360-internal" || docker network create --driver overlay --attachable --internal cac360-internal || true) && \
-              # Exportar variáveis e preparar ambiente
-              export IMAGE_TAG=hml && \
-              export $(grep -v "^#" /opt/cac360/config/.env | xargs) && \
-              # Remover stack edge para atualizar config (configs são imutáveis)
-              docker stack rm edge || true && \
-              sleep 5 && \
-              # Deploy do Nginx + Certbot
-              docker stack deploy -c docker-compose.nginx.yml edge && \
-              # Emitir/renovar certificados para hml/prod (sem wildcard)
-              if ! docker run --rm \
-                -v nginx-certs:/etc/letsencrypt \
-                -v nginx-webroot:/var/www/certbot \
-                --dns 1.1.1.1 --dns 8.8.8.8 \
-                --network traefik-public \
-                certbot/certbot:latest certonly --webroot -w /var/www/certbot \
-                  --non-interactive --agree-tos -m "${ACME_EMAIL:-admin@cac360.com.br}" \
-                  -d cac360.com.br \
-                  -d hml.cac360.com.br; then \
-                echo "Certbot falhou, gerando certificados autoassinados..."; \
-                docker run --rm --entrypoint sh \
-                  -v nginx-certs:/etc/letsencrypt \
-                  certbot/certbot:latest -c " \
-                    set -e; \
-                    for domain in cac360.com.br hml.cac360.com.br; do \
-                      dir=/etc/letsencrypt/live/\$domain; \
-                      mkdir -p \$dir; \
-                      openssl req -x509 -nodes -newkey rsa:2048 -days 30 \
-                        -keyout \$dir/privkey.pem -out \$dir/fullchain.pem \
-                        -subj \"/CN=\$domain\" >/dev/null 2>&1; \
-                      cp \$dir/fullchain.pem \$dir/chain.pem; \
-                    done"; \
-              fi && \
-              # Recarregar Nginx para carregar novos certificados
-              (docker service update --force edge_nginx || ( \
-                docker stack rm edge || true; \
-                # aguardar liberação de portas 80/443 (host-mode)
-                for i in 1 2 3 4 5; do \
-                  sleep 5; \
-                  if ! docker ps --format '{{.Names}} {{.Ports}}' | grep -E 'edge_nginx|:80->|:443->'; then break; fi; \
-                done; \
-                docker stack deploy -c docker-compose.nginx.yml edge \
-              )) && \
-              # Deploy da aplicação
-              docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360 && \
-              # Healthcheck pós-deploy
-              sleep 10 && \
-              # Healthcheck pós-deploy (usa -k e --resolve para evitar falha de DNS/autoassinado)
-              curl -fsSk --resolve hml.cac360.com.br:443:127.0.0.1 https://hml.cac360.com.br/api/health
-            '
+            --command "$REMOTE_CMD"
   deploy-production:
     name: Deploy Production (Docker Swarm)
     runs-on: ubuntu-latest
