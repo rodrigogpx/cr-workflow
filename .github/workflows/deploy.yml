@@ -89,64 +89,66 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
       - name: Deploy to Docker Swarm via gcloud compute ssh
         run: |
-          REMOTE_CMD='set -eo pipefail; set -x
-            cd /home/rodrigogpx
-            rm -rf app || true
-            git clone -b hml https://github.com/rodrigogpx/cr-workflow.git app
-            cd app
+          REMOTE_CMD="$(cat <<'EOF'
+          set -eo pipefail; set -x
+          cd /home/rodrigogpx
+          rm -rf app || true
+          git clone -b hml https://github.com/rodrigogpx/cr-workflow.git app
+          cd app
 
-            echo "${{ secrets.GHCR_DEPLOY_PAT }}" | docker login ghcr.io -u rodrigogpx --password-stdin
+          echo "${{ secrets.GHCR_DEPLOY_PAT }}" | docker login ghcr.io -u rodrigogpx --password-stdin
 
-            docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}")
-            docker network ls | grep -q cac360-public || docker network create --driver overlay --attachable cac360-public || true
-            docker network ls | grep -q cac360-internal || docker network create --driver overlay --attachable cac360-internal || true
-            sudo mkdir -p /opt/cac360/nginx-certs /opt/cac360/nginx-webroot /opt/cac360/postgres-data
-            sudo chown -R rodrigogpx:rodrigogpx /opt/cac360/nginx-certs /opt/cac360/nginx-webroot /opt/cac360/postgres-data
-            docker volume inspect nginx-certs >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-certs nginx-certs
-            docker volume inspect nginx-webroot >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-webroot nginx-webroot
-            docker volume inspect postgres-data >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/postgres-data postgres-data
+          docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk '{print $1}')
+          docker network ls | grep -q cac360-public || docker network create --driver overlay --attachable cac360-public || true
+          docker network ls | grep -q cac360-internal || docker network create --driver overlay --attachable cac360-internal || true
+          sudo mkdir -p /opt/cac360/nginx-certs /opt/cac360/nginx-webroot /opt/cac360/postgres-data
+          sudo chown -R rodrigogpx:rodrigogpx /opt/cac360/nginx-certs /opt/cac360/nginx-webroot /opt/cac360/postgres-data
+          docker volume inspect nginx-certs >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-certs nginx-certs
+          docker volume inspect nginx-webroot >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-webroot nginx-webroot
+          docker volume inspect postgres-data >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/postgres-data postgres-data
 
-            export IMAGE_TAG=hml
-            export $(grep -v "^#" /opt/cac360/config/.env | xargs)
+          export IMAGE_TAG=hml
+          export $(grep -v "^#" /opt/cac360/config/.env | xargs)
 
-            # Tentar emitir Let's Encrypt (webroot). Em caso de falha, gerar autoassinado.
-            if ! docker run --rm \
-              -v nginx-certs:/etc/letsencrypt \
-              -v nginx-webroot:/var/www/certbot \
-              --dns 1.1.1.1 --dns 8.8.8.8 \
-              --network cac360-public \
-              certbot/certbot:latest certonly --webroot -w /var/www/certbot --non-interactive --agree-tos \
-              -m "${ACME_EMAIL:-admin@cac360.com.br}" \
-              -d cac360.com.br -d hml.cac360.com.br; then
-              docker run --rm --entrypoint sh -v nginx-certs:/etc/letsencrypt certbot/certbot:latest -c "
-                set -e
-                for domain in cac360.com.br hml.cac360.com.br; do
-                  dir=/etc/letsencrypt/live/\$domain
-                  mkdir -p \$dir
-                  if [ ! -f \$dir/fullchain.pem ]; then
-                    openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-                      -keyout \$dir/privkey.pem -out \$dir/fullchain.pem \
-                      -subj '/CN=\$domain' 2>/dev/null
-                    cp \$dir/fullchain.pem \$dir/chain.pem
-                    echo \"Certificado autoassinado criado para \$domain\"
-                  fi
-                done
-              "
-            fi
+          # Tentar emitir Let's Encrypt (webroot). Em caso de falha, gerar autoassinado.
+          if ! docker run --rm \
+            -v nginx-certs:/etc/letsencrypt \
+            -v nginx-webroot:/var/www/certbot \
+            --dns 1.1.1.1 --dns 8.8.8.8 \
+            --network cac360-public \
+            certbot/certbot:latest certonly --webroot -w /var/www/certbot --non-interactive --agree-tos \
+            -m "${ACME_EMAIL:-admin@cac360.com.br}" \
+            -d cac360.com.br -d hml.cac360.com.br; then
+            docker run --rm --entrypoint sh -v nginx-certs:/etc/letsencrypt certbot/certbot:latest -c "
+              set -e
+              for domain in cac360.com.br hml.cac360.com.br; do
+                dir=/etc/letsencrypt/live/\$domain
+                mkdir -p \$dir
+                if [ ! -f \$dir/fullchain.pem ]; then
+                  openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+                    -keyout \$dir/privkey.pem -out \$dir/fullchain.pem \
+                    -subj '/CN=\$domain' 2>/dev/null
+                  cp \$dir/fullchain.pem \$dir/chain.pem
+                  echo \"Certificado autoassinado criado para \$domain\"
+                fi
+              done
+            "
+          fi
 
-            # Deploy edge stack (nginx)
-            docker stack rm edge || true
-            sleep 5
-            docker stack deploy -c docker-compose.nginx.yml edge
-            sleep 10
+          # Deploy edge stack (nginx)
+          docker stack rm edge || true
+          sleep 5
+          docker stack deploy -c docker-compose.nginx.yml edge
+          sleep 10
 
-            # Deploy app stack
-            docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360
-            sleep 15
+          # Deploy app stack
+          docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360
+          sleep 15
 
-            # Healthcheck
-            curl -fsSk --resolve hml.cac360.com.br:443:127.0.0.1 https://hml.cac360.com.br/api/health || echo "Healthcheck falhou, mas deploy concluido"
-          '
+          # Healthcheck
+          curl -fsSk --resolve hml.cac360.com.br:443:127.0.0.1 https://hml.cac360.com.br/api/health || echo "Healthcheck falhou, mas deploy concluido"
+          EOF
+          )"
 
           gcloud compute ssh rodrigogpx@dockerserver01 \
             --zone=us-west1-a \
