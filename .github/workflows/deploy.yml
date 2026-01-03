@@ -135,9 +135,9 @@ jobs:
                   -d cac360.com.br \
                   -d hml.cac360.com.br; then \
                 echo "Certbot falhou, gerando certificados autoassinados..."; \
-                docker run --rm \
+                docker run --rm --entrypoint sh \
                   -v nginx-certs:/etc/letsencrypt \
-                  certbot/certbot:latest sh -c " \
+                  certbot/certbot:latest -c " \
                     set -e; \
                     for domain in cac360.com.br hml.cac360.com.br; do \
                       dir=/etc/letsencrypt/live/\$domain; \
