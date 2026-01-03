@@ -51,17 +51,11 @@ networks:
 
 volumes:
   nginx-certs:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/cac360/nginx-certs
+    external: true
+    name: nginx-certs
   nginx-webroot:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/cac360/nginx-webroot
+    external: true
+    name: nginx-webroot
 
 configs:
   nginx-conf:

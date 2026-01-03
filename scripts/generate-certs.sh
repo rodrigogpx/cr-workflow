@@ -15,20 +15,15 @@ for domain in "${DOMAINS[@]}"; do
   dir="$ROOT/live/$domain"
   mkdir -p "$dir"
   if [ ! -f "$dir/fullchain.pem" ] || [ ! -f "$dir/privkey.pem" ]; then
-    docker run --rm --entrypoint sh -v "$ROOT":/etc/letsencrypt certbot/certbot:latest -c "
-      set -e
-      d=/etc/letsencrypt/live/$domain
-      mkdir -p \"\$d\"
-      openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-        -keyout \"\$d/privkey.pem\" -out \"\$d/fullchain.pem\" \
-        -subj '/CN=$domain' 2>/dev/null
-      cp \"\$d/fullchain.pem\" \"\$d/chain.pem\"
-      echo \"Certificado autoassinado criado/garantido para $domain\"
-    "
+    openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+      -keyout "$dir/privkey.pem" -out "$dir/fullchain.pem" \
+      -subj "/CN=$domain" 2>/dev/null
+    cp "$dir/fullchain.pem" "$dir/chain.pem"
+    echo "Certificado autoassinado criado/garantido para $domain"
   else
     echo "Cert já existe para $domain (mantido)."
   fi
 done
 
 echo "Conteúdo atual de $ROOT/live:"
-docker run --rm -v "$ROOT":/etc/letsencrypt alpine sh -c "ls -l /etc/letsencrypt/live || true"
+ls -l "$ROOT/live" || true
