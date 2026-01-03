@@ -128,12 +128,12 @@ jobs:
           docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360
           sleep 15
 
-          # Tentar emitir Let's Encrypt com Nginx já no ar (webroot), mantendo autoassinado como fallback.
+          # Tentar emitir Let's Encrypt no host (webroot), mantendo autoassinado como fallback.
           docker run --rm \
-            -v nginx-certs:/etc/letsencrypt \
-            -v nginx-webroot:/var/www/certbot \
+            --network host \
+            -v /opt/cac360/nginx-certs:/etc/letsencrypt \
+            -v /opt/cac360/nginx-webroot:/var/www/certbot \
             --dns 1.1.1.1 --dns 8.8.8.8 \
-            --network cac360-public \
             certbot/certbot:latest certonly --webroot -w /var/www/certbot --non-interactive --agree-tos \
             -m "${ACME_EMAIL:-admin@cac360.com.br}" \
             -d cac360.com.br -d hml.cac360.com.br || true
