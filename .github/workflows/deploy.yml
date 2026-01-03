@@ -68,12 +68,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
   # ============================================
-  # DEPLOY TO GCP COMPUTE ENGINE (DOCKER SWARM)
+  # DEPLOY HML - NGINX (EDGE)
   # ============================================
-  deploy-hml:
-    name: Deploy HML (Docker Swarm)
+  deploy-hml-nginx:
+    name: Deploy HML (Nginx)
     runs-on: ubuntu-latest
-    needs: build
     if: github.ref == 'refs/heads/hml'
     permissions:
       contents: read
@@ -87,7 +86,7 @@ jobs:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
-      - name: Deploy to Docker Swarm via gcloud compute ssh
+      - name: Deploy Nginx to Docker Swarm (HML)
         run: |
           REMOTE_CMD="$(cat <<'EOF'
           set -eo pipefail; set -x
@@ -103,14 +102,10 @@ jobs:
           docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk '{print $1}')
           docker network ls | grep -q cac360-public || docker network create --driver overlay --attachable cac360-public || true
           docker network ls | grep -q cac360-internal || docker network create --driver overlay --attachable cac360-internal || true
-          sudo mkdir -p /opt/cac360/nginx-certs /opt/cac360/nginx-webroot /opt/cac360/postgres-data
-          sudo chown -R rodrigogpx:rodrigogpx /opt/cac360/nginx-certs /opt/cac360/nginx-webroot /opt/cac360/postgres-data
+          sudo mkdir -p /opt/cac360/nginx-certs /opt/cac360/nginx-webroot
+          sudo chown -R rodrigogpx:rodrigogpx /opt/cac360/nginx-certs /opt/cac360/nginx-webroot
           docker volume inspect nginx-certs >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-certs nginx-certs
           docker volume inspect nginx-webroot >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-webroot nginx-webroot
-          docker volume inspect postgres-data >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/postgres-data postgres-data
-
-          export IMAGE_TAG=hml
-          export $(grep -v "^#" /opt/cac360/config/.env | xargs)
 
           # Gerar certificados autoassinados antes do deploy (garantir boot do Nginx).
           bash scripts/generate-certs.sh /opt/cac360/nginx-certs cac360.com.br hml.cac360.com.br
@@ -124,12 +119,59 @@ jobs:
           docker stack deploy -c docker-compose.nginx.yml edge
           sleep 10
 
+          # Reload do Nginx (mantendo certificados autoassinados gerados no host)
+          docker service update --force edge_nginx || true
+          EOF
+          )"
+
+          gcloud compute ssh rodrigogpx@dockerserver01 \
+            --zone=us-west1-a \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --command "$REMOTE_CMD"
+  # ============================================
+  # DEPLOY HML - APP/BANCO
+  # ============================================
+  deploy-hml:
+    name: Deploy HML (App/DB)
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/hml'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy App/DB to Docker Swarm (HML)
+        run: |
+          REMOTE_CMD="$(cat <<'EOF'
+          set -eo pipefail; set -x
+          cd /home/rodrigogpx
+          rm -rf app || true
+          git clone -b hml https://github.com/rodrigogpx/cr-workflow.git app
+          cd app
+
+          echo "${{ secrets.GHCR_DEPLOY_PAT }}" | docker login ghcr.io -u rodrigogpx --password-stdin
+
+          docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk '{print $1}')
+          docker network ls | grep -q cac360-public || docker network create --driver overlay --attachable cac360-public || true
+          docker network ls | grep -q cac360-internal || docker network create --driver overlay --attachable cac360-internal || true
+          sudo mkdir -p /opt/cac360/postgres-data
+          sudo chown -R rodrigogpx:rodrigogpx /opt/cac360/postgres-data
+          docker volume inspect postgres-data >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/postgres-data postgres-data
+
+          export IMAGE_TAG=hml
+          export $(grep -v "^#" /opt/cac360/config/.env | xargs)
+
           # Deploy app stack
           docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360
           sleep 15
-
-          # Reload do Nginx (mantendo certificados autoassinados gerados no host)
-          docker service update --force edge_nginx || true
 
           # Healthcheck
           curl -fsSk --resolve hml.cac360.com.br:443:127.0.0.1 https://hml.cac360.com.br/api/health || echo "Healthcheck falhou, mas deploy concluido"
