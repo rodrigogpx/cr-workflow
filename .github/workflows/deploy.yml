@@ -100,29 +100,39 @@ jobs:
             docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}")
             docker network ls | grep -q cac360-public || docker network create --driver overlay --attachable cac360-public || true
             docker network ls | grep -q cac360-internal || docker network create --driver overlay --attachable cac360-internal || true
-            sudo mkdir -p /opt/cac360/nginx-certs /opt/cac360/postgres-data
-            sudo chown -R rodrigogpx:rodrigogpx /opt/cac360/nginx-certs /opt/cac360/postgres-data
+            sudo mkdir -p /opt/cac360/nginx-certs /opt/cac360/nginx-webroot /opt/cac360/postgres-data
+            sudo chown -R rodrigogpx:rodrigogpx /opt/cac360/nginx-certs /opt/cac360/nginx-webroot /opt/cac360/postgres-data
             docker volume inspect nginx-certs >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-certs nginx-certs
+            docker volume inspect nginx-webroot >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/nginx-webroot nginx-webroot
             docker volume inspect postgres-data >/dev/null 2>&1 || docker volume create --driver local --opt type=none --opt o=bind --opt device=/opt/cac360/postgres-data postgres-data
 
             export IMAGE_TAG=hml
             export $(grep -v "^#" /opt/cac360/config/.env | xargs)
 
-            # Gerar certificados autoassinados (sem depender de apk/dns)
-            docker run --rm --entrypoint sh -v nginx-certs:/etc/letsencrypt certbot/certbot:latest -c "
-              set -e
-              for domain in cac360.com.br hml.cac360.com.br; do
-                dir=/etc/letsencrypt/live/\$domain
-                mkdir -p \$dir
-                if [ ! -f \$dir/fullchain.pem ]; then
-                  openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-                    -keyout \$dir/privkey.pem -out \$dir/fullchain.pem \
-                    -subj '/CN=\$domain' 2>/dev/null
-                  cp \$dir/fullchain.pem \$dir/chain.pem
-                  echo \"Certificado autoassinado criado para \$domain\"
-                fi
-              done
-            "
+            # Tentar emitir Let's Encrypt (webroot). Em caso de falha, gerar autoassinado.
+            if ! docker run --rm \
+              -v nginx-certs:/etc/letsencrypt \
+              -v nginx-webroot:/var/www/certbot \
+              --dns 1.1.1.1 --dns 8.8.8.8 \
+              --network cac360-public \
+              certbot/certbot:latest certonly --webroot -w /var/www/certbot --non-interactive --agree-tos \
+              -m "${ACME_EMAIL:-admin@cac360.com.br}" \
+              -d cac360.com.br -d hml.cac360.com.br; then
+              docker run --rm --entrypoint sh -v nginx-certs:/etc/letsencrypt certbot/certbot:latest -c "
+                set -e
+                for domain in cac360.com.br hml.cac360.com.br; do
+                  dir=/etc/letsencrypt/live/\$domain
+                  mkdir -p \$dir
+                  if [ ! -f \$dir/fullchain.pem ]; then
+                    openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+                      -keyout \$dir/privkey.pem -out \$dir/fullchain.pem \
+                      -subj '/CN=\$domain' 2>/dev/null
+                    cp \$dir/fullchain.pem \$dir/chain.pem
+                    echo \"Certificado autoassinado criado para \$domain\"
+                  fi
+                done
+              "
+            fi
 
             # Deploy edge stack (nginx)
             docker stack rm edge || true
