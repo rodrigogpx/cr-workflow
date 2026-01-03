@@ -31,12 +31,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
       - name: Detect changed paths
         id: changed
         run: |
-          git fetch origin hml --depth=1 || true
-          BASE=$(git merge-base HEAD origin/hml || git rev-parse HEAD~1)
+          BASE="${{ github.event.before }}"
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            BASE=$(git rev-parse HEAD~1)
+          fi
           CHANGED=$(git diff --name-only "$BASE" HEAD || true)
           echo "Changed files:"
           echo "$CHANGED"
