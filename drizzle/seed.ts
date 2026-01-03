@@ -11,10 +11,10 @@ async function main() {
   // Permitir configuração via variáveis de ambiente, mas com defaults seguros para
   // ambiente de desenvolvimento/local. Em produção, sempre sobrescreva via env.
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@acrdigital.com.br';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin@';
 
   if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-    console.warn('⚠️ Using default admin credentials admin@firingrange.com / admin123 for seed. Override via ADMIN_EMAIL / ADMIN_PASSWORD in production.');
+    console.warn('⚠️ Using default admin credentials admin@acrdigital.com.br / admin@ for seed. Override via ADMIN_EMAIL / ADMIN_PASSWORD in production.');
   }
 
   const dbUrl = process.env.DATABASE_URL;
