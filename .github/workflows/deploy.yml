@@ -135,6 +135,22 @@ jobs:
             "
           fi
 
+          # Garantir que existam certificados (autoassinado) se faltar qualquer um dos domínios.
+          docker run --rm --entrypoint sh -v nginx-certs:/etc/letsencrypt certbot/certbot:latest -c "
+            set -e
+            for domain in cac360.com.br hml.cac360.com.br; do
+              dir=/etc/letsencrypt/live/\$domain
+              mkdir -p \$dir
+              if [ ! -f \$dir/fullchain.pem ]; then
+                openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+                  -keyout \$dir/privkey.pem -out \$dir/fullchain.pem \
+                  -subj '/CN=\$domain' 2>/dev/null
+                cp \$dir/fullchain.pem \$dir/chain.pem
+                echo \"Certificado autoassinado garantido para \$domain\"
+              fi
+            done
+          "
+
           # Deploy edge stack (nginx)
           docker stack rm edge || true
           sleep 5
