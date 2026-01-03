@@ -93,6 +93,8 @@ jobs:
             --zone=us-west1-a \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --command='
+              set -euo pipefail
+              set -x
               # Criar diretório se não existir
               mkdir -p /home/rodrigogpx/app && \
               cd /home/rodrigogpx/app && \
@@ -113,10 +115,27 @@ jobs:
               docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}") && \
               # Garantir rede traefik-public
               docker network ls | grep -q "traefik-public" || docker network create --driver overlay --attachable traefik-public && \
-              # Exportar variáveis e fazer deploy
+              # Exportar variáveis e preparar ambiente
               export IMAGE_TAG=hml && \
               export $(grep -v "^#" /opt/cac360/config/.env | xargs) && \
-              docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360
+              # Deploy do Nginx + Certbot
+              docker stack deploy -c docker-compose.nginx.yml edge && \
+              # Emitir/renovar certificados para hml/prod (sem wildcard)
+              docker run --rm \
+                -v nginx-certs:/etc/letsencrypt \
+                -v nginx-webroot:/var/www/certbot \
+                --network traefik-public \
+                certbot/certbot:latest certonly --webroot -w /var/www/certbot \
+                  --non-interactive --agree-tos -m "${ACME_EMAIL:-admin@cac360.com.br}" \
+                  -d cac360.com.br -d www.cac360.com.br \
+                  -d hml.cac360.com.br -d www.hml.cac360.com.br && \
+              # Recarregar Nginx para carregar novos certificados
+              docker service update --force edge_nginx && \
+              # Deploy da aplicação
+              docker stack deploy -c docker-compose.swarm.yml --with-registry-auth cac360 && \
+              # Healthcheck pós-deploy
+              sleep 10 && \
+              curl -fsS -H "Host: hml.cac360.com.br" https://hml.cac360.com.br/api/health
             '
   deploy-production:
     name: Deploy Production (Docker Swarm)
