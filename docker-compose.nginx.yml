@@ -13,11 +13,10 @@ services:
         protocol: tcp
         mode: host
     networks:
-      - edge-public
+      - nginx-public
       - cac360-internal
     volumes:
-      - nginx-certs:/etc/letsencrypt
-      - nginx-webroot:/var/www/certbot
+      - nginx-certs:/etc/letsencrypt:ro
     configs:
       - source: nginx-conf
         target: /etc/nginx/conf.d/default.conf
@@ -46,38 +45,8 @@ services:
       retries: 3
       start_period: 15s
 
-  certbot:
-    image: certbot/certbot:latest
-    networks:
-      - edge-public
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
-    volumes:
-      - nginx-certs:/etc/letsencrypt
-      - nginx-webroot:/var/www/certbot
-    entrypoint: >
-      sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h; done"
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
-        delay: 30s
-        max_attempts: 3
-      resources:
-        limits:
-          cpus: "0.3"
-          memory: 128M
-        reservations:
-          cpus: "0.1"
-          memory: 64M
-
 networks:
-  edge-public:
+  nginx-public:
     external: true
     name: traefik-public
   cac360-internal:
@@ -85,8 +54,6 @@ networks:
 
 volumes:
   nginx-certs:
-    driver: local
-  nginx-webroot:
     driver: local
 
 configs:
