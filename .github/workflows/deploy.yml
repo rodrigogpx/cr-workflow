@@ -128,8 +128,8 @@ jobs:
                 --network traefik-public \
                 certbot/certbot:latest certonly --webroot -w /var/www/certbot \
                   --non-interactive --agree-tos -m "${ACME_EMAIL:-admin@cac360.com.br}" \
-                  -d cac360.com.br -d www.cac360.com.br \
-                  -d hml.cac360.com.br -d www.hml.cac360.com.br && \
+                  -d cac360.com.br \
+                  -d hml.cac360.com.br && \
               # Recarregar Nginx para carregar novos certificados
               docker service update --force edge_nginx && \
               # Deploy da aplicação
