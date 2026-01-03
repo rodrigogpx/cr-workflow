@@ -107,6 +107,8 @@ jobs:
                 # Se já é um repositório, apenas fazer pull
                 git pull origin hml
               fi && \
+              # Login no GHCR para puxar imagens privadas
+              echo "${{ secrets.GHCR_DEPLOY_PAT }}" | docker login ghcr.io -u rodrigogpx --password-stdin && \
               # Garantir Swarm ativo
               docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}") && \
               # Garantir rede traefik-public
@@ -153,6 +155,8 @@ jobs:
                 # Se já é um repositório, apenas fazer pull
                 git pull origin main
               fi && \
+              # Login no GHCR para puxar imagens privadas
+              echo "${{ secrets.GHCR_DEPLOY_PAT }}" | docker login ghcr.io -u rodrigogpx --password-stdin && \
               # Garantir Swarm ativo
               docker info --format "{{.Swarm.LocalNodeState}}" | grep -qi active || docker swarm init --advertise-addr $(hostname -I | awk "{print \$1}") && \
               # Garantir rede traefik-public
