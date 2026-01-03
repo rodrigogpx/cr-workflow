@@ -125,6 +125,8 @@ jobs:
               fi
             done
           "
+          # Validar que os arquivos existem no volume
+          docker run --rm -v nginx-certs:/etc/letsencrypt alpine sh -c "ls -l /etc/letsencrypt/live && ls -l /etc/letsencrypt/live/cac360.com.br || true"
 
           # Deploy edge stack (nginx)
           docker stack rm edge || true
