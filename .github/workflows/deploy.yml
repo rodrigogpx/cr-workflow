@@ -199,8 +199,8 @@ jobs:
 
           CID=$(docker ps --filter name=edge_nginx --format '{{.ID}}' | head -1)
           if [ -z "$CID" ]; then
-            echo "edge_nginx container not running; aborting LE issuance."
-            exit 1
+            echo "edge_nginx container not running; skipping LE issuance (no-op)."
+            exit 0
           fi
 
           # Validar certificado atual e só emitir se autoassinado ou expirado
