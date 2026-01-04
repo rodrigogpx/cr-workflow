@@ -228,9 +228,10 @@ jobs:
             done
             if [ "$NEED_LE" -eq 1 ]; then
               certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos -m "${ACME_EMAIL:-admin@cac360.com.br}" -d cac360.com.br -d hml.cac360.com.br || true
-              nginx -s reload || true
             fi
           '
+          # Forçar reload via serviço para garantir aplicação do novo cert
+          docker service update --force edge_nginx || true
           EOF
           )"
 
