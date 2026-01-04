@@ -222,6 +222,8 @@ jobs:
             # Se houver diretórios live apenas com autoassinado (sem archive), remover para permitir certbot criar estrutura correta
             for domain in cac360.com.br hml.cac360.com.br; do
               if [ -d "/etc/letsencrypt/live/$domain" ] && [ ! -d "/etc/letsencrypt/archive/$domain" ]; then
+                mkdir -p "/tmp/selfsigned-$domain"
+                cp -a "/etc/letsencrypt/live/$domain" "/tmp/selfsigned-$domain/" || true
                 echo "Removendo live/$domain (autoassinado) para permitir emissão LE..."
                 rm -rf "/etc/letsencrypt/live/$domain"
               fi
@@ -229,6 +231,24 @@ jobs:
             if [ "$NEED_LE" -eq 1 ]; then
               certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos -m "${ACME_EMAIL:-admin@cac360.com.br}" -d cac360.com.br -d hml.cac360.com.br || true
             fi
+            # Garantir que não ficaremos sem certificado: restaurar autoassinado se LE falhar
+            for domain in cac360.com.br hml.cac360.com.br; do
+              if [ ! -s "/etc/letsencrypt/live/$domain/fullchain.pem" ] || [ ! -s "/etc/letsencrypt/live/$domain/privkey.pem" ]; then
+                if [ -d "/tmp/selfsigned-$domain/live/$domain" ]; then
+                  echo "Restaurando autoassinado para $domain (LE não disponível)."
+                  rm -rf "/etc/letsencrypt/live/$domain"
+                  cp -a "/tmp/selfsigned-$domain/live/$domain" "/etc/letsencrypt/live/$domain"
+                else
+                  echo "Gerando autoassinado fallback para $domain."
+                  mkdir -p "/etc/letsencrypt/live/$domain"
+                  openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+                    -keyout "/etc/letsencrypt/live/$domain/privkey.pem" \
+                    -out "/etc/letsencrypt/live/$domain/fullchain.pem" \
+                    -subj "/CN=$domain" 2>/dev/null
+                  cp "/etc/letsencrypt/live/$domain/fullchain.pem" "/etc/letsencrypt/live/$domain/chain.pem"
+                fi
+              fi
+            done
           '
           # Forçar reload via serviço para garantir aplicação do novo cert
           docker service update --force edge_nginx || true
