@@ -98,19 +98,18 @@ docker service update --force cac360-hml_app
 
 ---
 
-## 🔄 Procedimento de Rollback Manual
+## Banco de dados (tenants)
 
-Se o deploy apresentar erros, retorne para a imagem estável anterior:
+```bash
+# entrar no banco
+PGCID=$(docker ps --filter name=cac360_postgres --format '{{.ID}}' | head -1)
+docker exec -it "$PGCID" psql -U cac360 -d cac360
 
-1.  **Identificar imagem anterior**:
-    ```bash
-    cat /opt/cac360/config/.rollback-image
-    ```
-
-2.  **Executar rollback**:
-    ```bash
-    docker service update --image <URL_DA_IMAGEM_ANTERIOR> cac360-hml_app
-    ```
+# criar/ativar tenant dashboard (use suas credenciais do .env)
+INSERT INTO tenants (slug, name, "dbHost", "dbPort", "dbName", "dbUser", "dbPassword", "isActive")
+VALUES ('dashboard','Dashboard','postgres',5432,'cac360','cac360','<SENHA>', true)
+ON CONFLICT (slug) DO UPDATE SET "isActive" = true, "updatedAt" = now();
+```
 
 ---
 

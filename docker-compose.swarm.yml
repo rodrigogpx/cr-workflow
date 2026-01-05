@@ -20,6 +20,16 @@ services:
       PORT: 3000
       DATABASE_URL: postgres://${POSTGRES_USER:-cac360}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cac360}
       JWT_SECRET: ${JWT_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@acrdigital.com.br}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      TENANT_SLUG: ${TENANT_SLUG:-firingrange}
+      TENANT_NAME: ${TENANT_NAME:-Firing Range}
+      TENANT_DB_HOST: ${TENANT_DB_HOST:-postgres}
+      TENANT_DB_PORT: ${TENANT_DB_PORT:-5432}
+      TENANT_DB_NAME: ${TENANT_DB_NAME:-cac360}
+      TENANT_DB_USER: ${TENANT_DB_USER:-cac360}
+      TENANT_DB_PASSWORD: ${TENANT_DB_PASSWORD:-cac360}
+      OAUTH_SERVER_URL: ${OAUTH_SERVER_URL:-}
       # Cloudflare R2 Storage
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
@@ -106,6 +116,16 @@ services:
       - cac360-internal
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-cac360}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cac360}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@acrdigital.com.br}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      TENANT_SLUG: ${TENANT_SLUG:-firingrange}
+      TENANT_NAME: ${TENANT_NAME:-Firing Range}
+      TENANT_DB_HOST: ${TENANT_DB_HOST:-postgres}
+      TENANT_DB_PORT: ${TENANT_DB_PORT:-5432}
+      TENANT_DB_NAME: ${TENANT_DB_NAME:-cac360}
+      TENANT_DB_USER: ${TENANT_DB_USER:-cac360}
+      TENANT_DB_PASSWORD: ${TENANT_DB_PASSWORD:-cac360}
+      OAUTH_SERVER_URL: ${OAUTH_SERVER_URL:-}
     command: sh -c "sleep 10 && pnpm db:push && pnpm db:seed"
     deploy:
       mode: replicated

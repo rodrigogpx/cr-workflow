@@ -29,6 +29,8 @@ import {
   InsertEmailTriggerTemplate,
   emailScheduled,
   InsertEmailScheduled,
+  platformSettings,
+  PlatformSetting,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
@@ -49,6 +51,77 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+export async function getPlatformSetting(key: string): Promise<PlatformSetting | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db
+    .select()
+    .from(platformSettings)
+    .where(eq(platformSettings.key, key))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getPlatformSettings(keys?: string[]): Promise<Record<string, string>> {
+  const db = await getDb();
+  if (!db) return {};
+
+  const query = db.select().from(platformSettings);
+  const rows = keys && keys.length > 0
+    ? await query.where(inArray(platformSettings.key, keys))
+    : await query;
+
+  return rows.reduce<Record<string, string>>((acc, row) => {
+    acc[row.key] = row.value;
+    return acc;
+  }, {});
+}
+
+export async function setPlatformSetting(key: string, value: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .insert(platformSettings)
+    .values({
+      key,
+      value,
+    })
+    .onConflictDoUpdate({
+      target: platformSettings.key,
+      set: {
+        value,
+        updatedAt: new Date(),
+      },
+    });
+}
+
+export async function deletePlatformSetting(key: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.delete(platformSettings).where(eq(platformSettings.key, key));
+}
+
+export async function isPlatformInstalled(): Promise<boolean> {
+  const status = await getPlatformSetting("install.completed");
+  if (status?.value === "true") {
+    return true;
+  }
+
+  const db = await getDb();
+  if (!db) return false;
+
+  const [result] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(tenants)
+    .limit(1);
+
+  return Number(result?.count ?? 0) > 0;
 }
 
 export async function upsertUser(user: InsertUser & { id?: number }): Promise<number> {

@@ -12,6 +12,13 @@ async function main() {
   // ambiente de desenvolvimento/local. Em produção, sempre sobrescreva via env.
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@acrdigital.com.br';
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin@';
+  const tenantSlug = process.env.TENANT_SLUG || 'dashboard';
+  const tenantName = process.env.TENANT_NAME || 'Dashboard';
+  const tenantDbHost = process.env.TENANT_DB_HOST || process.env.POSTGRES_HOST || 'postgres';
+  const tenantDbPort = parseInt(process.env.TENANT_DB_PORT || process.env.POSTGRES_PORT || '5432', 10);
+  const tenantDbName = process.env.TENANT_DB_NAME || process.env.POSTGRES_DB || 'cac360';
+  const tenantDbUser = process.env.TENANT_DB_USER || process.env.POSTGRES_USER || 'cac360';
+  const tenantDbPassword = process.env.TENANT_DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'change_this_password';
 
   if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
     console.warn('⚠️ Using default admin credentials admin@acrdigital.com.br / admin@ for seed. Override via ADMIN_EMAIL / ADMIN_PASSWORD in production.');
@@ -50,18 +57,31 @@ async function main() {
     // ============================================
     // SEED: Default Tenant (Multi-Tenant)
     // ============================================
-    const existingTenant = await db.select().from(tenants).where(eq(tenants.slug, 'default'));
+    const existingTenant = await db.select().from(tenants).where(eq(tenants.slug, tenantSlug));
     if (existingTenant.length > 0) {
-      console.log('✅ Default tenant already exists.');
+      await db
+        .update(tenants)
+        .set({
+          name: tenantName,
+          dbHost: tenantDbHost,
+          dbPort: tenantDbPort,
+          dbName: tenantDbName,
+          dbUser: tenantDbUser,
+          dbPassword: tenantDbPassword,
+          isActive: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(tenants.slug, tenantSlug));
+      console.log(`✅ Tenant ${tenantSlug} atualizado/ativo.`);
     } else {
       await db.insert(tenants).values({
-        slug: 'default',
-        name: 'CAC 360 - Demo',
-        dbHost: process.env.DB_HOST || 'localhost',
-        dbPort: parseInt(process.env.DB_PORT || '5432'),
-        dbName: process.env.DB_NAME || 'cac360_default',
-        dbUser: process.env.DB_USER || 'cac360_user',
-        dbPassword: process.env.DB_PASSWORD || 'change_this_password',
+        slug: tenantSlug,
+        name: tenantName,
+        dbHost: tenantDbHost,
+        dbPort: tenantDbPort,
+        dbName: tenantDbName,
+        dbUser: tenantDbUser,
+        dbPassword: tenantDbPassword,
         primaryColor: '#1a5c00',
         secondaryColor: '#4d9702',
         featureWorkflowCR: true,
@@ -76,7 +96,7 @@ async function main() {
         isActive: true,
       });
 
-      console.log('✅ Default tenant created successfully.');
+      console.log(`✅ Tenant ${tenantSlug} created/activated successfully.`);
     }
 
   } catch (error) {

@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS "platformSettings" (
+    id SERIAL PRIMARY KEY,
+    "key" VARCHAR(120) NOT NULL UNIQUE,
+    value TEXT NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+);

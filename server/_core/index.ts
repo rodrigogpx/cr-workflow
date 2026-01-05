@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { getDocumentsBaseDir } from "../fileStorage";
+import { installRouter } from "../install/router";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -32,6 +33,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  const installWizardEnabled =
+    (process.env.INSTALL_WIZARD_ENABLED ?? "true").toLowerCase() !== "false";
 
   app.use(
     cors({
@@ -59,6 +62,12 @@ async function startServer() {
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+
+  if (installWizardEnabled) {
+    app.use("/api/install", installRouter);
+  } else {
+    console.log("[Install] INSTALL_WIZARD_ENABLED=false → rota /api/install desabilitada");
+  }
   // tRPC API
   app.use(
     "/api/trpc",
