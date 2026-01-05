@@ -371,6 +371,20 @@ export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = typeof tenants.$inferInsert;
 
 /**
+ * Platform Settings - key/value storage for install wizard configuration
+ */
+export const platformSettings = pgTable("platformSettings", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 120 }).notNull().unique(),
+  value: text("value").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type PlatformSetting = typeof platformSettings.$inferSelect;
+export type InsertPlatformSetting = typeof platformSettings.$inferInsert;
+
+/**
  * Platform Admins - Super admins who manage all tenants
  */
 export const platformAdmins = pgTable("platformAdmins", {
