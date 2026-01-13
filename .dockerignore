@@ -1,41 +1,73 @@
-# Dependências
-node_modules
-.pnpm-store
-
-# Build artifacts
-dist
-.vite
-
-# Logs
-*.log
-logs
-
-# Environment
-.env
-.env.local
-.env.*.local
-
 # Git
 .git
 .gitignore
+.gitattributes
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+
+# Build
+dist
+build
+.next
+out
 
 # IDE
 .vscode
 .idea
 *.swp
 *.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Documentation
+README.md
+DEPLOYMENT.md
+GCP-DOCKER-DEPLOY.md
+*.md
+
+# Logs
+logs
+*.log
+
+# Temporary
+tmp
+temp
+.tmp
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Documentação
-README.md
-DEPLOYMENT.md
-DOCKER.md
-todo.md
+# Testing
+coverage
+.nyc_output
+jest.config.js
+vitest.config.ts
 
-# Docker
-Dockerfile
-docker-compose.yml
-.dockerignore
+# Scripts
+scripts
+nginx
+
+# Backup
+backups
+*.sql
+*.sql.gz

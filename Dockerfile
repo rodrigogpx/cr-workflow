@@ -1,65 +1,71 @@
-# Dockerfile para Sistema de Workflow CR - Firing Range
-# Desenvolvido por ACR Digital
+# Dockerfile - CAC 360 Sistema de Workflow CR
+# Migração: Docker Swarm → Docker Puro
+# Otimizado para: Node.js 22 + React 19 + PostgreSQL 16
 
-# Stage 1: Build do frontend
+# ============================================
+# STAGE 1: Build do Frontend
+# ============================================
 FROM node:22-alpine AS frontend-builder
+
+LABEL stage=builder
 
 WORKDIR /app
 
-# Variáveis de ambiente para o build do frontend (Vite)
-ARG VITE_APP_TITLE="CAC 360 – Gestão de Ciclo Completo"
-ARG VITE_APP_LOGO="/logo.png"
-ENV VITE_APP_TITLE=$VITE_APP_TITLE
-ENV VITE_APP_LOGO=$VITE_APP_LOGO
-
-# Copiar arquivos de dependências e patches
+# Copiar arquivos de dependências
 COPY package.json pnpm-lock.yaml ./
-COPY patches ./patches
 
-# Instalar pnpm e dependências (sem frozen-lockfile para aceitar lockfile levemente desatualizado)
-RUN npm install -g pnpm && pnpm install --no-frozen-lockfile
+# Instalar pnpm e dependências
+RUN npm install -g pnpm && \
+    pnpm install --frozen-lockfile
 
 # Copiar código fonte
 COPY . .
 
-# Build do frontend (usa script "build" do package.json)
-RUN pnpm build
+# Build do frontend (Vite)
+RUN pnpm build:client
 
-# Stage 2: Imagem de produção
+# ============================================
+# STAGE 2: Imagem de Produção
+# ============================================
 FROM node:22-alpine
+
+LABEL maintainer="Rodrigo Parreira <rodrigogpx@gmail.com>"
+LABEL description="CAC 360 - Sistema Multi-Tenant de Gestão de Workflow CR"
+LABEL version="1.0.0"
 
 WORKDIR /app
 
 # Instalar pnpm globalmente
-RUN npm install -g pnpm
+RUN npm install -g pnpm && \
+    npm cache clean --force
 
-# Copiar arquivos de dependências e patches
+# Copiar arquivos de dependências
 COPY package.json pnpm-lock.yaml ./
-COPY patches ./patches
 
-# Reutilizar node_modules do stage de build (já com pnpm install executado)
-COPY --from=frontend-builder /app/node_modules ./node_modules
+# Instalar apenas dependências de produção
+RUN pnpm install --frozen-lockfile --prod && \
+    pnpm prune --prod
 
 # Copiar código fonte do servidor
 COPY server ./server
 COPY drizzle ./drizzle
 COPY shared ./shared
-COPY drizzle.config.ts ./
 
 # Copiar build do frontend do stage anterior
 COPY --from=frontend-builder /app/dist ./dist
 
-# Railway injeta a variável PORT automaticamente
-# Fallback para 3000 se não estiver definida
-ENV PORT=3000
+# Criar diretório para logs (opcional)
+RUN mkdir -p /app/logs && \
+    chmod 755 /app/logs
 
 # Expor porta da aplicação
-EXPOSE $PORT
+EXPOSE 3000
 
-# Nota: Healthcheck gerenciado pelo Railway via railway.toml
-# O Railway faz requisições para /health após o container iniciar
+# Health check - Validar saúde da aplicação
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
 
 # Comando de inicialização
-# Ao subir o container, aplica as migrações (db:push) e o seed (db:seed)
-# antes de iniciar o servidor HTTP.
-CMD ["sh", "-c", "pnpm db:push && pnpm db:seed && pnpm start"]
+# 1. Executar migrações do banco
+# 2. Iniciar aplicação
+CMD ["sh", "-c", "pnpm db:push && pnpm start"]

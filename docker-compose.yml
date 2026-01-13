@@ -1,60 +1,217 @@
-# Docker Compose para Sistema de Workflow CR - Firing Range
-# Desenvolvido por ACR Digital
+# docker-compose.yml - CAC 360 Sistema de Workflow CR
+# Versão: Docker Puro (sem Docker Swarm)
+# Serviços: PostgreSQL + Node.js App + Nginx + Certbot
 
 version: '3.8'
 
 services:
-  # Banco de Dados PostgreSQL
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
   postgres:
-    image: postgres:16
-    container_name: firerange-postgres
+    image: postgres:16-alpine
+    container_name: cac360-postgres
     restart: unless-stopped
+    
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-cr_workflow_db}
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      POSTGRES_DB: ${DB_NAME:-cac360_platform}
+      POSTGRES_USER: ${DB_USER:-cac360}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    
     volumes:
+      # Persistência de dados
       - postgres_data:/var/lib/postgresql/data
+      # Scripts de inicialização (opcional)
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    
     networks:
-      - firerange-network
+      - app-network
+    
+    # Health check para validar se banco está pronto
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cac360}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    
+    # Porta exposta apenas para desenvolvimento
+    # Em produção, remover ou restringir acesso
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    
+    # Limites de recursos (opcional)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1'
+    #       memory: 2G
 
-  # Aplicação Web
+  # ============================================
+  # Node.js Application (tRPC + Express)
+  # ============================================
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: firerange-app
+    container_name: cac360-app
     restart: unless-stopped
-    ports:
-      - "${APP_PORT:-3000}:3000"
+    
     environment:
-      NODE_ENV: production
+      # Aplicação
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
-      DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-cr_workflow_db}
+      
+      # Banco de Dados
+      DATABASE_URL: postgresql://${DB_USER:-cac360}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-cac360_platform}
+      PLATFORM_DATABASE_URL: postgresql://${DB_USER:-cac360}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-cac360_platform}
+      
+      # Autenticação
       JWT_SECRET: ${JWT_SECRET}
-      OAUTH_SERVER_URL: ${OAUTH_SERVER_URL:-https://api.manus.im}
+      SECRET_KEY: ${SECRET_KEY}
+      INSTALL_TOKEN: ${INSTALL_TOKEN:-cac360rodrigoparreira}
+      INSTALL_WIZARD_ENABLED: ${INSTALL_WIZARD_ENABLED:-false}
+      
+      # Frontend
+      VITE_APP_TITLE: ${VITE_APP_TITLE:-CAC 360}
+      VITE_APP_LOGO: ${VITE_APP_LOGO:-/logo.png}
+      
+      # SMTP (Email)
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      
+      # Storage (S3/R2)
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION:-sa-east-1}
+      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME}
+      
+      # Domínio
+      DOMAIN: ${DOMAIN:-cac360.com.br}
+      
+      # OAuth (opcional)
+      OAUTH_SERVER_URL: ${OAUTH_SERVER_URL}
       OWNER_NAME: ${OWNER_NAME}
       OWNER_OPEN_ID: ${OWNER_OPEN_ID}
-      VITE_APP_TITLE: ${VITE_APP_TITLE:-CAC 360 – Gestão de Ciclo Completo}
-      VITE_APP_LOGO: ${VITE_APP_LOGO:-/logo.png}
+    
+    # Dependências
     depends_on:
       postgres:
         condition: service_healthy
+    
     networks:
-      - firerange-network
-    command: sh -c "sleep 10 && pnpm db:push && pnpm db:seed && pnpm start"
+      - app-network
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Expor apenas internamente (Nginx faz proxy)
+    expose:
+      - "3000"
+    
+    # Limites de recursos (opcional)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 4G
 
+  # ============================================
+  # Nginx Reverse Proxy + SSL
+  # ============================================
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: cac360-nginx
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      # Configuração do Nginx
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      
+      # Certificados SSL (Let's Encrypt)
+      - nginx_certs:/etc/letsencrypt:ro
+      - nginx_webroot:/var/www/certbot:ro
+      
+      # Logs (opcional)
+      - ./logs/nginx:/var/log/nginx
+    
+    depends_on:
+      - app
+    
+    networks:
+      - app-network
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ============================================
+  # Certbot (Let's Encrypt - SSL Automático)
+  # ============================================
+  certbot:
+    image: certbot/certbot:latest
+    container_name: cac360-certbot
+    restart: unless-stopped
+    
+    volumes:
+      # Certificados
+      - nginx_certs:/etc/letsencrypt
+      - nginx_webroot:/var/www/certbot
+    
+    networks:
+      - app-network
+    
+    # Renovação automática a cada 12 horas
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;"
+    
+    # Limites de recursos (opcional)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 512M
+
+# ============================================
+# Volumes
+# ============================================
 volumes:
+  # Dados do PostgreSQL
   postgres_data:
     driver: local
+  
+  # Certificados SSL
+  nginx_certs:
+    driver: local
+  
+  # Webroot para validação Let's Encrypt
+  nginx_webroot:
+    driver: local
 
+# ============================================
+# Networks
+# ============================================
 networks:
-  firerange-network:
+  app-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
