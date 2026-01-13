@@ -1,32 +1,43 @@
-# Guia de Execução Local com Docker
+# 🐳 Guia Docker - CAC 360
 
-Este documento fornece instruções completas para executar o Sistema de Workflow CR do Firing Range localmente usando Docker Desktop. A configuração Docker simplifica significativamente o processo de implantação ao encapsular toda a aplicação e suas dependências em containers isolados.
+Este documento fornece instruções completas para executar o Sistema CAC 360 localmente usando Docker Desktop. A configuração Docker simplifica significativamente o processo de implantação ao encapsular toda a aplicação e suas dependências em containers isolados.
 
-## Visão Geral da Arquitetura Docker
+---
 
-O sistema utiliza uma arquitetura multi-container orquestrada pelo Docker Compose, composta por dois serviços principais que se comunicam através de uma rede privada. O serviço **mysql** executa o banco de dados MySQL 8.0 com volume persistente para garantir que os dados não sejam perdidos entre reinicializações dos containers. O serviço **app** contém a aplicação Node.js completa, incluindo frontend React e backend tRPC, construída através de um processo de build multi-stage que otimiza o tamanho final da imagem.
+## 🏗️ Visão Geral da Arquitetura Docker
 
-A estratégia de build multi-stage separa a construção do frontend da imagem final de produção. No primeiro estágio, todo o código fonte é compilado e o frontend é construído usando Vite. No segundo estágio, apenas os arquivos necessários para execução são copiados, resultando em uma imagem significativamente menor e mais segura. Esta abordagem também permite que o build do frontend utilize todas as ferramentas de desenvolvimento sem incluí-las na imagem final.
+O sistema utiliza uma arquitetura multi-container orquestrada pelo Docker Compose, composta por **4 serviços principais** que se comunicam através de uma rede privada:
 
-## Pré-requisitos
+1. **PostgreSQL 16** - Banco de dados multi-tenant com volume persistente
+2. **Node.js App** - Aplicação completa (React + tRPC) com build multi-stage
+3. **Nginx** - Reverse proxy com SSL/TLS e rate limiting
+4. **Certbot** - Gerenciamento automático de certificados Let's Encrypt
+
+A estratégia de build multi-stage separa a construção do frontend da imagem final de produção. No primeiro estágio, todo o código fonte é compilado e o frontend é construído usando Vite. No segundo estágio, apenas os arquivos necessários para execução são copiados, resultando em uma imagem significativamente menor e mais segura.
+
+---
+
+## ✅ Pré-requisitos
 
 Antes de iniciar, certifique-se de que seu ambiente de desenvolvimento possui os seguintes componentes instalados e configurados corretamente.
 
 ### Docker Desktop
 
-O Docker Desktop é necessário para executar containers Docker em sistemas Windows, macOS e Linux. Faça o download da versão mais recente através do site oficial [docker.com](https://www.docker.com/products/docker-desktop). Após a instalação, verifique se o Docker está funcionando corretamente executando o comando `docker --version` no terminal, que deve retornar a versão instalada.
+O Docker Desktop é necessário para executar containers Docker em sistemas Windows, macOS e Linux. Faça o download da versão mais recente através do site oficial [docker.com](https://www.docker.com/products/docker-desktop). Após a instalação, verifique se o Docker está funcionando corretamente executando o comando `docker --version` no terminal.
 
-O Docker Desktop inclui automaticamente o Docker Compose, ferramenta essencial para orquestrar múltiplos containers. Verifique a instalação do Compose com o comando `docker-compose --version`. Certifique-se de que o Docker Desktop está em execução antes de prosseguir com os próximos passos.
+O Docker Desktop inclui automaticamente o Docker Compose, ferramenta essencial para orquestrar múltiplos containers. Verifique a instalação com `docker-compose --version`. Certifique-se de que o Docker Desktop está em execução antes de prosseguir.
 
 ### Git
 
-O Git é necessário para clonar o repositório do projeto. Caso ainda não tenha instalado, baixe a versão apropriada para seu sistema operacional através do site [git-scm.com](https://git-scm.com/downloads). Após a instalação, configure suas credenciais do GitHub se planeja fazer alterações no código.
+O Git é necessário para clonar o repositório do projeto. Caso ainda não tenha instalado, baixe a versão apropriada para seu sistema operacional através do site [git-scm.com](https://git-scm.com/downloads).
 
 ### Recursos do Sistema
 
-O sistema requer recursos mínimos de hardware para funcionar adequadamente. Recomenda-se pelo menos 4GB de RAM disponível, sendo que o Docker Desktop sozinho pode consumir entre 2-3GB dependendo da configuração. O espaço em disco necessário é de aproximadamente 2GB para as imagens Docker e volumes de dados. Processadores modernos multi-core proporcionam melhor desempenho, especialmente durante o processo de build inicial.
+O sistema requer recursos mínimos de hardware para funcionar adequadamente. Recomenda-se pelo menos **4GB de RAM disponível**, sendo que o Docker Desktop sozinho pode consumir entre 2-3GB dependendo da configuração. O espaço em disco necessário é de aproximadamente **2GB** para as imagens Docker e volumes de dados. Processadores modernos multi-core proporcionam melhor desempenho, especialmente durante o processo de build inicial.
 
-## Configuração Inicial
+---
+
+## 🚀 Configuração Inicial
 
 O processo de configuração envolve clonar o repositório, configurar variáveis de ambiente e preparar o sistema para execução.
 
@@ -39,57 +50,79 @@ git clone git@github.com:rodrigogpx/cr-workflow.git
 cd cr-workflow
 ```
 
-Este comando cria uma cópia local completa do repositório, incluindo todo o histórico de commits e branches. O diretório `cr-workflow` conterá todos os arquivos necessários para executar a aplicação.
+Este comando cria uma cópia local completa do repositório, incluindo todo o histórico de commits e branches.
 
 ### Configurando Variáveis de Ambiente
 
-As variáveis de ambiente controlam aspectos críticos da aplicação, incluindo credenciais de banco de dados, chaves de segurança e configurações de autenticação. Crie um arquivo `.env` na raiz do projeto com o seguinte conteúdo mínimo:
+As variáveis de ambiente controlam aspectos críticos da aplicação. Crie um arquivo `.env` na raiz do projeto com o seguinte conteúdo:
 
 ```env
-# Banco de Dados
-MYSQL_ROOT_PASSWORD=senha_root_segura_aqui
-MYSQL_DATABASE=firerange_workflow
-MYSQL_USER=firerange_user
-MYSQL_PASSWORD=senha_usuario_segura_aqui
-MYSQL_PORT=3306
+# Banco de Dados (PostgreSQL)
+DB_NAME=cac360_platform
+DB_USER=cac360
+DB_PASSWORD=sua_senha_forte_aqui
+DB_PORT=5432
 
 # Aplicação
-APP_PORT=3000
-NODE_ENV=production
+NODE_ENV=development
+PORT=3000
 
-# Autenticação JWT
-JWT_SECRET=chave_jwt_muito_longa_e_aleatoria_gerada_com_openssl
-
-# OAuth Manus (necessário para autenticação)
-OAUTH_SERVER_URL=https://api.manus.im
-OWNER_NAME=Seu Nome Completo
-OWNER_OPEN_ID=seu_id_oauth_manus
+# Autenticação
+JWT_SECRET=gere_uma_chave_aleatoria_com_openssl_rand_base64_32
+SECRET_KEY=gere_outra_chave_aleatoria_com_openssl_rand_base64_32
+INSTALL_TOKEN=cac360rodrigoparreira
+INSTALL_WIZARD_ENABLED=true
 
 # Frontend
 VITE_APP_TITLE=CAC 360 – Gestão de Ciclo Completo
 VITE_APP_LOGO=/logo.png
+
+# SMTP (Email)
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASS=SG.your_sendgrid_api_key
+SMTP_FROM=CAC 360 <noreply@cac360.com.br>
+
+# Storage (S3/R2)
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+AWS_REGION=sa-east-1
+AWS_BUCKET_NAME=firing-range-documentos
+
+# Domínio
+DOMAIN=localhost
 ```
 
-**Importante:** Substitua todos os valores placeholder por credenciais reais e seguras. Para gerar uma chave JWT forte, utilize o comando `openssl rand -base64 64` no terminal. Nunca compartilhe o arquivo `.env` ou faça commit dele no repositório Git, pois contém informações sensíveis.
+**Importante:** Para gerar chaves seguras, utilize os comandos:
+
+```bash
+# Gerar JWT_SECRET
+openssl rand -base64 32
+
+# Gerar SECRET_KEY
+openssl rand -base64 32
+```
+
+Nunca compartilhe o arquivo `.env` ou faça commit dele no repositório Git, pois contém informações sensíveis.
 
 ### Entendendo as Variáveis
 
-A tabela abaixo descreve cada variável de ambiente e seu propósito no sistema:
-
 | Variável | Descrição | Exemplo |
 |----------|-----------|---------|
-| `MYSQL_ROOT_PASSWORD` | Senha do usuário root do MySQL | `minha_senha_root_123` |
-| `MYSQL_DATABASE` | Nome do banco de dados a ser criado | `firerange_workflow` |
-| `MYSQL_USER` | Usuário do MySQL para a aplicação | `firerange_user` |
-| `MYSQL_PASSWORD` | Senha do usuário da aplicação | `senha_usuario_456` |
-| `MYSQL_PORT` | Porta externa do MySQL | `3306` |
-| `APP_PORT` | Porta externa da aplicação web | `3000` |
-| `JWT_SECRET` | Chave secreta para assinatura de tokens JWT | `resultado_do_openssl_rand` |
-| `OAUTH_SERVER_URL` | URL do servidor OAuth Manus | `https://api.manus.im` |
-| `OWNER_NAME` | Nome do administrador principal | `João Silva` |
-| `OWNER_OPEN_ID` | ID OAuth do administrador | `abc123xyz` |
+| `DB_NAME` | Nome do banco de dados PostgreSQL | `cac360_platform` |
+| `DB_USER` | Usuário do PostgreSQL | `cac360` |
+| `DB_PASSWORD` | Senha do usuário PostgreSQL | `senha_forte_123` |
+| `DB_PORT` | Porta do PostgreSQL | `5432` |
+| `JWT_SECRET` | Chave para assinatura de tokens JWT | `resultado_do_openssl_rand` |
+| `SECRET_KEY` | Chave para criptografia de dados | `resultado_do_openssl_rand` |
+| `INSTALL_TOKEN` | Token para acesso ao Install Wizard | `cac360rodrigoparreira` |
+| `SMTP_HOST` | Servidor SMTP para envio de emails | `smtp.sendgrid.net` |
+| `AWS_BUCKET_NAME` | Bucket S3 para armazenamento de arquivos | `firing-range-documentos` |
 
-## Executando a Aplicação
+---
+
+## 🏃 Executando a Aplicação
 
 Com a configuração concluída, o processo de execução é simples e direto através do Docker Compose.
 
@@ -101,214 +134,209 @@ Execute o seguinte comando na raiz do projeto para construir as imagens Docker e
 docker-compose up --build
 ```
 
-O parâmetro `--build` força a reconstrução das imagens, garantindo que todas as alterações recentes sejam incluídas. Este processo pode levar alguns minutos na primeira execução, pois precisa baixar as imagens base do Node.js e MySQL, instalar todas as dependências npm e compilar o código fonte.
+Este comando irá:
+1. Construir a imagem Docker da aplicação (multi-stage)
+2. Baixar a imagem PostgreSQL 16
+3. Baixar a imagem Nginx
+4. Criar a rede privada entre containers
+5. Iniciar todos os serviços
 
-Durante a inicialização, você verá logs de ambos os containers no terminal. O container MySQL será iniciado primeiro e executará seu processo de inicialização, criando o banco de dados especificado. Após o MySQL estar saudável (health check aprovado), o container da aplicação iniciará, executará as migrações do banco de dados automaticamente através do comando `pnpm db:push` e finalmente iniciará o servidor web.
+O processo pode levar alguns minutos na primeira execução. Você verá logs de cada container no terminal.
 
-### Verificando a Execução
+### Acessando a Aplicação
 
-Quando a aplicação estiver pronta, você verá mensagens indicando que o servidor está rodando. Abra seu navegador e acesse `http://localhost:3000` para visualizar a interface do sistema. A primeira tela deve ser a página de login, onde você pode autenticar usando suas credenciais OAuth configuradas.
+Após a conclusão do build e inicialização, a aplicação estará disponível em:
 
-Para verificar o status dos containers em execução, abra um novo terminal e execute:
+- **Frontend:** http://localhost:3000
+- **API:** http://localhost:3000/api
+- **Health Check:** http://localhost:3000/api/health
 
-```bash
-docker-compose ps
-```
+### Parando os Serviços
 
-Este comando lista todos os containers do projeto, mostrando seus nomes, status e portas expostas. Ambos os containers devem estar com status "Up".
-
-### Executando em Background
-
-Para executar os containers em background (modo detached), permitindo que você continue usando o terminal, utilize o parâmetro `-d`:
-
-```bash
-docker-compose up -d
-```
-
-Neste modo, os logs não são exibidos automaticamente no terminal. Para visualizar os logs de um serviço específico, use:
-
-```bash
-docker-compose logs -f app
-docker-compose logs -f mysql
-```
-
-O parâmetro `-f` (follow) mantém o terminal conectado aos logs, exibindo novas mensagens conforme são geradas.
-
-## Gerenciamento de Containers
-
-O Docker Compose fornece diversos comandos para gerenciar o ciclo de vida dos containers.
-
-### Parando a Aplicação
-
-Para parar todos os containers sem removê-los, execute:
-
-```bash
-docker-compose stop
-```
-
-Este comando preserva o estado dos containers, permitindo reiniciá-los rapidamente com `docker-compose start`. Os dados no volume do MySQL são mantidos intactos.
-
-### Removendo Containers
-
-Para parar e remover completamente os containers, execute:
+Para parar todos os containers, pressione `Ctrl+C` no terminal ou execute:
 
 ```bash
 docker-compose down
 ```
 
-Este comando remove os containers e a rede criada, mas **preserva os volumes de dados**. O banco de dados MySQL não será perdido. Para remover também os volumes (apagando todos os dados), adicione o parâmetro `-v`:
+Para remover também os volumes (dados do banco), use:
 
 ```bash
 docker-compose down -v
 ```
 
-**Atenção:** O comando acima apaga permanentemente todos os dados do banco de dados. Use apenas quando quiser começar do zero.
+---
 
-### Reiniciando Serviços
+## 🔍 Verificando Status
 
-Para reiniciar um serviço específico sem afetar os outros:
-
-```bash
-docker-compose restart app
-docker-compose restart mysql
-```
-
-Este comando é útil após fazer alterações em variáveis de ambiente ou quando um serviço apresenta problemas.
-
-## Acessando o Banco de Dados
-
-Durante o desenvolvimento, pode ser necessário acessar diretamente o banco de dados MySQL para inspeção ou depuração.
-
-### Via Linha de Comando
-
-Para abrir um shell MySQL dentro do container, execute:
-
-```bash
-docker-compose exec mysql mysql -u firerange_user -p firerange_workflow
-```
-
-Quando solicitado, digite a senha configurada em `MYSQL_PASSWORD`. Você terá acesso completo ao banco de dados através do cliente MySQL interativo.
-
-### Via Ferramentas Externas
-
-Ferramentas gráficas como MySQL Workbench, DBeaver ou phpMyAdmin podem conectar ao banco de dados usando as seguintes configurações:
-
-- **Host:** `localhost`
-- **Porta:** `3306` (ou valor de `MYSQL_PORT`)
-- **Usuário:** valor de `MYSQL_USER`
-- **Senha:** valor de `MYSQL_PASSWORD`
-- **Banco de Dados:** valor de `MYSQL_DATABASE`
-
-## Desenvolvimento com Docker
-
-Para desenvolvimento ativo com hot-reload, o Docker pode não ser a melhor opção devido à latência na sincronização de arquivos. Considere executar a aplicação diretamente no host durante o desenvolvimento e usar Docker apenas para o banco de dados:
-
-```bash
-# Iniciar apenas o MySQL
-docker-compose up mysql
-
-# Em outro terminal, executar a aplicação localmente
-pnpm install
-pnpm dev
-```
-
-Esta abordagem híbrida oferece a conveniência do Docker para o banco de dados enquanto mantém a velocidade de desenvolvimento local para o código da aplicação.
-
-## Troubleshooting
-
-Esta seção aborda problemas comuns e suas soluções.
-
-### Porta Já em Uso
-
-Se você receber erro indicando que a porta 3000 ou 3306 já está em uso, outro processo está utilizando essas portas. Identifique o processo com:
-
-```bash
-# Windows
-netstat -ano | findstr :3000
-
-# macOS/Linux
-lsof -i :3000
-```
-
-Você pode encerrar o processo conflitante ou alterar as portas no arquivo `.env` modificando `APP_PORT` e `MYSQL_PORT`.
-
-### Erro de Conexão com Banco de Dados
-
-Se a aplicação não conseguir conectar ao MySQL, verifique se o container do banco de dados está saudável:
+### Listar Containers
 
 ```bash
 docker-compose ps
-docker-compose logs mysql
 ```
 
-O health check do MySQL pode levar alguns segundos para aprovar. Se o problema persistir, verifique as credenciais no arquivo `.env` e certifique-se de que correspondem às configuradas no `docker-compose.yml`.
-
-### Erro de Build
-
-Se o build falhar, verifique se há espaço em disco suficiente e se todas as dependências do `package.json` estão corretas. Limpe o cache do Docker e tente novamente:
+### Ver Logs de um Serviço
 
 ```bash
-docker system prune -a
-docker-compose build --no-cache
+# Logs da aplicação
+docker-compose logs -f app
+
+# Logs do PostgreSQL
+docker-compose logs -f postgres
+
+# Logs do Nginx
+docker-compose logs -f nginx
+
+# Logs do Certbot
+docker-compose logs -f certbot
 ```
 
-### Permissões no Linux
-
-Em sistemas Linux, pode ser necessário executar comandos Docker com `sudo` ou adicionar seu usuário ao grupo docker:
+### Acessar Container Interativamente
 
 ```bash
-sudo usermod -aG docker $USER
+# Acessar shell da aplicação
+docker-compose exec app sh
+
+# Acessar PostgreSQL
+docker-compose exec postgres psql -U cac360 -d cac360_platform
 ```
-
-Após executar este comando, faça logout e login novamente para que as alterações tenham efeito.
-
-## Backup e Restauração
-
-O volume do MySQL contém todos os dados críticos do sistema. Para fazer backup:
-
-```bash
-docker-compose exec mysql mysqldump -u firerange_user -p firerange_workflow > backup.sql
-```
-
-Para restaurar um backup:
-
-```bash
-docker-compose exec -T mysql mysql -u firerange_user -p firerange_workflow < backup.sql
-```
-
-Recomenda-se realizar backups regulares, especialmente antes de atualizações importantes ou mudanças no schema do banco de dados.
-
-## Atualizações
-
-Para atualizar a aplicação com novas versões do código:
-
-```bash
-# Parar containers
-docker-compose down
-
-# Atualizar código
-git pull origin main
-
-# Rebuild e reiniciar
-docker-compose up --build
-```
-
-As migrações de banco de dados são executadas automaticamente durante a inicialização do container da aplicação.
-
-## Segurança
-
-Ao executar em ambiente de produção, considere as seguintes práticas de segurança:
-
-O arquivo `.env` deve ter permissões restritas (chmod 600) e nunca ser commitado no repositório Git. Use senhas fortes e únicas para todas as credenciais, especialmente `MYSQL_ROOT_PASSWORD` e `JWT_SECRET`. Configure um firewall para restringir acesso às portas expostas apenas a IPs confiáveis. Considere usar Docker Secrets ou ferramentas de gerenciamento de segredos como HashiCorp Vault para ambientes de produção.
-
-Atualize regularmente as imagens base do Docker para incluir patches de segurança. Execute `docker-compose pull` periodicamente para baixar versões atualizadas das imagens do MySQL e Node.js.
-
-## Recursos Adicionais
-
-Para informações mais detalhadas sobre implantação em produção, consulte o arquivo `DEPLOYMENT.md` incluído no repositório. A documentação oficial do Docker está disponível em [docs.docker.com](https://docs.docker.com), oferecendo guias aprofundados sobre todos os aspectos do Docker e Docker Compose.
 
 ---
 
-**Guia elaborado pela ACR Digital para facilitar o desenvolvimento local do Sistema de Workflow CR**
+## 🗄️ Banco de Dados
 
-© 2025 ACR Digital - Todos os direitos reservados
+### Conectar ao PostgreSQL
+
+```bash
+docker-compose exec postgres psql -U cac360 -d cac360_platform
+```
+
+### Comandos Úteis do PostgreSQL
+
+```sql
+-- Listar bancos de dados
+\l
+
+-- Conectar a um banco
+\c cac360_platform
+
+-- Listar tabelas
+\dt
+
+-- Ver estrutura de uma tabela
+\d tenants
+
+-- Sair
+\q
+```
+
+### Backup do Banco
+
+```bash
+docker-compose exec postgres pg_dump -U cac360 cac360_platform > backup.sql
+```
+
+### Restaurar Backup
+
+```bash
+docker-compose exec -T postgres psql -U cac360 cac360_platform < backup.sql
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Porta 3000 já está em uso
+
+Se a porta 3000 já está em uso, você pode mudar a porta no `.env`:
+
+```env
+PORT=3001
+```
+
+Ou parar o serviço que está usando a porta:
+
+```bash
+# Encontrar processo usando porta 3000
+lsof -i :3000
+
+# Matar processo
+kill -9 <PID>
+```
+
+### Erro de conexão com banco de dados
+
+Verifique se o container PostgreSQL está rodando:
+
+```bash
+docker-compose ps postgres
+
+# Se não estiver rodando, reinicie
+docker-compose restart postgres
+```
+
+### Erro de permissão no Docker
+
+Se receber erro de permissão, adicione seu usuário ao grupo docker:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### Limpar tudo e começar do zero
+
+```bash
+# Parar containers
+docker-compose down -v
+
+# Remover imagens
+docker-compose rm -f
+
+# Remover volumes
+docker volume prune
+
+# Reconstruir
+docker-compose up --build
+```
+
+---
+
+## 📚 Arquivos de Configuração
+
+### docker-compose.yml
+
+Define todos os serviços (app, postgres, nginx, certbot), volumes, networks e variáveis de ambiente.
+
+### Dockerfile
+
+Implementa build multi-stage:
+- **Stage 1:** Build do frontend (React + Vite)
+- **Stage 2:** Imagem final com backend + frontend compilado
+
+### nginx/nginx.conf
+
+Configuração do Nginx como reverse proxy com:
+- SSL/TLS (Let's Encrypt)
+- Rate limiting
+- Security headers
+- Compressão Gzip
+
+---
+
+## 🚀 Deploy em Produção
+
+Para deploy em produção no GCP, consulte [GCP-DOCKER-DEPLOY.md](./GCP-DOCKER-DEPLOY.md).
+
+---
+
+## 📖 Referências
+
+- [Docker Documentation](https://docs.docker.com/)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Nginx Documentation](https://nginx.org/en/docs/)
+
+---
+
+**Última atualização:** 13 de Janeiro de 2026

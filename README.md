@@ -152,9 +152,12 @@ Sistema flexível de triggers para envio automático de emails:
 ### Infraestrutura
 | Serviço | Uso |
 |---------|-----|
-| Railway | Hospedagem e CI/CD |
-| Cloudflare R2 | Armazenamento de arquivos |
-| PostgreSQL | Banco por tenant |
+| Google Cloud Platform (GCP) | Compute Engine + Cloud DNS |
+| Docker Compose | Orquestração de containers |
+| Nginx | Reverse proxy + SSL/TLS |
+| Let's Encrypt | Certificados SSL automáticos |
+| PostgreSQL 16 | Banco de dados multi-tenant |
+| Cloudflare R2 | Armazenamento de arquivos (S3-compatible) |
 
 ---
 
@@ -217,40 +220,61 @@ cac-360/
 
 ## 🚀 Deploy
 
-### Railway (Produção)
+### Google Cloud Platform (GCP) com Docker Puro
+
+**Deployment Automático via GitHub Actions:**
 
 ```bash
-# Branch hml → Deploy automático
+# Branch hml → Deploy em Homolog
 git push origin hml
+
+# Branch main → Deploy em Produção
+git push origin main
 ```
 
-O Railway executa automaticamente:
-1. Build do frontend (Vite)
-2. Build do backend (esbuild)
-3. Migration do banco (Drizzle)
-4. Deploy da aplicação
+O GitHub Actions executa automaticamente:
+1. Build da imagem Docker (multi-stage)
+2. Push para GitHub Container Registry (GHCR)
+3. Deploy em GCP Compute Engine via SSH
+4. Backup do banco (produção)
+5. Health checks pós-deploy
+6. Notificação de sucesso/erro
+
+**Deployment Manual:**
+
+Veja GCP-DOCKER-DEPLOY.md para instruções detalhadas de deploy manual no GCP.
 
 ### Variáveis de Ambiente
 
 ```env
-# Banco de Dados
-DATABASE_URL=postgresql://...
+# Banco de Dados (PostgreSQL)
+DB_NAME=cac360_platform
+DB_USER=cac360
+DB_PASSWORD=senha_forte_32_chars
+DATABASE_URL=postgresql://cac360:senha@postgres:5432/cac360_platform
 
 # Autenticação
-JWT_SECRET=...
-SESSION_SECRET=...
+JWT_SECRET=chave_aleatoria_32_chars
+SECRET_KEY=chave_aleatoria_32_chars
+INSTALL_TOKEN=cac360rodrigoparreira
+INSTALL_WIZARD_ENABLED=false
 
-# Storage (Cloudflare R2)
-R2_ACCOUNT_ID=...
-R2_ACCESS_KEY_ID=...
-R2_SECRET_ACCESS_KEY=...
-R2_BUCKET_NAME=...
+# Storage (AWS S3 ou Cloudflare R2)
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+AWS_REGION=sa-east-1
+AWS_BUCKET_NAME=firing-range-documentos
 
-# Email (fallback)
-SMTP_HOST=...
-SMTP_PORT=...
-SMTP_USER=...
-SMTP_PASS=...
+# Email (SMTP)
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASS=SG.your_sendgrid_key
+SMTP_FROM=CAC 360 <noreply@cac360.com.br>
+
+# Domínio
+DOMAIN=cac360.com.br
+ACME_EMAIL=admin@cac360.com.br
 ```
 
 ---
