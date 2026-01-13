@@ -1,0 +1,271 @@
+name: Deploy to GCP (Docker Pure)
+
+on:
+  push:
+    branches:
+      - main
+      - hml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'hml'
+        type: choice
+        options:
+          - hml
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  GCP_ZONE: us-west1-a
+  GCP_INSTANCE: dockerserver01
+  GCP_USER: rodrigogpx
+
+jobs:
+  # ============================================
+  # BUILD & PUSH DOCKER IMAGE
+  # ============================================
+  build:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine version and branch
+        id: version
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "version=prod-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "branch=main" >> $GITHUB_OUTPUT
+            echo "environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "version=hml-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "branch=hml" >> $GITHUB_OUTPUT
+            echo "environment=hml" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================
+  # DEPLOY TO GCP (HOMOLOG)
+  # ============================================
+  deploy-hml:
+    name: Deploy HML (Docker Pure)
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/hml'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to GCP (Docker Pure)
+        run: |
+          gcloud compute ssh ${{ env.GCP_USER }}@${{ env.GCP_INSTANCE }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --command='
+              set -euo pipefail
+              
+              echo "📦 Iniciando deploy HML..."
+              
+              # 1. Criar diretório
+              mkdir -p /opt/cac360/app
+              cd /opt/cac360/app
+              
+              # 2. Clonar/atualizar repositório
+              if [ ! -d .git ]; then
+                cd /opt/cac360
+                rm -rf app
+                git clone -b hml https://github.com/rodrigogpx/cr-workflow.git app
+                cd app
+              else
+                git pull origin hml
+              fi
+              
+              # 3. Carregar variáveis de ambiente
+              export $(grep -v "^#" /opt/cac360/config/.env.hml | xargs)
+              
+              # 4. Login no GHCR
+              echo "${{ secrets.GHCR_DEPLOY_PAT }}" | docker login ghcr.io -u rodrigogpx --password-stdin
+              
+              # 5. Docker Compose down (cleanup)
+              docker-compose -f docker-compose.yml down || true
+              
+              # 6. Docker Compose up
+              docker-compose -f docker-compose.yml up -d --build
+              
+              # 7. Aguardar serviços ficarem healthy
+              echo "⏳ Aguardando serviços..."
+              for i in {1..30}; do
+                if curl -sf http://localhost:3000/api/health > /dev/null; then
+                  echo "✅ Aplicação respondendo"
+                  break
+                fi
+                echo "Tentativa $i/30..."
+                sleep 2
+              done
+              
+              # 8. Health check final
+              echo "🔍 Verificando saúde da aplicação..."
+              curl -fsS -H "Host: hml.cac360.com.br" https://hml.cac360.com.br/api/health || {
+                echo "❌ Health check falhou"
+                docker-compose logs app
+                exit 1
+              }
+              
+              echo "✅ Deploy HML concluído!"
+            '
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ Deploy HML successful"
+          else
+            echo "❌ Deploy HML failed"
+            exit 1
+          fi
+
+  # ============================================
+  # DEPLOY TO GCP (PRODUCTION)
+  # ============================================
+  deploy-production:
+    name: Deploy Production (Docker Pure)
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to GCP (Docker Pure)
+        run: |
+          gcloud compute ssh ${{ env.GCP_USER }}@${{ env.GCP_INSTANCE }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --command='
+              set -euo pipefail
+              
+              echo "🚀 Iniciando deploy PRODUCTION..."
+              
+              # 1. Criar diretório
+              mkdir -p /opt/cac360/app
+              cd /opt/cac360/app
+              
+              # 2. Clonar/atualizar repositório
+              if [ ! -d .git ]; then
+                cd /opt/cac360
+                rm -rf app
+                git clone -b main https://github.com/rodrigogpx/cr-workflow.git app
+                cd app
+              else
+                git pull origin main
+              fi
+              
+              # 3. Carregar variáveis de ambiente
+              export $(grep -v "^#" /opt/cac360/config/.env.prod | xargs)
+              
+              # 4. Login no GHCR
+              echo "${{ secrets.GHCR_DEPLOY_PAT }}" | docker login ghcr.io -u rodrigogpx --password-stdin
+              
+              # 5. Backup do banco (IMPORTANTE!)
+              echo "💾 Fazendo backup do banco..."
+              mkdir -p /opt/cac360/backups
+              docker-compose exec -T postgres pg_dump -U ${DB_USER:-cac360} ${DB_NAME:-cac360_platform} > /opt/cac360/backups/backup-$(date +%Y%m%d-%H%M%S).sql || true
+              
+              # 6. Docker Compose down (cleanup)
+              docker-compose -f docker-compose.yml down || true
+              
+              # 7. Docker Compose up
+              docker-compose -f docker-compose.yml up -d --build
+              
+              # 8. Aguardar serviços ficarem healthy
+              echo "⏳ Aguardando serviços..."
+              for i in {1..30}; do
+                if curl -sf http://localhost:3000/api/health > /dev/null; then
+                  echo "✅ Aplicação respondendo"
+                  break
+                fi
+                echo "Tentativa $i/30..."
+                sleep 2
+              done
+              
+              # 9. Health check final
+              echo "🔍 Verificando saúde da aplicação..."
+              curl -fsS -H "Host: cac360.com.br" https://cac360.com.br/api/health || {
+                echo "❌ Health check falhou"
+                docker-compose logs app
+                exit 1
+              }
+              
+              echo "✅ Deploy PRODUCTION concluído!"
+            '
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ Deploy PRODUCTION successful"
+          else
+            echo "❌ Deploy PRODUCTION failed"
+            exit 1
+          fi
