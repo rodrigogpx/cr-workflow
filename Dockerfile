@@ -11,15 +11,12 @@ LABEL stage=builder
 
 WORKDIR /app
 
-# Copiar arquivos de dependências
-COPY package.json pnpm-lock.yaml patches ./
+# Copiar todos os arquivos (incluindo patches)
+COPY . .
 
 # Instalar pnpm e dependências
 RUN npm install -g pnpm && \
     pnpm install --frozen-lockfile
-
-# Copiar código fonte
-COPY . .
 
 # Build do frontend (Vite)
 RUN pnpm build:client
@@ -39,17 +36,12 @@ WORKDIR /app
 RUN npm install -g pnpm && \
     npm cache clean --force
 
-# Copiar arquivos de dependências
-COPY package.json pnpm-lock.yaml patches ./
+# Copiar todos os arquivos (incluindo patches)
+COPY . .
 
 # Instalar apenas dependências de produção
 RUN pnpm install --frozen-lockfile --prod && \
     pnpm prune --prod
-
-# Copiar código fonte do servidor
-COPY server ./server
-COPY drizzle ./drizzle
-COPY shared ./shared
 
 # Copiar build do frontend do stage anterior
 COPY --from=frontend-builder /app/dist ./dist
