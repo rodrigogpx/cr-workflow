@@ -12,7 +12,7 @@ LABEL stage=builder
 WORKDIR /app
 
 # Copiar arquivos de dependências
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml patches ./
 
 # Instalar pnpm e dependências
 RUN npm install -g pnpm && \
@@ -40,7 +40,7 @@ RUN npm install -g pnpm && \
     npm cache clean --force
 
 # Copiar arquivos de dependências
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml patches ./
 
 # Instalar apenas dependências de produção
 RUN pnpm install --frozen-lockfile --prod && \
