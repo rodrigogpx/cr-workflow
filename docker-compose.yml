@@ -1,217 +1,136 @@
-# docker-compose.yml - CAC 360 Sistema de Workflow CR
-# Versão: Docker Puro (sem Docker Swarm)
-# Serviços: PostgreSQL + Node.js App + Nginx + Certbot
-
 version: '3.8'
 
 services:
   # ============================================
-  # PostgreSQL Database
+  # PostgreSQL 16 - Banco de Dados
   # ============================================
   postgres:
     image: postgres:16-alpine
-    container_name: cac360-postgres
+    container_name: cr-workflow-postgres
     restart: unless-stopped
-    
     environment:
-      POSTGRES_DB: ${DB_NAME:-cac360_platform}
-      POSTGRES_USER: ${DB_USER:-cac360}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-cr_workflow}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
-    
     volumes:
-      # Persistência de dados
       - postgres_data:/var/lib/postgresql/data
-      # Scripts de inicialização (opcional)
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    
-    networks:
-      - app-network
-    
-    # Health check para validar se banco está pronto
+    ports:
+      - "${DB_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cac360}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
-    
-    # Porta exposta apenas para desenvolvimento
-    # Em produção, remover ou restringir acesso
-    ports:
-      - "${DB_PORT:-5432}:5432"
-    
-    # Limites de recursos (opcional)
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '1'
-    #       memory: 2G
+    networks:
+      - app-network
 
   # ============================================
-  # Node.js Application (tRPC + Express)
+  # Aplicação Node.js (Frontend + Backend)
   # ============================================
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: cac360-app
+    container_name: cr-workflow-app
     restart: unless-stopped
-    
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      # Aplicação
       NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3000
-      
-      # Banco de Dados
-      DATABASE_URL: postgresql://${DB_USER:-cac360}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-cac360_platform}
-      PLATFORM_DATABASE_URL: postgresql://${DB_USER:-cac360}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-cac360_platform}
-      
-      # Autenticação
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-cr_workflow}
       JWT_SECRET: ${JWT_SECRET}
       SECRET_KEY: ${SECRET_KEY}
-      INSTALL_TOKEN: ${INSTALL_TOKEN:-cac360rodrigoparreira}
-      INSTALL_WIZARD_ENABLED: ${INSTALL_WIZARD_ENABLED:-false}
-      
-      # Frontend
-      VITE_APP_TITLE: ${VITE_APP_TITLE:-CAC 360}
-      VITE_APP_LOGO: ${VITE_APP_LOGO:-/logo.png}
-      
-      # SMTP (Email)
+      INSTALL_TOKEN: ${INSTALL_TOKEN}
+      OAUTH_SERVER_URL: ${OAUTH_SERVER_URL}
+      OWNER_NAME: ${OWNER_NAME}
+      OWNER_OPEN_ID: ${OWNER_OPEN_ID}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      
-      # Storage (S3/R2)
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_REGION: ${AWS_REGION:-sa-east-1}
-      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME}
-      
-      # Domínio
-      DOMAIN: ${DOMAIN:-cac360.com.br}
-      
-      # OAuth (opcional)
-      OAUTH_SERVER_URL: ${OAUTH_SERVER_URL}
-      OWNER_NAME: ${OWNER_NAME}
-      OWNER_OPEN_ID: ${OWNER_OPEN_ID}
-    
-    # Dependências
-    depends_on:
-      postgres:
-        condition: service_healthy
-    
-    networks:
-      - app-network
-    
-    # Health check
+      BUILT_IN_FORGE_API_URL: ${BUILT_IN_FORGE_API_URL}
+      BUILT_IN_FORGE_API_KEY: ${BUILT_IN_FORGE_API_KEY}
+      VITE_FRONTEND_FORGE_API_URL: ${VITE_FRONTEND_FORGE_API_URL}
+      VITE_FRONTEND_FORGE_API_KEY: ${VITE_FRONTEND_FORGE_API_KEY}
+      VITE_ANALYTICS_ENDPOINT: ${VITE_ANALYTICS_ENDPOINT}
+      VITE_ANALYTICS_WEBSITE_ID: ${VITE_ANALYTICS_WEBSITE_ID}
+      VITE_APP_ID: ${VITE_APP_ID}
+      VITE_APP_TITLE: ${VITE_APP_TITLE:-CAC 360}
+      VITE_APP_LOGO: ${VITE_APP_LOGO}
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - ./logs:/app/logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
-    
-    # Expor apenas internamente (Nginx faz proxy)
-    expose:
-      - "3000"
-    
-    # Limites de recursos (opcional)
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '2'
-    #       memory: 4G
+      start_period: 40s
+    networks:
+      - app-network
 
   # ============================================
-  # Nginx Reverse Proxy + SSL
+  # Nginx - Reverse Proxy + SSL
   # ============================================
   nginx:
-    image: nginx:1.27-alpine
-    container_name: cac360-nginx
+    image: nginx:alpine
+    container_name: cr-workflow-nginx
     restart: unless-stopped
-    
+    depends_on:
+      - app
     ports:
       - "80:80"
       - "443:443"
-    
     volumes:
-      # Configuração do Nginx
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      
-      # Certificados SSL (Let's Encrypt)
-      - nginx_certs:/etc/letsencrypt:ro
-      - nginx_webroot:/var/www/certbot:ro
-      
-      # Logs (opcional)
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_cache:/var/cache/nginx
       - ./logs/nginx:/var/log/nginx
-    
-    depends_on:
-      - app
-    
-    networks:
-      - app-network
-    
-    # Health check
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+    networks:
+      - app-network
 
   # ============================================
-  # Certbot (Let's Encrypt - SSL Automático)
+  # Certbot - Let's Encrypt SSL
   # ============================================
   certbot:
     image: certbot/certbot:latest
-    container_name: cac360-certbot
+    container_name: cr-workflow-certbot
     restart: unless-stopped
-    
+    depends_on:
+      - nginx
     volumes:
-      # Certificados
-      - nginx_certs:/etc/letsencrypt
-      - nginx_webroot:/var/www/certbot
-    
+      - ./nginx/ssl:/etc/letsencrypt
+      - ./nginx/ssl/www:/var/www/certbot
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      EMAIL: ${CERTBOT_EMAIL:-admin@example.com}
+    entrypoint: >
+      sh -c 'trap exit TERM; while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done;'
     networks:
       - app-network
-    
-    # Renovação automática a cada 12 horas
-    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;"
-    
-    # Limites de recursos (opcional)
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '0.5'
-    #       memory: 512M
 
-# ============================================
-# Volumes
-# ============================================
 volumes:
-  # Dados do PostgreSQL
   postgres_data:
     driver: local
-  
-  # Certificados SSL
-  nginx_certs:
-    driver: local
-  
-  # Webroot para validação Let's Encrypt
-  nginx_webroot:
+  nginx_cache:
     driver: local
 
-# ============================================
-# Networks
-# ============================================
 networks:
   app-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16

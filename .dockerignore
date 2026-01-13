@@ -7,12 +7,7 @@
 node_modules
 npm-debug.log
 yarn-error.log
-
-# Build
-dist
-build
-.next
-out
+.pnpm-store
 
 # IDE
 .vscode
@@ -22,47 +17,56 @@ out
 *~
 .DS_Store
 
+# Build
+dist
+build
+.next
+out
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.circleci
+.travis.yml
+
 # Environment
 .env
 .env.local
 .env.*.local
+
+# Testing
+.vitest
+coverage
+.nyc_output
+
+# Temporary
+tmp
+temp
+*.tmp
 
 # Docker
 Dockerfile
 docker-compose*.yml
 .dockerignore
 
-# CI/CD
-.github
-.gitlab-ci.yml
-.travis.yml
-
-# Documentation
-README.md
-DEPLOYMENT.md
-GCP-DOCKER-DEPLOY.md
-*.md
+# Development
+.manus
+.vite
+.turbo
 
 # Logs
 logs
 *.log
 
-# Temporary
-tmp
-temp
-.tmp
-
 # OS
-.DS_Store
 Thumbs.db
-
-# Testing
-coverage
-.nyc_output
-jest.config.js
-vitest.config.ts
-
-# Scripts (não excluir - necessários para build)
+.DS_Store
 
 # Backup
 backups
