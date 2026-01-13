@@ -62,9 +62,7 @@ coverage
 jest.config.js
 vitest.config.ts
 
-# Scripts
-scripts
-nginx
+# Scripts (não excluir - necessários para build)
 
 # Backup
 backups
