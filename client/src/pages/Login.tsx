@@ -90,8 +90,8 @@ export default function Login() {
               Automatize todo o ciclo CAC em um único painel inteligente.
             </h1>
             <p className="text-base text-white/80 max-w-2xl">
-              Do onboarding ao deferimento, o CAC 360 integra workflow, auditoria, disparo de e-mails e gestão documental
-              em um ambiente multi-tenant pensado para clubes de tiro que precisam de escala com segurança.
+              Modulos rapidos: Cadastro e dados do associado, Laudos/Agendamentos, Juntada de Documentos,
+              Acompanhamento Sinarm, Automacao de E-mails e Auditoria completa - tudo no mesmo painel multi-tenant.
             </p>
           </div>
 
@@ -186,3 +186,4 @@ export default function Login() {
   </div>
   );
 }
+
