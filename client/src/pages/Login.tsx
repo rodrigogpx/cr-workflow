@@ -6,7 +6,7 @@ import { APP_LOGO, APP_TITLE } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Target, Loader2, UserPlus } from "lucide-react";
+import { Target, Loader2, UserPlus, Sparkles, ShieldCheck, LineChart } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation } from "wouter";
@@ -78,7 +78,61 @@ export default function Login() {
       {/* Overlay for readability */}
       <div className="absolute inset-0 bg-background/10 backdrop-blur-[2px] z-0"></div>
 
-      <Card className="w-full max-w-xs border border-primary/30 bg-card/95 backdrop-blur-sm shadow-xl relative z-10">
+      <div className="relative z-10 w-full max-w-6xl grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-center">
+        {/* Peça publicitária */}
+        <section className="rounded-3xl border border-white/15 bg-black/70 text-white p-8 sm:p-10 shadow-2xl space-y-8">
+          <div className="space-y-3">
+            <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-emerald-300">
+              <Sparkles className="h-4 w-4" />
+              Plataforma CAC 360
+            </p>
+            <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
+              Automatize todo o ciclo CAC em um único painel inteligente.
+            </h1>
+            <p className="text-base text-white/80 max-w-2xl">
+              Do onboarding ao deferimento, o CAC 360 integra workflow, auditoria, disparo de e-mails e gestão documental
+              em um ambiente multi-tenant pensado para clubes de tiro que precisam de escala com segurança.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
+              <ShieldCheck className="h-6 w-6 text-emerald-300" />
+              <p className="text-sm text-white/70 mt-3">Auditoria completa de cada ação e isolamento por tenant.</p>
+            </div>
+            <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
+              <LineChart className="h-6 w-6 text-sky-300" />
+              <p className="text-sm text-white/70 mt-3">Workflow em 6 etapas com insights de progresso em tempo real.</p>
+            </div>
+            <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
+              <Target className="h-6 w-6 text-rose-300" />
+              <p className="text-sm text-white/70 mt-3">Triggers inteligentes de e-mail e controle de documentos enxuto.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <Button
+              asChild
+              className="h-12 px-6 text-sm font-semibold uppercase tracking-wide bg-emerald-500 hover:bg-emerald-400 text-black"
+            >
+              <a href="https://acrdigital.com.br" target="_blank" rel="noreferrer">
+                Agendar demonstração
+              </a>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="h-12 px-6 text-sm font-semibold uppercase tracking-wide border-white/40 text-white hover:text-black hover:bg-white"
+            >
+              <a href="https://github.com/rodrigogpx/cr-workflow" target="_blank" rel="noreferrer">
+                Baixar brochure
+              </a>
+            </Button>
+          </div>
+        </section>
+
+        {/* Card de login */}
+        <Card className="w-full max-w-md border border-primary/30 bg-card/95 backdrop-blur-sm shadow-xl">
         <CardHeader className="space-y-4 text-center pb-4">
           <div className="flex justify-center">
             <div className="relative">
