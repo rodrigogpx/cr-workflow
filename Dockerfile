@@ -14,8 +14,8 @@ LABEL description="Frontend builder stage"
 
 WORKDIR /app
 
-# Copiar apenas package.json (lock será resolvido no build remoto)
-COPY package.json ./
+# Copiar manifestos de dependências
+COPY package.json pnpm-lock.yaml ./
 
 # Copiar patches antes da instalação para que pnpm os encontre
 COPY patches ./patches
@@ -51,8 +51,8 @@ LABEL description="Backend builder stage"
 
 WORKDIR /app
 
-# Copiar apenas package.json e patches necessários
-COPY package.json ./
+# Copiar manifestos de dependências e patches necessários
+COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 
 # Instalar pnpm globalmente
