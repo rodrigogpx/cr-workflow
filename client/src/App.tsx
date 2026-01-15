@@ -134,9 +134,7 @@ function Router() {
             <PendingApproval />
           </AuthenticatedRoute>
         </Route>
-        <Route path={"/"}>
-          <Redirect to="/dashboard" />
-        </Route>
+        <Route path={"/"} component={Login} />
         <Route path={"/:tenantSlug"}>
           {({ tenantSlug }: { tenantSlug: string }) => (
             <Redirect to={buildTenantPath(tenantSlug, "/dashboard")} />
