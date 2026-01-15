@@ -14,8 +14,11 @@ LABEL description="Frontend builder stage"
 
 WORKDIR /app
 
-# Copiar apenas arquivos de dependências
+# Copiar arquivos de dependências
 COPY package.json pnpm-lock.yaml ./
+
+# Copiar patches antes da instalação para que pnpm os encontre
+COPY patches ./patches
 
 # Instalar pnpm globalmente
 RUN npm install -g pnpm && npm cache clean --force
@@ -39,8 +42,9 @@ LABEL description="Backend builder stage"
 
 WORKDIR /app
 
-# Copiar apenas arquivos de dependências
+# Copiar apenas arquivos de dependências e patches necessários
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 
 # Instalar pnpm globalmente
 RUN npm install -g pnpm && npm cache clean --force
@@ -53,6 +57,9 @@ COPY . .
 
 # Build do backend
 RUN pnpm run build
+
+# Remover dependências de desenvolvimento e manter apenas o necessário para produção
+RUN pnpm prune --prod
 
 # ============================================
 # STAGE 3: Imagem de Produção
@@ -68,12 +75,11 @@ WORKDIR /app
 # Instalar pnpm globalmente
 RUN npm install -g pnpm && npm cache clean --force
 
-# Copiar apenas arquivos de dependências
+# Copiar manifestos para referência em runtime
 COPY package.json pnpm-lock.yaml ./
 
-# Instalar apenas dependências de produção
-RUN pnpm install --frozen-lockfile --prod && \
-    pnpm prune --prod
+# Reutilizar node_modules já podado do estágio de backend
+COPY --from=backend-builder /app/node_modules ./node_modules
 
 # Copiar build do frontend
 COPY --from=frontend-builder /app/dist ./dist
