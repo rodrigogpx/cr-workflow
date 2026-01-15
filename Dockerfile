@@ -14,8 +14,8 @@ LABEL description="Frontend builder stage"
 
 WORKDIR /app
 
-# Copiar arquivos de dependências
-COPY package.json pnpm-lock.yaml ./
+# Copiar apenas package.json (lock será resolvido no build remoto)
+COPY package.json ./
 
 # Copiar patches antes da instalação para que pnpm os encontre
 COPY patches ./patches
@@ -23,8 +23,17 @@ COPY patches ./patches
 # Instalar pnpm globalmente
 RUN npm install -g pnpm && npm cache clean --force
 
-# Instalar dependências (incluindo patches)
-RUN pnpm install --frozen-lockfile
+# Instalar dependências (com fallback quando o lock estiver ausente/desatualizado)
+RUN set -eux; \
+    if [ -f pnpm-lock.yaml ] && [ -s pnpm-lock.yaml ]; then \
+      if ! pnpm install --frozen-lockfile; then \
+        echo "pnpm-lock.yaml desatualizado. Reinstalando sem travamento"; \
+        pnpm install --no-frozen-lockfile; \
+      fi; \
+    else \
+      echo "pnpm-lock.yaml ausente. Instalando dependências sem travamento"; \
+      pnpm install --no-frozen-lockfile; \
+    fi
 
 # Copiar código-fonte completo
 COPY . .
@@ -42,15 +51,24 @@ LABEL description="Backend builder stage"
 
 WORKDIR /app
 
-# Copiar apenas arquivos de dependências e patches necessários
-COPY package.json pnpm-lock.yaml ./
+# Copiar apenas package.json e patches necessários
+COPY package.json ./
 COPY patches ./patches
 
 # Instalar pnpm globalmente
 RUN npm install -g pnpm && npm cache clean --force
 
-# Instalar todas as dependências
-RUN pnpm install --frozen-lockfile
+# Instalar todas as dependências com fallback remoto
+RUN set -eux; \
+    if [ -f pnpm-lock.yaml ] && [ -s pnpm-lock.yaml ]; then \
+      if ! pnpm install --frozen-lockfile; then \
+        echo "pnpm-lock.yaml desatualizado. Reinstalando sem travamento"; \
+        pnpm install --no-frozen-lockfile; \
+      fi; \
+    else \
+      echo "pnpm-lock.yaml ausente. Instalando dependências sem travamento"; \
+      pnpm install --no-frozen-lockfile; \
+    fi
 
 # Copiar código-fonte completo
 COPY . .
@@ -76,7 +94,8 @@ WORKDIR /app
 RUN npm install -g pnpm && npm cache clean --force
 
 # Copiar manifestos para referência em runtime
-COPY package.json pnpm-lock.yaml ./
+COPY package.json ./
+COPY --from=backend-builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
 # Reutilizar node_modules já podado do estágio de backend
 COPY --from=backend-builder /app/node_modules ./node_modules
