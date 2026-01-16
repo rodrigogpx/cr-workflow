@@ -74,7 +74,7 @@ RUN set -eux; \
 COPY . .
 
 # Build do backend
-RUN pnpm run build
+RUN pnpm run build:server
 
 # Remover dependências de desenvolvimento e manter apenas o necessário para produção
 RUN pnpm prune --prod
