@@ -123,4 +123,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 # Comando de inicialização
 # O comando de inicialização é gerenciado pelo railway.json/toml em produção.
 # Este CMD serve como fallback para execução local via Docker.
-CMD ["sh", "-c", "pnpm db:push && pnpm start"]
+CMD ["pnpm", "start"]
