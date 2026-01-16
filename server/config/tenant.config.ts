@@ -182,26 +182,24 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
     const platformDbUrl = process.env.DATABASE_URL;
     let connectionString = '';
     
-    if (isSingleDbMode) {
-      connectionString = platformDbUrl ?? '';
-      if (!connectionString) {
-        console.error('[Tenant] Single DB mode active but DATABASE_URL is missing');
-        return null;
+    // PRIORIDADE: Se estamos no Railway/Produção e temos DATABASE_URL, 
+    // usamos ela para evitar erros de credenciais desatualizadas no banco de dados do tenant.
+    if (platformDbUrl && (isSingleDbMode || process.env.NODE_ENV === 'production')) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Tenant] Using system DATABASE_URL for tenant ${tenant.slug} (Priority Mode)`);
       }
-    } else {
-      // Validar se temos os dados mínimos para conexão multi-db
-      if (!tenant.dbHost || !tenant.dbName || !tenant.dbUser) {
-        console.error(`[Tenant] Missing DB credentials for tenant ${tenant.slug}. Falling back to single DB mode check.`);
-        // Fallback emergencial: se não tem dados de conexão, tenta usar o banco da plataforma
-        if (platformDbUrl) {
-          connectionString = platformDbUrl;
-          console.warn(`[Tenant] Using platform DATABASE_URL as fallback for tenant ${tenant.slug}`);
-        } else {
-          return null;
-        }
-      } else {
-        connectionString = `postgres://${tenant.dbUser}:${tenant.dbPassword}@${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
-      }
+      connectionString = platformDbUrl;
+    } else if (tenant.dbHost && tenant.dbName && tenant.dbUser) {
+      // Modo Multi-DB explícito (apenas se tivermos todos os dados e não estivermos forçando single)
+      connectionString = `postgres://${tenant.dbUser}:${tenant.dbPassword}@${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
+    } else if (platformDbUrl) {
+      // Fallback final
+      connectionString = platformDbUrl;
+    }
+
+    if (!connectionString) {
+      console.error(`[Tenant] No connection string available for tenant ${tenant.slug}`);
+      return null;
     }
     const client = postgres(connectionString, {
       max: Number(process.env.TENANT_DB_POOL_MAX ?? 5),
