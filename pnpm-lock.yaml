@@ -145,6 +145,9 @@ importers:
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
+      better-sqlite3:
+        specifier: ^12.4.6
+        version: 12.4.6
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -296,9 +299,6 @@ importers:
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.21(postcss@8.5.6)
-      better-sqlite3:
-        specifier: ^12.4.6
-        version: 12.4.6
       esbuild:
         specifier: ^0.25.0
         version: 0.25.10
