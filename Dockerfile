@@ -121,4 +121,6 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
 
 # Comando de inicialização
+# O comando de inicialização é gerenciado pelo railway.json/toml em produção.
+# Este CMD serve como fallback para execução local via Docker.
 CMD ["sh", "-c", "pnpm db:push && pnpm start"]
