@@ -166,6 +166,9 @@ importers:
       dotenv:
         specifier: ^17.2.2
         version: 17.2.3
+      drizzle-kit:
+        specifier: ^0.31.4
+        version: 0.31.7
       drizzle-orm:
         specifier: ^0.44.5
         version: 0.44.7(better-sqlite3@12.4.6)(mysql2@3.15.3)(postgres@3.4.8)
@@ -296,9 +299,6 @@ importers:
       better-sqlite3:
         specifier: ^12.4.6
         version: 12.4.6
-      drizzle-kit:
-        specifier: ^0.31.4
-        version: 0.31.7
       esbuild:
         specifier: ^0.25.0
         version: 0.25.10
