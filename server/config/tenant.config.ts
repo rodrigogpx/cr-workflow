@@ -180,13 +180,28 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
 
   try {
     const platformDbUrl = process.env.DATABASE_URL;
-    const connectionString = isSingleDbMode
-      ? (platformDbUrl ?? '')
-      : `postgres://${tenant.dbUser}:${tenant.dbPassword}@${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
-
-    if (!connectionString) {
-      console.error('[Tenant] Platform database URL not configured');
-      return null;
+    let connectionString = '';
+    
+    if (isSingleDbMode) {
+      connectionString = platformDbUrl ?? '';
+      if (!connectionString) {
+        console.error('[Tenant] Single DB mode active but DATABASE_URL is missing');
+        return null;
+      }
+    } else {
+      // Validar se temos os dados mínimos para conexão multi-db
+      if (!tenant.dbHost || !tenant.dbName || !tenant.dbUser) {
+        console.error(`[Tenant] Missing DB credentials for tenant ${tenant.slug}. Falling back to single DB mode check.`);
+        // Fallback emergencial: se não tem dados de conexão, tenta usar o banco da plataforma
+        if (platformDbUrl) {
+          connectionString = platformDbUrl;
+          console.warn(`[Tenant] Using platform DATABASE_URL as fallback for tenant ${tenant.slug}`);
+        } else {
+          return null;
+        }
+      } else {
+        connectionString = `postgres://${tenant.dbUser}:${tenant.dbPassword}@${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
+      }
     }
     const client = postgres(connectionString, {
       max: Number(process.env.TENANT_DB_POOL_MAX ?? 5),
