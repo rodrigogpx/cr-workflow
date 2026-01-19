@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,25 +28,57 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Users as UsersIcon, Trash2, Shield, User, Edit2, Plus } from "lucide-react";
+import { Users as UsersIcon, Trash2, Shield, User, Edit2, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
+// Schema de criação de usuário
+const createUserSchema = z.object({
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+  role: z.enum(["operator", "admin", "despachante"], {
+    errorMap: () => ({ message: "Selecione um perfil válido" }),
+  }),
+});
+
+// Schema de edição de usuário
+const updateUserSchema = z.object({
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").optional().or(z.literal("")),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional().or(z.literal("")),
+  role: z.enum(["operator", "admin", "despachante"]).optional(),
+});
+
+type CreateUserFormValues = z.infer<typeof createUserSchema>;
+type UpdateUserFormValues = z.infer<typeof updateUserSchema>;
 
 export default function Users() {
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
-  const [formData, setFormData] = useState<{
-    name: string;
-    email: string;
-    role: "operator" | "admin" | "despachante" | "";
-    password: string;
-  }>({
-    name: "",
-    email: "",
-    role: "operator",
-    password: "",
-  });
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'operator' | 'despachante' | 'pending'>("all");
+
+  // Form para criação
+  const createForm = useForm<CreateUserFormValues>({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      role: "operator",
+    },
+  });
+
+  // Form para edição
+  const editForm = useForm<UpdateUserFormValues>({
+    resolver: zodResolver(updateUserSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      role: "operator",
+    },
+  });
   
   const getFriendlyErrorMessage = (error: any, fallback: string) => {
     const message = error?.message;
@@ -103,46 +138,38 @@ export default function Users() {
   });
 
   const openCreateDialog = () => {
-    setFormData({ name: "", email: "", role: "operator", password: "" });
+    createForm.reset({ name: "", email: "", password: "", role: "operator" });
     setIsCreateOpen(true);
   };
 
   const openEditDialog = (user: any) => {
     setEditingUser(user);
-    setFormData({
+    editForm.reset({
       name: user.name || "",
       email: user.email || "",
-      role: (user.role as "operator" | "admin" | "despachante" | "") || "",
+      role: user.role || "operator",
       password: "",
     });
   };
 
-  const handleSubmitCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim() || !formData.role) {
-      toast.error("Preencha nome, email, senha e perfil");
-      return;
-    }
-
+  const handleSubmitCreate = (data: CreateUserFormValues) => {
     createUserMutation.mutate({
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      password: formData.password,
-      role: formData.role as "operator" | "admin" | "despachante",
+      name: data.name.trim(),
+      email: data.email.trim(),
+      password: data.password,
+      role: data.role,
     });
   };
 
-  const handleSubmitEdit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmitEdit = (data: UpdateUserFormValues) => {
     if (!editingUser) return;
 
     updateUserMutation.mutate({
       userId: editingUser.id,
-      name: formData.name.trim() || undefined,
-      email: formData.email.trim() || undefined,
-      role: formData.role || undefined,
-      password: formData.password.trim() || undefined,
+      name: data.name?.trim() || undefined,
+      email: data.email?.trim() || undefined,
+      role: data.role || undefined,
+      password: data.password?.trim() || undefined,
     });
   };
 
@@ -287,100 +314,42 @@ export default function Users() {
       </div>
 
       {/* Dialog de Criação de Usuário */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+      <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) createForm.reset(); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Novo Usuário</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmitCreate} className="space-y-4">
+          <form onSubmit={createForm.handleSubmit(handleSubmitCreate)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nome</Label>
               <Input
                 id="name"
-                value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                {...createForm.register("name")}
+                className={createForm.formState.errors.name ? "border-red-500" : ""}
               />
+              {createForm.formState.errors.name && (
+                <p className="text-sm text-red-500">{createForm.formState.errors.name.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                value={formData.email}
-                onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                {...createForm.register("email")}
+                className={createForm.formState.errors.email ? "border-red-500" : ""}
               />
+              {createForm.formState.errors.email && (
+                <p className="text-sm text-red-500">{createForm.formState.errors.email.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Perfil</Label>
               <Select
-                value={formData.role || "operator"}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, role: value as "operator" | "admin" }))
-                }
+                value={createForm.watch("role") || "operator"}
+                onValueChange={(value) => createForm.setValue("role", value as "operator" | "admin" | "despachante")}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um perfil" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="operator">Operador</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                <SelectItem value="despachante">Despachante</SelectItem></SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
-              />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={createUserMutation.isPending}>
-                Salvar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog de Edição de Usuário */}
-      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Usuário</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmitEdit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Nome</Label>
-              <Input
-                id="edit-name"
-                value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">Email</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-role">Perfil</Label>
-              <Select
-                value={formData.role || "operator"}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, role: value as "operator" | "admin" | "despachante" }))
-                }
-              >
-                <SelectTrigger>
+                <SelectTrigger className={createForm.formState.errors.role ? "border-red-500" : ""}>
                   <SelectValue placeholder="Selecione um perfil" />
                 </SelectTrigger>
                 <SelectContent>
@@ -389,21 +358,102 @@ export default function Users() {
                   <SelectItem value="despachante">Despachante</SelectItem>
                 </SelectContent>
               </Select>
+              {createForm.formState.errors.role && (
+                <p className="text-sm text-red-500">{createForm.formState.errors.role.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                {...createForm.register("password")}
+                className={createForm.formState.errors.password ? "border-red-500" : ""}
+              />
+              {createForm.formState.errors.password && (
+                <p className="text-sm text-red-500">{createForm.formState.errors.password.message}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={createUserMutation.isPending}>
+                {createUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Salvar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Edição de Usuário */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => { if (!open) { setEditingUser(null); editForm.reset(); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={editForm.handleSubmit(handleSubmitEdit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nome</Label>
+              <Input
+                id="edit-name"
+                {...editForm.register("name")}
+                className={editForm.formState.errors.name ? "border-red-500" : ""}
+              />
+              {editForm.formState.errors.name && (
+                <p className="text-sm text-red-500">{editForm.formState.errors.name.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                {...editForm.register("email")}
+                className={editForm.formState.errors.email ? "border-red-500" : ""}
+              />
+              {editForm.formState.errors.email && (
+                <p className="text-sm text-red-500">{editForm.formState.errors.email.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-role">Perfil</Label>
+              <Select
+                value={editForm.watch("role") || "operator"}
+                onValueChange={(value) => editForm.setValue("role", value as "operator" | "admin" | "despachante")}
+              >
+                <SelectTrigger className={editForm.formState.errors.role ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Selecione um perfil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="operator">Operador</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="despachante">Despachante</SelectItem>
+                </SelectContent>
+              </Select>
+              {editForm.formState.errors.role && (
+                <p className="text-sm text-red-500">{editForm.formState.errors.role.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-password">Senha (deixe em branco para não alterar)</Label>
               <Input
                 id="edit-password"
                 type="password"
-                value={formData.password}
-                onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                {...editForm.register("password")}
+                className={editForm.formState.errors.password ? "border-red-500" : ""}
               />
+              {editForm.formState.errors.password && (
+                <p className="text-sm text-red-500">{editForm.formState.errors.password.message}</p>
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={updateUserMutation.isPending}>
+                {updateUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Salvar Alterações
               </Button>
             </DialogFooter>
