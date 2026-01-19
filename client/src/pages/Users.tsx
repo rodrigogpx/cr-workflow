@@ -267,6 +267,11 @@ export default function Users() {
                           <User className="h-3 w-3 mr-1" />
                           Operador
                         </Badge>
+                      ) : user.role === 'despachante' ? (
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                          <User className="h-3 w-3 mr-1" />
+                          Despachante
+                        </Badge>
                       ) : (
                         <Badge variant="outline" className="text-yellow-600 border-yellow-600">
                           Pendente

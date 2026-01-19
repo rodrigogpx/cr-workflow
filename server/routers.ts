@@ -156,6 +156,20 @@ export const appRouter = router({
               role: null, // Aguardando aprovação do admin
             });
 
+        // Log audit entry for registration
+        if (tenantSlug && ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: userId, // The newly created user ID
+            action: 'CREATE',
+            entity: 'USER',
+            entityId: userId,
+            details: JSON.stringify({ email: input.email, type: 'SELF_REGISTER' }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
+
         return {
           success: true,
           message: 'Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.',
@@ -1671,6 +1685,20 @@ export const appRouter = router({
           newRole: input.role,
         });
 
+        // Log audit entry for user role assignment
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: 'UPDATE',
+            entity: 'USER',
+            entityId: input.userId,
+            details: JSON.stringify({ roleAssignment: input.role }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
+
         return { success: true };
       }),
 
@@ -1712,6 +1740,20 @@ export const appRouter = router({
           actorId: ctx.user.id,
           targetUserId: input.userId,
         });
+
+        // Log audit entry for user deletion
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: 'DELETE',
+            entity: 'USER',
+            entityId: input.userId,
+            details: JSON.stringify({ deletedUserId: input.userId }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
 
         return { success: true };
       }),
@@ -2230,57 +2272,68 @@ export const appRouter = router({
         offset: z.number().min(0).default(0),
       }))
       .query(async ({ input, ctx }) => {
-        const tenantDb = await getTenantDbOrNull(ctx);
-        const tenantId = ctx.tenant?.id;
+        try {
+          const tenantDb = await getTenantDbOrNull(ctx);
+          const tenantId = ctx.tenant?.id;
 
-        if (!tenantId) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
+          if (!tenantId) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
+          }
+
+          const params: db.GetAuditLogsParams = {
+            tenantId,
+            limit: input.limit,
+            offset: input.offset,
+          };
+
+          if (input.startDate) {
+            params.startDate = new Date(input.startDate);
+          }
+          if (input.endDate) {
+            params.endDate = new Date(input.endDate);
+          }
+          if (input.userId) {
+            params.userId = input.userId;
+          }
+          if (input.action) {
+            params.action = input.action;
+          }
+          if (input.entity) {
+            params.entity = input.entity;
+          }
+
+          console.log('[Audit] Fetching logs with params:', JSON.stringify(params));
+
+          const result = tenantDb
+            ? await db.getAuditLogsFromDb(tenantDb, params)
+            : await db.getAuditLogs(params);
+
+          // Enrich logs with user names
+          const allUsers = tenantDb
+            ? await db.getAllUsersFromDb(tenantDb, tenantId)
+            : await db.getAllUsers();
+
+          const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
+
+          const enrichedLogs = result.logs.map(log => ({
+            ...log,
+            userName: log.userId ? userMap.get(log.userId) || 'Usuário removido' : 'Sistema',
+          }));
+
+          return {
+            logs: enrichedLogs,
+            total: result.total,
+            limit: input.limit,
+            offset: input.offset,
+          };
+        } catch (error: any) {
+          console.error('[Audit] Error fetching logs:', error);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: `Erro ao buscar logs de auditoria: ${error.message || String(error)}`,
+            cause: error,
+          });
         }
-
-        const params: db.GetAuditLogsParams = {
-          tenantId,
-          limit: input.limit,
-          offset: input.offset,
-        };
-
-        if (input.startDate) {
-          params.startDate = new Date(input.startDate);
-        }
-        if (input.endDate) {
-          params.endDate = new Date(input.endDate);
-        }
-        if (input.userId) {
-          params.userId = input.userId;
-        }
-        if (input.action) {
-          params.action = input.action;
-        }
-        if (input.entity) {
-          params.entity = input.entity;
-        }
-
-        const result = tenantDb
-          ? await db.getAuditLogsFromDb(tenantDb, params)
-          : await db.getAuditLogs(params);
-
-        // Enrich logs with user names
-        const allUsers = tenantDb
-          ? await db.getAllUsersFromDb(tenantDb, tenantId)
-          : await db.getAllUsers();
-
-        const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
-
-        const enrichedLogs = result.logs.map(log => ({
-          ...log,
-          userName: log.userId ? userMap.get(log.userId) || 'Usuário removido' : 'Sistema',
-        }));
-
-        return {
-          logs: enrichedLogs,
-          total: result.total,
-          limit: input.limit,
-          offset: input.offset,
-        };
       }),
 
     exportCsv: adminProcedure

@@ -239,12 +239,15 @@ export default function Admin() {
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center ${
                       !u.role ? 'border-yellow-500/40 bg-yellow-500/10' :
-                      u.role === 'admin' ? 'border-primary/40 bg-primary/10' : 'border-white/20 bg-muted'
+                      u.role === 'admin' ? 'border-primary/40 bg-primary/10' : 
+                      u.role === 'despachante' ? 'border-blue-500/40 bg-blue-500/10' : 'border-white/20 bg-muted'
                     }`}>
                       {!u.role ? (
                         <Clock className="h-5 w-5 text-yellow-500" />
                       ) : u.role === 'admin' ? (
                         <Shield className="h-5 w-5 text-primary" />
+                      ) : u.role === 'despachante' ? (
+                        <Users className="h-5 w-5 text-blue-500" />
                       ) : (
                         <Users className="h-5 w-5 text-muted-foreground" />
                       )}
@@ -261,7 +264,7 @@ export default function Admin() {
                         if (value === "pending") return;
                         updateRoleMutation.mutate({
                           userId: u.id,
-                          role: value as 'operator' | 'admin',
+                          role: value as 'operator' | 'admin' | 'despachante',
                         });
                       }}
                     >
@@ -274,6 +277,7 @@ export default function Admin() {
                         </SelectItem>
                         <SelectItem value="operator">Operador</SelectItem>
                         <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="despachante">Despachante</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

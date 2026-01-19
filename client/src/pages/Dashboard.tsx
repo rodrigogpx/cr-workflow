@@ -97,7 +97,9 @@ export default function Dashboard() {
     ? "Pendente"
     : user.role === "admin"
       ? "Administrador"
-      : "Operador";
+      : user.role === "despachante"
+        ? "Despachante"
+        : "Operador";
 
   const totalClients = clients?.length || 0;
   const completed = clients?.filter(c => getClientProgress(c) === 100).length || 0;
