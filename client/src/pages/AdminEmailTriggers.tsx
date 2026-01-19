@@ -28,7 +28,7 @@ export default function AdminEmailTriggers() {
 
   const { data: triggers, refetch } = trpc.emailTriggers.list.useQuery();
   const { data: availableEvents } = trpc.emailTriggers.getAvailableEvents.useQuery();
-  const { data: templates } = trpc.emails.list.useQuery();
+  const { data: templates } = trpc.emails.getAllTemplates.useQuery();
   const { data: users } = trpc.users.list.useQuery();
 
   const createMutation = trpc.emailTriggers.create.useMutation({
