@@ -224,10 +224,8 @@ export const appRouter = router({
         })
       );
       
-      // Se for despachante, filtrar apenas clientes com juntada concluída
-      const filteredClients = ctx.user.role === 'despachante'
-        ? clientsWithProgress.filter(c => c.juntadaConcluida)
-        : clientsWithProgress;
+      // Se for despachante, vê todos os clientes também
+      const filteredClients = clientsWithProgress;
       
       return filteredClients;
     }),
@@ -243,8 +241,8 @@ export const appRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissão: admin ou operador responsável
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
+        // Verificar permissão: admin, despachante ou operador responsável
+        if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para acessar este cliente' });
         }
         
