@@ -260,11 +260,17 @@ export const appRouter = router({
         operatorId: z.number().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        // Verificar permissão: apenas admin pode criar novos clientes
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ 
+            code: 'FORBIDDEN', 
+            message: 'Apenas administradores podem cadastrar novos clientes.' 
+          });
+        }
+
         const tenantDb = await getTenantDbOrNull(ctx);
-        // Admin pode atribuir a qualquer operador, operador cria para si mesmo
-        const operatorId = ctx.user.role === 'admin' && input.operatorId 
-          ? input.operatorId 
-          : ctx.user.id;
+        // Admin pode atribuir a qualquer operador
+        const operatorId = input.operatorId || ctx.user.id;
         
         let clientId: number;
         try {

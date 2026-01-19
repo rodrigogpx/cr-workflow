@@ -230,93 +230,95 @@ export default function Dashboard() {
             />
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide">
-                <Plus className="w-5 h-5 mr-2" />
-                Novo Cliente
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="border-2 border-dashed border-white/20 bg-card">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-bold uppercase">Cadastrar Novo Cliente</DialogTitle>
-                <DialogDescription>
-                  Preencha os dados do cliente para iniciar o processo de CR
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateClient}>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="uppercase text-xs font-bold tracking-wide">Nome Completo</Label>
-                    <Input
-                      id="name"
-                      value={newClient.name}
-                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                      className="border-2 border-dashed border-white/20 bg-background"
-                      required
-                    />
+          {user?.role === 'admin' && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide">
+                  <Plus className="w-5 h-5 mr-2" />
+                  Novo Cliente
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="border-2 border-dashed border-white/20 bg-card">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold uppercase">Cadastrar Novo Cliente</DialogTitle>
+                  <DialogDescription>
+                    Preencha os dados do cliente para iniciar o processo de CR
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateClient}>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="uppercase text-xs font-bold tracking-wide">Nome Completo</Label>
+                      <Input
+                        id="name"
+                        value={newClient.name}
+                        onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                        className="border-2 border-dashed border-white/20 bg-background"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cpf" className="uppercase text-xs font-bold tracking-wide">CPF</Label>
+                      <Input
+                        id="cpf"
+                        value={newClient.cpf}
+                        onChange={(e) => setNewClient({ ...newClient, cpf: e.target.value })}
+                        placeholder="000.000.000-00"
+                        className="border-2 border-dashed border-white/20 bg-background"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="uppercase text-xs font-bold tracking-wide">Telefone</Label>
+                      <Input
+                        id="phone"
+                        value={newClient.phone}
+                        onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                        placeholder="(00) 00000-0000"
+                        className="border-2 border-dashed border-white/20 bg-background"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="uppercase text-xs font-bold tracking-wide">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={newClient.email}
+                        onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                        className="border-2 border-dashed border-white/20 bg-background"
+                        required
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cpf" className="uppercase text-xs font-bold tracking-wide">CPF</Label>
-                    <Input
-                      id="cpf"
-                      value={newClient.cpf}
-                      onChange={(e) => setNewClient({ ...newClient, cpf: e.target.value })}
-                      placeholder="000.000.000-00"
-                      className="border-2 border-dashed border-white/20 bg-background"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="uppercase text-xs font-bold tracking-wide">Telefone</Label>
-                    <Input
-                      id="phone"
-                      value={newClient.phone}
-                      onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                      placeholder="(00) 00000-0000"
-                      className="border-2 border-dashed border-white/20 bg-background"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="uppercase text-xs font-bold tracking-wide">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={newClient.email}
-                      onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                      className="border-2 border-dashed border-white/20 bg-background"
-                      required
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsDialogOpen(false)}
-                    className="border-2 border-dashed border-white/40"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={createClientMutation.isPending}
-                    className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase"
-                  >
-                    {createClientMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Cadastrando...
-                      </>
-                    ) : (
-                      "Cadastrar"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <DialogFooter>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsDialogOpen(false)}
+                      className="border-2 border-dashed border-white/40"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={createClientMutation.isPending}
+                      className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase"
+                    >
+                      {createClientMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Cadastrando...
+                        </>
+                      ) : (
+                        "Cadastrar"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Seção Lista de Clientes */}
