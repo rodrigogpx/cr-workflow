@@ -48,6 +48,31 @@ const formatCPF = (value: string): string => {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
 };
 
+const isValidCPF = (cpf: string): boolean => {
+  const digits = cpf.replace(/\D/g, "");
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10) remainder = 0;
+  if (remainder !== parseInt(digits[9])) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
+  remainder = (sum * 10) % 11;
+  if (remainder === 10) remainder = 0;
+  return remainder === parseInt(digits[10]);
+};
+
+const isValidEmail = (email: string): boolean => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+const isValidPhone = (phone: string): boolean => {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 10 && digits.length <= 11;
+};
+
 const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   if (digits.length <= 2) return digits;
@@ -93,11 +118,6 @@ export default function ClientWorkflow() {
     { enabled: !!clientId && isAuthenticated }
   );
 
-  // Debug: Log de documentos
-  useEffect(() => {
-    console.log('Documentos carregados:', documents);
-    console.log('Workflow:', workflow);
-  }, [documents, workflow]);
 
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
     onSuccess: () => {
@@ -237,9 +257,14 @@ export default function ClientWorkflow() {
   const handleClientDataUpdate = () => {
     const name = clientFormData.name?.trim();
     const cpfDigits = (clientFormData.cpf || "").replace(/\D/g, "");
+    const email = clientFormData.email?.trim();
+    const phoneDigits = (clientFormData.phone || "").replace(/\D/g, "");
+    const phone2Digits = (clientFormData.phone2 || "").replace(/\D/g, "");
+    const cepDigits = (clientFormData.cep || "").replace(/\D/g, "");
 
-    if (!name) {
-      toast.error("Nome completo é obrigatório");
+    // Validações obrigatórias
+    if (!name || name.length < 2) {
+      toast.error("Nome completo é obrigatório (mínimo 2 caracteres)");
       return;
     }
 
@@ -248,18 +273,41 @@ export default function ClientWorkflow() {
       return;
     }
 
-    const phoneDigits = (clientFormData.phone || "").replace(/\D/g, "");
-    const phone2Digits = (clientFormData.phone2 || "").replace(/\D/g, "");
-    const cepDigits = (clientFormData.cep || "").replace(/\D/g, "");
+    if (!isValidCPF(cpfDigits)) {
+      toast.error("CPF inválido. Verifique os dígitos.");
+      return;
+    }
+
+    // Validações opcionais (só valida se preenchido)
+    if (email && !isValidEmail(email)) {
+      toast.error("Email inválido");
+      return;
+    }
+
+    if (phoneDigits && !isValidPhone(phoneDigits)) {
+      toast.error("Telefone 1 inválido (deve ter 10 ou 11 dígitos)");
+      return;
+    }
+
+    if (phone2Digits && !isValidPhone(phone2Digits)) {
+      toast.error("Telefone 2 inválido (deve ter 10 ou 11 dígitos)");
+      return;
+    }
+
+    if (cepDigits && cepDigits.length !== 8) {
+      toast.error("CEP deve ter 8 dígitos");
+      return;
+    }
 
     updateClientMutation.mutate({
       id: Number(clientId),
       ...clientFormData,
       name,
       cpf: cpfDigits,
-      phone: phoneDigits,
-      phone2: phone2Digits,
-      cep: cepDigits,
+      phone: phoneDigits || undefined,
+      phone2: phone2Digits || undefined,
+      cep: cepDigits || undefined,
+      email: email || undefined,
     });
   };
 

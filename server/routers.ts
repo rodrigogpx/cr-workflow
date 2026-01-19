@@ -29,20 +29,12 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => {
-      console.log("DEBUG /me user:", JSON.stringify(opts.ctx.user, null, 2));
       return opts.ctx.user;
     }),
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const tenantSlug = ctx.tenantSlug;
-        console.log("[auth.login] attempt", {
-          email: input.email,
-          tenantSlug,
-          hasTenantConfig: Boolean(ctx.tenant),
-          tenantDbMode: process.env.TENANT_DB_MODE,
-          nodeEnv: process.env.NODE_ENV,
-        });
 
         const user = tenantSlug && ctx.tenant
           ? await (async () => {
@@ -54,25 +46,11 @@ export const appRouter = router({
             })()
           : await db.getUserByEmail(input.email);
 
-        console.log("[auth.login] user lookup", {
-          email: input.email,
-          found: Boolean(user),
-          userId: user?.id,
-          role: (user as any)?.role,
-          hashLen: user?.hashedPassword?.length,
-          hashPrefix: user?.hashedPassword?.slice?.(0, 10),
-        });
-
         if (!user) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
 
         const passwordMatch = await comparePassword(input.password, user.hashedPassword);
-        console.log("[auth.login] password match", {
-          email: input.email,
-          userId: user.id,
-          passwordMatch,
-        });
         if (!passwordMatch) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
@@ -91,8 +69,6 @@ export const appRouter = router({
           httpOnly: true,
           sameSite: "lax",
         });
-
-        console.log(`DEBUG Login success for ${user.email}, role: ${user.role}`);
 
         // Log audit entry for login
         if (ctx.tenant?.id) {
@@ -193,14 +169,6 @@ export const appRouter = router({
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       
-      console.log('[clients.list] DEBUG:', {
-        tenantSlug: ctx.tenantSlug,
-        tenantId,
-        userId: ctx.user.id,
-        userRole: ctx.user.role,
-        hasTenantDb: Boolean(tenantDb),
-      });
-      
       // Admin vê todos os clientes, operador vê apenas os seus
       // Despachante vê clientes com "Juntada de Documentos" concluída
       let clients;
@@ -212,8 +180,6 @@ export const appRouter = router({
       } else {
         clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
       }
-      
-      console.log('[clients.list] Found', clients.length, 'clients for tenant', tenantId);
       
       // Adicionar estatísticas de workflow para cada cliente
       const clientsWithProgress = await Promise.all(
@@ -422,8 +388,6 @@ export const appRouter = router({
                 sentBy: ctx.user.id,
               });
             }
-
-            console.log(`[Clients] Welcome email sent to ${input.email} for new client ${clientId}`);
           }
         } catch (emailError) {
           // Não falhar a criação do cliente se o email falhar
