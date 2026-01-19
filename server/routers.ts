@@ -1,7 +1,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails } from "./emailService";
@@ -166,7 +166,7 @@ export const appRouter = router({
 
   // Clients router
   clients: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
+    list: tenantProcedure.query(async ({ ctx }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       
@@ -218,7 +218,7 @@ export const appRouter = router({
       return filteredClients;
     }),
 
-    getById: protectedProcedure
+    getById: tenantProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -237,7 +237,7 @@ export const appRouter = router({
         return client;
       }),
 
-    create: protectedProcedure
+    create: tenantProcedure
       .input(z.object({
         name: z.string().min(1),
         cpf: z.string().min(11),
@@ -428,7 +428,7 @@ export const appRouter = router({
         return { id: clientId };
       }),
 
-        update: protectedProcedure
+        update: tenantProcedure
           .input(z.object({
             id: z.number(),
             name: z.string().min(1).optional(),
@@ -512,7 +512,7 @@ export const appRouter = router({
             return { success: true };
           }),
 
-    delete: adminProcedure
+    delete: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -550,7 +550,7 @@ export const appRouter = router({
 
   // Workflow router
   workflow: router({
-    getByClient: protectedProcedure
+    getByClient: tenantProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -600,7 +600,7 @@ export const appRouter = router({
         return stepsWithSubTasks;
       }),
 
-    updateStep: protectedProcedure
+    updateStep: tenantProcedure
       .input(z.object({
         clientId: z.number().optional(),
         stepId: z.number(),
@@ -844,7 +844,7 @@ export const appRouter = router({
 
   // Documents router
   documents: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -865,7 +865,7 @@ export const appRouter = router({
           : await db.getDocumentsByClient(input.clientId);
       }),
 
-    upload: protectedProcedure
+    upload: tenantProcedure
       .input(z.object({
         clientId: z.number(),
         workflowStepId: z.number().optional(),
@@ -978,7 +978,7 @@ export const appRouter = router({
         return { id: documentId, url: fileUrl };
       }),
 
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
