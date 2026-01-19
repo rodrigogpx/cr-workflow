@@ -1125,6 +1125,61 @@ export async function deleteTenant(id: number) {
     .where(eq(tenants.id, id));
 }
 
+export async function hardDeleteTenant(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // 1. Buscar todos os clients do tenant para deletar dependências
+  // No modo single-db, clients devem ter tenantId. Se não tiverem (legacy), pode ser um problema,
+  // mas aqui assumimos que tenants isolados têm tenantId.
+  const tenantClients = await db.select({ id: clients.id }).from(clients).where(eq(clients.tenantId, id));
+  const clientIds = tenantClients.map(c => c.id);
+
+  if (clientIds.length > 0) {
+    // Excluir dependências dos clientes em lotes se necessário, aqui simplificado:
+    
+    // Email Logs
+    await db.delete(emailLogs).where(inArray(emailLogs.clientId, clientIds));
+    
+    // Documents
+    await db.delete(documents).where(inArray(documents.clientId, clientIds));
+    
+    // Workflow Steps & SubTasks
+    const steps = await db.select({ id: workflowSteps.id }).from(workflowSteps).where(inArray(workflowSteps.clientId, clientIds));
+    const stepIds = steps.map(s => s.id);
+    
+    if (stepIds.length > 0) {
+      await db.delete(subTasks).where(inArray(subTasks.workflowStepId, stepIds));
+      await db.delete(workflowSteps).where(inArray(workflowSteps.clientId, clientIds));
+    }
+
+    // Email Scheduled
+    await db.delete(emailScheduled).where(inArray(emailScheduled.clientId, clientIds));
+    
+    // Finalmente, os clientes
+    await db.delete(clients).where(eq(clients.tenantId, id));
+  }
+
+  // 2. Delete Users
+  await db.delete(users).where(eq(users.tenantId, id));
+
+  // 3. Delete Triggers
+  // Triggers do tenant
+  const triggers = await db.select({ id: emailTriggers.id }).from(emailTriggers).where(eq(emailTriggers.tenantId, id));
+  const triggerIds = triggers.map(t => t.id);
+  if (triggerIds.length > 0) {
+    await db.delete(emailTriggerTemplates).where(inArray(emailTriggerTemplates.triggerId, triggerIds));
+    await db.delete(emailTriggers).where(eq(emailTriggers.tenantId, id));
+  }
+
+  // 4. Delete Logs
+  await db.delete(auditLogs).where(eq(auditLogs.tenantId, id));
+  await db.delete(tenantActivityLogs).where(eq(tenantActivityLogs.tenantId, id));
+
+  // 5. Delete Tenant
+  await db.delete(tenants).where(eq(tenants.id, id));
+}
+
 // ===========================================
 // TENANT AUDIT LOGS
 // ===========================================

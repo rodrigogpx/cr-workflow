@@ -2089,6 +2089,30 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Deletar tenant DEFINITIVAMENTE (hard delete)
+    hardDelete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const tenant = await db.getTenantById(input.id);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        await db.hardDeleteTenant(input.id);
+        invalidateTenantCache(tenant.slug);
+
+        // Não conseguimos logar atividade no tenant pois ele foi deletado
+        // Mas podemos logar se tivermos um log global de plataforma (futuro)
+        
+        console.log('[AUDIT] Tenant deleted (HARD)', {
+          actorId: ctx.user.id,
+          tenantId: input.id,
+          slug: tenant.slug,
+        });
+
+        return { success: true };
+      }),
+
     // Estatísticas do tenant
     getStats: adminProcedure
       .input(z.object({ id: z.number() }))

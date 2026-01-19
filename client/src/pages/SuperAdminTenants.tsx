@@ -127,10 +127,18 @@ export default function SuperAdminTenants() {
 
   const deleteTenant = trpc.tenants.delete.useMutation({
     onSuccess: () => {
-      toast.success("Tenant removido");
+      toast.success("Tenant cancelado/arquivado");
       utils.tenants.list.invalidate();
     },
     onError: (err) => toast.error(err.message || "Erro ao remover tenant"),
+  });
+
+  const hardDeleteTenant = trpc.tenants.hardDelete.useMutation({
+    onSuccess: () => {
+      toast.success("Tenant excluído DEFINITIVAMENTE");
+      utils.tenants.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Erro ao excluir tenant permanentemente"),
   });
 
   const clearMocks = trpc.tenants.clearMocks.useMutation({
@@ -254,7 +262,14 @@ export default function SuperAdminTenants() {
   };
 
   const handleDelete = (tenant: Tenant) => {
-    if (!confirm(`Remover tenant ${tenant.name}?`)) return;
+    if (tenant.subscriptionStatus === 'cancelled') {
+      if (confirm(`ATENÇÃO: Deseja EXCLUIR DEFINITIVAMENTE o tenant "${tenant.name}"?\n\nEsta ação não pode ser desfeita e apagará TODOS os dados (usuários, clientes, documentos, etc) deste tenant.`)) {
+        hardDeleteTenant.mutate({ id: tenant.id });
+      }
+      return;
+    }
+
+    if (!confirm(`Deseja cancelar/arquivar o tenant "${tenant.name}"?\n\nEle ficará inativo mas os dados serão mantidos para auditoria.`)) return;
     deleteTenant.mutate({ id: tenant.id });
   };
 
