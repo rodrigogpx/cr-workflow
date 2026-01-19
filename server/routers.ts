@@ -1318,6 +1318,22 @@ export const appRouter = router({
         return { success: true, templateId };
       }),
 
+    // Delete email template
+    deleteTemplate: protectedProcedure
+      .input(z.object({
+        templateKey: z.string(),
+        module: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        if (tenantDb) {
+          await db.deleteEmailTemplateFromDb(tenantDb, input.templateKey, input.module);
+        } else {
+          await db.deleteEmailTemplate(input.templateKey, input.module);
+        }
+        return { success: true };
+      }),
+
     // Get email log (check if email was sent and get details)
     getEmailLog: protectedProcedure
       .input(z.object({

@@ -967,6 +967,29 @@ export async function saveEmailTemplate(template: InsertEmailTemplate & { module
   }
 }
 
+export async function deleteEmailTemplate(templateKey: string, module?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const moduleValue = module || 'workflow-cr';
+
+  await db.delete(emailTemplates)
+    .where(and(
+      eq(emailTemplates.templateKey, templateKey),
+      eq(emailTemplates.module, moduleValue)
+    ));
+}
+
+export async function deleteEmailTemplateFromDb(tenantDb: ReturnType<typeof drizzle>, templateKey: string, module?: string) {
+  const moduleValue = module || 'workflow-cr';
+
+  await tenantDb.delete(emailTemplates)
+    .where(and(
+      eq(emailTemplates.templateKey, templateKey),
+      eq(emailTemplates.module, moduleValue)
+    ));
+}
+
 export async function logEmailSent(log: InsertEmailLog) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

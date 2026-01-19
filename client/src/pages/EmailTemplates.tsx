@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 import { PlatformAdminLayout } from "@/components/PlatformAdminLayout";
@@ -100,6 +100,23 @@ export default function EmailTemplates() {
     },
   });
 
+  const deleteTemplateMutation = trpc.emails.deleteTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Template excluído com sucesso!");
+      utils.emails.getAllTemplates.invalidate();
+      // Se o template atual foi excluído, mude para o primeiro disponível ou welcome
+      if (!defaultTemplateKeys.includes(activeTab)) {
+         setActiveTab('welcome');
+      } else {
+         // Se for padrão, ele "reseta", então mantemos a tab mas limpamos o estado local se necessário
+         // O refetch cuidará de trazer o estado "vazio" (padrão)
+      }
+    },
+    onError: (error) => {
+      toast.error(`Erro ao excluir template: ${error.message}`);
+    },
+  });
+
   const uploadAttachmentMutation = trpc.documents.uploadTemplateAttachment.useMutation({
     onSuccess: (data: any) => {
       // Store file info - uploadTemplateAttachment returns {url, fileKey}
@@ -134,6 +151,15 @@ export default function EmailTemplates() {
         attachments: JSON.stringify(currentTemplate.attachments),
       });
     }
+  };
+
+  const handleDeleteTemplate = () => {
+    if (!confirm("Tem certeza que deseja excluir este template? Se for um template padrão, ele será resetado.")) {
+      return;
+    }
+    deleteTemplateMutation.mutate({
+      templateKey: activeTab,
+    });
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,7 +204,7 @@ export default function EmailTemplates() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
+        <div className="w-full max-w-[95%] mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin"))}>
@@ -190,15 +216,26 @@ export default function EmailTemplates() {
                 <p className="text-sm text-gray-600">Edite os templates de email enviados aos clientes</p>
               </div>
             </div>
-            <Button onClick={handleSaveTemplate} disabled={saveTemplateMutation.isPending}>
-              <Save className="h-4 w-4 mr-2" />
-              {saveTemplateMutation.isPending ? 'Salvando...' : 'Salvar Template'}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteTemplate} 
+                disabled={deleteTemplateMutation.isPending}
+                title="Excluir Template Atual"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </Button>
+              <Button onClick={handleSaveTemplate} disabled={saveTemplateMutation.isPending}>
+                <Save className="h-4 w-4 mr-2" />
+                {saveTemplateMutation.isPending ? 'Salvando...' : 'Salvar Template'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full max-w-[95%] mx-auto px-4 py-8">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
