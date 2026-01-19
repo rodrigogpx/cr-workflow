@@ -673,6 +673,17 @@ export async function getAllUsersFromDb(tenantDb: ReturnType<typeof drizzle>, te
   return await tenantDb.select().from(users).orderBy(desc(users.createdAt));
 }
 
+export async function getUsersByIds(ids: number[]) {
+  const db = await getDb();
+  if (!db || ids.length === 0) return [];
+  return await db.select().from(users).where(inArray(users.id, ids));
+}
+
+export async function getUsersByIdsFromDb(tenantDb: ReturnType<typeof drizzle>, ids: number[]) {
+  if (ids.length === 0) return [];
+  return await tenantDb.select().from(users).where(inArray(users.id, ids));
+}
+
 export async function updateUser(userId: number, data: Partial<InsertUser>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

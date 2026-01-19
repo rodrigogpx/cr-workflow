@@ -2388,11 +2388,12 @@ export const appRouter = router({
           ? await db.getAuditLogsFromDb(tenantDb, params)
           : await db.getAuditLogs(params);
 
-        const allUsers = tenantDb
-          ? await db.getAllUsersFromDb(tenantDb, tenantId)
-          : await db.getAllUsers();
+        const userIds = [...new Set(result.logs.map(l => l.userId).filter(Boolean) as number[])];
+        const usersFound = tenantDb
+          ? await db.getUsersByIdsFromDb(tenantDb, userIds)
+          : await db.getUsersByIds(userIds);
 
-        const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
+        const userMap = new Map(usersFound.map((u: any) => [u.id, u.name || u.email]));
 
         const csvHeader = 'Data/Hora,Usuário,Ação,Entidade,ID Entidade,Detalhes,IP\n';
         const csvRows = result.logs.map(log => {
