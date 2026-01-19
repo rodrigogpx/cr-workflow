@@ -82,6 +82,40 @@ const requireAdmin = t.middleware(async opts => {
   });
 });
 
+// Middleware OBRIGATÓRIO de tenant: bloqueia se tenant não estiver presente e ativo
+const requireTenant = t.middleware(async opts => {
+  const { ctx, next } = opts;
+
+  if (!ctx.tenantSlug) {
+    throw new TRPCError({ 
+      code: "FORBIDDEN", 
+      message: "Tenant não identificado. Acesse através do domínio correto." 
+    });
+  }
+
+  if (!ctx.tenant) {
+    throw new TRPCError({ 
+      code: "NOT_FOUND", 
+      message: `Tenant "${ctx.tenantSlug}" não encontrado ou inativo.` 
+    });
+  }
+
+  if (!isTenantActive(ctx.tenant)) {
+    throw new TRPCError({ 
+      code: "FORBIDDEN", 
+      message: "Tenant suspenso ou com assinatura expirada. Entre em contato com o suporte." 
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      tenant: ctx.tenant,
+      tenantSlug: ctx.tenantSlug,
+    },
+  });
+});
+
 export const protectedProcedure = t.procedure
   .use(requireUser)
   .use(requireTenantIfPresent);
@@ -89,4 +123,15 @@ export const protectedProcedure = t.procedure
 export const adminProcedure = t.procedure
   .use(requireUser)
   .use(requireTenantIfPresent)
+  .use(requireAdmin);
+
+// Procedure que EXIGE tenant válido e ativo (para operações sensíveis)
+export const tenantProcedure = t.procedure
+  .use(requireUser)
+  .use(requireTenant);
+
+// Procedure admin que EXIGE tenant válido
+export const tenantAdminProcedure = t.procedure
+  .use(requireUser)
+  .use(requireTenant)
   .use(requireAdmin);

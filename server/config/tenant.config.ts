@@ -59,6 +59,9 @@ interface TenantDbConnection {
 }
 const tenantDbConnections: Map<string, TenantDbConnection> = new Map();
 
+// Limite máximo de conexões simultâneas para evitar exaustão de recursos
+const MAX_TENANT_CONNECTIONS = Number(process.env.MAX_TENANT_CONNECTIONS ?? 50);
+
 // Cleanup de conexões inativas (a cada 10 minutos)
 const CONNECTION_IDLE_TIMEOUT = 10 * 60 * 1000;
 setInterval(() => {
@@ -176,6 +179,27 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
   if (cached) {
     cached.lastUsed = Date.now();
     return cached.db;
+  }
+
+  // Verificar limite de conexões e fazer eviction se necessário
+  if (tenantDbConnections.size >= MAX_TENANT_CONNECTIONS) {
+    const entries = [...tenantDbConnections.entries()]
+      .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+    
+    // Remover as 10% conexões mais antigas
+    const toRemove = Math.max(1, Math.floor(entries.length * 0.1));
+    for (let i = 0; i < toRemove; i++) {
+      const [key, conn] = entries[i];
+      try {
+        await conn.client.end();
+      } catch (e) {
+        // Ignorar erro de fechamento
+      }
+      tenantDbConnections.delete(key);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Tenant] Evicted connection due to pool limit: ${key}`);
+      }
+    }
   }
 
   try {

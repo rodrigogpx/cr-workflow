@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails } from "./emailService";
 import * as db from "./db";
 import { invalidateTenantCache } from "./config/tenant.config";
@@ -2104,6 +2105,54 @@ export const appRouter = router({
           storageUsedGB: 0,
           lastActivity: null,
         };
+      }),
+
+    // Health check do tenant (verifica conexão com banco)
+    healthCheck: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const startTime = Date.now();
+        const tenant = await db.getTenantById(input.id);
+        
+        if (!tenant) {
+          return {
+            status: 'error' as const,
+            message: 'Tenant não encontrado',
+            latencyMs: Date.now() - startTime,
+          };
+        }
+
+        try {
+          const tenantDb = await getTenantDb(tenant);
+          if (!tenantDb) {
+            return {
+              status: 'error' as const,
+              message: 'Não foi possível conectar ao banco do tenant',
+              latencyMs: Date.now() - startTime,
+            };
+          }
+
+          // Testar query simples
+          await tenantDb.execute(sql`SELECT 1`);
+          
+          return {
+            status: 'healthy' as const,
+            message: 'Conexão OK',
+            latencyMs: Date.now() - startTime,
+            tenant: {
+              slug: tenant.slug,
+              name: tenant.name,
+              plan: tenant.plan,
+              subscriptionStatus: tenant.subscriptionStatus,
+            },
+          };
+        } catch (error: any) {
+          return {
+            status: 'error' as const,
+            message: error?.message || 'Erro desconhecido',
+            latencyMs: Date.now() - startTime,
+          };
+        }
       }),
 
     // Impersonate: entrar como admin de um tenant específico
