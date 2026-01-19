@@ -702,7 +702,9 @@ export default function ClientWorkflow() {
                                 <div className="flex-1 min-w-0"><p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>{subTask.label}</p></div>
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
-                                <Button variant="outline" size="sm" onClick={() => { setSelectedSubTask({ id: subTask.id, label: subTask.label, stepId: step.id }); setUploadModalOpen(true); }}><Upload className="h-3 w-3 mr-1" />Anexar</Button>
+                                {user?.role !== 'despachante' && (
+                                  <Button variant="outline" size="sm" onClick={() => { setSelectedSubTask({ id: subTask.id, label: subTask.label, stepId: step.id }); setUploadModalOpen(true); }}><Upload className="h-3 w-3 mr-1" />Anexar</Button>
+                                )}
                                 {subTask.completed && <CheckCircle className="h-5 w-5 text-green-600" />}
                               </div>
                             </div>
