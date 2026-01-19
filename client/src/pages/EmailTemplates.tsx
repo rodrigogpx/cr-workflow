@@ -73,7 +73,7 @@ export default function EmailTemplates() {
   })();
 
   useEffect(() => {
-    if (fetchedTemplates && fetchedTemplates.length > 0) {
+    if (fetchedTemplates) {
       const initialTemplates: Record<string, TemplateState> = {};
       fetchedTemplates.forEach((t: any) => {
         initialTemplates[t.templateKey] = {
@@ -84,7 +84,7 @@ export default function EmailTemplates() {
       });
       setTemplates(initialTemplates);
       // Set first template as active if not set
-      if (!activeTab && fetchedTemplates[0]) {
+      if (!activeTab && fetchedTemplates.length > 0 && fetchedTemplates[0]) {
         setActiveTab(fetchedTemplates[0].templateKey);
       }
     }
