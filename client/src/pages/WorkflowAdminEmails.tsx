@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
@@ -33,7 +33,7 @@ export default function WorkflowAdminEmails() {
   const [, setLocation] = useLocation();
   const tenantSlug = useTenantSlug();
   const [templates, setTemplates] = useState<Record<string, TemplateState>>({});
-  const [activeTab, setActiveTab] = useState('welcome');
+  const [activeTab, setActiveTab] = useState('');
   const [useRichEditor, setUseRichEditor] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("cac360-email-editor-mode") === "rich";
@@ -46,7 +46,7 @@ export default function WorkflowAdminEmails() {
     trpc.emails.getAllTemplates.useQuery({ module: MODULE_ID });
 
   useEffect(() => {
-    if (fetchedTemplates && fetchedTemplates.length > 0) {
+    if (fetchedTemplates) {
       const initialTemplates: Record<string, TemplateState> = {};
       fetchedTemplates.forEach((t: any) => {
         initialTemplates[t.templateKey] = {
@@ -56,12 +56,17 @@ export default function WorkflowAdminEmails() {
         };
       });
       setTemplates(initialTemplates);
-      // Set active tab to first template if exists
-      if (!initialTemplates[activeTab]) {
-        setActiveTab(Object.keys(initialTemplates)[0] || 'welcome');
+      
+      // Set active tab to first template if exists and no active tab selected
+      // or if the current active tab is no longer in the list (was deleted)
+      const keys = Object.keys(initialTemplates);
+      if (keys.length > 0 && (!activeTab || !initialTemplates[activeTab])) {
+        setActiveTab(keys[0]);
+      } else if (keys.length === 0) {
+        setActiveTab('');
       }
     }
-  }, [fetchedTemplates]);
+  }, [fetchedTemplates, activeTab]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -78,6 +83,17 @@ export default function WorkflowAdminEmails() {
     },
     onError: (error: any) => {
       toast.error(`Erro ao salvar template: ${error.message}`);
+    },
+  });
+
+  const deleteTemplateMutation = trpc.emails.deleteTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Template excluído com sucesso!");
+      utils.emails.getAllTemplates.invalidate();
+      setActiveTab(''); // Clear active tab to trigger useEffect re-selection
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir template: ${error.message}`);
     },
   });
 
@@ -109,6 +125,16 @@ export default function WorkflowAdminEmails() {
       content: template.content,
       attachments: JSON.stringify(template.attachments),
     });
+  };
+
+  const handleDeleteTemplate = () => {
+    if (!activeTab) return;
+    if (confirm("Tem certeza que deseja excluir este template?")) {
+      deleteTemplateMutation.mutate({
+        templateKey: activeTab,
+        module: MODULE_ID,
+      });
+    }
   };
 
   const getTemplateTitle = (key: string) => {
