@@ -43,10 +43,8 @@ export default function EmailTemplates() {
   const { data: fetchedTemplates, isLoading: isLoadingTemplates } =
     trpc.emails.getAllTemplates.useQuery();
 
-  // Templates padrão do módulo Workflow CR
-  const defaultTemplateKeys = ["welcome", "workflow_cr", "psicotecnico", "laudo_tecnico", "juntada_documentos", "acompanhamento_sinarm"];
-  
   const getTemplateTitle = (key: string) => {
+    // Títulos amigáveis para templates conhecidos (opcional, apenas para exibição)
     const titles: Record<string, string> = {
       welcome: "Boas Vindas",
       workflow_cr: "Workflow CR",
@@ -54,23 +52,13 @@ export default function EmailTemplates() {
       laudo_tecnico: "Agendamento Laudo Técnico",
       juntada_documentos: "Juntada de Documentos",
       acompanhamento_sinarm: "Acompanhamento Sinarm CAC",
+      'boasvindas-filiado': "Boas Vindas (Automático)",
     };
     return titles[key] || key;
   };
 
-  // Combinar templates salvos com templates padrão
-  const allTemplates = (() => {
-    const savedKeys = fetchedTemplates?.map((t: any) => t.templateKey) || [];
-    const missingDefaults = defaultTemplateKeys.filter(k => !savedKeys.includes(k));
-    const defaultsAsTemplates = missingDefaults.map(key => ({
-      templateKey: key,
-      templateTitle: getTemplateTitle(key),
-      subject: "",
-      content: "",
-      attachments: null,
-    }));
-    return [...(fetchedTemplates || []), ...defaultsAsTemplates];
-  })();
+  // Usar apenas os templates vindos do banco
+  const allTemplates = fetchedTemplates || [];
 
   useEffect(() => {
     if (fetchedTemplates) {
@@ -83,8 +71,9 @@ export default function EmailTemplates() {
         };
       });
       setTemplates(initialTemplates);
-      // Set first template as active if not set
-      if (!activeTab && fetchedTemplates.length > 0 && fetchedTemplates[0]) {
+      
+      // Set first template as active if not set or if current active tab creates a ghost state
+      if (!activeTab && fetchedTemplates.length > 0) {
         setActiveTab(fetchedTemplates[0].templateKey);
       }
     }
@@ -104,13 +93,8 @@ export default function EmailTemplates() {
     onSuccess: () => {
       toast.success("Template excluído com sucesso!");
       utils.emails.getAllTemplates.invalidate();
-      // Se o template atual foi excluído, mude para o primeiro disponível ou welcome
-      if (!defaultTemplateKeys.includes(activeTab)) {
-         setActiveTab('welcome');
-      } else {
-         // Se for padrão, ele "reseta", então mantemos a tab mas limpamos o estado local se necessário
-         // O refetch cuidará de trazer o estado "vazio" (padrão)
-      }
+      // Limpar a aba ativa para que o useEffect selecione o primeiro disponível
+      setActiveTab('');
     },
     onError: (error) => {
       toast.error(`Erro ao excluir template: ${error.message}`);
