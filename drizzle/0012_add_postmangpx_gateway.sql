@@ -1,0 +1,3 @@
+ALTER TABLE "tenants"
+  ADD COLUMN IF NOT EXISTS "postmanGpxBaseUrl" VARCHAR(500),
+  ADD COLUMN IF NOT EXISTS "postmanGpxApiKey" TEXT;

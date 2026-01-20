@@ -24,6 +24,10 @@ export default function TenantSettings() {
   const [smtpPass, setSmtpPass] = useState('');
   const [smtpPassDirty, setSmtpPassDirty] = useState(false);
 
+  const [postmanGpxBaseUrl, setPostmanGpxBaseUrl] = useState('');
+  const [postmanGpxApiKey, setPostmanGpxApiKey] = useState('');
+  const [postmanGpxApiKeyDirty, setPostmanGpxApiKeyDirty] = useState(false);
+
   // Modal de email de teste
   const [testEmailModalOpen, setTestEmailModalOpen] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState('');
@@ -40,6 +44,10 @@ export default function TenantSettings() {
       setUseSecure(smtpConfig.useSecure || false);
       setSmtpPass("");
       setSmtpPassDirty(false);
+
+      setPostmanGpxBaseUrl((smtpConfig as any).postmanGpxBaseUrl || "");
+      setPostmanGpxApiKey("");
+      setPostmanGpxApiKeyDirty(false);
     }
   }, [smtpConfig]);
 
@@ -103,9 +111,16 @@ export default function TenantSettings() {
         smtpPass: smtpPassDirty && smtpPass ? smtpPass : undefined,
       });
     } else {
+      if (!postmanGpxBaseUrl) {
+        toast.error("Informe a Base URL do PostmanGPX.");
+        return;
+      }
+
       updateSmtpConfigMutation.mutate({
         emailMethod: 'gateway',
         smtpFrom,
+        postmanGpxBaseUrl,
+        postmanGpxApiKey: postmanGpxApiKeyDirty && postmanGpxApiKey ? postmanGpxApiKey : undefined,
       });
     }
   };
@@ -149,7 +164,7 @@ export default function TenantSettings() {
                       <SelectItem value="gateway">
                         <div className="flex items-center gap-2">
                           <Cloud className="h-4 w-4" />
-                          <span>Gateway HTTP (Recomendado)</span>
+                          <span>PostmanGPX (Recomendado)</span>
                         </div>
                       </SelectItem>
                       <SelectItem value="smtp">
@@ -162,7 +177,7 @@ export default function TenantSettings() {
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     {emailMethod === 'gateway' 
-                      ? 'Usa o serviço de relay HTTP (funciona em ambientes cloud como Railway)'
+                      ? 'Usa o serviço PostmanGPX via API (recomendado para ambiente cloud)'
                       : 'Conexão direta com servidor SMTP (requer portas abertas)'}
                   </p>
                 </div>
@@ -246,6 +261,41 @@ export default function TenantSettings() {
                   </div>
                 )}
 
+                {/* Campos PostmanGPX (apenas se método = gateway) */}
+                {emailMethod === 'gateway' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="postmanGpxBaseUrl">PostmanGPX Base URL *</Label>
+                        <Input
+                          id="postmanGpxBaseUrl"
+                          placeholder="https://postmangpx.seudominio.com"
+                          value={postmanGpxBaseUrl}
+                          onChange={(e) => setPostmanGpxBaseUrl(e.target.value)}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Exemplo: https://postmangpx.seudominio.com (sem / no final)
+                      </p>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="postmanGpxApiKey">PostmanGPX API Key *</Label>
+                        <Input
+                          id="postmanGpxApiKey"
+                          type="password"
+                          placeholder={(smtpConfig as any)?.hasPostmanGpxApiKey ? '******** (deixe em branco para manter)' : 'pmgpx_live_...'}
+                          value={postmanGpxApiKey}
+                          onChange={(e) => {
+                            setPostmanGpxApiKey(e.target.value);
+                            setPostmanGpxApiKeyDirty(true);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Botões */}
                   <div className="flex flex-col gap-2 pt-4">
                     <Button
@@ -256,7 +306,10 @@ export default function TenantSettings() {
                     </Button>
                     <Dialog open={testEmailModalOpen} onOpenChange={setTestEmailModalOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="outline" disabled={emailMethod === 'smtp' && !smtpHost}>
+                        <Button 
+                          variant="outline" 
+                          disabled={(emailMethod === 'smtp' && !smtpHost) || (emailMethod === 'gateway' && !postmanGpxBaseUrl)}
+                        >
                           <Send className="h-4 w-4 mr-2" />
                           Enviar Email de Teste
                         </Button>

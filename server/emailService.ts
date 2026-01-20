@@ -2,8 +2,8 @@ import nodemailer from 'nodemailer';
 import type { Attachment } from 'nodemailer/lib/mailer';
 import { getEmailSettings, getEmailSettingsFromDb, type EmailSettings } from './db';
 
-// Gateway de Email Manus (contorna restrições SMTP do Railway)
-const EMAIL_GATEWAY_URL = process.env.EMAIL_GATEWAY_URL || 'https://5000-ii462mn0wybzgbhgi63xz-a2535f82.manusvm.computer';
+const POSTMANGPX_BASE_URL = process.env.POSTMANGPX_BASE_URL;
+const POSTMANGPX_API_KEY = process.env.POSTMANGPX_API_KEY;
 
 // Create reusable transporter with support for DB-backed configuration
 let transporter: nodemailer.Transporter | null = null;
@@ -89,13 +89,12 @@ export async function sendEmail(options: SendEmailOptions, tenantDb?: any): Prom
   const useGateway = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true';
   
   if (useGateway) {
-    console.log('[EmailService] Using Gateway for sendEmail (production mode)');
-    const result = await sendEmailViaGateway({
+    console.log('[EmailService] Using PostmanGPX for sendEmail (gateway mode)');
+    const result = await sendEmailViaPostmanGpx({
       to: options.to,
       subject: options.subject,
-      body: options.html,
-      isHtml: true,
-    });
+      html: options.html,
+    }, tenantDb);
     
     if (!result.success) {
       throw new Error(result.error || 'Falha ao enviar email via Gateway');
@@ -178,52 +177,86 @@ export async function verifyConnectionWithSettings(settings: {
 /**
  * Send email via Manus Gateway (HTTP) - contorna restrições SMTP do Railway
  */
-async function sendEmailViaGateway(options: {
-  to: string;
-  subject: string;
-  body: string;
-  isHtml?: boolean;
-}): Promise<{ success: boolean; error?: string }> {
+async function sendEmailViaPostmanGpx(
+  options: {
+    to: string;
+    subject: string;
+    html: string;
+  },
+  tenantDb?: any
+): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('[EmailService] Sending email via Manus Gateway to:', options.to);
-    console.log('[EmailService] Gateway URL:', EMAIL_GATEWAY_URL);
-    
-    const response = await fetch(`${EMAIL_GATEWAY_URL}/send-email`, {
+    const { getTenantSmtpSettings } = await import('./db');
+
+    let baseUrl = POSTMANGPX_BASE_URL;
+    let apiKey = POSTMANGPX_API_KEY;
+
+    try {
+      if (tenantDb && tenantDb.tenantId) {
+        const tenantSettings = await getTenantSmtpSettings(tenantDb.tenantId);
+        baseUrl = tenantSettings?.postmanGpxBaseUrl || baseUrl;
+        apiKey = tenantSettings?.postmanGpxApiKey || apiKey;
+      }
+    } catch {
+      // ignore tenant lookup errors and fallback to env
+    }
+
+    if (!baseUrl || !apiKey) {
+      return {
+        success: false,
+        error: 'PostmanGPX não configurado. Informe Base URL e API Key nas configurações do tenant (ou defina POSTMANGPX_BASE_URL e POSTMANGPX_API_KEY).',
+      };
+    }
+
+    const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
+
+    console.log('[EmailService] Sending email via PostmanGPX to:', options.to);
+    console.log('[EmailService] PostmanGPX Base URL:', normalizedBaseUrl);
+
+    const response = await fetch(`${normalizedBaseUrl}/api/v1/emails/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         to: options.to,
         subject: options.subject,
-        body: options.body,
-        is_html: options.isHtml ?? true,
+        html: options.html,
       }),
     });
 
-    // Verificar se a resposta é JSON válido
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error('[EmailService] Gateway returned non-JSON response:', text.substring(0, 200));
-      return { 
-        success: false, 
-        error: `Gateway indisponível ou retornou resposta inválida (HTTP ${response.status}). Verifique se o serviço está ativo.` 
+    const contentType = response.headers.get('content-type') || '';
+    const rawText = await response.text();
+    const maybeJson = contentType.includes('application/json');
+    const data = maybeJson ? safeJsonParse(rawText) : null;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: (data as any)?.message || rawText || `Erro ao chamar PostmanGPX (HTTP ${response.status})`,
       };
     }
 
-    const data = await response.json();
-    
-    if (response.ok && data.status === 'success') {
-      console.log('[EmailService] Email sent via Gateway successfully');
+    // postmangpx retorna { id, status, createdAt }
+    if (data && (data as any).id) {
+      console.log('[EmailService] Email queued via PostmanGPX successfully:', (data as any).id);
       return { success: true };
-    } else {
-      console.error('[EmailService] Gateway error:', data);
-      return { success: false, error: data.message || 'Erro no gateway de email' };
     }
+
+    console.log('[EmailService] PostmanGPX response (non-standard but ok)');
+    return { success: true };
   } catch (error: any) {
-    console.error('[EmailService] Gateway request failed:', error);
-    return { success: false, error: `Falha na conexão com gateway: ${error.message}` };
+    console.error('[EmailService] PostmanGPX request failed:', error);
+    return { success: false, error: `Falha na conexão com PostmanGPX: ${error.message}` };
+  }
+}
+
+function safeJsonParse(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
 }
 
@@ -241,6 +274,8 @@ export async function sendTestEmailWithSettings(settings: {
   subject?: string;
   body?: string;
   useGateway?: boolean;
+  postmanGpxBaseUrl?: string;
+  postmanGpxApiKey?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const defaultSubject = '✅ Teste de Configuração - CAC 360';
   const defaultBodyText = 'Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações estão corretas.';
@@ -263,13 +298,41 @@ export async function sendTestEmailWithSettings(settings: {
     : (process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true');
   
   if (shouldUseGateway) {
-    console.log('[EmailService] Using Manus Gateway (production mode)');
-    return sendEmailViaGateway({
-      to: settings.toEmail,
-      subject,
-      body: htmlBody,
-      isHtml: true,
+    console.log('[EmailService] Using PostmanGPX (gateway mode)');
+
+    if (!settings.postmanGpxBaseUrl || !settings.postmanGpxApiKey) {
+      return {
+        success: false,
+        error: 'PostmanGPX não configurado. Informe Base URL e API Key nas configurações.',
+      };
+    }
+
+    const normalizedBaseUrl = settings.postmanGpxBaseUrl.replace(/\/$/, '');
+    const response = await fetch(`${normalizedBaseUrl}/api/v1/emails/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.postmanGpxApiKey}`,
+      },
+      body: JSON.stringify({
+        to: settings.toEmail,
+        subject,
+        html: htmlBody,
+      }),
     });
+
+    const contentType = response.headers.get('content-type') || '';
+    const rawText = await response.text();
+    const data = contentType.includes('application/json') ? safeJsonParse(rawText) : null;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: (data as any)?.message || rawText || `Erro ao enviar teste via PostmanGPX (HTTP ${response.status})`,
+      };
+    }
+
+    return { success: true };
   }
 
   // Fallback para SMTP direto (desenvolvimento local)

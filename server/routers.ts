@@ -1140,6 +1140,8 @@ export const appRouter = router({
               smtpPort: 587,
               smtpUser: "",
               smtpFrom: "",
+              postmanGpxBaseUrl: "",
+              hasPostmanGpxApiKey: false,
               useSecure: false,
               hasPassword: false,
               source: "none",
@@ -1152,6 +1154,8 @@ export const appRouter = router({
             smtpPort: settings.smtpPort || 587,
             smtpUser: settings.smtpUser || "",
             smtpFrom: settings.smtpFrom || "",
+            postmanGpxBaseUrl: (settings as any).postmanGpxBaseUrl || "",
+            hasPostmanGpxApiKey: Boolean((settings as any).postmanGpxApiKey),
             useSecure: settings.smtpPort === 465,
             hasPassword: Boolean(settings.smtpPassword),
             source: "tenant",
@@ -1165,6 +1169,8 @@ export const appRouter = router({
           smtpPort: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
           smtpUser: process.env.SMTP_USER || "",
           smtpFrom: process.env.SMTP_FROM || "",
+          postmanGpxBaseUrl: process.env.POSTMANGPX_BASE_URL || "",
+          hasPostmanGpxApiKey: Boolean(process.env.POSTMANGPX_API_KEY),
           useSecure: process.env.SMTP_PORT === "465",
           hasPassword: Boolean(process.env.SMTP_PASS),
           source: process.env.SMTP_HOST ? "env" : "none",
@@ -1179,6 +1185,8 @@ export const appRouter = router({
         smtpUser: z.string().optional(),
         smtpPass: z.string().optional(),
         smtpFrom: z.string().min(1),
+        postmanGpxBaseUrl: z.string().optional(),
+        postmanGpxApiKey: z.string().optional(),
         useSecure: z.boolean().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -1222,10 +1230,31 @@ export const appRouter = router({
             smtpFrom: input.smtpFrom,
           });
         } else {
-          // Método gateway - só precisa do smtpFrom (remetente visual)
+          // Método gateway (PostmanGPX)
+          if (!input.postmanGpxBaseUrl) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Informe a Base URL do PostmanGPX.",
+            });
+          }
+
+          const existing = await db.getTenantSmtpSettings(tenantId);
+          const postmanGpxApiKey = input.postmanGpxApiKey !== undefined && input.postmanGpxApiKey !== ""
+            ? input.postmanGpxApiKey
+            : (existing as any)?.postmanGpxApiKey || "";
+
+          if (!postmanGpxApiKey) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Informe a API Key do PostmanGPX.",
+            });
+          }
+
           await db.updateTenantSmtpSettings(tenantId, {
             emailMethod: "gateway",
             smtpFrom: input.smtpFrom,
+            postmanGpxBaseUrl: input.postmanGpxBaseUrl,
+            postmanGpxApiKey,
           });
         }
 
@@ -1269,6 +1298,8 @@ export const appRouter = router({
           subject: input?.subject,
           body: input?.body,
           useGateway: method === "gateway",
+          postmanGpxBaseUrl: (tenantSettings as any)?.postmanGpxBaseUrl || process.env.POSTMANGPX_BASE_URL,
+          postmanGpxApiKey: (tenantSettings as any)?.postmanGpxApiKey || process.env.POSTMANGPX_API_KEY,
         });
         
         if (!result.success) {

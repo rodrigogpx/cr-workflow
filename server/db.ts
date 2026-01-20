@@ -733,6 +733,8 @@ export interface TenantSmtpSettings {
   smtpUser: string | null;
   smtpPassword: string | null;
   smtpFrom: string | null;
+  postmanGpxBaseUrl: string | null;
+  postmanGpxApiKey: string | null;
 }
 
 export async function getTenantSmtpSettings(tenantId: number): Promise<TenantSmtpSettings | null> {
@@ -747,6 +749,8 @@ export async function getTenantSmtpSettings(tenantId: number): Promise<TenantSmt
       smtpUser: tenants.smtpUser,
       smtpPassword: tenants.smtpPassword,
       smtpFrom: tenants.smtpFrom,
+      postmanGpxBaseUrl: (tenants as any).postmanGpxBaseUrl,
+      postmanGpxApiKey: (tenants as any).postmanGpxApiKey,
     })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
@@ -772,6 +776,12 @@ export async function updateTenantSmtpSettings(
       smtpUser: settings.smtpUser,
       smtpPassword: settings.smtpPassword,
       smtpFrom: settings.smtpFrom,
+      ...(settings.postmanGpxBaseUrl !== undefined
+        ? ({ postmanGpxBaseUrl: settings.postmanGpxBaseUrl } as any)
+        : {}),
+      ...(settings.postmanGpxApiKey !== undefined
+        ? ({ postmanGpxApiKey: settings.postmanGpxApiKey } as any)
+        : {}),
       updatedAt: new Date(),
     })
     .where(eq(tenants.id, tenantId));

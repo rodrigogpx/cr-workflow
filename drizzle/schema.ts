@@ -318,9 +318,6 @@ export const emailScheduledRelations = relations(emailScheduled, ({ one }) => ({
  * ============================================
  * MULTI-TENANT TABLES (Platform Admin Database)
  * ============================================
- */
-
-/**
  * Tenants table - stores tenant/club information
  */
 export const tenants = pgTable("tenants", {
@@ -350,6 +347,8 @@ export const tenants = pgTable("tenants", {
   smtpUser: varchar("smtpUser", { length: 255 }),
   smtpPassword: text("smtpPassword"),
   smtpFrom: varchar("smtpFrom", { length: 255 }),
+  postmanGpxBaseUrl: varchar("postmanGpxBaseUrl", { length: 500 }),
+  postmanGpxApiKey: text("postmanGpxApiKey"),
   // Storage
   storageBucket: varchar("storageBucket", { length: 255 }),
   backupSchedule: varchar("backupSchedule", { length: 50 }).default("0 3 * * *"),
