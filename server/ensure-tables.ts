@@ -36,6 +36,8 @@ export async function ensureMissingTables() {
         "smtpUser" varchar(255),
         "smtpPassword" text,
         "smtpFrom" varchar(255),
+        "postmanGpxBaseUrl" varchar(500),
+        "postmanGpxApiKey" text,
         "storageBucket" varchar(255),
         "backupSchedule" varchar(50) DEFAULT '0 3 * * *',
         "maxUsers" integer DEFAULT 10,
@@ -49,6 +51,16 @@ export async function ensureMissingTables() {
         "updatedAt" timestamp DEFAULT now() NOT NULL,
         CONSTRAINT "tenants_slug_unique" UNIQUE("slug")
       );
+    `);
+
+    // Ensure new columns exist for existing installations
+    await db.execute(sql`
+      ALTER TABLE "tenants"
+        ADD COLUMN IF NOT EXISTS "postmanGpxBaseUrl" varchar(500);
+    `);
+    await db.execute(sql`
+      ALTER TABLE "tenants"
+        ADD COLUMN IF NOT EXISTS "postmanGpxApiKey" text;
     `);
 
     // Platform Settings
