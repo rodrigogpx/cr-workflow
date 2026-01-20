@@ -209,6 +209,8 @@ export const appRouter = router({
           // Verificar se "Juntada de Documentos" está concluída (stepId 2 ou título contendo "juntada"/"documentos")
           const juntadaStep = workflow.find((s: any) => 
             s.stepId === 2 || 
+            s.stepId === '2' ||
+            s.stepId === 'juntada-documento' ||
             s.stepTitle?.toLowerCase().includes('juntada') ||
             s.stepTitle?.toLowerCase().includes('documentos')
           );
@@ -224,8 +226,10 @@ export const appRouter = router({
         })
       );
       
-      // Se for despachante, vê todos os clientes também
-      const filteredClients = clientsWithProgress;
+      // Se for despachante, filtrar apenas clientes com Juntada de Documentos concluída
+      const filteredClients = ctx.user.role === 'despachante'
+        ? clientsWithProgress.filter(c => c.juntadaConcluida)
+        : clientsWithProgress;
       
       return filteredClients;
     }),
