@@ -31,7 +31,7 @@ export default function EmailTemplates() {
   const tenantSlug = useTenantSlug();
   const { data: user } = trpc.auth.me.useQuery();
   const [templates, setTemplates] = useState<Record<string, TemplateState>>({});
-  const [activeTab, setActiveTab] = useState('welcome');
+  const [activeTab, setActiveTab] = useState('');
   const [newTemplateKey, setNewTemplateKey] = useState('');
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
   const [showNewTemplateDialog, setShowNewTemplateDialog] = useState(false);
@@ -72,15 +72,9 @@ export default function EmailTemplates() {
       });
       setTemplates(initialTemplates);
       
-      // Set active tab to first template if exists and no active tab selected
-      // or if the current active tab is no longer in the list (was deleted)
-      const availableKeys = fetchedTemplates.map((t: any) => t.templateKey);
-      if (availableKeys.length > 0) {
-        if (!activeTab || !availableKeys.includes(activeTab)) {
-          setActiveTab(availableKeys[0]);
-        }
-      } else if (activeTab) {
-        setActiveTab('');
+      // Set first template as active if not set or if current active tab creates a ghost state
+      if (!activeTab && fetchedTemplates.length > 0) {
+        setActiveTab(fetchedTemplates[0].templateKey);
       }
     }
   }, [fetchedTemplates, activeTab]);

@@ -874,7 +874,7 @@ export const appRouter = router({
         }
         
         // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
+        if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
