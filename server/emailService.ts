@@ -217,11 +217,11 @@ async function sendEmailViaPostmanGpx(
     console.log('[EmailService] Sending email via PostmanGPX to:', options.to);
     console.log('[EmailService] PostmanGPX Base URL:', normalizedBaseUrl);
 
-    const response = await fetch(`${normalizedBaseUrl}/api/v1/emails/send`, {
+    const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'X-API-Key': apiKey,
       },
       body: JSON.stringify({
         to: options.to,
