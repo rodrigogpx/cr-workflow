@@ -308,11 +308,11 @@ export async function sendTestEmailWithSettings(settings: {
     }
 
     const normalizedBaseUrl = settings.postmanGpxBaseUrl.replace(/\/$/, '');
-    const response = await fetch(`${normalizedBaseUrl}/api/v1/emails/send`, {
+    const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.postmanGpxApiKey}`,
+        'X-API-Key': settings.postmanGpxApiKey,
       },
       body: JSON.stringify({
         to: settings.toEmail,
