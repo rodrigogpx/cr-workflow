@@ -84,17 +84,18 @@ export interface SendEmailOptions {
 /**
  * Send email via Gateway (production) or SMTP (development)
  */
-export async function sendEmail(options: SendEmailOptions, tenantDb?: any): Promise<{ success: boolean; messageId?: string }> {
+export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; tenantId?: number }): Promise<{ success: boolean; messageId?: string }> {
+  const { tenantDb, tenantId, ...emailOptions } = options;
   // Em produção, usar Gateway para contornar restrições SMTP do Railway
   const useGateway = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true';
   
   if (useGateway) {
     console.log('[EmailService] Using PostmanGPX for sendEmail (gateway mode)');
     const result = await sendEmailViaPostmanGpx({
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    }, tenantDb);
+      to: emailOptions.to,
+      subject: emailOptions.subject,
+      html: emailOptions.html,
+    }, tenantId);
     
     if (!result.success) {
       throw new Error(result.error || 'Falha ao enviar email via Gateway');
@@ -183,7 +184,7 @@ async function sendEmailViaPostmanGpx(
     subject: string;
     html: string;
   },
-  tenantDb?: any
+  tenantId?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { getTenantSmtpSettings } = await import('./db');
@@ -192,12 +193,15 @@ async function sendEmailViaPostmanGpx(
     let apiKey = POSTMANGPX_API_KEY;
 
     try {
-      if (tenantDb && tenantDb.tenantId) {
-        const tenantSettings = await getTenantSmtpSettings(tenantDb.tenantId);
+      if (tenantId) {
+        console.log(`[EmailService] Looking up PostmanGPX settings for tenant ${tenantId}`);
+        const tenantSettings = await getTenantSmtpSettings(tenantId);
+        console.log(`[EmailService] Tenant settings found:`, tenantSettings ? 'yes' : 'no');
         baseUrl = tenantSettings?.postmanGpxBaseUrl || baseUrl;
         apiKey = tenantSettings?.postmanGpxApiKey || apiKey;
       }
-    } catch {
+    } catch (err) {
+      console.error('[EmailService] Error looking up tenant settings:', err);
       // ignore tenant lookup errors and fallback to env
     }
 
@@ -501,6 +505,7 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
                 subject: renderedSubject,
                 html: renderedContent,
                 tenantDb,
+                tenantId,
               });
               console.log(`[EmailTrigger] Sent immediate email to ${recipient.email}`);
             } catch (error) {
@@ -616,6 +621,7 @@ export async function processScheduledEmails(tenantDb?: any): Promise<number> {
           subject: scheduled.subject,
           html: scheduled.content,
           tenantDb,
+          tenantId: scheduled.tenantId,
         });
         
         tenantDb

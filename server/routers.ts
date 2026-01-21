@@ -389,7 +389,9 @@ export const appRouter = router({
               to: input.email,
               subject: finalSubject,
               html: finalContent,
-            }, tenantDb);
+              tenantDb,
+              tenantId: ctx.tenant?.id,
+            });
 
             // Registrar envio do email
             if (tenantDb) {
@@ -1463,21 +1465,14 @@ export const appRouter = router({
         const finalContent = replaceVariables(input.content, client);
 
         try {
-          if (tenantDb) {
-            await sendEmail({
-              to: input.recipientEmail,
-              subject: finalSubject,
-              html: finalContent,
-              attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }))
-            }, tenantDb);
-          } else {
-            await sendEmail({
-              to: input.recipientEmail,
-              subject: finalSubject,
-              html: finalContent,
-              attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }))
-            });
-          }
+          await sendEmail({
+            to: input.recipientEmail,
+            subject: finalSubject,
+            html: finalContent,
+            attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl })),
+            tenantDb,
+            tenantId: ctx.tenant?.id,
+          });
         } catch (error) {
           console.error("Email sending failed:", error);
           throw new TRPCError({ 
