@@ -441,10 +441,15 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
         continue;
       }
       
+      console.log(`[EmailTrigger] Recipients resolved: ${JSON.stringify(recipients.map(r => r.email))}`);
+      
       // Process each template
       for (const templateLink of templates) {
         const template = templateLink.template;
-        if (!template) continue;
+        if (!template) {
+          console.log(`[EmailTrigger] Template link ${templateLink.id} has no template, skipping`);
+          continue;
+        }
         
         // Render template with client data
         const renderedSubject = renderTemplate(template.subject, client, extraData);
@@ -483,8 +488,13 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
         }
         
         // Send immediate email if configured
+        console.log(`[EmailTrigger] Trigger sendImmediate=${trigger.sendImmediate}, template isForReminder=${templateLink.isForReminder}`);
         if (trigger.sendImmediate && !templateLink.isForReminder) {
           for (const recipient of recipients) {
+            if (!recipient.email || !recipient.email.trim()) {
+              console.log(`[EmailTrigger] Skipping recipient with invalid email`);
+              continue;
+            }
             try {
               await sendEmail({
                 to: recipient.email,
@@ -518,7 +528,11 @@ async function resolveRecipients(
   
   // Add client if recipientType includes client
   if (trigger.recipientType === 'client' || trigger.recipientType === 'both') {
-    recipients.push({ email: client.email, name: client.name });
+    if (client.email && client.email.trim()) {
+      recipients.push({ email: client.email, name: client.name });
+    } else {
+      console.log(`[EmailTrigger] Client ${client.id} has no valid email, skipping client recipient`);
+    }
   }
   
   // Add operator if recipientType is operator
