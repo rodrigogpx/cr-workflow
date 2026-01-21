@@ -80,6 +80,7 @@ export default function TenantSettings() {
       testEmail: testEmailTo,
       subject: testEmailSubject,
       body: testEmailBody,
+      useMethod: emailMethod,
     });
   };
 
