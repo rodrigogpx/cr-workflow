@@ -686,18 +686,23 @@ export const appRouter = router({
         if (input.protocolNumber !== undefined) auditDetails.protocolNumber = input.protocolNumber;
 
         if (tenantDb) {
-          await db.logAuditToDb(tenantDb, {
-            tenantId: ctx.user.tenantId!,
-            userId: ctx.user.id,
-            action: 'UPDATE',
-            entity: 'WORKFLOW',
-            entityId: input.stepId,
-            details: JSON.stringify(auditDetails),
-            ipAddress,
-          });
+          const auditTenantId = ctx.tenant?.id ?? ctx.user.tenantId;
+          if (auditTenantId) {
+            await db.logAuditToDb(tenantDb, {
+              tenantId: auditTenantId,
+              userId: ctx.user.id,
+              action: 'UPDATE',
+              entity: 'WORKFLOW',
+              entityId: input.stepId,
+              details: JSON.stringify(auditDetails),
+              ipAddress,
+            });
+          } else {
+            console.error('[AUDIT] Skipping audit log: tenantId not available on ctx');
+          }
         } else {
           await db.logAudit({
-            tenantId: ctx.user.tenantId!,
+            tenantId: ctx.tenant?.id ?? ctx.user.tenantId!,
             userId: ctx.user.id,
             action: 'UPDATE',
             entity: 'WORKFLOW',
