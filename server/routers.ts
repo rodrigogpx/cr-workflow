@@ -184,10 +184,12 @@ export const appRouter = router({
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       
-      // Admin vê todos os clientes, operador vê apenas os seus
+      // Admin vê todos os clientes, operador vê todos os clientes
       // Despachante vê clientes com "Juntada de Documentos" concluída
       let clients;
       if (ctx.user.role === 'admin') {
+        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+      } else if (ctx.user.role === 'operator') {
         clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
       } else if (ctx.user.role === 'despachante') {
         // Despachante vê TODOS os clientes, mas filtraremos depois pela etapa concluída
@@ -195,6 +197,16 @@ export const appRouter = router({
       } else {
         clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
       }
+
+      const assignedUserIds: number[] = (clients || [])
+        .map((c: any) => c.operatorId)
+        .filter((id: any): id is number => typeof id === 'number');
+
+      const uniqueAssignedUserIds: number[] = Array.from(new Set<number>(assignedUserIds));
+      const assignedUsers = tenantDb
+        ? await db.getUsersByIdsFromDb(tenantDb, uniqueAssignedUserIds)
+        : await db.getUsersByIds(uniqueAssignedUserIds);
+      const assignedUserMap = new Map<number, any>(assignedUsers.map((u: any) => [u.id, u]));
       
       // Adicionar estatísticas de workflow para cada cliente
       const clientsWithProgress = await Promise.all(
@@ -222,6 +234,10 @@ export const appRouter = router({
             totalSteps,
             completedSteps,
             juntadaConcluida,
+            assignedOperator: client.operatorId ? (() => {
+              const u = assignedUserMap.get(client.operatorId);
+              return u ? { id: u.id, name: u.name, email: u.email } : null;
+            })() : null,
           };
         })
       );

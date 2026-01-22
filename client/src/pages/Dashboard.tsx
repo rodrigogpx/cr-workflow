@@ -360,6 +360,12 @@ export default function Dashboard() {
               >
                 <CardHeader>
                   <CardTitle className="text-xl font-bold uppercase tracking-tight text-black">{client.name}</CardTitle>
+                  <div className="text-xs text-gray-600">
+                    Operador:{' '}
+                    {client.assignedOperator
+                      ? (client.assignedOperator.name || client.assignedOperator.email)
+                      : 'Sem operador'}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center gap-4 text-sm text-gray-700 flex-wrap">
