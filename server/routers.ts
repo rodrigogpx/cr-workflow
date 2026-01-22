@@ -2392,9 +2392,37 @@ export const appRouter = router({
 
           const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
 
+          const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br')
+            .split(',')
+            .map(e => e.trim().toLowerCase())
+            .filter(Boolean);
+
+          const getUserNameForLog = (log: any) => {
+            if (log.userId) {
+              const name = userMap.get(log.userId);
+              if (name) return name;
+            }
+
+            const detailsRaw = log.details;
+            if (typeof detailsRaw === 'string' && detailsRaw.trim()) {
+              try {
+                const parsed = JSON.parse(detailsRaw);
+                const email = (parsed?.email || parsed?.userEmail || '').toString().trim().toLowerCase();
+                if (email) {
+                  if (superAdminEmails.includes(email)) return 'Super Admin';
+                  return email;
+                }
+              } catch {
+                // ignore
+              }
+            }
+
+            return log.userId ? 'Usuário removido' : 'Sistema';
+          };
+
           const enrichedLogs = result.logs.map(log => ({
             ...log,
-            userName: log.userId ? userMap.get(log.userId) || 'Usuário removido' : 'Sistema',
+            userName: getUserNameForLog(log),
           }));
 
           return {
@@ -2452,9 +2480,37 @@ export const appRouter = router({
 
         const userMap = new Map(usersFound.map((u: any) => [u.id, u.name || u.email]));
 
+        const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br')
+          .split(',')
+          .map(e => e.trim().toLowerCase())
+          .filter(Boolean);
+
+        const getUserNameForLog = (log: any) => {
+          if (log.userId) {
+            const name = userMap.get(log.userId);
+            if (name) return name;
+          }
+
+          const detailsRaw = log.details;
+          if (typeof detailsRaw === 'string' && detailsRaw.trim()) {
+            try {
+              const parsed = JSON.parse(detailsRaw);
+              const email = (parsed?.email || parsed?.userEmail || '').toString().trim().toLowerCase();
+              if (email) {
+                if (superAdminEmails.includes(email)) return 'Super Admin';
+                return email;
+              }
+            } catch {
+              // ignore
+            }
+          }
+
+          return log.userId ? 'Usuário removido' : 'Sistema';
+        };
+
         const csvHeader = 'Data/Hora,Usuário,Ação,Entidade,ID Entidade,Detalhes,IP\n';
         const csvRows = result.logs.map(log => {
-          const userName = log.userId ? userMap.get(log.userId) || 'Usuário removido' : 'Sistema';
+          const userName = getUserNameForLog(log);
           const date = new Date(log.createdAt).toLocaleString('pt-BR');
           const details = (log.details || '').replace(/"/g, '""');
           return `"${date}","${userName}","${log.action}","${log.entity}","${log.entityId || ''}","${details}","${log.ipAddress || ''}"`;
