@@ -714,7 +714,7 @@ export const appRouter = router({
             // Mapear stepId para número da etapa
             const stepIdToNumber: Record<string, string> = {
               'cadastro': '1',
-              'juntada-documentos': '2',
+              'juntada-documento': '2',
               'central-mensagens': '3',
               'agendamento-psicotecnico': '4',
               'agendamento-laudo': '5',
