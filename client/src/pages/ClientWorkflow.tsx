@@ -180,6 +180,17 @@ export default function ClientWorkflow() {
       toast.info("Preparando download...");
       const zip = new JSZip();
 
+      // Buscar PDF com dados do cadastro
+      try {
+        const enxovalData = await trpc.documents.downloadEnxoval.query({ clientId: Number(clientId) });
+        if (enxovalData.clientDataPdf) {
+          const pdfBytes = Uint8Array.from(atob(enxovalData.clientDataPdf), c => c.charCodeAt(0));
+          zip.file('00-Dados-do-Cadastro.pdf', pdfBytes);
+        }
+      } catch (pdfError) {
+        console.error('Erro ao gerar PDF do cadastro:', pdfError);
+      }
+
       for (const doc of stepDocs) {
         try {
           const docResponse = await fetch(doc.fileUrl);

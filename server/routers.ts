@@ -1090,8 +1090,14 @@ export const appRouter = router({
           ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
           : await db.getDocumentsByClient(input.clientId);
         
+        // Gerar PDF com dados do cadastro
+        const { generateClientDataPDF } = await import('./generate-pdf');
+        const pdfBuffer = await generateClientDataPDF(client);
+        const pdfBase64 = pdfBuffer.toString('base64');
+        
         return {
           clientName: client.name,
+          clientDataPdf: pdfBase64,
           documents: docs.map(d => ({
             id: d.id,
             fileName: d.fileName,
