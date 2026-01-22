@@ -18,6 +18,16 @@ interface SmtpConfig {
   useSecure: boolean;
 }
 
+function extractEmailAddress(fromValue: string | undefined | null): string | undefined {
+  if (!fromValue) return undefined;
+  const match = fromValue.match(/<([^>]+)>/);
+  if (match?.[1]) return match[1].trim();
+  const trimmed = fromValue.trim();
+  // If it's already an email without display name
+  if (trimmed.includes('@') && !trimmed.includes(' ')) return trimmed;
+  return undefined;
+}
+
 async function resolveSmtpConfig(tenantDb?: any): Promise<SmtpConfig> {
   const dbConfig: EmailSettings | null = tenantDb
     ? await getEmailSettingsFromDb(tenantDb)
@@ -117,6 +127,7 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
 
     const info = await transport.sendMail({
       from: config.smtpFrom,
+      replyTo: extractEmailAddress(config.smtpFrom),
       to: options.to,
       subject: options.subject,
       html: options.html,
@@ -191,6 +202,7 @@ async function sendEmailViaPostmanGpx(
 
     let baseUrl = POSTMANGPX_BASE_URL;
     let apiKey = POSTMANGPX_API_KEY;
+    let smtpFrom: string | undefined;
 
     try {
       if (tenantId) {
@@ -199,6 +211,7 @@ async function sendEmailViaPostmanGpx(
         console.log(`[EmailService] Tenant settings found:`, tenantSettings ? 'yes' : 'no');
         baseUrl = tenantSettings?.postmanGpxBaseUrl || baseUrl;
         apiKey = tenantSettings?.postmanGpxApiKey || apiKey;
+        smtpFrom = tenantSettings?.smtpFrom || undefined;
       }
     } catch (err) {
       console.error('[EmailService] Error looking up tenant settings:', err);
@@ -227,6 +240,8 @@ async function sendEmailViaPostmanGpx(
         to: options.to,
         subject: options.subject,
         html: options.html,
+        from: smtpFrom,
+        replyTo: extractEmailAddress(smtpFrom),
       }),
     });
 
@@ -322,6 +337,8 @@ export async function sendTestEmailWithSettings(settings: {
         to: settings.toEmail,
         subject,
         html: htmlBody,
+        from: settings.from,
+        replyTo: extractEmailAddress(settings.from),
       }),
     });
 
