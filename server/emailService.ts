@@ -508,6 +508,23 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
                 tenantId,
               });
               console.log(`[EmailTrigger] Sent immediate email to ${recipient.email}`);
+              
+              // Registrar envio na Central de Mensagens
+              try {
+                if (tenantDb) {
+                  await db.logEmailSentToDb(tenantDb, {
+                    clientId: client.id,
+                    templateKey: template.key || `trigger_${trigger.id}`,
+                    recipientEmail: recipient.email,
+                    subject: renderedSubject,
+                    content: renderedContent,
+                    sentBy: 0, // 0 = sistema automático
+                  });
+                  console.log(`[EmailTrigger] Logged email to Central de Mensagens for client ${client.id}`);
+                }
+              } catch (logError) {
+                console.error(`[EmailTrigger] Failed to log email:`, logError);
+              }
             } catch (error) {
               console.error(`[EmailTrigger] Failed to send email to ${recipient.email}:`, error);
             }
