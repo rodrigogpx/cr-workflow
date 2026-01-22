@@ -109,26 +109,6 @@ export default function Login() {
               <p className="text-sm text-white/70 mt-3">Triggers inteligentes de e-mail e controle de documentos enxuto.</p>
             </div>
           </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <Button
-              asChild
-              className="h-12 px-6 text-sm font-semibold uppercase tracking-wide bg-emerald-500 hover:bg-emerald-400 text-black"
-            >
-              <a href="https://acrdigital.com.br" target="_blank" rel="noreferrer">
-                Agendar demonstração
-              </a>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="h-12 px-6 text-sm font-semibold uppercase tracking-wide border-white/40 text-white hover:text-black hover:bg-white"
-            >
-              <a href="https://github.com/rodrigogpx/cr-workflow" target="_blank" rel="noreferrer">
-                Baixar brochure
-              </a>
-            </Button>
-          </div>
         </section>
 
         {/* Card de login */}
