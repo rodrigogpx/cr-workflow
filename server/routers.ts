@@ -184,10 +184,12 @@ export const appRouter = router({
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       
-      // Admin vê todos os clientes, operador vê apenas os seus
+      // Admin vê todos os clientes, operador vê todos os clientes
       // Despachante vê clientes com "Juntada de Documentos" concluída
       let clients;
       if (ctx.user.role === 'admin') {
+        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+      } else if (ctx.user.role === 'operator') {
         clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
       } else if (ctx.user.role === 'despachante') {
         // Despachante vê TODOS os clientes, mas filtraremos depois pela etapa concluída
@@ -195,6 +197,16 @@ export const appRouter = router({
       } else {
         clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
       }
+
+      const assignedUserIds: number[] = (clients || [])
+        .map((c: any) => c.operatorId)
+        .filter((id: any): id is number => typeof id === 'number');
+
+      const uniqueAssignedUserIds: number[] = Array.from(new Set<number>(assignedUserIds));
+      const assignedUsers = tenantDb
+        ? await db.getUsersByIdsFromDb(tenantDb, uniqueAssignedUserIds)
+        : await db.getUsersByIds(uniqueAssignedUserIds);
+      const assignedUserMap = new Map<number, any>(assignedUsers.map((u: any) => [u.id, u]));
       
       // Adicionar estatísticas de workflow para cada cliente
       const clientsWithProgress = await Promise.all(
@@ -222,6 +234,10 @@ export const appRouter = router({
             totalSteps,
             completedSteps,
             juntadaConcluida,
+            assignedOperator: client.operatorId ? (() => {
+              const u = assignedUserMap.get(client.operatorId);
+              return u ? { id: u.id, name: u.name, email: u.email } : null;
+            })() : null,
           };
         })
       );
@@ -262,17 +278,18 @@ export const appRouter = router({
         operatorId: z.number().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        // Verificar permissão: apenas admin pode criar novos clientes
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ 
-            code: 'FORBIDDEN', 
-            message: 'Apenas administradores podem cadastrar novos clientes.' 
+        // Permissão:
+        // - admin: pode cadastrar e atribuir a qualquer operador
+        // - operator: pode cadastrar apenas para si
+        if (ctx.user.role !== 'admin' && ctx.user.role !== 'operator') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Sem permissão para cadastrar novos clientes.',
           });
         }
 
         const tenantDb = await getTenantDbOrNull(ctx);
-        // Admin pode atribuir a qualquer operador
-        const operatorId = input.operatorId || ctx.user.id;
+        const operatorId = ctx.user.role === 'admin' ? (input.operatorId || ctx.user.id) : ctx.user.id;
         
         let clientId: number;
         try {
@@ -389,7 +406,9 @@ export const appRouter = router({
               to: input.email,
               subject: finalSubject,
               html: finalContent,
-            }, tenantDb);
+              tenantDb,
+              tenantId: ctx.tenant?.id,
+            });
 
             // Registrar envio do email
             if (tenantDb) {
@@ -684,18 +703,23 @@ export const appRouter = router({
         if (input.protocolNumber !== undefined) auditDetails.protocolNumber = input.protocolNumber;
 
         if (tenantDb) {
-          await db.logAuditToDb(tenantDb, {
-            tenantId: ctx.user.tenantId!,
-            userId: ctx.user.id,
-            action: 'UPDATE',
-            entity: 'WORKFLOW',
-            entityId: input.stepId,
-            details: JSON.stringify(auditDetails),
-            ipAddress,
-          });
+          const auditTenantId = ctx.tenant?.id ?? ctx.user.tenantId;
+          if (auditTenantId) {
+            await db.logAuditToDb(tenantDb, {
+              tenantId: auditTenantId,
+              userId: ctx.user.id,
+              action: 'UPDATE',
+              entity: 'WORKFLOW',
+              entityId: input.stepId,
+              details: JSON.stringify(auditDetails),
+              ipAddress,
+            });
+          } else {
+            console.error('[AUDIT] Skipping audit log: tenantId not available on ctx');
+          }
         } else {
           await db.logAudit({
-            tenantId: ctx.user.tenantId!,
+            tenantId: ctx.tenant?.id ?? ctx.user.tenantId!,
             userId: ctx.user.id,
             action: 'UPDATE',
             entity: 'WORKFLOW',
@@ -709,7 +733,22 @@ export const appRouter = router({
         try {
           // Step completed trigger
           if (input.completed === true) {
-            const stepNumber = currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
+            // Mapear stepId para número da etapa
+            const stepIdToNumber: Record<string, string> = {
+              'cadastro': '1',
+              'juntada-documento': '2',
+              'boas-vindas': '3',
+              // aliases/compat
+              'central-mensagens': '3',
+              'agendamento-psicotecnico': '4',
+              'agendamento-laudo': '5',
+              'acompanhamento-sinarm': '6',
+              // aliases/compat
+              'juntada-documentos': '2',
+              'acompanhamento-sinarm-cac': '6',
+            };
+            const stepNumber = stepIdToNumber[currentStep.stepId] || currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
+            console.log(`[Workflow] Triggering STEP_COMPLETED:${stepNumber} for stepId=${currentStep.stepId}`);
             await triggerEmails(`STEP_COMPLETED:${stepNumber}`, {
               tenantDb,
               tenantId: ctx.tenant?.id,
@@ -1088,8 +1127,14 @@ export const appRouter = router({
           ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
           : await db.getDocumentsByClient(input.clientId);
         
+        // Gerar PDF com dados do cadastro
+        const { generateClientDataPDF } = await import('./generate-pdf');
+        const pdfBuffer = await generateClientDataPDF(client);
+        const pdfBase64 = pdfBuffer.toString('base64');
+        
         return {
           clientName: client.name,
+          clientDataPdf: pdfBase64,
           documents: docs.map(d => ({
             id: d.id,
             fileName: d.fileName,
@@ -1463,21 +1508,14 @@ export const appRouter = router({
         const finalContent = replaceVariables(input.content, client);
 
         try {
-          if (tenantDb) {
-            await sendEmail({
-              to: input.recipientEmail,
-              subject: finalSubject,
-              html: finalContent,
-              attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }))
-            }, tenantDb);
-          } else {
-            await sendEmail({
-              to: input.recipientEmail,
-              subject: finalSubject,
-              html: finalContent,
-              attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }))
-            });
-          }
+          await sendEmail({
+            to: input.recipientEmail,
+            subject: finalSubject,
+            html: finalContent,
+            attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl })),
+            tenantDb,
+            tenantId: ctx.tenant?.id,
+          });
         } catch (error) {
           console.error("Email sending failed:", error);
           throw new TRPCError({ 
@@ -2370,9 +2408,37 @@ export const appRouter = router({
 
           const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
 
+          const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br')
+            .split(',')
+            .map(e => e.trim().toLowerCase())
+            .filter(Boolean);
+
+          const getUserNameForLog = (log: any) => {
+            if (log.userId) {
+              const name = userMap.get(log.userId);
+              if (name) return name;
+            }
+
+            const detailsRaw = log.details;
+            if (typeof detailsRaw === 'string' && detailsRaw.trim()) {
+              try {
+                const parsed = JSON.parse(detailsRaw);
+                const email = (parsed?.email || parsed?.userEmail || '').toString().trim().toLowerCase();
+                if (email) {
+                  if (superAdminEmails.includes(email)) return 'Super Admin';
+                  return email;
+                }
+              } catch {
+                // ignore
+              }
+            }
+
+            return log.userId ? 'Usuário removido' : 'Sistema';
+          };
+
           const enrichedLogs = result.logs.map(log => ({
             ...log,
-            userName: log.userId ? userMap.get(log.userId) || 'Usuário removido' : 'Sistema',
+            userName: getUserNameForLog(log),
           }));
 
           return {
@@ -2430,9 +2496,37 @@ export const appRouter = router({
 
         const userMap = new Map(usersFound.map((u: any) => [u.id, u.name || u.email]));
 
+        const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br')
+          .split(',')
+          .map(e => e.trim().toLowerCase())
+          .filter(Boolean);
+
+        const getUserNameForLog = (log: any) => {
+          if (log.userId) {
+            const name = userMap.get(log.userId);
+            if (name) return name;
+          }
+
+          const detailsRaw = log.details;
+          if (typeof detailsRaw === 'string' && detailsRaw.trim()) {
+            try {
+              const parsed = JSON.parse(detailsRaw);
+              const email = (parsed?.email || parsed?.userEmail || '').toString().trim().toLowerCase();
+              if (email) {
+                if (superAdminEmails.includes(email)) return 'Super Admin';
+                return email;
+              }
+            } catch {
+              // ignore
+            }
+          }
+
+          return log.userId ? 'Usuário removido' : 'Sistema';
+        };
+
         const csvHeader = 'Data/Hora,Usuário,Ação,Entidade,ID Entidade,Detalhes,IP\n';
         const csvRows = result.logs.map(log => {
-          const userName = log.userId ? userMap.get(log.userId) || 'Usuário removido' : 'Sistema';
+          const userName = getUserNameForLog(log);
           const date = new Date(log.createdAt).toLocaleString('pt-BR');
           const details = (log.details || '').replace(/"/g, '""');
           return `"${date}","${userName}","${log.action}","${log.entity}","${log.entityId || ''}","${details}","${log.ipAddress || ''}"`;

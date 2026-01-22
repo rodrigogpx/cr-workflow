@@ -18,6 +18,16 @@ interface SmtpConfig {
   useSecure: boolean;
 }
 
+function extractEmailAddress(fromValue: string | undefined | null): string | undefined {
+  if (!fromValue) return undefined;
+  const match = fromValue.match(/<([^>]+)>/);
+  if (match?.[1]) return match[1].trim();
+  const trimmed = fromValue.trim();
+  // If it's already an email without display name
+  if (trimmed.includes('@') && !trimmed.includes(' ')) return trimmed;
+  return undefined;
+}
+
 async function resolveSmtpConfig(tenantDb?: any): Promise<SmtpConfig> {
   const dbConfig: EmailSettings | null = tenantDb
     ? await getEmailSettingsFromDb(tenantDb)
@@ -84,17 +94,18 @@ export interface SendEmailOptions {
 /**
  * Send email via Gateway (production) or SMTP (development)
  */
-export async function sendEmail(options: SendEmailOptions, tenantDb?: any): Promise<{ success: boolean; messageId?: string }> {
+export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; tenantId?: number }): Promise<{ success: boolean; messageId?: string }> {
+  const { tenantDb, tenantId, ...emailOptions } = options;
   // Em produção, usar Gateway para contornar restrições SMTP do Railway
   const useGateway = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true';
   
   if (useGateway) {
     console.log('[EmailService] Using PostmanGPX for sendEmail (gateway mode)');
     const result = await sendEmailViaPostmanGpx({
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    }, tenantDb);
+      to: emailOptions.to,
+      subject: emailOptions.subject,
+      html: emailOptions.html,
+    }, tenantId);
     
     if (!result.success) {
       throw new Error(result.error || 'Falha ao enviar email via Gateway');
@@ -116,6 +127,7 @@ export async function sendEmail(options: SendEmailOptions, tenantDb?: any): Prom
 
     const info = await transport.sendMail({
       from: config.smtpFrom,
+      replyTo: extractEmailAddress(config.smtpFrom),
       to: options.to,
       subject: options.subject,
       html: options.html,
@@ -183,21 +195,26 @@ async function sendEmailViaPostmanGpx(
     subject: string;
     html: string;
   },
-  tenantDb?: any
+  tenantId?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { getTenantSmtpSettings } = await import('./db');
 
     let baseUrl = POSTMANGPX_BASE_URL;
     let apiKey = POSTMANGPX_API_KEY;
+    let smtpFrom: string | undefined;
 
     try {
-      if (tenantDb && tenantDb.tenantId) {
-        const tenantSettings = await getTenantSmtpSettings(tenantDb.tenantId);
+      if (tenantId) {
+        console.log(`[EmailService] Looking up PostmanGPX settings for tenant ${tenantId}`);
+        const tenantSettings = await getTenantSmtpSettings(tenantId);
+        console.log(`[EmailService] Tenant settings found:`, tenantSettings ? 'yes' : 'no');
         baseUrl = tenantSettings?.postmanGpxBaseUrl || baseUrl;
         apiKey = tenantSettings?.postmanGpxApiKey || apiKey;
+        smtpFrom = tenantSettings?.smtpFrom || undefined;
       }
-    } catch {
+    } catch (err) {
+      console.error('[EmailService] Error looking up tenant settings:', err);
       // ignore tenant lookup errors and fallback to env
     }
 
@@ -213,16 +230,18 @@ async function sendEmailViaPostmanGpx(
     console.log('[EmailService] Sending email via PostmanGPX to:', options.to);
     console.log('[EmailService] PostmanGPX Base URL:', normalizedBaseUrl);
 
-    const response = await fetch(`${normalizedBaseUrl}/api/v1/emails/send`, {
+    const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'X-API-Key': apiKey,
       },
       body: JSON.stringify({
         to: options.to,
         subject: options.subject,
         html: options.html,
+        from: smtpFrom,
+        replyTo: extractEmailAddress(smtpFrom),
       }),
     });
 
@@ -318,6 +337,8 @@ export async function sendTestEmailWithSettings(settings: {
         to: settings.toEmail,
         subject,
         html: htmlBody,
+        from: settings.from,
+        replyTo: extractEmailAddress(settings.from),
       }),
     });
 
@@ -441,10 +462,15 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
         continue;
       }
       
+      console.log(`[EmailTrigger] Recipients resolved: ${JSON.stringify(recipients.map(r => r.email))}`);
+      
       // Process each template
       for (const templateLink of templates) {
         const template = templateLink.template;
-        if (!template) continue;
+        if (!template) {
+          console.log(`[EmailTrigger] Template link ${templateLink.id} has no template, skipping`);
+          continue;
+        }
         
         // Render template with client data
         const renderedSubject = renderTemplate(template.subject, client, extraData);
@@ -483,16 +509,39 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
         }
         
         // Send immediate email if configured
+        console.log(`[EmailTrigger] Trigger sendImmediate=${trigger.sendImmediate}, template isForReminder=${templateLink.isForReminder}`);
         if (trigger.sendImmediate && !templateLink.isForReminder) {
           for (const recipient of recipients) {
+            if (!recipient.email || !recipient.email.trim()) {
+              console.log(`[EmailTrigger] Skipping recipient with invalid email`);
+              continue;
+            }
             try {
               await sendEmail({
                 to: recipient.email,
                 subject: renderedSubject,
                 html: renderedContent,
                 tenantDb,
+                tenantId,
               });
               console.log(`[EmailTrigger] Sent immediate email to ${recipient.email}`);
+              
+              // Registrar envio na Central de Mensagens
+              try {
+                if (tenantDb) {
+                  await db.logEmailSentToDb(tenantDb, {
+                    clientId: client.id,
+                    templateKey: template.key || `trigger_${trigger.id}`,
+                    recipientEmail: recipient.email,
+                    subject: renderedSubject,
+                    content: renderedContent,
+                    sentBy: 0, // 0 = sistema automático
+                  });
+                  console.log(`[EmailTrigger] Logged email to Central de Mensagens for client ${client.id}`);
+                }
+              } catch (logError) {
+                console.error(`[EmailTrigger] Failed to log email:`, logError);
+              }
             } catch (error) {
               console.error(`[EmailTrigger] Failed to send email to ${recipient.email}:`, error);
             }
@@ -518,7 +567,11 @@ async function resolveRecipients(
   
   // Add client if recipientType includes client
   if (trigger.recipientType === 'client' || trigger.recipientType === 'both') {
-    recipients.push({ email: client.email, name: client.name });
+    if (client.email && client.email.trim()) {
+      recipients.push({ email: client.email, name: client.name });
+    } else {
+      console.log(`[EmailTrigger] Client ${client.id} has no valid email, skipping client recipient`);
+    }
   }
   
   // Add operator if recipientType is operator
@@ -602,6 +655,7 @@ export async function processScheduledEmails(tenantDb?: any): Promise<number> {
           subject: scheduled.subject,
           html: scheduled.content,
           tenantDb,
+          tenantId: scheduled.tenantId,
         });
         
         tenantDb

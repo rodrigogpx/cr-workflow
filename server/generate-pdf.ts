@@ -108,3 +108,84 @@ export function generateWelcomePDF(client: Client): Promise<Buffer> {
     doc.end();
   });
 }
+
+export function generateClientDataPDF(client: Client): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const buffers: Buffer[] = [];
+
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    // Header
+    doc.fontSize(20).fillColor('#1a5c00').text('DADOS DO CADASTRO', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(10).fillColor('#666666').text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, { align: 'center' });
+    doc.moveDown(2);
+
+    // Dados Pessoais
+    doc.fontSize(14).fillColor('#1a5c00').text('Dados Pessoais');
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#1a5c00');
+    doc.moveDown(0.5);
+    
+    doc.fontSize(11).fillColor('#000000');
+    doc.text(`Nome Completo: ${client.name || '-'}`);
+    doc.text(`CPF: ${client.cpf || '-'}`);
+    doc.text(`RG: ${(client as any).rg || '-'}`);
+    doc.text(`Data de Nascimento: ${client.birthDate ? new Date(client.birthDate).toLocaleDateString('pt-BR') : '-'}`);
+    doc.text(`Sexo: ${(client as any).gender || '-'}`);
+    doc.text(`Naturalidade: ${(client as any).naturalidade || '-'}`);
+    doc.text(`Nacionalidade: ${(client as any).nacionalidade || '-'}`);
+    doc.text(`Estado Civil: ${(client as any).maritalStatus || '-'}`);
+    doc.text(`Profissão: ${(client as any).profession || '-'}`);
+    doc.moveDown(1);
+
+    // Contato
+    doc.fontSize(14).fillColor('#1a5c00').text('Contato');
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#1a5c00');
+    doc.moveDown(0.5);
+    
+    doc.fontSize(11).fillColor('#000000');
+    doc.text(`E-mail: ${client.email || '-'}`);
+    doc.text(`Telefone: ${client.phone || '-'}`);
+    doc.moveDown(1);
+
+    // Endereço
+    doc.fontSize(14).fillColor('#1a5c00').text('Endereço');
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#1a5c00');
+    doc.moveDown(0.5);
+    
+    doc.fontSize(11).fillColor('#000000');
+    doc.text(`Logradouro: ${(client as any).street || '-'}`);
+    doc.text(`Número: ${(client as any).number || '-'}`);
+    doc.text(`Complemento: ${(client as any).complement || '-'}`);
+    doc.text(`Bairro: ${(client as any).neighborhood || '-'}`);
+    doc.text(`Cidade: ${(client as any).city || '-'}`);
+    doc.text(`Estado: ${(client as any).state || '-'}`);
+    doc.text(`CEP: ${(client as any).zipCode || '-'}`);
+    doc.moveDown(1);
+
+    // Filiação
+    doc.fontSize(14).fillColor('#1a5c00').text('Filiação');
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#1a5c00');
+    doc.moveDown(0.5);
+    
+    doc.fontSize(11).fillColor('#000000');
+    doc.text(`Nome do Pai: ${(client as any).fatherName || '-'}`);
+    doc.text(`Nome da Mãe: ${(client as any).motherName || '-'}`);
+    doc.moveDown(2);
+
+    // Footer
+    doc.fontSize(9).fillColor('#999999').text(
+      'Documento gerado automaticamente pelo sistema CAC 360',
+      { align: 'center' }
+    );
+
+    doc.end();
+  });
+}

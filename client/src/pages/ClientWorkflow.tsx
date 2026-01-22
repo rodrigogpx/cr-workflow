@@ -180,6 +180,17 @@ export default function ClientWorkflow() {
       toast.info("Preparando download...");
       const zip = new JSZip();
 
+      // Buscar PDF com dados do cadastro
+      try {
+        const enxovalData = await trpc.documents.downloadEnxoval.query({ clientId: Number(clientId) });
+        if (enxovalData.clientDataPdf) {
+          const pdfBytes = Uint8Array.from(atob(enxovalData.clientDataPdf), c => c.charCodeAt(0));
+          zip.file('00-Dados-do-Cadastro.pdf', pdfBytes);
+        }
+      } catch (pdfError) {
+        console.error('Erro ao gerar PDF do cadastro:', pdfError);
+      }
+
       for (const doc of stepDocs) {
         try {
           const docResponse = await fetch(doc.fileUrl);
@@ -592,14 +603,14 @@ export default function ClientWorkflow() {
             const isPsychEvaluationForwardStep =
               step.stepTitle?.includes("Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo") ?? false;
             const canExpand =
-              !isPsychEvaluationForwardStep &&
-              (totalSubTasks > 0 ||
-                step.stepId === "cadastro" ||
-                step.stepId === "boas-vindas" ||
-                step.stepId === "agendamento-psicotecnico" ||
-                step.stepId === "agendamento-laudo" ||
-                step.stepId === "juntada-documentos" ||
-                step.stepId === "acompanhamento-sinarm");
+              isPsychEvaluationForwardStep ||
+              totalSubTasks > 0 ||
+              step.stepId === "cadastro" ||
+              step.stepId === "boas-vindas" ||
+              step.stepId === "agendamento-psicotecnico" ||
+              step.stepId === "agendamento-laudo" ||
+              step.stepId === "juntada-documentos" ||
+              step.stepId === "acompanhamento-sinarm";
 
             return (
               <Card 
@@ -729,7 +740,14 @@ export default function ClientWorkflow() {
                     </div>
                     )}
 
-
+                    {/* Upload de Documentos - Encaminhamento Avaliação Psicológica */}
+                    {isPsychEvaluationForwardStep && (
+                      <DocumentUpload 
+                        clientId={Number(clientId)} 
+                        stepId={step.id} 
+                        stepTitle={step.stepTitle || "Encaminhamento de Avaliação Psicológica"} 
+                      />
+                    )}
 
                     {/* Formulário de Cadastro */}
                     {step.stepTitle === "Cadastro" && (
@@ -1270,12 +1288,14 @@ export default function ClientWorkflow() {
                               id="protocolNumber"
                               type="text"
                               placeholder="Ex: 2025/12345"
-                              value={step.protocolNumber || ""}
-                              onChange={(e) => {
-                                updateStepMutation.mutate({
-                                  stepId: step.id,
-                                  protocolNumber: e.target.value,
-                                });
+                              defaultValue={step.protocolNumber || ""}
+                              onBlur={(e) => {
+                                if (e.target.value !== (step.protocolNumber || "")) {
+                                  updateStepMutation.mutate({
+                                    stepId: step.id,
+                                    protocolNumber: e.target.value,
+                                  });
+                                }
                               }}
                               className="mt-1"
                             />
