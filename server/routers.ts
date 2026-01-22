@@ -715,10 +715,15 @@ export const appRouter = router({
             const stepIdToNumber: Record<string, string> = {
               'cadastro': '1',
               'juntada-documento': '2',
+              'boas-vindas': '3',
+              // aliases/compat
               'central-mensagens': '3',
               'agendamento-psicotecnico': '4',
               'agendamento-laudo': '5',
               'acompanhamento-sinarm': '6',
+              // aliases/compat
+              'juntada-documentos': '2',
+              'acompanhamento-sinarm-cac': '6',
             };
             const stepNumber = stepIdToNumber[currentStep.stepId] || currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
             console.log(`[Workflow] Triggering STEP_COMPLETED:${stepNumber} for stepId=${currentStep.stepId}`);
