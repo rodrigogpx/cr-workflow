@@ -1270,12 +1270,14 @@ export default function ClientWorkflow() {
                               id="protocolNumber"
                               type="text"
                               placeholder="Ex: 2025/12345"
-                              value={step.protocolNumber || ""}
-                              onChange={(e) => {
-                                updateStepMutation.mutate({
-                                  stepId: step.id,
-                                  protocolNumber: e.target.value,
-                                });
+                              defaultValue={step.protocolNumber || ""}
+                              onBlur={(e) => {
+                                if (e.target.value !== (step.protocolNumber || "")) {
+                                  updateStepMutation.mutate({
+                                    stepId: step.id,
+                                    protocolNumber: e.target.value,
+                                  });
+                                }
                               }}
                               className="mt-1"
                             />
