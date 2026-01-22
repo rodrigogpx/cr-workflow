@@ -266,6 +266,17 @@ export default function EmailTemplates() {
                               className="w-full min-h-[500px] p-3 border rounded-md font-mono text-sm"
                               placeholder="Digite o conteúdo do email em HTML...\n\nExemplo:\n<p>Olá <strong>{{nome}}</strong>,</p>\n<p>Seja bem-vindo!</p>"
                             />
+                            <div className="mt-2 text-xs text-gray-500 space-y-1">
+                              <p>
+                                Variáveis disponíveis no HTML: <span className="font-mono">{"{{nome}}"}</span>, <span className="font-mono">{"{{email}}"}</span>, <span className="font-mono">{"{{cpf}}"}</span>, <span className="font-mono">{"{{telefone}}"}</span>, <span className="font-mono">{"{{endereco}}"}</span>, <span className="font-mono">{"{{cidade}}"}</span>, <span className="font-mono">{"{{cep}}"}</span>, <span className="font-mono">{"{{data}}"}</span>.
+                              </p>
+                              <p>
+                                Variáveis extras (dependem do evento): qualquer chave enviada pelo sistema. Exemplos: <span className="font-mono">{"{{sinarmStatus}}"}</span>, <span className="font-mono">{"{{protocolNumber}}"}</span>, <span className="font-mono">{"{{dataAgendamento}}"}</span>, <span className="font-mono">{"{{examinador}}"}</span>, <span className="font-mono">{"{{tipoAgendamento}}"}</span>.
+                              </p>
+                              <p>
+                                Exemplo: <span className="font-mono">&lt;p&gt;Olá {"{{nome}}"}, seu protocolo é {"{{protocolNumber}}"}.&lt;/p&gt;</span>
+                              </p>
+                            </div>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 mb-2">Preview</p>

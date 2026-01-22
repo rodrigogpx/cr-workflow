@@ -344,9 +344,14 @@ export default function WorkflowAdminEmails() {
                           placeholder="Digite o conteúdo HTML do email..."
                         />
                       )}
-                      <p className="text-xs text-muted-foreground">
-                        Variáveis disponíveis: {"{{nome}}"}, {"{{data}}"}, {"{{status}}"}, {"{{status_sinarm}}"}, {"{{email}}"}, {"{{cpf}}"}, {"{{telefone}}"}, {"{{data_agendamento}}"}, {"{{examinador}}"}
-                      </p>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p>
+                          Variáveis disponíveis no HTML: <span className="font-mono">{"{{nome}}"}</span>, <span className="font-mono">{"{{email}}"}</span>, <span className="font-mono">{"{{cpf}}"}</span>, <span className="font-mono">{"{{telefone}}"}</span>, <span className="font-mono">{"{{endereco}}"}</span>, <span className="font-mono">{"{{cidade}}"}</span>, <span className="font-mono">{"{{cep}}"}</span>, <span className="font-mono">{"{{data}}"}</span>.
+                        </p>
+                        <p>
+                          Variáveis extras (dependem do evento): qualquer chave enviada pelo sistema. Exemplos: <span className="font-mono">{"{{sinarmStatus}}"}</span>, <span className="font-mono">{"{{protocolNumber}}"}</span>, <span className="font-mono">{"{{dataAgendamento}}"}</span>, <span className="font-mono">{"{{examinador}}"}</span>, <span className="font-mono">{"{{tipoAgendamento}}"}</span>.
+                        </p>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
