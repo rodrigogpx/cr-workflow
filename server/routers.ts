@@ -711,7 +711,17 @@ export const appRouter = router({
         try {
           // Step completed trigger
           if (input.completed === true) {
-            const stepNumber = currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
+            // Mapear stepId para número da etapa
+            const stepIdToNumber: Record<string, string> = {
+              'cadastro': '1',
+              'juntada-documentos': '2',
+              'central-mensagens': '3',
+              'agendamento-psicotecnico': '4',
+              'agendamento-laudo': '5',
+              'acompanhamento-sinarm': '6',
+            };
+            const stepNumber = stepIdToNumber[currentStep.stepId] || currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
+            console.log(`[Workflow] Triggering STEP_COMPLETED:${stepNumber} for stepId=${currentStep.stepId}`);
             await triggerEmails(`STEP_COMPLETED:${stepNumber}`, {
               tenantDb,
               tenantId: ctx.tenant?.id,
