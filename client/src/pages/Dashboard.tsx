@@ -19,6 +19,7 @@ export default function Dashboard() {
   const tenantSlug = useTenantSlug();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<'all' | 'inProgress' | 'completed'>('all');
+  const [operatorFilter, setOperatorFilter] = useState<'all' | 'unassigned' | string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newClient, setNewClient] = useState({
     name: "",
@@ -105,12 +106,29 @@ export default function Dashboard() {
   const completed = clients?.filter(c => getClientProgress(c) === 100).length || 0;
   const inProgress = totalClients - completed;
 
+  const operatorOptions = Array.from(
+    new Map(
+      (clients || [])
+        .map((c: any) => c?.assignedOperator)
+        .filter(Boolean)
+        .map((op: any) => [String(op.id), op])
+    ).values()
+  ).sort((a: any, b: any) => String(a.name || a.email || '').localeCompare(String(b.name || b.email || '')));
+
   const filteredClients = clients?.filter((client) => {
     // Filtro de busca por texto
     const matchesSearch = searchTerm === '' || 
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.cpf.includes(searchTerm) ||
-      client.email.toLowerCase().includes(searchTerm.toLowerCase());
+      client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.assignedOperator?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.assignedOperator?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesOperator =
+      operatorFilter === 'all' ||
+      (operatorFilter === 'unassigned'
+        ? !client.operatorId
+        : String(client.operatorId) === operatorFilter);
     
     // Filtro por status
     const progress = getClientProgress(client);
@@ -119,7 +137,7 @@ export default function Dashboard() {
       (statusFilter === 'completed' && progress === 100) ||
       (statusFilter === 'inProgress' && progress < 100);
     
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesOperator && matchesStatus;
   }) || [];
 
   return (
@@ -228,6 +246,22 @@ export default function Dashboard() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 border-2 border-dashed border-white/20 bg-card focus:border-primary"
             />
+          </div>
+
+          <div className="sm:w-64">
+            <select
+              value={operatorFilter}
+              onChange={(e) => setOperatorFilter(e.target.value as any)}
+              className="w-full h-10 rounded-md border-2 border-dashed border-white/20 bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+            >
+              <option value="all">Todos os operadores</option>
+              <option value="unassigned">Sem operador</option>
+              {operatorOptions.map((op: any) => (
+                <option key={String(op.id)} value={String(op.id)}>
+                  {op.name || op.email}
+                </option>
+              ))}
+            </select>
           </div>
 
           {(user?.role === 'admin' || user?.role === 'operator') && (
