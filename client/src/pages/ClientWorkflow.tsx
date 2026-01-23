@@ -706,8 +706,7 @@ export default function ClientWorkflow() {
                           1. Confira os dados do Solicitante
                         </div>
                         
-                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
-                          <div className="space-y-6">
+                        <div className="space-y-6">
                             <div className="text-xs font-semibold text-yellow-900 uppercase tracking-wide">Dados pessoais</div>
 
                             {/* Nome Completo + Sexo */}
@@ -1098,23 +1097,6 @@ export default function ClientWorkflow() {
                             </div>
                           </div>
 
-                          <div className="pt-2">
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                const parts = [clientFormData.address, clientFormData.addressNumber, clientFormData.neighborhood, clientFormData.city, clientFormData.residenceUf, clientFormData.cep]
-                                  .filter(Boolean)
-                                  .join(', ');
-                                if (!parts) return;
-                                window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts)}`, '_blank');
-                              }}
-                              className="w-full"
-                              variant="secondary"
-                            >
-                              Buscar no Mapa
-                            </Button>
-                          </div>
-
                           {/* Botão Salvar */}
                           <Button
                             onClick={handleClientDataUpdate}
@@ -1131,13 +1113,6 @@ export default function ClientWorkflow() {
                             )}
                           </Button>
                         </div>
-
-                          <div className="hidden lg:block">
-                            <div className="w-full rounded-lg border border-yellow-200 bg-white p-3">
-                              <div className="aspect-square w-full rounded-md bg-gray-100 border border-gray-200" />
-                            </div>
-                          </div>
-                      </div>
                       </div>
                     )}
 
