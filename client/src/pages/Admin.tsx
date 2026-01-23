@@ -26,7 +26,7 @@ export default function Admin() {
     },
   });
 
-  const delegateClientMutation = trpc.clients.update.useMutation({
+  const delegateClientMutation = trpc.clients.delegateOperator.useMutation({
     onSuccess: () => {
       toast.success("Cliente delegado com sucesso!");
       refetchClients();

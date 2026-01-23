@@ -13,7 +13,7 @@ import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
 import { getTenantDb } from "./config/tenant.config";
-import { createClientSchema } from "@shared/validations";
+import { createClientSchema, updateClientSchema } from "@shared/validations";
 
 async function getTenantDbOrNull(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
@@ -465,46 +465,7 @@ export const appRouter = router({
       }),
 
         update: tenantProcedure
-          .input(z.object({
-            id: z.number(),
-            name: z.string().min(1).optional(),
-            cpf: z.string().min(11).optional(),
-            phone: z.string().min(1).optional(),
-            email: z.string().email().optional(),
-            operatorId: z.number().optional(),
-            // Dados pessoais adicionais
-            identityNumber: z.string().optional(),
-            identityIssueDate: z.string().optional(),
-            identityIssuer: z.string().optional(),
-            identityUf: z.string().optional(),
-            birthDate: z.string().optional(),
-            birthCountry: z.string().optional(),
-            birthUf: z.string().optional(),
-            birthPlace: z.string().optional(),
-            gender: z.string().optional(),
-            profession: z.string().optional(),
-            otherProfession: z.string().optional(),
-            registrationNumber: z.string().optional(),
-            currentActivities: z.string().optional(),
-            phone2: z.string().optional(),
-            motherName: z.string().optional(),
-            fatherName: z.string().optional(),
-            maritalStatus: z.string().optional(),
-            requestType: z.string().optional(),
-            cacNumber: z.string().optional(),
-            cacCategory: z.string().optional(),
-            previousCrNumber: z.string().optional(),
-            psychReportValidity: z.string().optional(),
-            techReportValidity: z.string().optional(),
-            residenceUf: z.string().optional(),
-            // Endereço
-            cep: z.string().optional(),
-            address: z.string().optional(),
-            addressNumber: z.string().optional(),
-            neighborhood: z.string().optional(),
-            city: z.string().optional(),
-            complement: z.string().optional(),
-          }))
+          .input(updateClientSchema)
           .mutation(async ({ ctx, input }) => {
             const tenantDb = await getTenantDbOrNull(ctx);
             const client = tenantDb
@@ -547,6 +508,39 @@ export const appRouter = router({
 
             return { success: true };
           }),
+
+    delegateOperator: tenantAdminProcedure
+      .input(z.object({ id: z.number(), operatorId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.id)
+          : await db.getClientById(input.id);
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+
+        if (tenantDb) {
+          await db.updateClientToDb(tenantDb, input.id, { operatorId: input.operatorId });
+        } else {
+          await db.updateClient(input.id, { operatorId: input.operatorId });
+        }
+
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: 'UPDATE',
+            entity: 'CLIENT',
+            entityId: input.id,
+            details: JSON.stringify({ updatedFields: ['operatorId'] }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
+
+        return { success: true };
+      }),
 
     delete: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
