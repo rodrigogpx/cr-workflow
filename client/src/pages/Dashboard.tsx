@@ -405,7 +405,7 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle className="text-xl font-bold uppercase tracking-tight text-black">{client.name}</CardTitle>
                   <div className="text-xs text-gray-600">
-                    Operador:{' '}
+                    Atribuído a:{' '}
                     {client.assignedOperator
                       ? (client.assignedOperator.name || client.assignedOperator.email)
                       : 'Sem operador'}
