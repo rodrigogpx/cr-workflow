@@ -58,10 +58,9 @@ export default function MainDashboard() {
               <Button
                 variant="outline"
                 onClick={() => setLocation(buildTenantPath(tenantSlug, "/platform-admin/users"))}
-                style={{ color: "#c2c1c1" }}
-                className="mt-1 h-8 px-3 text-[0.65rem] sm:text-[0.7rem] font-semibold uppercase tracking-wide border-2 border-dashed border-white/40 hover:border-primary hover:bg-primary/10 flex items-center gap-1"
+                className="mt-1 h-8 px-4 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-wide bg-primary text-white border-2 border-primary hover:bg-primary/90 hover:border-primary/90 shadow-lg shadow-primary/30 flex items-center gap-1.5"
               >
-                <Shield className="h-3 w-3" />
+                <Shield className="h-3.5 w-3.5" />
                 Administração
               </Button>
             )}
@@ -120,7 +119,7 @@ export default function MainDashboard() {
                   </span>
                   Aquisição &amp; CRAF
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-amber-500 text-white border border-amber-200/60 shadow-sm uppercase font-bold tracking-wide">
                   Fase 2
                 </span>
               </div>
@@ -148,7 +147,7 @@ export default function MainDashboard() {
                   </span>
                   Habitualidade &amp; Treinos
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-amber-500 text-white border border-amber-200/60 shadow-sm uppercase font-bold tracking-wide">
                   Fase 2
                 </span>
               </div>
@@ -176,7 +175,7 @@ export default function MainDashboard() {
                   </span>
                   Munições &amp; Insumos
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-300 border border-slate-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
                   Roadmap
                 </span>
               </div>
@@ -204,7 +203,7 @@ export default function MainDashboard() {
                   </span>
                   Compliance &amp; Vencimentos
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-300 border border-slate-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-indigo-700 text-white border border-indigo-200/30 shadow-sm uppercase font-bold tracking-wide">
                   Fase 3
                 </span>
               </div>
@@ -232,7 +231,7 @@ export default function MainDashboard() {
                   </span>
                   GT &amp; Transporte
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-300 border border-slate-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
                   Roadmap
                 </span>
               </div>

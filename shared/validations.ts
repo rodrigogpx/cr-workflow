@@ -202,8 +202,8 @@ export const updateClientSchema = z.object({
   id: z.number(),
   name: nameOptionalSchema,
   cpf: cpfOptionalSchema,
-  phone: phoneOptionalSchema,
-  email: emailOptionalSchema,
+  phone: phoneSchema,
+  email: emailSchema,
   operatorId: z.number().optional(),
   // Dados pessoais adicionais
   identityNumber: z.string().optional(),
@@ -237,6 +237,18 @@ export const updateClientSchema = z.object({
   neighborhood: z.string().optional(),
   city: z.string().optional(),
   complement: z.string().optional(),
+  // Geolocalização / Segundo Endereço do Acervo
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
+  acervoCep: cepOptionalSchema,
+  acervoAddress: z.string().optional(),
+  acervoAddressNumber: z.string().optional(),
+  acervoNeighborhood: z.string().optional(),
+  acervoCity: z.string().optional(),
+  acervoUf: ufOptionalSchema,
+  acervoComplement: z.string().optional(),
+  acervoLatitude: z.string().optional(),
+  acervoLongitude: z.string().optional(),
 });
 
 // Schema de Criação de Usuário

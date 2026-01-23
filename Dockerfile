@@ -108,6 +108,7 @@ COPY --from=backend-builder /app/dist ./dist
 
 # Copiar configurações necessárias
 COPY drizzle ./drizzle
+COPY drizzle.config.ts ./drizzle.config.ts
 COPY email-templates ./email-templates
 
 # Criar diretório para logs
@@ -118,9 +119,9 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
+    CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/health', (r) => { if (r.statusCode !== 200) throw new Error(r.statusCode) })" || exit 1
 
 # Comando de inicialização
 # O comando de inicialização é gerenciado pelo railway.json/toml em produção.
 # Este CMD serve como fallback para execução local via Docker.
-CMD ["pnpm", "start"]
+CMD ["sh", "-c", "echo '[Startup] Running database migrations (drizzle-kit push)...' && pnpm db:push && echo '[Startup] Starting server...' && pnpm start"]

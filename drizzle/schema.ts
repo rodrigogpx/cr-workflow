@@ -68,6 +68,18 @@ export const clients = pgTable("clients", {
   neighborhood: varchar("neighborhood", { length: 100 }),
   city: varchar("city", { length: 100 }),
   complement: varchar("complement", { length: 255 }),
+  // Geolocalização / Segundo Endereço do Acervo
+  latitude: varchar("latitude", { length: 50 }),
+  longitude: varchar("longitude", { length: 50 }),
+  acervoCep: varchar("acervoCep", { length: 10 }),
+  acervoAddress: varchar("acervoAddress", { length: 255 }),
+  acervoAddressNumber: varchar("acervoAddressNumber", { length: 20 }),
+  acervoNeighborhood: varchar("acervoNeighborhood", { length: 100 }),
+  acervoCity: varchar("acervoCity", { length: 100 }),
+  acervoUf: varchar("acervoUf", { length: 2 }),
+  acervoComplement: varchar("acervoComplement", { length: 255 }),
+  acervoLatitude: varchar("acervoLatitude", { length: 50 }),
+  acervoLongitude: varchar("acervoLongitude", { length: 50 }),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
 });

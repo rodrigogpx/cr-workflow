@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import Footer from "@/components/Footer";
 import { APP_LOGO } from "@/const";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
+import { createClientSchema, formatCPF, formatPhone } from "@shared/validations";
 
 export default function Dashboard() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -73,7 +74,14 @@ export default function Dashboard() {
 
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
-    createClientMutation.mutate(newClient);
+
+    const parsed = createClientSchema.safeParse(newClient);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues?.[0]?.message || "Dados inválidos");
+      return;
+    }
+
+    createClientMutation.mutate(parsed.data);
   };
 
   const handleLogout = () => {
@@ -286,7 +294,7 @@ export default function Dashboard() {
                       <Input
                         id="name"
                         value={newClient.name}
-                        onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                        onChange={(e) => setNewClient({ ...newClient, name: e.target.value.replace(/\d/g, "") })}
                         className="border-2 border-dashed border-white/20 bg-background"
                         required
                       />
@@ -296,8 +304,9 @@ export default function Dashboard() {
                       <Input
                         id="cpf"
                         value={newClient.cpf}
-                        onChange={(e) => setNewClient({ ...newClient, cpf: e.target.value })}
+                        onChange={(e) => setNewClient({ ...newClient, cpf: formatCPF(e.target.value) })}
                         placeholder="000.000.000-00"
+                        inputMode="numeric"
                         className="border-2 border-dashed border-white/20 bg-background"
                         required
                       />
@@ -307,8 +316,9 @@ export default function Dashboard() {
                       <Input
                         id="phone"
                         value={newClient.phone}
-                        onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                        onChange={(e) => setNewClient({ ...newClient, phone: formatPhone(e.target.value) })}
                         placeholder="(00) 00000-0000"
+                        inputMode="tel"
                         className="border-2 border-dashed border-white/20 bg-background"
                         required
                       />
@@ -395,7 +405,7 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle className="text-xl font-bold uppercase tracking-tight text-black">{client.name}</CardTitle>
                   <div className="text-xs text-gray-600">
-                    Operador:{' '}
+                    Atribuído a:{' '}
                     {client.assignedOperator
                       ? (client.assignedOperator.name || client.assignedOperator.email)
                       : 'Sem operador'}

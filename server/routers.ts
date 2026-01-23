@@ -13,6 +13,7 @@ import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
 import { getTenantDb } from "./config/tenant.config";
+import { createClientSchema, updateClientSchema } from "@shared/validations";
 
 async function getTenantDbOrNull(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
@@ -270,13 +271,7 @@ export const appRouter = router({
       }),
 
     create: tenantProcedure
-      .input(z.object({
-        name: z.string().min(1),
-        cpf: z.string().min(11),
-        phone: z.string().min(1),
-        email: z.string().email(),
-        operatorId: z.number().optional(),
-      }))
+      .input(createClientSchema)
       .mutation(async ({ ctx, input }) => {
         // Permissão:
         // - admin: pode cadastrar e atribuir a qualquer operador
@@ -470,46 +465,7 @@ export const appRouter = router({
       }),
 
         update: tenantProcedure
-          .input(z.object({
-            id: z.number(),
-            name: z.string().min(1).optional(),
-            cpf: z.string().min(11).optional(),
-            phone: z.string().min(1).optional(),
-            email: z.string().email().optional(),
-            operatorId: z.number().optional(),
-            // Dados pessoais adicionais
-            identityNumber: z.string().optional(),
-            identityIssueDate: z.string().optional(),
-            identityIssuer: z.string().optional(),
-            identityUf: z.string().optional(),
-            birthDate: z.string().optional(),
-            birthCountry: z.string().optional(),
-            birthUf: z.string().optional(),
-            birthPlace: z.string().optional(),
-            gender: z.string().optional(),
-            profession: z.string().optional(),
-            otherProfession: z.string().optional(),
-            registrationNumber: z.string().optional(),
-            currentActivities: z.string().optional(),
-            phone2: z.string().optional(),
-            motherName: z.string().optional(),
-            fatherName: z.string().optional(),
-            maritalStatus: z.string().optional(),
-            requestType: z.string().optional(),
-            cacNumber: z.string().optional(),
-            cacCategory: z.string().optional(),
-            previousCrNumber: z.string().optional(),
-            psychReportValidity: z.string().optional(),
-            techReportValidity: z.string().optional(),
-            residenceUf: z.string().optional(),
-            // Endereço
-            cep: z.string().optional(),
-            address: z.string().optional(),
-            addressNumber: z.string().optional(),
-            neighborhood: z.string().optional(),
-            city: z.string().optional(),
-            complement: z.string().optional(),
-          }))
+          .input(updateClientSchema)
           .mutation(async ({ ctx, input }) => {
             const tenantDb = await getTenantDbOrNull(ctx);
             const client = tenantDb
@@ -552,6 +508,39 @@ export const appRouter = router({
 
             return { success: true };
           }),
+
+    delegateOperator: tenantAdminProcedure
+      .input(z.object({ id: z.number(), operatorId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.id)
+          : await db.getClientById(input.id);
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+
+        if (tenantDb) {
+          await db.updateClientToDb(tenantDb, input.id, { operatorId: input.operatorId });
+        } else {
+          await db.updateClient(input.id, { operatorId: input.operatorId });
+        }
+
+        if (ctx.tenant?.id) {
+          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: 'UPDATE',
+            entity: 'CLIENT',
+            entityId: input.id,
+            details: JSON.stringify({ updatedFields: ['operatorId'] }),
+            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+          });
+        }
+
+        return { success: true };
+      }),
 
     delete: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
@@ -667,8 +656,66 @@ export const appRouter = router({
         }
         
         // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
+        // Despachantes podem alterar sinarmStatus e protocolNumber na fase Acompanhamento Sinarm-CAC
+        const isDespachante = ctx.user.role === 'despachante';
+        const isUpdatingSinarmOnly = (input.sinarmStatus !== undefined || input.protocolNumber !== undefined) && input.completed === undefined;
+        const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
+        
+        if (!hasGeneralPermission && !(isDespachante && isUpdatingSinarmOnly)) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        }
+
+        // Regra: Agendamento de Laudo só pode ser concluído se Avaliação Psicológica estiver concluída
+        if (input.completed === true) {
+          const isLaudoStep =
+            currentStep.stepId === 'agendamento-laudo' ||
+            currentStep.stepTitle?.toLowerCase().includes('laudo') === true;
+
+          if (isLaudoStep) {
+            // Buscar todas as etapas do cliente
+            const allSteps = tenantDb
+              ? await db.getWorkflowByClientFromDb(tenantDb, currentStep.clientId)
+              : await db.getWorkflowByClient(currentStep.clientId);
+            
+            const avaliacaoStep = allSteps.find((s: any) => 
+              s.stepId === 'agendamento-psicotecnico' || 
+              s.stepTitle?.toLowerCase().includes('avaliação psicológica') ||
+              s.stepTitle?.toLowerCase().includes('psicotécnico')
+            );
+            
+            if (avaliacaoStep && !avaliacaoStep.completed) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Não é possível concluir o Laudo de Capacidade Técnica: a fase de Avaliação Psicológica deve ser concluída primeiro.',
+              });
+            }
+          }
+        }
+
+        // Regra: Juntada de Documentos só pode ser concluída se todos os documentos forem anexados
+        if (input.completed === true) {
+          const isJuntadaStep =
+            currentStep.stepId === 'juntada-documento' ||
+            currentStep.stepId === 'juntada-documentos' ||
+            currentStep.stepTitle?.toLowerCase().includes('juntada') === true;
+
+          if (isJuntadaStep) {
+            const subTasksList = tenantDb
+              ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, currentStep.id)
+              : await db.getSubTasksByWorkflowStep(currentStep.id);
+
+            const docs = tenantDb
+              ? await db.getDocumentsByClientFromDb(tenantDb, currentStep.clientId)
+              : await db.getDocumentsByClient(currentStep.clientId);
+
+            const missing = subTasksList.filter((st: any) => !docs.some((d: any) => d.subTaskId === st.id));
+            if (subTasksList.length > 0 && missing.length > 0) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Não é possível concluir a Juntada de Documentos: ainda existem documentos obrigatórios não anexados.',
+              });
+            }
+          }
         }
         
         // Construir objeto de atualização apenas com campos fornecidos
