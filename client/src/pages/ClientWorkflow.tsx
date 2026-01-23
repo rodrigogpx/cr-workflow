@@ -430,9 +430,9 @@ export default function ClientWorkflow() {
   // Obs: removida a fase "Central de Mensagens" (stepId: 'boas-vindas').
   const PHASES: Array<{ number: number; stepId: string; label: string }> = [
     { number: 1, stepId: 'cadastro', label: 'Cadastro' },
-    { number: 2, stepId: 'juntada-documento', label: 'Juntada de Documentos' },
-    { number: 3, stepId: 'agendamento-psicotecnico', label: 'Avaliação Psicológica' },
-    { number: 4, stepId: 'agendamento-laudo', label: 'Laudo de Capacidade Técnica' },
+    { number: 2, stepId: 'agendamento-psicotecnico', label: 'Avaliação Psicológica' },
+    { number: 3, stepId: 'agendamento-laudo', label: 'Laudo de Capacidade Técnica' },
+    { number: 4, stepId: 'juntada-documento', label: 'Juntada de Documentos' },
     { number: 5, stepId: 'acompanhamento-sinarm', label: 'Submissão ao SINARM-CAC' },
   ];
 
@@ -507,12 +507,13 @@ export default function ClientWorkflow() {
           <CardContent className="pt-6">
             {/* Progress Step Line */}
             <div className="relative">
-              {/* Linha de conexão de fundo */}
-              <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 mx-16" />
+              {/* Linha de conexão de fundo - do centro do primeiro ao centro do último círculo */}
+              <div className="absolute top-5 h-1 bg-gray-200" style={{ left: '10%', right: '10%' }} />
               <div 
-                className="absolute top-6 left-0 h-1 bg-primary mx-16 transition-all duration-500"
+                className="absolute top-5 h-1 bg-primary transition-all duration-500"
                 style={{ 
-                  width: `calc(${Math.max(0, Math.min(100, progressoTotal))}% - 8rem)` 
+                  left: '10%',
+                  width: `${Math.max(0, Math.min(100, progressoTotal)) * 0.8}%`
                 }}
               />
               

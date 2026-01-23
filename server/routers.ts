@@ -656,7 +656,12 @@ export const appRouter = router({
         }
         
         // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
+        // Despachantes podem alterar sinarmStatus e protocolNumber na fase Acompanhamento Sinarm-CAC
+        const isDespachante = ctx.user.role === 'despachante';
+        const isUpdatingSinarmOnly = (input.sinarmStatus !== undefined || input.protocolNumber !== undefined) && input.completed === undefined;
+        const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
+        
+        if (!hasGeneralPermission && !(isDespachante && isUpdatingSinarmOnly)) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
 
