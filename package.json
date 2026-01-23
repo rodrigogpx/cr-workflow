@@ -8,7 +8,7 @@
     "build:client": "vite build",
     "build:server": "esbuild server/_core/index.ts --platform=node --bundle --format=cjs --outfile=dist/index.cjs --packages=bundle --external:better-sqlite3 --external:mysql2 --external:postgres --external:bcryptjs --external:vite --external:lightningcss --external:@tailwindcss/oxide --external:@babel/core --external:esbuild",
     "build": "pnpm build:client && pnpm build:server",
-    "start": "NODE_ENV=production node dist/index.cjs",
+    "start": "pnpm db:push && NODE_ENV=production node dist/index.cjs",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
