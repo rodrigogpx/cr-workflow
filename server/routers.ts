@@ -665,6 +665,33 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
 
+        // Regra: Agendamento de Laudo só pode ser concluído se Avaliação Psicológica estiver concluída
+        if (input.completed === true) {
+          const isLaudoStep =
+            currentStep.stepId === 'agendamento-laudo' ||
+            currentStep.stepTitle?.toLowerCase().includes('laudo') === true;
+
+          if (isLaudoStep) {
+            // Buscar todas as etapas do cliente
+            const allSteps = tenantDb
+              ? await db.getWorkflowByClientFromDb(tenantDb, currentStep.clientId)
+              : await db.getWorkflowByClient(currentStep.clientId);
+            
+            const avaliacaoStep = allSteps.find((s: any) => 
+              s.stepId === 'agendamento-psicotecnico' || 
+              s.stepTitle?.toLowerCase().includes('avaliação psicológica') ||
+              s.stepTitle?.toLowerCase().includes('psicotécnico')
+            );
+            
+            if (avaliacaoStep && !avaliacaoStep.completed) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Não é possível concluir o Laudo de Capacidade Técnica: a fase de Avaliação Psicológica deve ser concluída primeiro.',
+              });
+            }
+          }
+        }
+
         // Regra: Juntada de Documentos só pode ser concluída se todos os documentos forem anexados
         if (input.completed === true) {
           const isJuntadaStep =

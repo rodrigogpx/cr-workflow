@@ -526,7 +526,7 @@ export default function ClientWorkflow() {
                       ${s.completed
                         ? 'bg-primary text-white shadow-lg shadow-primary/30'
                         : s.number === nextPhaseNumber
-                          ? 'bg-primary/20 text-primary border-2 border-primary'
+                          ? 'bg-white text-primary border-2 border-primary shadow-md'
                           : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
                       }
                     `}>
