@@ -108,6 +108,7 @@ COPY --from=backend-builder /app/dist ./dist
 
 # Copiar configurações necessárias
 COPY drizzle ./drizzle
+COPY drizzle.config.ts ./drizzle.config.ts
 COPY email-templates ./email-templates
 
 # Criar diretório para logs
