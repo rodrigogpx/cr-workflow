@@ -120,7 +120,7 @@ export default function MainDashboard() {
                   </span>
                   Aquisição &amp; CRAF
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-amber-500 text-white border border-amber-200/60 shadow-sm uppercase font-bold tracking-wide">
                   Fase 2
                 </span>
               </div>
@@ -148,7 +148,7 @@ export default function MainDashboard() {
                   </span>
                   Habitualidade &amp; Treinos
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-amber-500 text-white border border-amber-200/60 shadow-sm uppercase font-bold tracking-wide">
                   Fase 2
                 </span>
               </div>
@@ -176,7 +176,7 @@ export default function MainDashboard() {
                   </span>
                   Munições &amp; Insumos
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-300 border border-slate-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
                   Roadmap
                 </span>
               </div>
@@ -204,7 +204,7 @@ export default function MainDashboard() {
                   </span>
                   Compliance &amp; Vencimentos
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-300 border border-slate-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-indigo-700 text-white border border-indigo-200/30 shadow-sm uppercase font-bold tracking-wide">
                   Fase 3
                 </span>
               </div>
@@ -232,7 +232,7 @@ export default function MainDashboard() {
                   </span>
                   GT &amp; Transporte
                 </CardTitle>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-300 border border-slate-500/40 uppercase font-semibold tracking-wide">
+                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
                   Roadmap
                 </span>
               </div>

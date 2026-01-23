@@ -13,6 +13,7 @@ import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
 import { getTenantDb } from "./config/tenant.config";
+import { createClientSchema } from "@shared/validations";
 
 async function getTenantDbOrNull(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
@@ -270,13 +271,7 @@ export const appRouter = router({
       }),
 
     create: tenantProcedure
-      .input(z.object({
-        name: z.string().min(1),
-        cpf: z.string().min(11),
-        phone: z.string().min(1),
-        email: z.string().email(),
-        operatorId: z.number().optional(),
-      }))
+      .input(createClientSchema)
       .mutation(async ({ ctx, input }) => {
         // Permissão:
         // - admin: pode cadastrar e atribuir a qualquer operador
@@ -669,6 +664,32 @@ export const appRouter = router({
         // Verificar permissão
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        }
+
+        // Regra: Juntada de Documentos só pode ser concluída se todos os documentos forem anexados
+        if (input.completed === true) {
+          const isJuntadaStep =
+            currentStep.stepId === 'juntada-documento' ||
+            currentStep.stepId === 'juntada-documentos' ||
+            currentStep.stepTitle?.toLowerCase().includes('juntada') === true;
+
+          if (isJuntadaStep) {
+            const subTasksList = tenantDb
+              ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, currentStep.id)
+              : await db.getSubTasksByWorkflowStep(currentStep.id);
+
+            const docs = tenantDb
+              ? await db.getDocumentsByClientFromDb(tenantDb, currentStep.clientId)
+              : await db.getDocumentsByClient(currentStep.clientId);
+
+            const missing = subTasksList.filter((st: any) => !docs.some((d: any) => d.subTaskId === st.id));
+            if (subTasksList.length > 0 && missing.length > 0) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Não é possível concluir a Juntada de Documentos: ainda existem documentos obrigatórios não anexados.',
+              });
+            }
+          }
         }
         
         // Construir objeto de atualização apenas com campos fornecidos

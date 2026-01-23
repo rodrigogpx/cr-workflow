@@ -222,6 +222,24 @@ export default function ClientWorkflow() {
   };
 
   const toggleStep = (stepId: number, currentCompleted: boolean) => {
+    const step = workflow?.find((s: any) => s.id === stepId);
+    const isJuntadaStep =
+      step?.stepId === 'juntada-documento' ||
+      step?.stepId === 'juntada-documentos' ||
+      step?.stepTitle?.toLowerCase?.().includes('juntada') === true;
+
+    if (!currentCompleted && isJuntadaStep) {
+      const subTasks = step?.subTasks || [];
+      const missing = subTasks.filter((st: any) =>
+        !(documents || []).some((d: any) => d.subTaskId === st.id)
+      );
+
+      if (subTasks.length > 0 && missing.length > 0) {
+        toast.error('Para concluir a Juntada de Documentos, anexe todos os documentos obrigatórios.');
+        return;
+      }
+    }
+
     updateStepMutation.mutate({
       clientId: Number(clientId),
       stepId,
@@ -378,27 +396,32 @@ export default function ClientWorkflow() {
     );
   }
 
-  // Calcular progresso por fase
-  const fase1Steps = workflow.filter(s => s.stepTitle === "Cadastro" || s.stepTitle === "Boas Vindas");
-  const fase2Steps = workflow.filter(s => 
-    s.stepTitle === "Agendamento Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo" || 
-    s.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)"
-  );
-  const fase3Steps = workflow.filter(s => 
-    s.stepTitle === "Juntada de Documentos" || 
-    s.stepTitle === "Acompanhamento Sinarm-CAC"
-  );
+  // Etapas (mesmas do email: STEP_COMPLETED:1..6)
+  const EMAIL_STEPS: Array<{ number: number; stepId: string; label: string }> = [
+    { number: 1, stepId: 'cadastro', label: 'Cadastro' },
+    { number: 2, stepId: 'juntada-documento', label: 'Juntada de Documentos' },
+    { number: 3, stepId: 'boas-vindas', label: 'Central de Mensagens' },
+    { number: 4, stepId: 'agendamento-psicotecnico', label: 'Avaliação Psicológica' },
+    { number: 5, stepId: 'agendamento-laudo', label: 'Laudo de Capacidade Técnica' },
+    { number: 6, stepId: 'acompanhamento-sinarm', label: 'Submissão ao SINARM-CAC' },
+  ];
 
-  const calcularProgressoFase = (steps: typeof workflow) => {
+  const calcularProgresso = (steps: typeof workflow) => {
     if (steps.length === 0) return 0;
     const completed = steps.filter(s => s.completed).length;
     return Math.round((completed / steps.length) * 100);
   };
 
-  const progressoFase1 = calcularProgressoFase(fase1Steps);
-  const progressoFase2 = calcularProgressoFase(fase2Steps);
-  const progressoFase3 = calcularProgressoFase(fase3Steps);
-  const progressoTotal = calcularProgressoFase(workflow);
+  const progressoTotal = calcularProgresso(workflow);
+  const emailStepStates = EMAIL_STEPS.map((def) => {
+    const found = workflow.find((s: any) => s.stepId === def.stepId);
+    return {
+      ...def,
+      completed: Boolean(found?.completed),
+      exists: Boolean(found),
+    };
+  });
+  const nextEmailStepNumber = (emailStepStates.find(s => s.exists && !s.completed) || emailStepStates.find(s => !s.completed) || null)?.number ?? null;
 
   return (
     <div className="min-h-screen">
@@ -458,111 +481,36 @@ export default function ClientWorkflow() {
               <div 
                 className="absolute top-6 left-0 h-1 bg-primary mx-16 transition-all duration-500"
                 style={{ 
-                  width: `calc(${
-                    progressoFase1 === 100 && progressoFase2 === 100 && progressoFase3 === 100 ? 100 :
-                    progressoFase1 === 100 && progressoFase2 === 100 ? 66 :
-                    progressoFase1 === 100 ? 33 : 0
-                  }% - 8rem)` 
+                  width: `calc(${Math.max(0, Math.min(100, progressoTotal))}% - 8rem)` 
                 }}
               />
               
               {/* Steps */}
-              <div className="relative flex justify-between items-start">
-                {/* Step 1 - Cadastro/On-Boarding */}
-                <div className="flex flex-col items-center w-1/3">
-                  <div className={`
-                    w-12 h-12 rounded-full flex items-center justify-center z-10 transition-all duration-300
-                    ${progressoFase1 === 100 
-                      ? 'bg-primary text-white shadow-lg shadow-primary/30' 
-                      : progressoFase1 > 0 
-                        ? 'bg-primary/20 text-primary border-2 border-primary' 
-                        : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
-                    }
-                  `}>
-                    {progressoFase1 === 100 ? (
-                      <CheckCircle className="h-6 w-6" />
-                    ) : (
-                      <span className="text-lg font-bold">1</span>
-                    )}
+              <div className="relative flex justify-between items-start gap-2">
+                {emailStepStates.map((s) => (
+                  <div key={String(s.number)} className="flex flex-col items-center flex-1 min-w-0">
+                    <div className={`
+                      w-10 h-10 rounded-full flex items-center justify-center z-10 transition-all duration-300
+                      ${s.completed
+                        ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                        : s.number === nextEmailStepNumber
+                          ? 'bg-primary/20 text-primary border-2 border-primary'
+                          : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
+                      }
+                    `}>
+                      {s.completed ? (
+                        <CheckCircle className="h-5 w-5" />
+                      ) : (
+                        <span className="text-sm font-bold">{s.number}</span>
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <h4 className={`font-semibold text-[0.7rem] leading-tight ${s.completed ? 'text-primary' : 'text-gray-700'}`}>
+                        {s.label}
+                      </h4>
+                    </div>
                   </div>
-                  <div className="mt-3 text-center">
-                    <h4 className={`font-semibold text-sm ${progressoFase1 === 100 ? 'text-primary' : 'text-gray-700'}`}>
-                      Cadastro/On-Boarding
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {fase1Steps.filter(s => s.completed).length}/{fase1Steps.length} etapas
-                    </p>
-                    {progressoFase1 > 0 && progressoFase1 < 100 && (
-                      <div className="mt-2 w-16 mx-auto">
-                        <Progress value={progressoFase1} className="h-1" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Step 2 - Documentação/Laudos */}
-                <div className="flex flex-col items-center w-1/3">
-                  <div className={`
-                    w-12 h-12 rounded-full flex items-center justify-center z-10 transition-all duration-300
-                    ${progressoFase2 === 100 
-                      ? 'bg-primary text-white shadow-lg shadow-primary/30' 
-                      : progressoFase2 > 0 
-                        ? 'bg-primary/20 text-primary border-2 border-primary' 
-                        : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
-                    }
-                  `}>
-                    {progressoFase2 === 100 ? (
-                      <CheckCircle className="h-6 w-6" />
-                    ) : (
-                      <span className="text-lg font-bold">2</span>
-                    )}
-                  </div>
-                  <div className="mt-3 text-center">
-                    <h4 className={`font-semibold text-sm ${progressoFase2 === 100 ? 'text-primary' : 'text-gray-700'}`}>
-                      Documentação/Laudos
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {fase2Steps.filter(s => s.completed).length}/{fase2Steps.length} etapas
-                    </p>
-                    {progressoFase2 > 0 && progressoFase2 < 100 && (
-                      <div className="mt-2 w-16 mx-auto">
-                        <Progress value={progressoFase2} className="h-1" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Step 3 - Juntada-Sinarm-CAC */}
-                <div className="flex flex-col items-center w-1/3">
-                  <div className={`
-                    w-12 h-12 rounded-full flex items-center justify-center z-10 transition-all duration-300
-                    ${progressoFase3 === 100 
-                      ? 'bg-primary text-white shadow-lg shadow-primary/30' 
-                      : progressoFase3 > 0 
-                        ? 'bg-primary/20 text-primary border-2 border-primary' 
-                        : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
-                    }
-                  `}>
-                    {progressoFase3 === 100 ? (
-                      <CheckCircle className="h-6 w-6" />
-                    ) : (
-                      <span className="text-lg font-bold">3</span>
-                    )}
-                  </div>
-                  <div className="mt-3 text-center">
-                    <h4 className={`font-semibold text-sm ${progressoFase3 === 100 ? 'text-primary' : 'text-gray-700'}`}>
-                      Juntada-Sinarm-CAC
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {fase3Steps.filter(s => s.completed).length}/{fase3Steps.length} etapas
-                    </p>
-                    {progressoFase3 > 0 && progressoFase3 < 100 && (
-                      <div className="mt-2 w-16 mx-auto">
-                        <Progress value={progressoFase3} className="h-1" />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -609,7 +557,7 @@ export default function ClientWorkflow() {
               step.stepId === "boas-vindas" ||
               step.stepId === "agendamento-psicotecnico" ||
               step.stepId === "agendamento-laudo" ||
-              step.stepId === "juntada-documentos" ||
+              step.stepId === "juntada-documento" ||
               step.stepId === "acompanhamento-sinarm";
 
             return (
@@ -635,11 +583,12 @@ export default function ClientWorkflow() {
                           {!step.completed && <Circle className="h-5 w-5 text-gray-400" />}
                           {step.stepTitle || (
                             step.stepId === 'cadastro' ? 'Cadastro' :
-                            step.stepId === 'boas-vindas' ? 'Boas Vindas' :
-                            step.stepId === 'agendamento-psicotecnico' ? 'Agendamento Psicotécnico' :
-                            step.stepId === 'juntada-documento' ? 'Juntada de Documento' :
+                            step.stepId === 'boas-vindas' ? 'Central de Mensagens' :
+                            step.stepId === 'agendamento-psicotecnico' ? 'Avaliação Psicológica' :
+                            step.stepId === 'juntada-documento' ? 'Juntada de Documentos' :
                             step.stepId === 'agendamento-laudo' ? 'Agendamento de Laudo' :
                             step.stepId === 'despachante' ? 'Despachante' :
+                            step.stepId === 'acompanhamento-sinarm' ? 'Submissão ao SINARM-CAC' :
                             'Etapa'
                           )}
                         </CardTitle>
@@ -757,53 +706,65 @@ export default function ClientWorkflow() {
                           1. Confira os dados do Solicitante
                         </div>
                         
-                        <div className="space-y-6">
-                          <div className="text-xs font-semibold text-yellow-900 uppercase tracking-wide">Dados pessoais</div>
-                          {/* Nome Completo */}
-                          <div>
-                            <Label htmlFor="name" className="text-sm font-medium">Nome Completo</Label>
-                            <Input
-                              id="name"
-                              value={clientFormData.name || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, name: e.target.value }))}
-                              className="mt-1 font-semibold"
-                            />
-                          </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
+                          <div className="space-y-6">
+                            <div className="text-xs font-semibold text-yellow-900 uppercase tracking-wide">Dados pessoais</div>
 
-                          {/* Linha: Sexo */}
-                          <div>
-                            <Label className="text-sm font-medium">Sexo</Label>
-                            <RadioGroup
-                              value={clientFormData.gender || ''}
-                              onValueChange={(value) => setClientFormData(prev => ({ ...prev, gender: value }))}
-                              className="flex gap-4 mt-2"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="M" id="gender-m" />
-                                <Label htmlFor="gender-m" className="cursor-pointer">M</Label>
+                            {/* Nome Completo + Sexo */}
+                            <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-4">
+                              <div>
+                                <Label htmlFor="name" className="text-sm font-medium">Nome Completo</Label>
+                                <Input
+                                  id="name"
+                                  value={clientFormData.name || ''}
+                                  onChange={(e) => setClientFormData(prev => ({ ...prev, name: e.target.value }))}
+                                  className="mt-1 font-semibold"
+                                />
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="F" id="gender-f" />
-                                <Label htmlFor="gender-f" className="cursor-pointer">F</Label>
+                              <div>
+                                <Label className="text-sm font-medium">Sexo</Label>
+                                <RadioGroup
+                                  value={clientFormData.gender || ''}
+                                  onValueChange={(value) => setClientFormData(prev => ({ ...prev, gender: value }))}
+                                  className="flex gap-4 mt-2"
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="M" id="gender-m" />
+                                    <Label htmlFor="gender-m" className="cursor-pointer">M</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="F" id="gender-f" />
+                                    <Label htmlFor="gender-f" className="cursor-pointer">F</Label>
+                                  </div>
+                                </RadioGroup>
                               </div>
-                            </RadioGroup>
-                          </div>
+                            </div>
 
                           {/* Linha: Estado Civil */}
                           <div>
                             <Label htmlFor="maritalStatus" className="text-sm font-medium text-teal-600">Estado Civil</Label>
-                            <Input
-                              id="maritalStatus"
+                            <Select
                               value={clientFormData.maritalStatus || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, maritalStatus: e.target.value }))}
-                              className="mt-1"
-                            />
+                              onValueChange={(value) => setClientFormData(prev => ({ ...prev, maritalStatus: value }))}
+                            >
+                              <SelectTrigger id="maritalStatus" className="mt-1">
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>
+                                <SelectItem value="Casado(a)">Casado(a)</SelectItem>
+                                <SelectItem value="União estável">União estável</SelectItem>
+                                <SelectItem value="Separado(a)">Separado(a)</SelectItem>
+                                <SelectItem value="Divorciado(a)">Divorciado(a)</SelectItem>
+                                <SelectItem value="Viúvo(a)">Viúvo(a)</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {/* Linha: CPF, Nº Identidade, Data de Expedição, Órgão Emissor, UF */}
                           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <div>
-                              <Label htmlFor="cpf" className="text-sm font-medium text-teal-600">CPF</Label>
+                              <Label htmlFor="cpf" className="text-sm font-medium text-teal-600">Número de Inscrição (CPF)</Label>
                               <Input
                                 id="cpf"
                                 value={clientFormData.cpf || ''}
@@ -895,8 +856,17 @@ export default function ClientWorkflow() {
                             </div>
                           </div>
 
-                          {/* Linha: Profissão, Outra Profissão */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Linha: Nº Título de Eleitor, Profissão, Outra Profissão */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <Label htmlFor="registrationNumber" className="text-sm font-medium text-teal-600">Nº Título de Eleitor</Label>
+                              <Input
+                                id="registrationNumber"
+                                value={clientFormData.registrationNumber || ''}
+                                onChange={(e) => setClientFormData(prev => ({ ...prev, registrationNumber: e.target.value }))}
+                                className="mt-1"
+                              />
+                            </div>
                             <div>
                               <Label htmlFor="profession" className="text-sm font-medium text-teal-600">Profissão</Label>
                               <Input
@@ -917,26 +887,15 @@ export default function ClientWorkflow() {
                             </div>
                           </div>
 
-                          {/* Linha: Nr Registro, Atividade(s) Atual(is) */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="registrationNumber" className="text-sm font-medium text-teal-600">Nr Registro</Label>
-                              <Input
-                                id="registrationNumber"
-                                value={clientFormData.registrationNumber || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, registrationNumber: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="currentActivities" className="text-sm font-medium text-teal-600">Atividade(s) Atual(is)</Label>
-                              <Input
-                                id="currentActivities"
-                                value={clientFormData.currentActivities || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, currentActivities: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
+                          {/* Linha: Atividade(s) Atual(is) */}
+                          <div>
+                            <Label htmlFor="currentActivities" className="text-sm font-medium text-teal-600">Atividade(s) Atual(is)</Label>
+                            <Input
+                              id="currentActivities"
+                              value={clientFormData.currentActivities || ''}
+                              onChange={(e) => setClientFormData(prev => ({ ...prev, currentActivities: e.target.value }))}
+                              className="mt-1"
+                            />
                           </div>
 
                           <div className="pt-4 border-t border-yellow-200 space-y-4">
@@ -1067,7 +1026,7 @@ export default function ClientWorkflow() {
                           </div>
 
                           <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">Endereço</div>
-                          {/* Linha: CEP, Endereço Residencial */}
+                          {/* Linha: CEP, Endereço Residencial, UF, Cidade */}
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                               <Label htmlFor="cep" className="text-sm font-medium text-teal-600">CEP</Label>
@@ -1078,7 +1037,7 @@ export default function ClientWorkflow() {
                                 className="mt-1"
                               />
                             </div>
-                            <div className="md:col-span-3">
+                            <div className="md:col-span-2">
                               <Label htmlFor="address" className="text-sm font-medium text-teal-600">Endereço Residencial</Label>
                               <Input
                                 id="address"
@@ -1087,16 +1046,44 @@ export default function ClientWorkflow() {
                                 className="mt-1"
                               />
                             </div>
+                            <div>
+                              <Label htmlFor="residenceUf" className="text-sm font-medium text-teal-600">UF</Label>
+                              <Input
+                                id="residenceUf"
+                                maxLength={2}
+                                value={clientFormData.residenceUf || ''}
+                                onChange={(e) => setClientFormData(prev => ({ ...prev, residenceUf: e.target.value.toUpperCase() }))}
+                                className="mt-1"
+                              />
+                            </div>
                           </div>
 
-                          {/* Linha: Bairro, Cidade */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Linha: Bairro, Número, Complemento, Cidade */}
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                               <Label htmlFor="neighborhood" className="text-sm font-medium text-teal-600">Bairro</Label>
                               <Input
                                 id="neighborhood"
                                 value={clientFormData.neighborhood || ''}
                                 onChange={(e) => setClientFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="addressNumber" className="text-sm font-medium text-teal-600">Nº</Label>
+                              <Input
+                                id="addressNumber"
+                                value={clientFormData.addressNumber || ''}
+                                onChange={(e) => setClientFormData(prev => ({ ...prev, addressNumber: e.target.value }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="complement" className="text-sm font-medium text-teal-600">Complemento</Label>
+                              <Input
+                                id="complement"
+                                value={clientFormData.complement || ''}
+                                onChange={(e) => setClientFormData(prev => ({ ...prev, complement: e.target.value }))}
                                 className="mt-1"
                               />
                             </div>
@@ -1111,37 +1098,21 @@ export default function ClientWorkflow() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="addressNumber" className="text-sm font-medium text-teal-600">Número</Label>
-                              <Input
-                                id="addressNumber"
-                                value={clientFormData.addressNumber || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, addressNumber: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="residenceUf" className="text-sm font-medium text-teal-600">UF Residência</Label>
-                              <Input
-                                id="residenceUf"
-                                maxLength={2}
-                                value={clientFormData.residenceUf || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, residenceUf: e.target.value.toUpperCase() }))}
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Linha: Complemento */}
-                          <div>
-                            <Label htmlFor="complement" className="text-sm font-medium text-teal-600">Complemento</Label>
-                            <Input
-                              id="complement"
-                              value={clientFormData.complement || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, complement: e.target.value }))}
-                              className="mt-1"
-                            />
+                          <div className="pt-2">
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                const parts = [clientFormData.address, clientFormData.addressNumber, clientFormData.neighborhood, clientFormData.city, clientFormData.residenceUf, clientFormData.cep]
+                                  .filter(Boolean)
+                                  .join(', ');
+                                if (!parts) return;
+                                window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts)}`, '_blank');
+                              }}
+                              className="w-full"
+                              variant="secondary"
+                            >
+                              Buscar no Mapa
+                            </Button>
                           </div>
 
                           {/* Botão Salvar */}
@@ -1160,6 +1131,13 @@ export default function ClientWorkflow() {
                             )}
                           </Button>
                         </div>
+
+                          <div className="hidden lg:block">
+                            <div className="w-full rounded-lg border border-yellow-200 bg-white p-3">
+                              <div className="aspect-square w-full rounded-md bg-gray-100 border border-gray-200" />
+                            </div>
+                          </div>
+                      </div>
                       </div>
                     )}
 
@@ -1248,7 +1226,7 @@ export default function ClientWorkflow() {
                       </div>
                     )}
 
-                    {/* Acompanhamento Sinarm-CAC */}
+                    {/* Dados do Processo Sinarm-CAC */}
                     {step.stepId === "acompanhamento-sinarm" && (
                       <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
                         <div className="flex items-center gap-2 text-sm font-semibold text-purple-900 mb-4">
@@ -1362,6 +1340,7 @@ export default function ClientWorkflow() {
             );
           })}
         </div>
+
         </div>
 
         {uploadModalOpen && selectedSubTask && (
