@@ -606,12 +606,10 @@ export default function ClientWorkflow() {
                       <Checkbox
                         checked={step.completed}
                         onCheckedChange={() => toggleStep(step.id, step.completed)}
-                        className="mt-1"
+                        className="mt-1 h-6 w-6"
                       />
                       <div className="flex-1">
                         <CardTitle className="text-lg flex items-center gap-2">
-                          {step.completed && <CheckCircle className="h-5 w-5 text-green-600" />}
-                          {!step.completed && <Circle className="h-5 w-5 text-gray-400" />}
                           {step.stepTitle || (
                             step.stepId === 'cadastro' ? 'Cadastro' :
                             step.stepId === 'agendamento-psicotecnico' ? 'Avaliação Psicológica' :
