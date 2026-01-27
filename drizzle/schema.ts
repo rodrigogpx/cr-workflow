@@ -361,6 +361,8 @@ export const tenants = pgTable("tenants", {
   smtpFrom: varchar("smtpFrom", { length: 255 }),
   postmanGpxBaseUrl: varchar("postmanGpxBaseUrl", { length: 500 }),
   postmanGpxApiKey: text("postmanGpxApiKey"),
+  // Email Logo (URL da imagem copiada do site do clube)
+  emailLogoUrl: text("emailLogoUrl"),
   // Storage
   storageBucket: varchar("storageBucket", { length: 255 }),
   backupSchedule: varchar("backupSchedule", { length: 50 }).default("0 3 * * *"),

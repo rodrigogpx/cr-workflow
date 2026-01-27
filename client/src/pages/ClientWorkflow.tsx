@@ -1263,12 +1263,12 @@ export default function ClientWorkflow() {
                       </div>
                     )}
 
-                    {/* Agendamento */}
-                    {(step.stepId === "agendamento-laudo" || step.stepId === "agendamento-psicotecnico" || step.stepTitle === "Avaliação Psicológica para Porte/Posse de Armas" || step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)") && (
+                    {/* Agendamento de Laudo de Capacidade Técnica */}
+                    {(step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)" || step.stepTitle === "Exame de Capacidade Técnica") && (
                       <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
                         <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 mb-3">
                           <Calendar className="h-4 w-4" />
-                          Informações de Agendamento
+                          Agendamento de Laudo
                         </div>
                         
                         {step.scheduledDate ? (
@@ -1282,23 +1282,40 @@ export default function ClientWorkflow() {
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-amber-700" />
                                 <span className="font-medium">Examinador:</span>
-                                <span>{step.examinerName}</span>
+                                <span>{step.examinerName || 'Não informado'}</span>
                               </div>
                             </div>
                             
-                            {/* Botão de envio de email - apenas para Exame de Capacidade Técnica */}
-                            {(step.stepTitle === "Exame de Capacidade Técnica" || step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)") && client && (
+                            {/* Botão de envio de email de confirmação */}
+                            {client && (
                               <EmailPreview
                                 clientId={Number(clientId)}
                                 clientEmail={client.email || ""}
                                 clientName={client.name || "Cliente"}
                                 templateKey="agendamento_laudo"
-                                title="Confirmação de Agendamento de Laudo"
+                                title="Enviar Confirmação de Agendamento"
                                 requiresScheduling={true}
                                 scheduledDate={step.scheduledDate}
                                 examinerName={step.examinerName}
                               />
                             )}
+                            
+                            {/* Botão para alterar agendamento */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                updateSchedulingMutation.mutate({
+                                  clientId: Number(clientId),
+                                  stepId: step.id,
+                                  scheduledDate: undefined,
+                                  examinerName: undefined,
+                                });
+                              }}
+                              className="mt-2"
+                            >
+                              Alterar Agendamento
+                            </Button>
                           </div>
                         ) : (
                           <div className="space-y-3">
@@ -1331,7 +1348,7 @@ export default function ClientWorkflow() {
                             </div>
                             <Button
                               onClick={() => handleSchedulingUpdate(step.id)}
-                              disabled={updateSchedulingMutation.isPending}
+                              disabled={updateSchedulingMutation.isPending || !schedulingData[step.id]?.date}
                               className="w-full"
                             >
                               {updateSchedulingMutation.isPending ? (
@@ -1340,7 +1357,7 @@ export default function ClientWorkflow() {
                                   Salvando...
                                 </>
                               ) : (
-                                'Salvar Agendamento'
+                                'Confirmar Agendamento'
                               )}
                             </Button>
                           </div>

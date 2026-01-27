@@ -735,6 +735,7 @@ export interface TenantSmtpSettings {
   smtpFrom: string | null;
   postmanGpxBaseUrl: string | null;
   postmanGpxApiKey: string | null;
+  emailLogoUrl: string | null;
 }
 
 export async function getTenantSmtpSettings(tenantId: number): Promise<TenantSmtpSettings | null> {
@@ -751,6 +752,7 @@ export async function getTenantSmtpSettings(tenantId: number): Promise<TenantSmt
       smtpFrom: tenants.smtpFrom,
       postmanGpxBaseUrl: (tenants as any).postmanGpxBaseUrl,
       postmanGpxApiKey: (tenants as any).postmanGpxApiKey,
+      emailLogoUrl: (tenants as any).emailLogoUrl,
     })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
@@ -781,6 +783,9 @@ export async function updateTenantSmtpSettings(
         : {}),
       ...(settings.postmanGpxApiKey !== undefined
         ? ({ postmanGpxApiKey: settings.postmanGpxApiKey } as any)
+        : {}),
+      ...(settings.emailLogoUrl !== undefined
+        ? ({ emailLogoUrl: settings.emailLogoUrl } as any)
         : {}),
       updatedAt: new Date(),
     })

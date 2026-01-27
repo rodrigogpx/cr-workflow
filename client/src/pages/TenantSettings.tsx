@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Loader2, Send, Cloud, Server } from "lucide-react";
+import { Mail, Loader2, Send, Cloud, Server, Image, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 
 export default function TenantSettings() {
@@ -27,6 +27,10 @@ export default function TenantSettings() {
   const [postmanGpxBaseUrl, setPostmanGpxBaseUrl] = useState('');
   const [postmanGpxApiKey, setPostmanGpxApiKey] = useState('');
   const [postmanGpxApiKeyDirty, setPostmanGpxApiKeyDirty] = useState(false);
+
+  // Logo para emails
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoInputUrl, setLogoInputUrl] = useState('');
 
   // Modal de email de teste
   const [testEmailModalOpen, setTestEmailModalOpen] = useState(false);
@@ -48,6 +52,9 @@ export default function TenantSettings() {
       setPostmanGpxBaseUrl((smtpConfig as any).postmanGpxBaseUrl || "");
       setPostmanGpxApiKey("");
       setPostmanGpxApiKeyDirty(false);
+
+      // Logo para emails
+      setLogoUrl((smtpConfig as any).emailLogoUrl || "");
     }
   }, [smtpConfig]);
 
@@ -68,6 +75,29 @@ export default function TenantSettings() {
     },
     onError: (error: any) => {
       toast.error(`Falha ao enviar email de teste: ${error.message}`);
+    },
+  });
+
+  const importLogoMutation = trpc.emails.importLogoFromUrl.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(data.message || "Logo importada com sucesso!");
+      setLogoUrl(data.logoUrl);
+      setLogoInputUrl("");
+      utils.emails.getSmtpConfig.invalidate();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao importar logo: ${error.message}`);
+    },
+  });
+
+  const removeLogoMutation = trpc.emails.removeEmailLogo.useMutation({
+    onSuccess: () => {
+      toast.success("Logo removida com sucesso!");
+      setLogoUrl("");
+      utils.emails.getSmtpConfig.invalidate();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao remover logo: ${error.message}`);
     },
   });
 
@@ -379,6 +409,88 @@ export default function TenantSettings() {
                   </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Logo para Emails */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Image className="h-5 w-5" />
+              Logo para Emails
+            </CardTitle>
+            <CardDescription>
+              Importe a logo do site do clube para usar nos templates de email através da variável <code className="bg-muted px-1 py-0.5 rounded text-sm">{"{{logo}}"}</code>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Preview da logo atual */}
+              {logoUrl && (
+                <div className="flex items-start gap-4 p-4 border rounded-lg bg-muted/50">
+                  <img 
+                    src={logoUrl} 
+                    alt="Logo atual" 
+                    className="max-h-24 max-w-48 object-contain border rounded"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Logo atual</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use <code className="bg-muted px-1 py-0.5 rounded">{"{{logo}}"}</code> nos templates para inserir esta imagem.
+                    </p>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => removeLogoMutation.mutate()}
+                      disabled={removeLogoMutation.isPending}
+                    >
+                      {removeLogoMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Remover Logo
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Campo para importar nova logo */}
+              <div className="space-y-2">
+                <Label htmlFor="logoInputUrl">
+                  {logoUrl ? "Substituir logo" : "Importar logo de URL"}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="logoInputUrl"
+                    placeholder="https://site-do-clube.com.br/logo.png"
+                    value={logoInputUrl}
+                    onChange={(e) => setLogoInputUrl(e.target.value)}
+                  />
+                  <Button
+                    onClick={() => {
+                      if (!logoInputUrl) {
+                        toast.error("Informe a URL da imagem.");
+                        return;
+                      }
+                      importLogoMutation.mutate({ logoUrl: logoInputUrl });
+                    }}
+                    disabled={importLogoMutation.isPending || !logoInputUrl}
+                  >
+                    {importLogoMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Importar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Cole a URL da imagem do site do clube. A imagem será copiada para nosso servidor.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
