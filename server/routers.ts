@@ -938,7 +938,7 @@ export const appRouter = router({
           try {
             const scheduledDate = new Date(input.scheduledDate);
             const isPsych = currentStep.stepId.includes('psico') || currentStep.stepTitle.toLowerCase().includes('psico');
-            const eventType = isPsych ? 'SCHEDULE_PSYCH_CREATED' : 'SCHEDULE_TECH_CREATED';
+            const eventType = isPsych ? 'SCHEDULE_PSYCH_CREATED' : 'SCHEDULE_TECH_CONFIRMATION';
             
             await triggerEmails(eventType, {
               tenantDb,

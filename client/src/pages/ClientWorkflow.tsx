@@ -1305,10 +1305,11 @@ export default function ClientWorkflow() {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                updateStepMutation.mutate({
+                                updateSchedulingMutation.mutate({
+                                  clientId: Number(clientId),
                                   stepId: step.id,
-                                  scheduledDate: null,
-                                  examinerName: null,
+                                  scheduledDate: undefined,
+                                  examinerName: undefined,
                                 });
                               }}
                               className="mt-2"
