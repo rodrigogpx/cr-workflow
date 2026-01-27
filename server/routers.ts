@@ -806,10 +806,30 @@ export const appRouter = router({
             };
             const stepNumber = stepIdToNumber[currentStep.stepId] || currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
             console.log(`[Workflow] Triggering STEP_COMPLETED:${stepNumber} for stepId=${currentStep.stepId}`);
+            
+            // Preparar extraData com informações de agendamento se disponíveis
+            const stepExtraData: Record<string, any> = {};
+            if (currentStep.scheduledDate) {
+              const schedDate = new Date(currentStep.scheduledDate);
+              stepExtraData.dataAgendamento = schedDate.toLocaleString('pt-BR');
+            }
+            if (currentStep.examinerName) {
+              stepExtraData.examinador = currentStep.examinerName;
+            }
+            // Determinar tipo de agendamento baseado no step
+            const isPsychStep = currentStep.stepId.includes('psico') || currentStep.stepTitle?.toLowerCase().includes('psico');
+            const isLaudoStep = currentStep.stepId.includes('laudo') || currentStep.stepTitle?.toLowerCase().includes('laudo');
+            if (isPsychStep) {
+              stepExtraData.tipoAgendamento = 'Avaliação Psicológica';
+            } else if (isLaudoStep) {
+              stepExtraData.tipoAgendamento = 'Laudo Técnico';
+            }
+            
             await triggerEmails(`STEP_COMPLETED:${stepNumber}`, {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client,
+              extraData: Object.keys(stepExtraData).length > 0 ? stepExtraData : undefined,
             });
           }
           
