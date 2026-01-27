@@ -1263,6 +1263,106 @@ export default function ClientWorkflow() {
                       </div>
                     )}
 
+                    {/* Agendamento de Laudo de Capacidade Técnica */}
+                    {(step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)" || step.stepTitle === "Exame de Capacidade Técnica") && (
+                      <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 mb-3">
+                          <Calendar className="h-4 w-4" />
+                          Agendamento de Laudo
+                        </div>
+                        
+                        {step.scheduledDate ? (
+                          <div className="space-y-3">
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-amber-700" />
+                                <span className="font-medium">Data e Hora:</span>
+                                <span>{new Date(step.scheduledDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-amber-700" />
+                                <span className="font-medium">Examinador:</span>
+                                <span>{step.examinerName || 'Não informado'}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Botão de envio de email de confirmação */}
+                            {client && (
+                              <EmailPreview
+                                clientId={Number(clientId)}
+                                clientEmail={client.email || ""}
+                                clientName={client.name || "Cliente"}
+                                templateKey="agendamento_laudo"
+                                title="Enviar Confirmação de Agendamento"
+                                requiresScheduling={true}
+                                scheduledDate={step.scheduledDate}
+                                examinerName={step.examinerName}
+                              />
+                            )}
+                            
+                            {/* Botão para alterar agendamento */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                updateStepMutation.mutate({
+                                  stepId: step.id,
+                                  scheduledDate: null,
+                                  examinerName: null,
+                                });
+                              }}
+                              className="mt-2"
+                            >
+                              Alterar Agendamento
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div>
+                              <Label htmlFor={`date-${step.id}`} className="text-sm">Data e Hora do Agendamento</Label>
+                              <Input
+                                id={`date-${step.id}`}
+                                type="datetime-local"
+                                value={schedulingData[step.id]?.date || ''}
+                                onChange={(e) => setSchedulingData(prev => ({
+                                  ...prev,
+                                  [step.id]: { ...prev[step.id], date: e.target.value }
+                                }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`examiner-${step.id}`} className="text-sm">Nome do Examinador</Label>
+                              <Input
+                                id={`examiner-${step.id}`}
+                                type="text"
+                                placeholder="Digite o nome do examinador"
+                                value={schedulingData[step.id]?.examiner || ''}
+                                onChange={(e) => setSchedulingData(prev => ({
+                                  ...prev,
+                                  [step.id]: { ...prev[step.id], examiner: e.target.value }
+                                }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <Button
+                              onClick={() => handleSchedulingUpdate(step.id)}
+                              disabled={updateSchedulingMutation.isPending || !schedulingData[step.id]?.date}
+                              className="w-full"
+                            >
+                              {updateSchedulingMutation.isPending ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Salvando...
+                                </>
+                              ) : (
+                                'Confirmar Agendamento'
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Dados do Processo Sinarm-CAC */}
                     {step.stepId === "acompanhamento-sinarm" && (
