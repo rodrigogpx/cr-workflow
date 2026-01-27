@@ -1286,30 +1286,18 @@ export default function ClientWorkflow() {
                               </div>
                             </div>
                             
-                            {/* Botões de envio de email */}
+                            {/* Botão de envio de email de confirmação */}
                             {client && (
-                              <div className="flex flex-col gap-2">
-                                <EmailPreview
-                                  clientId={Number(clientId)}
-                                  clientEmail={client.email || ""}
-                                  clientName={client.name || "Cliente"}
-                                  templateKey="confirmacao_agendamento"
-                                  title="Enviar Confirmação de Agendamento"
-                                  requiresScheduling={true}
-                                  scheduledDate={step.scheduledDate}
-                                  examinerName={step.examinerName}
-                                />
-                                <EmailPreview
-                                  clientId={Number(clientId)}
-                                  clientEmail={client.email || ""}
-                                  clientName={client.name || "Cliente"}
-                                  templateKey="lembrete_agendamento"
-                                  title="Enviar Lembrete de Agendamento"
-                                  requiresScheduling={true}
-                                  scheduledDate={step.scheduledDate}
-                                  examinerName={step.examinerName}
-                                />
-                              </div>
+                              <EmailPreview
+                                clientId={Number(clientId)}
+                                clientEmail={client.email || ""}
+                                clientName={client.name || "Cliente"}
+                                templateKey="agendamento_laudo"
+                                title="Enviar Confirmação de Agendamento"
+                                requiresScheduling={true}
+                                scheduledDate={step.scheduledDate}
+                                examinerName={step.examinerName}
+                              />
                             )}
                             
                             {/* Botão para alterar agendamento */}
