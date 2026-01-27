@@ -383,6 +383,10 @@ export const appRouter = router({
             : await db.getEmailTemplate('boasvindas-filiado');
           
           if (welcomeTemplate && input.email) {
+            // Buscar logo do tenant para variável {{logo}}
+            const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
+            const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+            
             // Substituir variáveis no template
             const replaceVariables = (text: string) => {
               let result = text;
@@ -391,6 +395,12 @@ export const appRouter = router({
               result = result.replace(/{{email}}/g, input.email || '');
               result = result.replace(/{{cpf}}/g, input.cpf || '');
               result = result.replace(/{{telefone}}/g, input.phone || '');
+              // Variável {{logo}} - renderiza como tag <img> se houver logo configurada
+              if (emailLogoUrl) {
+                result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+              } else {
+                result = result.replace(/{{logo}}/g, '');
+              }
               return result;
             };
 
@@ -1250,6 +1260,7 @@ export const appRouter = router({
             hasPostmanGpxApiKey: Boolean((settings as any).postmanGpxApiKey),
             useSecure: settings.smtpPort === 465,
             hasPassword: Boolean(settings.smtpPassword),
+            emailLogoUrl: (settings as any).emailLogoUrl || null,
             source: "tenant",
           };
         }
@@ -1404,6 +1415,102 @@ export const appRouter = router({
         return { success: true, sentTo: toEmail };
       }),
 
+    // Import logo from external URL
+    importLogoFromUrl: adminProcedure
+      .input(z.object({
+        logoUrl: z.string().url(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const tenantId = ctx.tenant?.id;
+        
+        if (!tenantId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Tenant não identificado. Faça login novamente.",
+          });
+        }
+
+        try {
+          // Baixar a imagem da URL externa
+          const response = await fetch(input.logoUrl);
+          
+          if (!response.ok) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Não foi possível baixar a imagem: ${response.statusText}`,
+            });
+          }
+
+          const contentType = response.headers.get("content-type") || "image/png";
+          
+          // Verificar se é uma imagem
+          if (!contentType.startsWith("image/")) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "A URL deve apontar para uma imagem (jpg, png, gif, etc).",
+            });
+          }
+
+          const imageBuffer = Buffer.from(await response.arrayBuffer());
+          
+          // Determinar extensão do arquivo
+          const extMap: Record<string, string> = {
+            "image/png": "png",
+            "image/jpeg": "jpg",
+            "image/jpg": "jpg",
+            "image/gif": "gif",
+            "image/webp": "webp",
+            "image/svg+xml": "svg",
+          };
+          const ext = extMap[contentType] || "png";
+          
+          // Gerar nome único para o arquivo
+          const fileName = `email-logo-${tenantId}-${Date.now()}.${ext}`;
+          const fileKey = `tenants/${tenantId}/email-logos/${fileName}`;
+          
+          // Fazer upload para o storage
+          const { url: uploadedUrl } = await storagePut(fileKey, imageBuffer, contentType);
+          
+          // Salvar a URL no banco de dados
+          await db.updateTenantSmtpSettings(tenantId, {
+            emailLogoUrl: uploadedUrl,
+          });
+
+          return { 
+            success: true, 
+            logoUrl: uploadedUrl,
+            message: "Logo importada com sucesso! Use {{logo}} nos templates de email.",
+          };
+        } catch (error: any) {
+          if (error instanceof TRPCError) throw error;
+          
+          console.error("[ImportLogo] Error:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: error.message || "Erro ao importar logo.",
+          });
+        }
+      }),
+
+    // Remove email logo
+    removeEmailLogo: adminProcedure
+      .mutation(async ({ ctx }) => {
+        const tenantId = ctx.tenant?.id;
+        
+        if (!tenantId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Tenant não identificado.",
+          });
+        }
+
+        await db.updateTenantSmtpSettings(tenantId, {
+          emailLogoUrl: null,
+        });
+
+        return { success: true };
+      }),
+
     // Get email template
     getTemplate: protectedProcedure
       .input(z.object({
@@ -1530,6 +1637,10 @@ export const appRouter = router({
           schedulingExaminer = schedulingStep.examinerName;
         }
 
+        // Buscar logo do tenant para variável {{logo}}
+        const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
+        const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+
         const replaceVariables = (text: string, clientData: any) => {
           let result = text;
           result = result.replace(/{{nome}}/g, clientData.name || '');
@@ -1546,6 +1657,13 @@ export const appRouter = router({
           }
           if (schedulingExaminer) {
             result = result.replace(/{{examinador}}/g, schedulingExaminer);
+          }
+
+          // Variável {{logo}} - renderiza como tag <img> se houver logo configurada
+          if (emailLogoUrl) {
+            result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+          } else {
+            result = result.replace(/{{logo}}/g, '');
           }
 
           return result;
