@@ -88,7 +88,67 @@ export interface SendEmailOptions {
     filename: string;
     path?: string; // URL or file path
     content?: Buffer; // Raw content
+    contentType?: string;
+    cid?: string;
+    disposition?: 'inline' | 'attachment';
   }>;
+}
+
+function parseDataUri(dataUri: string): { contentType: string; content: Buffer } | null {
+  const match = /^data:([^;]+);base64,(.+)$/i.exec(dataUri || '');
+  if (!match?.[1] || !match?.[2]) return null;
+  try {
+    return {
+      contentType: match[1],
+      content: Buffer.from(match[2], 'base64'),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveAttachmentToBase64(att: {
+  filename: string;
+  path?: string;
+  content?: Buffer;
+  contentType?: string;
+  cid?: string;
+  disposition?: 'inline' | 'attachment';
+}): Promise<{ filename: string; contentType: string; contentBase64: string; cid?: string; disposition?: 'inline' | 'attachment' } | null> {
+  let content: Buffer | null = att.content || null;
+  let contentType = att.contentType || 'application/octet-stream';
+
+  if (!content && att.path) {
+    const resp = await fetch(att.path);
+    if (!resp.ok) return null;
+    contentType = resp.headers.get('content-type') || contentType;
+    const ab = await resp.arrayBuffer();
+    content = Buffer.from(ab);
+  }
+
+  if (!content) return null;
+
+  return {
+    filename: att.filename,
+    contentType,
+    contentBase64: content.toString('base64'),
+    cid: att.cid,
+    disposition: att.disposition,
+  };
+}
+
+export function buildInlineLogoAttachment(emailLogoValue: string | undefined | null): { filename: string; content: Buffer; contentType: string; cid: string; disposition: 'inline' } | null {
+  if (!emailLogoValue) return null;
+  const parsed = parseDataUri(emailLogoValue);
+  if (!parsed) return null;
+  const ext = (parsed.contentType.split('/')[1] || 'png').replace(/[^a-z0-9]/gi, '') || 'png';
+  return {
+    filename: `logo.${ext}`,
+    content: parsed.content,
+    contentType: parsed.contentType,
+    cid: 'email-logo',
+    disposition: 'inline',
+  };
 }
 
 /**
@@ -98,22 +158,23 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
   const { tenantDb, tenantId, ...emailOptions } = options;
   // Em produção, usar Gateway para contornar restrições SMTP do Railway
   const useGateway = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true';
-  
+
   if (useGateway) {
     console.log('[EmailService] Using PostmanGPX for sendEmail (gateway mode)');
     const result = await sendEmailViaPostmanGpx({
       to: emailOptions.to,
       subject: emailOptions.subject,
       html: emailOptions.html,
+      attachments: emailOptions.attachments,
     }, tenantId);
-    
+
     if (!result.success) {
       throw new Error(result.error || 'Falha ao enviar email via Gateway');
     }
-    
+
     return { success: true, messageId: 'gateway-' + Date.now() };
   }
-  
+
   // Desenvolvimento: usar SMTP direto
   try {
     const { transporter: transport, config } = await getTransporterWithConfig(tenantDb);
@@ -123,6 +184,9 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
       filename: att.filename,
       path: att.path,
       content: att.content,
+      contentType: att.contentType,
+      cid: att.cid,
+      disposition: att.disposition,
     })) || [];
 
     const info = await transport.sendMail({
@@ -143,50 +207,6 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
 }
 
 /**
- * Verify SMTP connection
- */
-export async function verifyConnection(tenantDb?: any): Promise<boolean> {
-  try {
-    const { transporter: transport } = await getTransporterWithConfig(tenantDb);
-    await transport.verify();
-    console.log('[EmailService] SMTP connection verified');
-    return true;
-  } catch (error) {
-    console.error('[EmailService] SMTP connection failed:', error);
-    return false;
-  }
-}
-
-/**
- * Verify SMTP connection with explicit settings (tenant-isolated)
- */
-export async function verifyConnectionWithSettings(settings: {
-  host: string;
-  port: number;
-  user: string;
-  pass: string;
-  secure: boolean;
-}): Promise<boolean> {
-  try {
-    const transporter = nodemailer.createTransport({
-      host: settings.host,
-      port: settings.port,
-      secure: settings.secure,
-      auth: {
-        user: settings.user,
-        pass: settings.pass,
-      },
-    });
-    await transporter.verify();
-    console.log('[EmailService] SMTP connection verified with custom settings');
-    return true;
-  } catch (error) {
-    console.error('[EmailService] SMTP connection failed:', error);
-    return false;
-  }
-}
-
-/**
  * Send email via Manus Gateway (HTTP) - contorna restrições SMTP do Railway
  */
 async function sendEmailViaPostmanGpx(
@@ -194,6 +214,7 @@ async function sendEmailViaPostmanGpx(
     to: string;
     subject: string;
     html: string;
+    attachments?: SendEmailOptions['attachments'];
   },
   tenantId?: number
 ): Promise<{ success: boolean; error?: string }> {
@@ -230,6 +251,12 @@ async function sendEmailViaPostmanGpx(
     console.log('[EmailService] Sending email via PostmanGPX to:', options.to);
     console.log('[EmailService] PostmanGPX Base URL:', normalizedBaseUrl);
 
+    let gatewayAttachments: Array<{ filename: string; contentType: string; contentBase64: string; cid?: string; disposition?: 'inline' | 'attachment' }> | undefined;
+    if (options.attachments?.length) {
+      const resolved = await Promise.all(options.attachments.map(resolveAttachmentToBase64));
+      gatewayAttachments = resolved.filter(Boolean) as any;
+    }
+
     const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
       method: 'POST',
       headers: {
@@ -242,6 +269,7 @@ async function sendEmailViaPostmanGpx(
         html: options.html,
         from: smtpFrom,
         replyTo: extractEmailAddress(smtpFrom),
+        attachments: gatewayAttachments,
       }),
     });
 
@@ -464,6 +492,8 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
     // Logo is already stored as base64 data URI in the database
     const isBase64Logo = emailLogoUrl.startsWith('data:');
     console.log(`[EmailTrigger] Logo from settings: ${emailLogoUrl ? (isBase64Logo ? 'BASE64 (' + emailLogoUrl.length + ' chars)' : 'URL') : 'EMPTY'}`);
+
+    const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
     
     // Get active triggers for this event
     const triggers = tenantDb
@@ -555,6 +585,7 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
                 to: recipient.email,
                 subject: renderedSubject,
                 html: renderedContent,
+                attachments: inlineLogo ? [inlineLogo] : undefined,
                 tenantDb,
                 tenantId,
               });
@@ -667,10 +698,9 @@ function renderTemplate(template: string, client: Client, extraData?: Record<str
   // Date placeholder
   rendered = rendered.replace(/\{\{data\}\}/gi, new Date().toLocaleDateString('pt-BR'));
   
-  // Logo placeholder - renders as <img> tag if logo is configured
-  // emailLogoUrl can be a URL or a base64 data URI
+  // Logo placeholder - renders as inline attachment (CID) if logo is configured
   if (emailLogoUrl) {
-    rendered = rendered.replace(/\{\{logo\}\}/gi, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
+    rendered = rendered.replace(/\{\{logo\}\}/gi, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
   } else {
     rendered = rendered.replace(/\{\{logo\}\}/gi, '');
   }
@@ -692,10 +722,15 @@ export async function processScheduledEmails(tenantDb?: any): Promise<number> {
     let sent = 0;
     for (const scheduled of pendingEmails) {
       try {
+        const tenantSettings = scheduled.tenantId ? await db.getTenantSmtpSettings(scheduled.tenantId) : null;
+        const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
+        const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
+
         await sendEmail({
           to: scheduled.recipientEmail,
           subject: scheduled.subject,
           html: scheduled.content,
+          attachments: inlineLogo ? [inlineLogo] : undefined,
           tenantDb,
           tenantId: scheduled.tenantId,
         });

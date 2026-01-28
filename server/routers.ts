@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
-import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64 } from "./emailService";
+import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64, buildInlineLogoAttachment } from "./emailService";
 import * as db from "./db";
 import { invalidateTenantCache } from "./config/tenant.config";
 import { storagePut } from "./storage";
@@ -387,6 +387,7 @@ export const appRouter = router({
             // Buscar logo do tenant para variável {{logo}} e converter para base64
             const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
             const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+            const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
             
             // Logo já está salva como base64 no banco
             // Substituir variáveis no template
@@ -397,9 +398,9 @@ export const appRouter = router({
               result = result.replace(/{{email}}/g, input.email || '');
               result = result.replace(/{{cpf}}/g, input.cpf || '');
               result = result.replace(/{{telefone}}/g, input.phone || '');
-              // Variável {{logo}} - renderiza como tag <img> com base64 embutido
+              // Variável {{logo}} - renderiza como inline attachment (CID)
               if (emailLogoUrl) {
-                result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
+                result = result.replace(/{{logo}}/g, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
               } else {
                 result = result.replace(/{{logo}}/g, '');
               }
@@ -413,6 +414,7 @@ export const appRouter = router({
               to: input.email,
               subject: finalSubject,
               html: finalContent,
+              attachments: inlineLogo ? [inlineLogo] : undefined,
               tenantDb,
               tenantId: ctx.tenant?.id,
             });
@@ -1672,6 +1674,7 @@ export const appRouter = router({
         // Buscar logo do tenant (já salva como base64 no banco)
         const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
         const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+        const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
         
         const isBase64Logo = emailLogoUrl.startsWith('data:');
         console.log(`[SendEmail] Logo from settings: ${emailLogoUrl ? (isBase64Logo ? 'BASE64 (' + emailLogoUrl.length + ' chars)' : 'URL') : 'EMPTY'}`);
@@ -1694,9 +1697,9 @@ export const appRouter = router({
             result = result.replace(/{{examinador}}/g, schedulingExaminer);
           }
 
-          // Variável {{logo}} - renderiza como tag <img> com base64 embutido
+          // Variável {{logo}} - renderiza como inline attachment (CID)
           if (emailLogoUrl) {
-            result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
+            result = result.replace(/{{logo}}/g, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
           } else {
             result = result.replace(/{{logo}}/g, '');
           }
@@ -1707,12 +1710,15 @@ export const appRouter = router({
         const finalSubject = replaceVariables(input.subject, client);
         const finalContent = replaceVariables(input.content, client);
 
+        const templateAttachments = attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }));
+        const mergedAttachments = inlineLogo ? [inlineLogo, ...templateAttachments] : templateAttachments;
+
         try {
           await sendEmail({
             to: input.recipientEmail,
             subject: finalSubject,
             html: finalContent,
-            attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl })),
+            attachments: mergedAttachments,
             tenantDb,
             tenantId: ctx.tenant?.id,
           });
