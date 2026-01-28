@@ -1668,12 +1668,16 @@ export const appRouter = router({
         const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
         const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
         
+        console.log(`[SendEmail] Logo URL from settings: ${emailLogoUrl ? emailLogoUrl.substring(0, 100) + '...' : 'EMPTY'}`);
+        
         // Converter logo para base64 para embutir no email
         let logoBase64: string | null = null;
         if (emailLogoUrl) {
           logoBase64 = await fetchImageAsBase64(emailLogoUrl);
+          console.log(`[SendEmail] Logo base64 conversion: ${logoBase64 ? 'SUCCESS (' + logoBase64.length + ' chars)' : 'FAILED'}`);
         }
         const logoToUse = logoBase64 || emailLogoUrl;
+        console.log(`[SendEmail] Using logo: ${logoToUse ? (logoToUse.startsWith('data:') ? 'BASE64' : 'URL') : 'NONE'}`);
 
         const replaceVariables = (text: string, clientData: any) => {
           let result = text;

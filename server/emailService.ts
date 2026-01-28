@@ -461,10 +461,13 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
     const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
     const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
     
+    console.log(`[EmailTrigger] Logo URL from settings: ${emailLogoUrl ? emailLogoUrl.substring(0, 100) + '...' : 'EMPTY'}`);
+    
     // Convert logo to base64 data URI to embed directly in email
     let logoBase64: string | null = null;
     if (emailLogoUrl) {
       logoBase64 = await fetchImageAsBase64(emailLogoUrl);
+      console.log(`[EmailTrigger] Logo base64 conversion: ${logoBase64 ? 'SUCCESS (' + logoBase64.length + ' chars)' : 'FAILED'}`);
     }
     
     // Get active triggers for this event
