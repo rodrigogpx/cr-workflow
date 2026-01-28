@@ -431,6 +431,10 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
     
     console.log(`[EmailTrigger] Processing event: ${event} for client ${client.id}`);
     
+    // Fetch tenant settings to get logo URL
+    const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
+    const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
+    
     // Get active triggers for this event
     const triggers = tenantDb
       ? await db.getActiveTriggersByEventFromDb(tenantDb, event, tenantId)
@@ -473,8 +477,8 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
         }
         
         // Render template with client data
-        const renderedSubject = renderTemplate(template.subject, client, extraData);
-        const renderedContent = renderTemplate(template.content, client, extraData);
+        const renderedSubject = renderTemplate(template.subject, client, extraData, emailLogoUrl);
+        const renderedContent = renderTemplate(template.content, client, extraData, emailLogoUrl);
         
         // Check if this is a reminder template and we have a scheduled date
         if (templateLink.isForReminder && scheduledDate && trigger.sendBeforeHours) {
@@ -610,7 +614,7 @@ async function resolveRecipients(
 /**
  * Render template with client data (replace placeholders)
  */
-function renderTemplate(template: string, client: Client, extraData?: Record<string, any>): string {
+function renderTemplate(template: string, client: Client, extraData?: Record<string, any>, emailLogoUrl?: string): string {
   let rendered = template;
   
   // Client placeholders
@@ -632,6 +636,13 @@ function renderTemplate(template: string, client: Client, extraData?: Record<str
   
   // Date placeholder
   rendered = rendered.replace(/\{\{data\}\}/gi, new Date().toLocaleDateString('pt-BR'));
+  
+  // Logo placeholder - renders as <img> tag if logo is configured
+  if (emailLogoUrl) {
+    rendered = rendered.replace(/\{\{logo\}\}/gi, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+  } else {
+    rendered = rendered.replace(/\{\{logo\}\}/gi, '');
+  }
   
   return rendered;
 }
