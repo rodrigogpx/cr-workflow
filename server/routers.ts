@@ -8,6 +8,7 @@ import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmai
 import * as db from "./db";
 import { invalidateTenantCache } from "./config/tenant.config";
 import { storagePut } from "./storage";
+import { ENV } from "./_core/env";
 import { saveClientDocumentFile } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
@@ -1451,54 +1452,79 @@ export const appRouter = router({
         }
 
         try {
-          // Baixar a imagem da URL externa
-          const response = await fetch(input.logoUrl);
-          
-          if (!response.ok) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `Não foi possível baixar a imagem: ${response.statusText}`,
-            });
+          // Validar a imagem da URL externa (HEAD request primeiro para economizar banda)
+          let contentType = "image/png";
+          try {
+            const headResponse = await fetch(input.logoUrl, { method: "HEAD" });
+            if (headResponse.ok) {
+              contentType = headResponse.headers.get("content-type") || "image/png";
+            }
+          } catch {
+            // Se HEAD falhar, tenta GET para validar
           }
 
-          const contentType = response.headers.get("content-type") || "image/png";
-          
-          // Verificar se é uma imagem
+          // Se HEAD não funcionou ou não retornou content-type de imagem, tenta GET
           if (!contentType.startsWith("image/")) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "A URL deve apontar para uma imagem (jpg, png, gif, etc).",
-            });
+            const response = await fetch(input.logoUrl);
+            
+            if (!response.ok) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `Não foi possível acessar a imagem: ${response.statusText}`,
+              });
+            }
+
+            contentType = response.headers.get("content-type") || "image/png";
+            
+            if (!contentType.startsWith("image/")) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "A URL deve apontar para uma imagem (jpg, png, gif, etc).",
+              });
+            }
           }
 
-          const imageBuffer = Buffer.from(await response.arrayBuffer());
+          // Tentar usar storage proxy se disponível, senão usar URL externa diretamente
+          let finalLogoUrl = input.logoUrl;
           
-          // Determinar extensão do arquivo
-          const extMap: Record<string, string> = {
-            "image/png": "png",
-            "image/jpeg": "jpg",
-            "image/jpg": "jpg",
-            "image/gif": "gif",
-            "image/webp": "webp",
-            "image/svg+xml": "svg",
-          };
-          const ext = extMap[contentType] || "png";
+          const hasStorageProxy = ENV.forgeApiUrl && ENV.forgeApiKey;
           
-          // Gerar nome único para o arquivo
-          const fileName = `email-logo-${tenantId}-${Date.now()}.${ext}`;
-          const fileKey = `tenants/${tenantId}/email-logos/${fileName}`;
-          
-          // Fazer upload para o storage
-          const { url: uploadedUrl } = await storagePut(fileKey, imageBuffer, contentType);
+          if (hasStorageProxy) {
+            try {
+              const response = await fetch(input.logoUrl);
+              if (response.ok) {
+                const imageBuffer = Buffer.from(await response.arrayBuffer());
+                
+                const extMap: Record<string, string> = {
+                  "image/png": "png",
+                  "image/jpeg": "jpg",
+                  "image/jpg": "jpg",
+                  "image/gif": "gif",
+                  "image/webp": "webp",
+                  "image/svg+xml": "svg",
+                };
+                const ext = extMap[contentType] || "png";
+                
+                const fileName = `email-logo-${tenantId}-${Date.now()}.${ext}`;
+                const fileKey = `tenants/${tenantId}/email-logos/${fileName}`;
+                
+                const { url: uploadedUrl } = await storagePut(fileKey, imageBuffer, contentType);
+                finalLogoUrl = uploadedUrl;
+              }
+            } catch (storageError) {
+              // Se falhar o upload, usa a URL externa diretamente
+              console.log("[ImportLogo] Storage upload failed, using external URL directly");
+            }
+          }
           
           // Salvar a URL no banco de dados
           await db.updateTenantSmtpSettings(tenantId, {
-            emailLogoUrl: uploadedUrl,
+            emailLogoUrl: finalLogoUrl,
           });
 
           return { 
             success: true, 
-            logoUrl: uploadedUrl,
+            logoUrl: finalLogoUrl,
             message: "Logo importada com sucesso! Use {{logo}} nos templates de email.",
           };
         } catch (error: any) {

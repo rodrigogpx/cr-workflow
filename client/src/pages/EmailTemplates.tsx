@@ -43,6 +43,19 @@ export default function EmailTemplates() {
   const { data: fetchedTemplates, isLoading: isLoadingTemplates } =
     trpc.emails.getAllTemplates.useQuery();
 
+  // Fetch SMTP config to get logo URL for preview
+  const { data: smtpConfig } = trpc.emails.getSmtpConfig.useQuery();
+  const emailLogoUrl = (smtpConfig as any)?.emailLogoUrl || '';
+
+  // Function to replace {{logo}} with actual img tag for preview
+  const replaceLogoVariable = (html: string) => {
+    if (!html) return html;
+    if (emailLogoUrl) {
+      return html.replace(/\{\{logo\}\}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+    }
+    return html.replace(/\{\{logo\}\}/g, '<span style="color: #999; font-style: italic;">[Logo não configurada]</span>');
+  };
+
   const getTemplateTitle = (key: string) => {
     // Títulos amigáveis para templates conhecidos (opcional, apenas para exibição)
     const titles: Record<string, string> = {
@@ -268,7 +281,7 @@ export default function EmailTemplates() {
                             />
                             <div className="mt-2 text-xs text-gray-500 space-y-1">
                               <p>
-                                Variáveis disponíveis no HTML: <span className="font-mono">{"{{nome}}"}</span>, <span className="font-mono">{"{{email}}"}</span>, <span className="font-mono">{"{{cpf}}"}</span>, <span className="font-mono">{"{{telefone}}"}</span>, <span className="font-mono">{"{{endereco}}"}</span>, <span className="font-mono">{"{{cidade}}"}</span>, <span className="font-mono">{"{{cep}}"}</span>, <span className="font-mono">{"{{data}}"}</span>.
+                                Variáveis disponíveis no HTML: <span className="font-mono">{"{{nome}}"}</span>, <span className="font-mono">{"{{email}}"}</span>, <span className="font-mono">{"{{cpf}}"}</span>, <span className="font-mono">{"{{telefone}}"}</span>, <span className="font-mono">{"{{endereco}}"}</span>, <span className="font-mono">{"{{cidade}}"}</span>, <span className="font-mono">{"{{cep}}"}</span>, <span className="font-mono">{"{{data}}"}</span>, <span className="font-mono">{"{{logo}}"}</span>.
                               </p>
                               <p>
                                 Variáveis extras (dependem do evento): qualquer chave enviada pelo sistema. Exemplos: <span className="font-mono">{"{{sinarmStatus}}"}</span>, <span className="font-mono">{"{{protocolNumber}}"}</span>, <span className="font-mono">{"{{dataAgendamento}}"}</span>, <span className="font-mono">{"{{examinador}}"}</span>, <span className="font-mono">{"{{tipoAgendamento}}"}</span>.
@@ -282,7 +295,7 @@ export default function EmailTemplates() {
                             <p className="text-xs text-gray-500 mb-2">Preview</p>
                             <div 
                               className="w-full min-h-[500px] p-3 border rounded-md bg-white overflow-auto"
-                              dangerouslySetInnerHTML={{ __html: templates[activeTab]?.content || '<p className="text-gray-400">O preview aparecerá aqui...</p>' }}
+                              dangerouslySetInnerHTML={{ __html: replaceLogoVariable(templates[activeTab]?.content) || '<p className="text-gray-400">O preview aparecerá aqui...</p>' }}
                             />
                           </div>
                         </div>
