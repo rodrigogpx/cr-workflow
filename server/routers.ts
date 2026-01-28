@@ -1484,38 +1484,12 @@ export const appRouter = router({
             }
           }
 
-          // Tentar usar storage proxy se disponível, senão usar URL externa diretamente
-          let finalLogoUrl = input.logoUrl;
+          // IMPORTANTE: Para logos de email, SEMPRE usamos a URL externa diretamente.
+          // O storage proxy retorna URLs privadas que clientes de email (Gmail, Outlook, etc.) 
+          // não conseguem acessar. A URL externa já foi validada como pública e acessível.
+          const finalLogoUrl = input.logoUrl;
           
-          const hasStorageProxy = ENV.forgeApiUrl && ENV.forgeApiKey;
-          
-          if (hasStorageProxy) {
-            try {
-              const response = await fetch(input.logoUrl);
-              if (response.ok) {
-                const imageBuffer = Buffer.from(await response.arrayBuffer());
-                
-                const extMap: Record<string, string> = {
-                  "image/png": "png",
-                  "image/jpeg": "jpg",
-                  "image/jpg": "jpg",
-                  "image/gif": "gif",
-                  "image/webp": "webp",
-                  "image/svg+xml": "svg",
-                };
-                const ext = extMap[contentType] || "png";
-                
-                const fileName = `email-logo-${tenantId}-${Date.now()}.${ext}`;
-                const fileKey = `tenants/${tenantId}/email-logos/${fileName}`;
-                
-                const { url: uploadedUrl } = await storagePut(fileKey, imageBuffer, contentType);
-                finalLogoUrl = uploadedUrl;
-              }
-            } catch (storageError) {
-              // Se falhar o upload, usa a URL externa diretamente
-              console.log("[ImportLogo] Storage upload failed, using external URL directly");
-            }
-          }
+          console.log("[ImportLogo] Using external URL directly for email logo (must be publicly accessible)");
           
           // Salvar a URL no banco de dados
           await db.updateTenantSmtpSettings(tenantId, {
