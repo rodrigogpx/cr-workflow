@@ -388,13 +388,7 @@ export const appRouter = router({
             const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
             const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
             
-            // Converter logo para base64 para embutir no email
-            let logoBase64: string | null = null;
-            if (emailLogoUrl) {
-              logoBase64 = await fetchImageAsBase64(emailLogoUrl);
-            }
-            const logoToUse = logoBase64 || emailLogoUrl;
-            
+            // Logo já está salva como base64 no banco
             // Substituir variáveis no template
             const replaceVariables = (text: string) => {
               let result = text;
@@ -404,8 +398,8 @@ export const appRouter = router({
               result = result.replace(/{{cpf}}/g, input.cpf || '');
               result = result.replace(/{{telefone}}/g, input.phone || '');
               // Variável {{logo}} - renderiza como tag <img> com base64 embutido
-              if (logoToUse) {
-                result = result.replace(/{{logo}}/g, `<img src="${logoToUse}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
+              if (emailLogoUrl) {
+                result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
               } else {
                 result = result.replace(/{{logo}}/g, '');
               }
@@ -1491,14 +1485,25 @@ export const appRouter = router({
             }
           }
 
-          // IMPORTANTE: Para logos de email, SEMPRE usamos a URL externa diretamente.
-          // O storage proxy retorna URLs privadas que clientes de email (Gmail, Outlook, etc.) 
-          // não conseguem acessar. A URL externa já foi validada como pública e acessível.
-          const finalLogoUrl = input.logoUrl;
+          // IMPORTANTE: Converter a imagem para base64 e salvar diretamente no banco.
+          // Isso garante que a imagem esteja sempre disponível, independente de URLs externas.
+          console.log("[ImportLogo] Fetching image to convert to base64...");
           
-          console.log("[ImportLogo] Using external URL directly for email logo (must be publicly accessible)");
+          const imageResponse = await fetch(input.logoUrl);
+          if (!imageResponse.ok) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Não foi possível baixar a imagem: ${imageResponse.statusText}`,
+            });
+          }
           
-          // Salvar a URL no banco de dados
+          const imageBuffer = await imageResponse.arrayBuffer();
+          const base64 = Buffer.from(imageBuffer).toString('base64');
+          const finalLogoUrl = `data:${contentType};base64,${base64}`;
+          
+          console.log(`[ImportLogo] Image converted to base64, size: ${base64.length} chars`);
+          
+          // Salvar o base64 no banco de dados
           await db.updateTenantSmtpSettings(tenantId, {
             emailLogoUrl: finalLogoUrl,
           });
@@ -1664,20 +1669,12 @@ export const appRouter = router({
           schedulingExaminer = schedulingStep.examinerName;
         }
 
-        // Buscar logo do tenant para variável {{logo}} e converter para base64
+        // Buscar logo do tenant (já salva como base64 no banco)
         const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
         const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
         
-        console.log(`[SendEmail] Logo URL from settings: ${emailLogoUrl ? emailLogoUrl.substring(0, 100) + '...' : 'EMPTY'}`);
-        
-        // Converter logo para base64 para embutir no email
-        let logoBase64: string | null = null;
-        if (emailLogoUrl) {
-          logoBase64 = await fetchImageAsBase64(emailLogoUrl);
-          console.log(`[SendEmail] Logo base64 conversion: ${logoBase64 ? 'SUCCESS (' + logoBase64.length + ' chars)' : 'FAILED'}`);
-        }
-        const logoToUse = logoBase64 || emailLogoUrl;
-        console.log(`[SendEmail] Using logo: ${logoToUse ? (logoToUse.startsWith('data:') ? 'BASE64' : 'URL') : 'NONE'}`);
+        const isBase64Logo = emailLogoUrl.startsWith('data:');
+        console.log(`[SendEmail] Logo from settings: ${emailLogoUrl ? (isBase64Logo ? 'BASE64 (' + emailLogoUrl.length + ' chars)' : 'URL') : 'EMPTY'}`);
 
         const replaceVariables = (text: string, clientData: any) => {
           let result = text;
@@ -1698,8 +1695,8 @@ export const appRouter = router({
           }
 
           // Variável {{logo}} - renderiza como tag <img> com base64 embutido
-          if (logoToUse) {
-            result = result.replace(/{{logo}}/g, `<img src="${logoToUse}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
+          if (emailLogoUrl) {
+            result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
           } else {
             result = result.replace(/{{logo}}/g, '');
           }

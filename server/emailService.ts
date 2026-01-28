@@ -457,18 +457,13 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
     
     console.log(`[EmailTrigger] Processing event: ${event} for client ${client.id}`);
     
-    // Fetch tenant settings to get logo URL and convert to base64
+    // Fetch tenant settings to get logo (already saved as base64 data URI)
     const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
     const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
     
-    console.log(`[EmailTrigger] Logo URL from settings: ${emailLogoUrl ? emailLogoUrl.substring(0, 100) + '...' : 'EMPTY'}`);
-    
-    // Convert logo to base64 data URI to embed directly in email
-    let logoBase64: string | null = null;
-    if (emailLogoUrl) {
-      logoBase64 = await fetchImageAsBase64(emailLogoUrl);
-      console.log(`[EmailTrigger] Logo base64 conversion: ${logoBase64 ? 'SUCCESS (' + logoBase64.length + ' chars)' : 'FAILED'}`);
-    }
+    // Logo is already stored as base64 data URI in the database
+    const isBase64Logo = emailLogoUrl.startsWith('data:');
+    console.log(`[EmailTrigger] Logo from settings: ${emailLogoUrl ? (isBase64Logo ? 'BASE64 (' + emailLogoUrl.length + ' chars)' : 'URL') : 'EMPTY'}`);
     
     // Get active triggers for this event
     const triggers = tenantDb
@@ -511,10 +506,9 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
           continue;
         }
         
-        // Render template with client data (use base64 logo if available, fallback to URL)
-        const logoToUse = logoBase64 || emailLogoUrl;
-        const renderedSubject = renderTemplate(template.subject, client, extraData, logoToUse);
-        const renderedContent = renderTemplate(template.content, client, extraData, logoToUse);
+        // Render template with client data (logo is already base64 from database)
+        const renderedSubject = renderTemplate(template.subject, client, extraData, emailLogoUrl);
+        const renderedContent = renderTemplate(template.content, client, extraData, emailLogoUrl);
         
         // Check if this is a reminder template and we have a scheduled date
         if (templateLink.isForReminder && scheduledDate && trigger.sendBeforeHours) {
