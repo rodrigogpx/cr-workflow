@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
-import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails } from "./emailService";
+import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64 } from "./emailService";
 import * as db from "./db";
 import { invalidateTenantCache } from "./config/tenant.config";
 import { storagePut } from "./storage";
@@ -384,9 +384,16 @@ export const appRouter = router({
             : await db.getEmailTemplate('boasvindas-filiado');
           
           if (welcomeTemplate && input.email) {
-            // Buscar logo do tenant para variável {{logo}}
+            // Buscar logo do tenant para variável {{logo}} e converter para base64
             const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
             const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+            
+            // Converter logo para base64 para embutir no email
+            let logoBase64: string | null = null;
+            if (emailLogoUrl) {
+              logoBase64 = await fetchImageAsBase64(emailLogoUrl);
+            }
+            const logoToUse = logoBase64 || emailLogoUrl;
             
             // Substituir variáveis no template
             const replaceVariables = (text: string) => {
@@ -396,9 +403,9 @@ export const appRouter = router({
               result = result.replace(/{{email}}/g, input.email || '');
               result = result.replace(/{{cpf}}/g, input.cpf || '');
               result = result.replace(/{{telefone}}/g, input.phone || '');
-              // Variável {{logo}} - renderiza como tag <img> se houver logo configurada
-              if (emailLogoUrl) {
-                result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+              // Variável {{logo}} - renderiza como tag <img> com base64 embutido
+              if (logoToUse) {
+                result = result.replace(/{{logo}}/g, `<img src="${logoToUse}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
               } else {
                 result = result.replace(/{{logo}}/g, '');
               }
@@ -1657,9 +1664,16 @@ export const appRouter = router({
           schedulingExaminer = schedulingStep.examinerName;
         }
 
-        // Buscar logo do tenant para variável {{logo}}
+        // Buscar logo do tenant para variável {{logo}} e converter para base64
         const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
         const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+        
+        // Converter logo para base64 para embutir no email
+        let logoBase64: string | null = null;
+        if (emailLogoUrl) {
+          logoBase64 = await fetchImageAsBase64(emailLogoUrl);
+        }
+        const logoToUse = logoBase64 || emailLogoUrl;
 
         const replaceVariables = (text: string, clientData: any) => {
           let result = text;
@@ -1679,9 +1693,9 @@ export const appRouter = router({
             result = result.replace(/{{examinador}}/g, schedulingExaminer);
           }
 
-          // Variável {{logo}} - renderiza como tag <img> se houver logo configurada
-          if (emailLogoUrl) {
-            result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+          // Variável {{logo}} - renderiza como tag <img> com base64 embutido
+          if (logoToUse) {
+            result = result.replace(/{{logo}}/g, `<img src="${logoToUse}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
           } else {
             result = result.replace(/{{logo}}/g, '');
           }

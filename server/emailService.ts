@@ -280,6 +280,32 @@ function safeJsonParse(text: string): unknown {
 }
 
 /**
+ * Fetch image from URL and convert to base64 data URI
+ * This embeds the image directly in the email HTML, avoiding external URL issues
+ */
+export async function fetchImageAsBase64(imageUrl: string): Promise<string | null> {
+  try {
+    console.log('[EmailService] Fetching image for base64 conversion:', imageUrl);
+    const response = await fetch(imageUrl);
+    
+    if (!response.ok) {
+      console.error('[EmailService] Failed to fetch image:', response.status);
+      return null;
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/png';
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    
+    console.log('[EmailService] Image converted to base64, size:', base64.length);
+    return `data:${contentType};base64,${base64}`;
+  } catch (error) {
+    console.error('[EmailService] Error converting image to base64:', error);
+    return null;
+  }
+}
+
+/**
  * Send a test email - usa Gateway Manus (Railway) ou SMTP direto (local)
  */
 export async function sendTestEmailWithSettings(settings: {
@@ -431,9 +457,15 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
     
     console.log(`[EmailTrigger] Processing event: ${event} for client ${client.id}`);
     
-    // Fetch tenant settings to get logo URL
+    // Fetch tenant settings to get logo URL and convert to base64
     const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
     const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
+    
+    // Convert logo to base64 data URI to embed directly in email
+    let logoBase64: string | null = null;
+    if (emailLogoUrl) {
+      logoBase64 = await fetchImageAsBase64(emailLogoUrl);
+    }
     
     // Get active triggers for this event
     const triggers = tenantDb
@@ -476,9 +508,10 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
           continue;
         }
         
-        // Render template with client data
-        const renderedSubject = renderTemplate(template.subject, client, extraData, emailLogoUrl);
-        const renderedContent = renderTemplate(template.content, client, extraData, emailLogoUrl);
+        // Render template with client data (use base64 logo if available, fallback to URL)
+        const logoToUse = logoBase64 || emailLogoUrl;
+        const renderedSubject = renderTemplate(template.subject, client, extraData, logoToUse);
+        const renderedContent = renderTemplate(template.content, client, extraData, logoToUse);
         
         // Check if this is a reminder template and we have a scheduled date
         if (templateLink.isForReminder && scheduledDate && trigger.sendBeforeHours) {
@@ -638,8 +671,9 @@ function renderTemplate(template: string, client: Client, extraData?: Record<str
   rendered = rendered.replace(/\{\{data\}\}/gi, new Date().toLocaleDateString('pt-BR'));
   
   // Logo placeholder - renders as <img> tag if logo is configured
+  // emailLogoUrl can be a URL or a base64 data URI
   if (emailLogoUrl) {
-    rendered = rendered.replace(/\{\{logo\}\}/gi, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+    rendered = rendered.replace(/\{\{logo\}\}/gi, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
   } else {
     rendered = rendered.replace(/\{\{logo\}\}/gi, '');
   }
