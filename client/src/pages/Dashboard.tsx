@@ -2,10 +2,11 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone, User, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone, User, Trash2, FileText, Download } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -13,21 +14,53 @@ import Footer from "@/components/Footer";
 import { APP_LOGO } from "@/const";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 import { createClientSchema, formatCPF, formatPhone } from "@shared/validations";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+
+// Tipos para exportação do jsPDF AutoTable
+interface jsPDFWithPlugin extends jsPDF {
+  autoTable: (options: any) => jsPDF;
+}
+
+type PhaseKey = 'all' | 'cadastro' | 'agendamento-psicotecnico' | 'agendamento-laudo' | 'juntada-documento' | 'concluido' | 'aguardando-gru' | 'pronto-analise' | 'em-analise' | 'restituido' | 'deferido-indeferido';
+
+const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, colorClass: string }> = {
+  'all': { title: 'Todos os Clientes', icon: Users, colorClass: 'text-blue-500' },
+  'cadastro': { title: 'Cadastro Pendente', icon: FileText, colorClass: 'text-orange-500' },
+  'agendamento-psicotecnico': { title: 'Avaliação Psicológica Pendente', icon: Target, colorClass: 'text-purple-500' },
+  'agendamento-laudo': { title: 'Laudo Técnico Pendente', icon: Clock, colorClass: 'text-indigo-500' },
+  'juntada-documento': { title: 'Juntada de Documentos Pendente', icon: FileText, colorClass: 'text-pink-500' },
+  'concluido': { title: 'Workflow Concluído', icon: CheckCircle2, colorClass: 'text-green-500' },
+  'aguardando-gru': { title: 'Aguardando Baixa GRU', icon: Clock, colorClass: 'text-yellow-600' },
+  'pronto-analise': { title: 'Pronto para Análise', icon: CheckCircle2, colorClass: 'text-emerald-500' },
+  'em-analise': { title: 'Em Análise', icon: Search, colorClass: 'text-blue-400' },
+  'restituido': { title: 'Restituído', icon: Clock, colorClass: 'text-red-400' },
+  'deferido-indeferido': { title: 'Deferido/Indeferido', icon: Target, colorClass: 'text-gray-500' }
+};
 
 export default function Dashboard() {
   const { user, loading: authLoading, logout } = useAuth();
   const [, setLocation] = useLocation();
   const tenantSlug = useTenantSlug();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<'all' | 'inProgress' | 'completed'>('all');
   const [operatorFilter, setOperatorFilter] = useState<'all' | 'unassigned' | string>('all');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Modal de Criação
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newClient, setNewClient] = useState({
     name: "",
     cpf: "",
     phone: "",
     email: "",
   });
+
+  // Modais de Visualização (Sheet para lista, Dialog para detalhes)
+  const [selectedPhase, setSelectedPhase] = useState<PhaseKey | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [sheetSearchTerm, setSheetSearchTerm] = useState("");
+  
+  const [selectedClient, setSelectedClient] = useState<any | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   const { data: clients, isLoading, refetch } = trpc.clients.list.useQuery(undefined, {
     enabled: !!user,
@@ -40,7 +73,7 @@ export default function Dashboard() {
   const createClientMutation = trpc.clients.create.useMutation({
     onSuccess: () => {
       toast.success("Cliente cadastrado com sucesso!");
-      setIsDialogOpen(false);
+      setIsCreateDialogOpen(false);
       setNewClient({ name: "", cpf: "", phone: "", email: "" });
       refetch();
     },
@@ -52,6 +85,7 @@ export default function Dashboard() {
   const deleteClientMutation = trpc.clients.delete.useMutation({
     onSuccess: () => {
       toast.success("Cliente excluído com sucesso!");
+      setIsDetailsDialogOpen(false);
       refetch();
     },
     onError: (error) => {
@@ -74,19 +108,115 @@ export default function Dashboard() {
 
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
-
     const parsed = createClientSchema.safeParse(newClient);
     if (!parsed.success) {
       toast.error(parsed.error.issues?.[0]?.message || "Dados inválidos");
       return;
     }
-
     createClientMutation.mutate(parsed.data);
   };
 
   const handleLogout = () => {
     logoutMutation.mutate();
   };
+
+  // Lógica de Filtros e Agrupamentos
+  const operatorOptions = Array.from(
+    new Map(
+      (clients || [])
+        .map((c: any) => c?.assignedOperator)
+        .filter(Boolean)
+        .map((op: any) => [String(op.id), op])
+    ).values()
+  ).sort((a: any, b: any) => String(a.name || a.email || '').localeCompare(String(b.name || b.email || '')));
+
+  const baseFilteredClients = clients?.filter((client) => {
+    const matchesSearch = searchTerm === '' || 
+      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.cpf.includes(searchTerm) ||
+      client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.assignedOperator?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.assignedOperator?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesOperator =
+      operatorFilter === 'all' ||
+      (operatorFilter === 'unassigned'
+        ? !client.operatorId
+        : String(client.operatorId) === operatorFilter);
+    
+    return matchesSearch && matchesOperator;
+  }) || [];
+
+  // Agrupamentos por fase
+  const getClientsByPhase = (phase: PhaseKey) => {
+    if (phase === 'all') return baseFilteredClients;
+    
+    if (['cadastro', 'agendamento-psicotecnico', 'agendamento-laudo', 'juntada-documento', 'concluido'].includes(phase)) {
+      return baseFilteredClients.filter(c => c.currentPendingStep === phase);
+    }
+    
+    // Status SINARM
+    const sinarmClients = baseFilteredClients.filter(c => c.currentPendingStep === 'acompanhamento-sinarm');
+    switch (phase) {
+      case 'aguardando-gru': return sinarmClients.filter(c => c.sinarmStatus === 'Aguardando baixa GRU' || !c.sinarmStatus);
+      case 'pronto-analise': return sinarmClients.filter(c => c.sinarmStatus === 'Pronto para análise');
+      case 'em-analise': return sinarmClients.filter(c => c.sinarmStatus === 'Em análise');
+      case 'restituido': return sinarmClients.filter(c => c.sinarmStatus === 'Restituído');
+      case 'deferido-indeferido': return sinarmClients.filter(c => c.sinarmStatus === 'Deferido/Indeferido');
+      default: return [];
+    }
+  };
+
+  const handleCardClick = (phase: PhaseKey) => {
+    setSelectedPhase(phase);
+    setSheetSearchTerm("");
+    setIsSheetOpen(true);
+  };
+
+  const handleClientClick = (client: any) => {
+    setSelectedClient(client);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const exportPDF = (phase: PhaseKey, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const phaseClients = getClientsByPhase(phase);
+    const doc = new jsPDF() as jsPDFWithPlugin;
+    
+    const title = `Relatório: ${PHASE_LABELS[phase].title}`;
+    doc.setFontSize(16);
+    doc.text(title, 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Total de clientes: ${phaseClients.length}`, 14, 28);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 34);
+
+    const tableData = phaseClients.map(c => [
+      c.name,
+      c.cpf,
+      c.phone,
+      c.email,
+      c.assignedOperator?.name || 'Sem operador'
+    ]);
+
+    doc.autoTable({
+      startY: 40,
+      head: [['Nome', 'CPF', 'Telefone', 'Email', 'Operador']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] },
+      styles: { fontSize: 8 }
+    });
+
+    doc.save(`relatorio_${phase}_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success("Relatório PDF gerado com sucesso!");
+  };
+
+  // Dados para o Sheet Modal
+  const currentPhaseClients = selectedPhase ? getClientsByPhase(selectedPhase).filter(c => 
+    sheetSearchTerm === '' || 
+    c.name.toLowerCase().includes(sheetSearchTerm.toLowerCase()) || 
+    c.cpf.includes(sheetSearchTerm)
+  ) : [];
 
   if (authLoading) {
     return (
@@ -109,44 +239,6 @@ export default function Dashboard() {
       : user.role === "despachante"
         ? "Despachante"
         : "Operador";
-
-  const totalClients = clients?.length || 0;
-  const completed = clients?.filter(c => getClientProgress(c) === 100).length || 0;
-  const inProgress = totalClients - completed;
-
-  const operatorOptions = Array.from(
-    new Map(
-      (clients || [])
-        .map((c: any) => c?.assignedOperator)
-        .filter(Boolean)
-        .map((op: any) => [String(op.id), op])
-    ).values()
-  ).sort((a: any, b: any) => String(a.name || a.email || '').localeCompare(String(b.name || b.email || '')));
-
-  const filteredClients = clients?.filter((client) => {
-    // Filtro de busca por texto
-    const matchesSearch = searchTerm === '' || 
-      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.cpf.includes(searchTerm) ||
-      client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.assignedOperator?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.assignedOperator?.email?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesOperator =
-      operatorFilter === 'all' ||
-      (operatorFilter === 'unassigned'
-        ? !client.operatorId
-        : String(client.operatorId) === operatorFilter);
-    
-    // Filtro por status
-    const progress = getClientProgress(client);
-    const matchesStatus = 
-      statusFilter === 'all' ||
-      (statusFilter === 'completed' && progress === 100) ||
-      (statusFilter === 'inProgress' && progress < 100);
-    
-    return matchesSearch && matchesOperator && matchesStatus;
-  }) || [];
 
   return (
     <div className="min-h-screen">
@@ -184,75 +276,15 @@ export default function Dashboard() {
       </header>
 
       <main className="container py-8">
-        {/* Cards de Estatísticas com bordas tracejadas - Clicáveis para filtrar */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card 
-            className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 ${
-              statusFilter === 'all' 
-                ? 'border-primary bg-blue-100 shadow-lg shadow-primary/30' 
-                : 'border-white/20 bg-card hover:border-primary/50'
-            }`}
-            onClick={() => setStatusFilter('all')}
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Total de Clientes
-              </CardTitle>
-              <Users className="w-5 h-5 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div style={{color: '#434242', textAlign: 'center'}} className="text-4xl font-bold">{totalClients}</div>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-yellow-500/20 ${
-              statusFilter === 'inProgress' 
-                ? 'border-yellow-500 bg-yellow-100 shadow-lg shadow-yellow-500/30' 
-                : 'border-white/20 bg-card hover:border-yellow-500/50'
-            }`}
-            onClick={() => setStatusFilter('inProgress')}
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Em Andamento
-              </CardTitle>
-              <Clock className="w-5 h-5 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div style={{color: '#272626', textAlign: 'center'}} className="text-4xl font-bold">{inProgress}</div>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className={`cursor-pointer border-2 border-dashed transition-all duration-300 hover:shadow-lg hover:shadow-green-500/20 ${
-              statusFilter === 'completed' 
-                ? 'border-green-500 bg-green-100 shadow-lg shadow-green-500/30' 
-                : 'border-white/20 bg-card hover:border-green-500/50'
-            }`}
-            onClick={() => setStatusFilter('completed')}
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Concluídos
-              </CardTitle>
-              <CheckCircle2 className="w-5 h-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div style={{color: '#3e3d3d', textAlign: 'center'}} className="text-4xl font-bold">{completed}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Barra de Busca e Botão Novo Cliente */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        {/* Barra de Busca Geral e Filtros */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-card p-4 rounded-lg border-2 border-dashed border-white/20">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, CPF ou email..."
+              placeholder="Filtro global: buscar por nome, CPF ou email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border-2 border-dashed border-white/20 bg-card focus:border-primary"
+              className="pl-10 border-2 border-dashed border-white/20 bg-background focus:border-primary"
             />
           </div>
 
@@ -260,7 +292,7 @@ export default function Dashboard() {
             <select
               value={operatorFilter}
               onChange={(e) => setOperatorFilter(e.target.value as any)}
-              className="w-full h-10 rounded-md border-2 border-dashed border-white/20 bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="w-full h-10 rounded-md border-2 border-dashed border-white/20 bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
             >
               <option value="all">Todos os operadores</option>
               <option value="unassigned">Sem operador</option>
@@ -273,7 +305,7 @@ export default function Dashboard() {
           </div>
 
           {(user?.role === 'admin' || user?.role === 'operator') && (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide">
                   <Plus className="w-5 h-5 mr-2" />
@@ -339,7 +371,7 @@ export default function Dashboard() {
                     <Button 
                       type="button" 
                       variant="outline" 
-                      onClick={() => setIsDialogOpen(false)}
+                      onClick={() => setIsCreateDialogOpen(false)}
                       className="border-2 border-dashed border-white/40"
                     >
                       Cancelar
@@ -365,126 +397,303 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Seção Lista de Clientes */}
-        <div className="mt-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-white/20" />
-            <h2 className="text-lg font-semibold text-white/80 uppercase tracking-wide">
-              {statusFilter === 'all' ? 'Todos os Clientes' : statusFilter === 'inProgress' ? 'Clientes em Andamento' : 'Clientes Concluídos'}
-              <span className="ml-2 text-primary">({filteredClients.length})</span>
-            </h2>
-            <div className="h-px flex-1 bg-white/20" />
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="w-12 h-12 animate-spin text-primary" />
           </div>
+        ) : (
+          <div className="space-y-12">
+            {/* Seção Geral */}
+            <section>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {['all', 'concluido'].map((phaseKey) => {
+                  const phase = phaseKey as PhaseKey;
+                  const phaseInfo = PHASE_LABELS[phase];
+                  const Icon = phaseInfo.icon;
+                  const count = getClientsByPhase(phase).length;
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  return (
+                    <Card 
+                      key={phase}
+                      onClick={() => handleCardClick(phase)}
+                      className="cursor-pointer border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group"
+                    >
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                          <Icon className={`w-5 h-5 ${phaseInfo.colorClass}`} />
+                          {phaseInfo.title}
+                        </CardTitle>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => exportPDF(phase, e)}
+                          title="Exportar PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-4xl font-bold" style={{color: '#434242'}}>{count}</div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Fases do Workflow */}
+            <section>
+              <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wide border-b-2 border-dashed border-white/20 pb-2">
+                Fases do Workflow
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {['cadastro', 'agendamento-psicotecnico', 'agendamento-laudo', 'juntada-documento'].map((phaseKey) => {
+                  const phase = phaseKey as PhaseKey;
+                  const phaseInfo = PHASE_LABELS[phase];
+                  const Icon = phaseInfo.icon;
+                  const count = getClientsByPhase(phase).length;
+
+                  return (
+                    <Card 
+                      key={phase}
+                      onClick={() => handleCardClick(phase)}
+                      className="cursor-pointer border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group"
+                    >
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-start gap-2 h-10">
+                          <Icon className={`w-5 h-5 shrink-0 ${phaseInfo.colorClass}`} />
+                          <span className="leading-tight">{phaseInfo.title}</span>
+                        </CardTitle>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => exportPDF(phase, e)}
+                          title="Exportar PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-4xl font-bold" style={{color: '#434242'}}>{count}</div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Status SINARM */}
+            <section>
+              <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wide border-b-2 border-dashed border-white/20 pb-2">
+                Acompanhamento SINARM CAC
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                {['aguardando-gru', 'pronto-analise', 'em-analise', 'restituido', 'deferido-indeferido'].map((phaseKey) => {
+                  const phase = phaseKey as PhaseKey;
+                  const phaseInfo = PHASE_LABELS[phase];
+                  const Icon = phaseInfo.icon;
+                  const count = getClientsByPhase(phase).length;
+
+                  return (
+                    <Card 
+                      key={phase}
+                      onClick={() => handleCardClick(phase)}
+                      className="cursor-pointer border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group"
+                    >
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-start gap-2 h-10">
+                          <Icon className={`w-5 h-5 shrink-0 ${phaseInfo.colorClass}`} />
+                          <span className="leading-tight">{phaseInfo.title}</span>
+                        </CardTitle>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => exportPDF(phase, e)}
+                          title="Exportar PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-4xl font-bold" style={{color: '#434242'}}>{count}</div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        )}
+      </main>
+
+      {/* Modal Lateral (Sheet) de Lista de Clientes */}
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl overflow-y-auto bg-background border-l-2 border-dashed border-white/20">
+          <SheetHeader className="mb-6 border-b-2 border-dashed border-white/20 pb-4">
+            <SheetTitle className="text-2xl font-bold uppercase flex items-center gap-3">
+              {selectedPhase && PHASE_LABELS[selectedPhase].icon && (
+                <div className="p-2 bg-card rounded-md">
+                  {React.createElement(PHASE_LABELS[selectedPhase].icon, { className: `w-6 h-6 ${PHASE_LABELS[selectedPhase].colorClass}` })}
+                </div>
+              )}
+              {selectedPhase ? PHASE_LABELS[selectedPhase].title : ''}
+            </SheetTitle>
+            <SheetDescription>
+              Selecione um cliente para ver os detalhes
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome ou CPF..."
+                value={sheetSearchTerm}
+                onChange={(e) => setSheetSearchTerm(e.target.value)}
+                className="pl-9 border-2 border-dashed border-white/20"
+              />
             </div>
-          ) : filteredClients.length === 0 ? (
-            <Card className="border-2 border-dashed border-white/20 bg-card">
-              <CardContent className="py-12 text-center">
-                <Target className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <p className="text-lg font-semibold text-foreground mb-2 uppercase">
-                  {searchTerm || statusFilter !== 'all' ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
-                </p>
-                <p className="text-muted-foreground">
-                  {searchTerm ? "Tente buscar com outros termos" : statusFilter !== 'all' ? "Nenhum cliente nesta categoria" : "Cadastre seu primeiro cliente para começar"}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filteredClients.map((client) => (
-              <Card
-                key={client.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setLocation(buildTenantPath(tenantSlug, `/client/${client.id}`))}
-                className="cursor-pointer border-2 border-dashed border-white/20 bg-white/95 hover:border-primary transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-              >
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold uppercase tracking-tight text-black">{client.name}</CardTitle>
-                  <div className="text-xs text-gray-600">
-                    Atribuído a:{' '}
-                    {client.assignedOperator
-                      ? (client.assignedOperator.name || client.assignedOperator.email)
-                      : 'Sem operador'}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-4 text-sm text-gray-700 flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <User className="w-4 h-4" />
-                      <span className="font-mono">{client.cpf}</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Phone className="w-4 h-4" />
-                      <span>{client.phone}</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Mail className="w-4 h-4" />
-                      <span className="truncate">{client.email}</span>
-                    </span>
-                  </div>
-                  {(() => {
-                    const progress = getClientProgress(client);
-                    const diasDesdeCadastro = client.createdAt 
-                      ? Math.floor((new Date().getTime() - new Date(client.createdAt).getTime()) / (1000 * 60 * 60 * 24))
-                      : 0;
-                    return (
-                      <div className="pt-2 border-t border-dashed border-gray-300 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-600">{new Date(client.createdAt).toLocaleDateString("pt-BR")}</span>
-                          <span className="text-xs font-bold" style={{ color: '#1c5c00' }}>{progress}% concluído</span>
-                        </div>
-                        <div className="relative w-full h-5 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full transition-all duration-300"
-                            style={{ width: `${progress}%`, backgroundColor: '#4d9702' }}
-                          />
-                          <span 
-                            className="absolute inset-0 flex items-center justify-center text-xs font-bold"
-                            style={{ color: progress >= 50 ? '#ffffff' : '#1c5c00', textShadow: progress >= 50 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none' }}
-                          >
-                            {progress === 100 ? '✓ Concluído' : `${diasDesdeCadastro} ${diasDesdeCadastro === 1 ? 'dia' : 'dias'}`}
-                          </span>
+
+            {currentPhaseClients.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Nenhum cliente encontrado.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {currentPhaseClients.map((client) => (
+                  <Card 
+                    key={client.id}
+                    onClick={() => handleClientClick(client)}
+                    className="cursor-pointer border-2 border-dashed border-white/10 hover:border-primary/50 transition-colors bg-card/50 hover:bg-card"
+                  >
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div>
+                        <h4 className="font-bold uppercase text-foreground">{client.name}</h4>
+                        <div className="text-sm text-muted-foreground flex items-center gap-4 mt-1">
+                          <span className="flex items-center gap-1"><User className="w-3 h-3"/> {client.cpf}</span>
+                          <span className="flex items-center gap-1"><Phone className="w-3 h-3"/> {client.phone}</span>
                         </div>
                       </div>
-                    );
-                  })()}
-                  <div className="space-y-2 mt-4">
-                    {user?.role === 'admin' && (
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteClient(client.id, client.name);
-                        }}
-                        variant="outline"
-                        style={{backgroundColor: '#feecec', marginTop: '10px', marginBottom: '5px'}}
-                        className="w-full border-2 border-dashed border-red-500/40 text-red-500 hover:bg-red-500/10 hover:border-red-500/60 font-bold uppercase tracking-wide"
-                        disabled={deleteClientMutation.isPending}
-                      >
-                        {deleteClientMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Excluindo...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir Cliente
-                          </>
-                        )}
-                      </Button>
-                    )}
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">Progresso</div>
+                        <div className="font-bold text-primary">{getClientProgress(client)}%</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Modal Sobreposto (Dialog) de Detalhes do Cliente */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-2xl border-2 border-dashed border-white/20 bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold uppercase border-b-2 border-dashed border-white/10 pb-4">
+              Detalhes do Cliente
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedClient && (
+            <div className="space-y-6 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Nome</Label>
+                  <div className="font-semibold text-lg uppercase">{selectedClient.name}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">CPF</Label>
+                  <div className="font-mono">{selectedClient.cpf}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Email</Label>
+                  <div>{selectedClient.email}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Telefone</Label>
+                  <div>{selectedClient.phone}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Criado em</Label>
+                  <div>{new Date(selectedClient.createdAt).toLocaleDateString("pt-BR")}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Operador Responsável</Label>
+                  <div>{selectedClient.assignedOperator ? selectedClient.assignedOperator.name || selectedClient.assignedOperator.email : 'Não atribuído'}</div>
+                </div>
+              </div>
+
+              <div className="border-t-2 border-dashed border-white/10 pt-4 space-y-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Status do Workflow</Label>
+                  <div className="relative w-full h-4 bg-background rounded-full overflow-hidden border border-white/10">
+                    <div 
+                      className="h-full transition-all duration-300"
+                      style={{ width: `${getClientProgress(selectedClient)}%`, backgroundColor: '#4d9702' }}
+                    />
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  <div className="flex justify-between mt-1 text-sm font-semibold text-primary">
+                    <span>Progresso Atual</span>
+                    <span>{getClientProgress(selectedClient)}% concluído</span>
+                  </div>
+                </div>
+                
+                {selectedClient.currentPendingStep && selectedClient.currentPendingStep !== 'concluido' && (
+                  <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-md">
+                    <span className="text-sm font-bold text-orange-400">Pendente na fase: </span>
+                    <span className="text-sm text-foreground">
+                      {PHASE_LABELS[selectedClient.currentPendingStep as PhaseKey]?.title || selectedClient.currentPendingStep}
+                    </span>
+                  </div>
+                )}
+
+                {selectedClient.sinarmStatus && (
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
+                    <span className="text-sm font-bold text-blue-400">Status SINARM: </span>
+                    <span className="text-sm text-foreground">{selectedClient.sinarmStatus}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
-        </div>
-      </main>
+
+          <DialogFooter className="flex justify-between sm:justify-between items-center border-t-2 border-dashed border-white/10 pt-4">
+            {user?.role === 'admin' ? (
+              <Button
+                variant="destructive"
+                onClick={() => handleDeleteClient(selectedClient?.id, selectedClient?.name)}
+                disabled={deleteClientMutation.isPending}
+                className="font-bold uppercase"
+              >
+                {deleteClientMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Excluir Cliente
+              </Button>
+            ) : <div></div>}
+            
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
+                Fechar
+              </Button>
+              <Button 
+                className="bg-primary hover:bg-primary/90 font-bold uppercase"
+                onClick={() => {
+                  setIsDetailsDialogOpen(false);
+                  setIsSheetOpen(false);
+                  setLocation(buildTenantPath(tenantSlug, `/client/${selectedClient?.id}`));
+                }}
+              >
+                Abrir Workflow
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       <Footer />
     </div>
   );

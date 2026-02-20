@@ -210,6 +210,15 @@ export const appRouter = router({
         : await db.getUsersByIds(uniqueAssignedUserIds);
       const assignedUserMap = new Map<number, any>(assignedUsers.map((u: any) => [u.id, u]));
       
+      // Ordem canônica das fases do workflow
+      const PHASE_ORDER = [
+        'cadastro',
+        'agendamento-psicotecnico',
+        'agendamento-laudo',
+        'juntada-documento',
+        'acompanhamento-sinarm',
+      ];
+
       // Adicionar estatísticas de workflow para cada cliente
       const clientsWithProgress = await Promise.all(
         clients.map(async (client) => {
@@ -229,6 +238,24 @@ export const appRouter = router({
             s.stepTitle?.toLowerCase().includes('documentos')
           );
           const juntadaConcluida = juntadaStep?.completed === true;
+
+          // Determinar a fase pendente atual (primeira não concluída na ordem canônica)
+          let currentPendingStep: string | null = null;
+          for (const phaseId of PHASE_ORDER) {
+            const step = workflow.find((s: any) => s.stepId === phaseId);
+            if (step && !step.completed) {
+              currentPendingStep = phaseId;
+              break;
+            }
+          }
+          // Se todas as fases canônicas estão concluídas, marcar como 'concluido'
+          if (!currentPendingStep && completedSteps > 0 && completedSteps >= totalSteps) {
+            currentPendingStep = 'concluido';
+          }
+
+          // Extrair status detalhado do SINARM
+          const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
+          const sinarmStatus: string | null = sinarmStep?.sinarmStatus || null;
           
           return {
             ...client,
@@ -236,6 +263,8 @@ export const appRouter = router({
             totalSteps,
             completedSteps,
             juntadaConcluida,
+            currentPendingStep,
+            sinarmStatus,
             assignedOperator: client.operatorId ? (() => {
               const u = assignedUserMap.get(client.operatorId);
               return u ? { id: u.id, name: u.name, email: u.email } : null;
