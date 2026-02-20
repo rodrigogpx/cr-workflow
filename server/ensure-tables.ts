@@ -197,7 +197,33 @@ export async function ensureMissingTables() {
         "description" text,
         "workload_hours" integer DEFAULT 0,
         "course_type" varchar(100) NOT NULL,
+        "institution_name" varchar(255),
+        "completion_date" timestamp,
         "is_active" boolean DEFAULT true NOT NULL,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // Add new columns to iat_courses if missing (for existing tables)
+    await db.execute(sql`ALTER TABLE "iat_courses" ADD COLUMN IF NOT EXISTS "institution_name" varchar(255);`);
+    await db.execute(sql`ALTER TABLE "iat_courses" ADD COLUMN IF NOT EXISTS "completion_date" timestamp;`);
+
+    // IAT Schedules
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_schedules" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "scheduleType" varchar(20) NOT NULL,
+        "courseId" integer,
+        "examId" integer,
+        "instructorId" integer,
+        "scheduledDate" timestamp NOT NULL,
+        "scheduledTime" varchar(10),
+        "location" varchar(255),
+        "title" varchar(255) NOT NULL,
+        "notes" text,
+        "status" varchar(50) DEFAULT 'agendado' NOT NULL,
         "createdAt" timestamp DEFAULT now() NOT NULL,
         "updatedAt" timestamp DEFAULT now() NOT NULL
       );

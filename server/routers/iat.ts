@@ -3,7 +3,7 @@ import { router, tenantProcedure, adminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getTenantDb } from "../config/tenant.config";
 import { getDb } from "../db";
-import { iatInstructors, iatCourses, iatExams } from "../../drizzle/schema";
+import { iatInstructors, iatCourses, iatExams, iatSchedules } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 async function getIatDb(ctx: any) {
@@ -154,6 +154,8 @@ const courseRouter = router({
         description: z.string().optional(),
         workloadHours: z.number().int().min(0).default(0),
         courseType: z.string().min(1),
+        institutionName: z.string().optional(),
+        completionDate: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -167,6 +169,8 @@ const courseRouter = router({
           description: input.description ?? null,
           workloadHours: input.workloadHours,
           courseType: input.courseType,
+          institutionName: input.institutionName ?? null,
+          completionDate: input.completionDate ? new Date(input.completionDate) : null,
           isActive: true,
         })
         .returning();
@@ -181,16 +185,22 @@ const courseRouter = router({
         description: z.string().optional(),
         workloadHours: z.number().int().min(0).optional(),
         courseType: z.string().optional(),
+        institutionName: z.string().optional(),
+        completionDate: z.string().optional(),
         isActive: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
-      const { id, ...rest } = input;
+      const { id, completionDate, ...rest } = input;
       const [updated] = await db
         .update(iatCourses)
-        .set({ ...rest, updatedAt: new Date() })
+        .set({
+          ...rest,
+          ...(completionDate !== undefined ? { completionDate: completionDate ? new Date(completionDate) : null } : {}),
+          updatedAt: new Date(),
+        })
         .where(and(eq(iatCourses.id, id), eq(iatCourses.tenantId, tenantId)))
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Curso não encontrado" });
@@ -315,10 +325,103 @@ const examRouter = router({
     }),
 });
 
+// ─── Schedules ────────────────────────────────────────────────────────────────
+
+const scheduleRouter = router({
+  list: tenantProcedure.query(async ({ ctx }) => {
+    const db = await getIatDb(ctx);
+    const tenantId = getTenantId(ctx);
+    return db
+      .select()
+      .from(iatSchedules)
+      .where(eq(iatSchedules.tenantId, tenantId))
+      .orderBy(desc(iatSchedules.scheduledDate));
+  }),
+
+  create: adminProcedure
+    .input(
+      z.object({
+        scheduleType: z.enum(["curso", "exame"]),
+        title: z.string().min(1),
+        scheduledDate: z.string().min(1),
+        scheduledTime: z.string().optional(),
+        location: z.string().optional(),
+        instructorId: z.number().optional(),
+        courseId: z.number().optional(),
+        examId: z.number().optional(),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      const [created] = await db
+        .insert(iatSchedules)
+        .values({
+          tenantId,
+          scheduleType: input.scheduleType,
+          title: input.title,
+          scheduledDate: new Date(input.scheduledDate),
+          scheduledTime: input.scheduledTime ?? null,
+          location: input.location ?? null,
+          instructorId: input.instructorId ?? null,
+          courseId: input.courseId ?? null,
+          examId: input.examId ?? null,
+          notes: input.notes ?? null,
+          status: "agendado",
+        })
+        .returning();
+      return created;
+    }),
+
+  update: adminProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        title: z.string().optional(),
+        scheduledDate: z.string().optional(),
+        scheduledTime: z.string().optional(),
+        location: z.string().optional(),
+        instructorId: z.number().optional(),
+        courseId: z.number().optional(),
+        notes: z.string().optional(),
+        status: z.enum(["agendado", "realizado", "cancelado"]).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      const { id, scheduledDate, ...rest } = input;
+      const [updated] = await db
+        .update(iatSchedules)
+        .set({
+          ...rest,
+          ...(scheduledDate ? { scheduledDate: new Date(scheduledDate) } : {}),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(iatSchedules.id, id), eq(iatSchedules.tenantId, tenantId)))
+        .returning();
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Agendamento não encontrado" });
+      return updated;
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      await db
+        .delete(iatSchedules)
+        .where(and(eq(iatSchedules.id, input.id), eq(iatSchedules.tenantId, tenantId)));
+      return { success: true };
+    }),
+});
+
 // ─── IAT Root Router ─────────────────────────────────────────────────────────
 
 export const iatRouter = router({
   instructors: instructorRouter,
   courses: courseRouter,
   exams: examRouter,
+  schedules: scheduleRouter,
 });

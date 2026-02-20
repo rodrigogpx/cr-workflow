@@ -503,6 +503,8 @@ export const iatCourses = pgTable("iat_courses", {
   description: text("description"),
   workloadHours: integer("workload_hours").default(0),
   courseType: varchar("course_type", { length: 100 }).notNull(), // Tiro Básico, Especialização, etc
+  institutionName: varchar("institution_name", { length: 255 }), // Nome da instituição
+  completionDate: timestamp("completion_date", { withTimezone: false }), // Data de conclusão
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
@@ -513,6 +515,35 @@ export type InsertIatCourse = typeof iatCourses.$inferInsert;
 
 export const iatCoursesRelations = relations(iatCourses, ({ many }) => ({
   exams: many(iatExams),
+  schedules: many(iatSchedules),
+}));
+
+/**
+ * IAT Schedules
+ */
+export const iatSchedules = pgTable("iat_schedules", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").notNull(),
+  scheduleDate: timestamp("schedule_date", { withTimezone: false }).notNull(),
+  scheduleTime: varchar("schedule_time", { length: 10 }).notNull(),
+  location: varchar("location", { length: 255 }),
+  instructorId: integer("instructor_id"),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type IatSchedule = typeof iatSchedules.$inferSelect;
+export type InsertIatSchedule = typeof iatSchedules.$inferInsert;
+
+export const iatSchedulesRelations = relations(iatSchedules, ({ one }) => ({
+  course: one(iatCourses, {
+    fields: [iatSchedules.courseId],
+    references: [iatCourses.id],
+  }),
+  instructor: one(iatInstructors, {
+    fields: [iatSchedules.instructorId],
+    references: [iatInstructors.id],
+  }),
 }));
 
 /**
