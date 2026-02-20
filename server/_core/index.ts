@@ -87,11 +87,11 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
-
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  // Na Railway (ou outros PaaS), NUNCA podemos trocar a porta se ela vier do process.env.PORT
+  let port = parseInt(process.env.PORT || "3000");
+  
+  if (process.env.NODE_ENV === "development" && !process.env.PORT) {
+    port = await findAvailablePort(port);
   }
 
   server.listen(port, "0.0.0.0", () => {
