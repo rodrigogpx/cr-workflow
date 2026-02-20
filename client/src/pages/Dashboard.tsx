@@ -22,7 +22,7 @@ interface jsPDFWithPlugin extends jsPDF {
   autoTable: (options: any) => jsPDF;
 }
 
-type PhaseKey = 'all' | 'cadastro' | 'agendamento-psicotecnico' | 'agendamento-laudo' | 'juntada-documento' | 'concluido' | 'aguardando-gru' | 'pronto-analise' | 'em-analise' | 'restituido' | 'deferido-indeferido';
+type PhaseKey = 'all' | 'cadastro' | 'agendamento-psicotecnico' | 'agendamento-laudo' | 'juntada-documento' | 'concluido' | 'solicitado' | 'aguardando-gru' | 'em-analise' | 'correcao-solicitada' | 'deferido' | 'indeferido';
 
 const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, colorClass: string }> = {
   'all': { title: 'Todos os Clientes', icon: Users, colorClass: 'text-blue-500' },
@@ -31,11 +31,12 @@ const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, c
   'agendamento-laudo': { title: 'Laudo Técnico Pendente', icon: Clock, colorClass: 'text-indigo-500' },
   'juntada-documento': { title: 'Juntada de Documentos Pendente', icon: FileText, colorClass: 'text-pink-500' },
   'concluido': { title: 'Workflow Concluído', icon: CheckCircle2, colorClass: 'text-green-500' },
+  'solicitado': { title: 'Solicitado', icon: FileText, colorClass: 'text-blue-500' },
   'aguardando-gru': { title: 'Aguardando Baixa GRU', icon: Clock, colorClass: 'text-yellow-600' },
-  'pronto-analise': { title: 'Pronto para Análise', icon: CheckCircle2, colorClass: 'text-emerald-500' },
   'em-analise': { title: 'Em Análise', icon: Search, colorClass: 'text-blue-400' },
-  'restituido': { title: 'Restituído', icon: Clock, colorClass: 'text-red-400' },
-  'deferido-indeferido': { title: 'Deferido/Indeferido', icon: Target, colorClass: 'text-gray-500' }
+  'correcao-solicitada': { title: 'Correção Solicitada', icon: Clock, colorClass: 'text-orange-400' },
+  'deferido': { title: 'Deferido', icon: CheckCircle2, colorClass: 'text-emerald-500' },
+  'indeferido': { title: 'Indeferido', icon: Target, colorClass: 'text-red-500' }
 };
 
 export default function Dashboard() {
@@ -158,11 +159,12 @@ export default function Dashboard() {
     // Status SINARM
     const sinarmClients = baseFilteredClients.filter(c => c.currentPendingStep === 'acompanhamento-sinarm');
     switch (phase) {
-      case 'aguardando-gru': return sinarmClients.filter(c => c.sinarmStatus === 'Aguardando baixa GRU' || !c.sinarmStatus);
-      case 'pronto-analise': return sinarmClients.filter(c => c.sinarmStatus === 'Pronto para análise');
-      case 'em-analise': return sinarmClients.filter(c => c.sinarmStatus === 'Em análise');
-      case 'restituido': return sinarmClients.filter(c => c.sinarmStatus === 'Restituído');
-      case 'deferido-indeferido': return sinarmClients.filter(c => c.sinarmStatus === 'Deferido/Indeferido');
+      case 'solicitado': return sinarmClients.filter(c => c.sinarmStatus === 'Solicitado' || !c.sinarmStatus);
+      case 'aguardando-gru': return sinarmClients.filter(c => c.sinarmStatus === 'Aguardando Baixa GRU');
+      case 'em-analise': return sinarmClients.filter(c => c.sinarmStatus === 'Em Análise');
+      case 'correcao-solicitada': return sinarmClients.filter(c => c.sinarmStatus === 'Correção Solicitada');
+      case 'deferido': return sinarmClients.filter(c => c.sinarmStatus === 'Deferido');
+      case 'indeferido': return sinarmClients.filter(c => c.sinarmStatus === 'Indeferido');
       default: return [];
     }
   };
@@ -489,8 +491,8 @@ export default function Dashboard() {
               <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wide border-b-2 border-dashed border-white/20 pb-2">
                 Acompanhamento SINARM CAC
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                {['aguardando-gru', 'pronto-analise', 'em-analise', 'restituido', 'deferido-indeferido'].map((phaseKey) => {
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+                {['solicitado', 'aguardando-gru', 'em-analise', 'correcao-solicitada', 'deferido', 'indeferido'].map((phaseKey) => {
                   const phase = phaseKey as PhaseKey;
                   const phaseInfo = PHASE_LABELS[phase];
                   const Icon = phaseInfo.icon;
