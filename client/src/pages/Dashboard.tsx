@@ -22,7 +22,7 @@ interface jsPDFWithPlugin extends jsPDF {
   autoTable: (options: any) => jsPDF;
 }
 
-type PhaseKey = 'all' | 'cadastro' | 'agendamento-psicotecnico' | 'agendamento-laudo' | 'juntada-documento' | 'concluido' | 'solicitado' | 'aguardando-gru' | 'em-analise' | 'correcao-solicitada' | 'deferido' | 'indeferido';
+type PhaseKey = 'all' | 'cadastro' | 'agendamento-psicotecnico' | 'agendamento-laudo' | 'juntada-documento' | 'concluido' | 'solicitado' | 'aguardando-gru' | 'em-analise' | 'restituido' | 'deferido' | 'indeferido';
 
 const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, colorClass: string }> = {
   'all': { title: 'Todos os Clientes', icon: Users, colorClass: 'text-blue-500' },
@@ -34,7 +34,7 @@ const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, c
   'solicitado': { title: 'Solicitado', icon: FileText, colorClass: 'text-blue-500' },
   'aguardando-gru': { title: 'Aguardando Baixa GRU', icon: Clock, colorClass: 'text-yellow-600' },
   'em-analise': { title: 'Em Análise', icon: Search, colorClass: 'text-blue-400' },
-  'correcao-solicitada': { title: 'Correção Solicitada', icon: Clock, colorClass: 'text-orange-400' },
+  'restituido': { title: 'Restituído', icon: Clock, colorClass: 'text-orange-400' },
   'deferido': { title: 'Deferido', icon: CheckCircle2, colorClass: 'text-emerald-500' },
   'indeferido': { title: 'Indeferido', icon: Target, colorClass: 'text-red-500' }
 };

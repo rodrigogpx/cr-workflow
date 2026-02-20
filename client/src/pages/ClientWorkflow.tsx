@@ -1392,7 +1392,7 @@ export default function ClientWorkflow() {
                                 <SelectItem value="Solicitado">Solicitado</SelectItem>
                                 <SelectItem value="Aguardando Baixa GRU">Aguardando Baixa GRU</SelectItem>
                                 <SelectItem value="Em Análise">Em Análise</SelectItem>
-                                <SelectItem value="Correção Solicitada">Correção Solicitada</SelectItem>
+                                <SelectItem value="Restituído">Restituído</SelectItem>
                                 <SelectItem value="Deferido">Deferido</SelectItem>
                                 <SelectItem value="Indeferido">Indeferido</SelectItem>
                               </SelectContent>
