@@ -145,7 +145,7 @@ export default function MainDashboard() {
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <BookOpen className="h-4 w-4" />
                   </span>
-                  IAT – Instrutor de Tiro
+                  IAT – Instrução de Armamento e Tiro
                 </CardTitle>
                 <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
                   Ativo

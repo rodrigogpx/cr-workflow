@@ -129,7 +129,7 @@ export default function IATModule() {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLocation(buildTenantPath(tenantSlug, "/dashboard"))}><ArrowLeft className="h-4 w-4" /></Button>
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Módulo</p>
-              <h1 className="text-xl font-bold flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary" />IAT – Instrutor de Armamento e Tiro</h1>
+              <h1 className="text-xl font-bold flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary" />IAT – Instrução de Armamento e Tiro</h1>
             </div>
           </div>
           <div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-8 h-9 w-full sm:w-60 text-sm" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} /></div>
