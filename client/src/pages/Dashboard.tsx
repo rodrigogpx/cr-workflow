@@ -492,7 +492,7 @@ export default function Dashboard() {
                 Acompanhamento SINARM CAC
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                {['solicitado', 'aguardando-gru', 'em-analise', 'correcao-solicitada', 'deferido', 'indeferido'].map((phaseKey) => {
+                {['solicitado', 'aguardando-gru', 'em-analise', 'restituido', 'deferido', 'indeferido'].map((phaseKey) => {
                   const phase = phaseKey as PhaseKey;
                   const phaseInfo = PHASE_LABELS[phase];
                   const Icon = phaseInfo.icon;
