@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { APP_LOGO } from "@/const";
-import { Target, Shield, Activity, RefreshCcw, Inbox, MapPin, ChevronRight, LogOut } from "lucide-react";
+import { Target, Shield, BookOpen, RefreshCcw, Inbox, MapPin, ChevronRight, LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
@@ -137,30 +137,34 @@ export default function MainDashboard() {
             </CardContent>
           </Card>
 
-          {/* Módulo Habitualidade Tracker */}
-          <Card className="border-2 border-dashed border-white/10 bg-card/90 backdrop-blur-sm opacity-80 hover:opacity-100 hover:border-primary/40 transition-all duration-300">
+          {/* Módulo IAT */}
+          <Card className="border-2 border-dashed border-white/20 bg-card/95 backdrop-blur-sm hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 transition-all duration-300">
             <CardHeader className="space-y-2 pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-bold uppercase tracking-tight flex items-center gap-2">
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <Activity className="h-4 w-4" />
+                    <BookOpen className="h-4 w-4" />
                   </span>
-                  Habitualidade &amp; Treinos
+                  IAT – Instrutor de Tiro
                 </CardTitle>
-                <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-amber-500 text-white border border-amber-200/60 shadow-sm uppercase font-bold tracking-wide">
-                  Fase 2
+                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
+                  Ativo
                 </span>
               </div>
               <CardDescription className="text-xs sm:text-sm text-muted-foreground">
-                Registro de treinos, barra de nível e geração automática da declaração de habitualidade.
+                Gestão de instrutores credenciados PF, cursos, agendamento de provas de capacidade técnica e emissão de laudos.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 pt-0">
               <p className="text-[0.7rem] sm:text-xs text-muted-foreground">
-                Coração da retenção do cliente. Este módulo será liberado após a consolidação do fluxo de aquisição.
+                Módulo para instrutores de armamento e tiro (IAT) conforme legislação vigente. Controle de credenciamento PF para emissão de laudos.
               </p>
-              <Button disabled className="w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide" variant="outline">
-                Em breve
+              <Button
+                className="w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide border-2 border-dashed border-white/40"
+                onClick={() => setLocation(buildTenantPath(tenantSlug, "/iat"))}
+              >
+                Acessar Módulo IAT
+                <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             </CardContent>
           </Card>

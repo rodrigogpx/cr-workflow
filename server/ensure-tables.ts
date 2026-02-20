@@ -30,6 +30,7 @@ export async function ensureMissingTables() {
         "featureApostilamento" boolean DEFAULT false,
         "featureRenovacao" boolean DEFAULT false,
         "featureInsumos" boolean DEFAULT false,
+        "featureIAT" boolean DEFAULT false,
         "emailMethod" varchar(20) DEFAULT 'gateway',
         "smtpHost" varchar(255),
         "smtpPort" integer DEFAULT 587,
@@ -165,6 +166,66 @@ export async function ensureMissingTables() {
         "errorMessage" text,
         "createdAt" timestamp DEFAULT now() NOT NULL
       );
+    `);
+
+    // IAT Instructors
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_instructors" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "userId" integer,
+        "name" varchar(255) NOT NULL,
+        "cpf" varchar(20),
+        "cr_number" varchar(50),
+        "phone" varchar(20),
+        "email" varchar(255),
+        "is_pf_accredited" boolean DEFAULT false NOT NULL,
+        "pf_accreditation_number" varchar(100),
+        "signature_image" text,
+        "is_active" boolean DEFAULT true NOT NULL,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // IAT Courses
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_courses" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "title" varchar(255) NOT NULL,
+        "description" text,
+        "workload_hours" integer DEFAULT 0,
+        "course_type" varchar(100) NOT NULL,
+        "is_active" boolean DEFAULT true NOT NULL,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // IAT Exams
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_exams" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "clientId" integer NOT NULL,
+        "instructorId" integer NOT NULL,
+        "courseId" integer,
+        "scheduled_date" timestamp,
+        "exam_type" varchar(100) NOT NULL,
+        "status" varchar(50) DEFAULT 'agendado' NOT NULL,
+        "weapon_type" varchar(100),
+        "score" varchar(50),
+        "observations" text,
+        "laudo_pdf_url" text,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // Alter tenants to add featureIAT if missing
+    await db.execute(sql`
+      ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "featureIAT" boolean DEFAULT false;
     `);
 
     console.log("[Migration] Missing tables created successfully.");

@@ -15,6 +15,7 @@ import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
 import { getTenantDb } from "./config/tenant.config";
 import { createClientSchema, updateClientSchema } from "@shared/validations";
+import { iatRouter } from "./routers/iat";
 
 async function getTenantDbOrNull(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
@@ -30,6 +31,7 @@ async function getTenantDbOrNull(ctx: any) {
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  iat: iatRouter,
   auth: router({
     me: publicProcedure.query(opts => {
       return opts.ctx.user;

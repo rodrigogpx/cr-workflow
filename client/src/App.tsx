@@ -24,6 +24,7 @@ const AdminEmailTriggers = lazy(() => import("./pages/AdminEmailTriggers"));
 const AdminSettings = lazy(() => import("./pages/TenantSettings"));
 const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const IATModule = lazy(() => import("./pages/IATModule"));
 
 function getBackgroundForPath(path: string) {
   // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
@@ -240,6 +241,17 @@ function Router() {
           <AdminRoute>
             <AdminAudit />
           </AdminRoute>
+        </Route>
+        {/* IAT Module */}
+        <Route path={"/:tenantSlug/iat"}>
+          <ApprovedRoute>
+            <IATModule />
+          </ApprovedRoute>
+        </Route>
+        <Route path={"/iat"}>
+          <ApprovedRoute>
+            <IATModule />
+          </ApprovedRoute>
         </Route>
         {/* Super Admin */}
         <Route path={"/super-admin/tenants"}>
