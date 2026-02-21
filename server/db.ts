@@ -31,6 +31,8 @@ import {
   InsertEmailScheduled,
   platformSettings,
   PlatformSetting,
+  sinarmCommentsHistory,
+  InsertSinarmCommentHistory,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
@@ -184,6 +186,78 @@ export async function upsertWorkflowStepToDb(
     .values(step)
     .returning({ id: workflowSteps.id });
   return inserted.id;
+}
+
+export async function insertSinarmComment(data: InsertSinarmCommentHistory): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [inserted] = await db
+    .insert(sinarmCommentsHistory)
+    .values(data)
+    .returning({ id: sinarmCommentsHistory.id });
+
+  return inserted.id;
+}
+
+export async function insertSinarmCommentToDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  data: InsertSinarmCommentHistory
+): Promise<number> {
+  const [inserted] = await tenantDb
+    .insert(sinarmCommentsHistory)
+    .values(data)
+    .returning({ id: sinarmCommentsHistory.id });
+
+  return inserted.id;
+}
+
+export async function getSinarmCommentsByWorkflowStepId(workflowStepId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db
+    .select({
+      id: sinarmCommentsHistory.id,
+      workflowStepId: sinarmCommentsHistory.workflowStepId,
+      oldStatus: sinarmCommentsHistory.oldStatus,
+      newStatus: sinarmCommentsHistory.newStatus,
+      comment: sinarmCommentsHistory.comment,
+      createdBy: sinarmCommentsHistory.createdBy,
+      createdAt: sinarmCommentsHistory.createdAt,
+      createdByName: users.name,
+      createdByEmail: users.email,
+    })
+    .from(sinarmCommentsHistory)
+    .leftJoin(users, eq(users.id, sinarmCommentsHistory.createdBy))
+    .where(eq(sinarmCommentsHistory.workflowStepId, workflowStepId))
+    .orderBy(desc(sinarmCommentsHistory.createdAt));
+
+  return result;
+}
+
+export async function getSinarmCommentsByWorkflowStepIdFromDb(
+  tenantDb: ReturnType<typeof drizzle>,
+  workflowStepId: number
+) {
+  const result = await tenantDb
+    .select({
+      id: sinarmCommentsHistory.id,
+      workflowStepId: sinarmCommentsHistory.workflowStepId,
+      oldStatus: sinarmCommentsHistory.oldStatus,
+      newStatus: sinarmCommentsHistory.newStatus,
+      comment: sinarmCommentsHistory.comment,
+      createdBy: sinarmCommentsHistory.createdBy,
+      createdAt: sinarmCommentsHistory.createdAt,
+      createdByName: users.name,
+      createdByEmail: users.email,
+    })
+    .from(sinarmCommentsHistory)
+    .leftJoin(users, eq(users.id, sinarmCommentsHistory.createdBy))
+    .where(eq(sinarmCommentsHistory.workflowStepId, workflowStepId))
+    .orderBy(desc(sinarmCommentsHistory.createdAt));
+
+  return result;
 }
 
 export async function getUserByEmail(email: string) {

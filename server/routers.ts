@@ -190,7 +190,7 @@ export const appRouter = router({
       
       // Admin vê todos os clientes, operador vê todos os clientes
       // Despachante vê clientes com "Juntada de Documentos" concluída
-      let clients;
+      let clients: any[] = [];
       if (ctx.user.role === 'admin') {
         clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
       } else if (ctx.user.role === 'operator') {
@@ -202,7 +202,9 @@ export const appRouter = router({
         clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
       }
 
-      const assignedUserIds: number[] = (clients || [])
+      const safeClients: any[] = Array.isArray(clients) ? clients : [];
+
+      const assignedUserIds: number[] = safeClients
         .map((c: any) => c.operatorId)
         .filter((id: any): id is number => typeof id === 'number');
 
@@ -223,7 +225,7 @@ export const appRouter = router({
 
       // Adicionar estatísticas de workflow para cada cliente
       const clientsWithProgress = await Promise.all(
-        clients.map(async (client) => {
+        safeClients.map(async (client) => {
           const workflow = tenantDb
             ? await db.getWorkflowByClientFromDb(tenantDb, client.id)
             : await db.getWorkflowByClient(client.id);
@@ -686,7 +688,9 @@ export const appRouter = router({
         stepId: z.number(),
         completed: z.boolean().optional(),
         sinarmStatus: z.string().optional(),
-        protocolNumber: z.string().optional(),
+        sinarmOpenDate: z.string().optional().nullable(),
+        protocolNumber: z.string().optional().nullable(),
+        sinarmComment: z.string().optional()
       }))
       .mutation(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -708,7 +712,12 @@ export const appRouter = router({
         // Verificar permissão
         // Despachantes podem alterar sinarmStatus e protocolNumber na fase Acompanhamento Sinarm-CAC
         const isDespachante = ctx.user.role === 'despachante';
-        const isUpdatingSinarmOnly = (input.sinarmStatus !== undefined || input.protocolNumber !== undefined) && input.completed === undefined;
+        const isUpdatingSinarmOnly = (
+          input.sinarmStatus !== undefined || 
+          input.protocolNumber !== undefined ||
+          input.sinarmOpenDate !== undefined ||
+          input.sinarmComment !== undefined
+        ) && input.completed === undefined;
         const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
         
         if (!hasGeneralPermission && !(isDespachante && isUpdatingSinarmOnly)) {
@@ -778,12 +787,33 @@ export const appRouter = router({
         
         if (input.completed !== undefined) updateData.completed = input.completed;
         if (input.sinarmStatus !== undefined) updateData.sinarmStatus = input.sinarmStatus;
+        if (input.sinarmOpenDate !== undefined) updateData.sinarmOpenDate = input.sinarmOpenDate ? new Date(input.sinarmOpenDate) : null;
         if (input.protocolNumber !== undefined) updateData.protocolNumber = input.protocolNumber;
         
         if (tenantDb) {
           await db.upsertWorkflowStepToDb(tenantDb, updateData);
+          
+          if (input.sinarmStatus !== undefined && input.sinarmComment) {
+            await db.insertSinarmCommentToDb(tenantDb, {
+              workflowStepId: input.stepId,
+              oldStatus: currentStep.sinarmStatus || 'Novo',
+              newStatus: input.sinarmStatus,
+              comment: input.sinarmComment,
+              createdBy: ctx.user.id
+            });
+          }
         } else {
           await db.upsertWorkflowStep(updateData);
+
+          if (input.sinarmStatus !== undefined && input.sinarmComment) {
+            await db.insertSinarmComment({
+              workflowStepId: input.stepId,
+              oldStatus: currentStep.sinarmStatus || 'Novo',
+              newStatus: input.sinarmStatus,
+              comment: input.sinarmComment,
+              createdBy: ctx.user.id
+            });
+          }
         }
 
         // Log de auditoria
@@ -797,6 +827,7 @@ export const appRouter = router({
         };
         if (input.completed !== undefined) auditDetails.completed = input.completed;
         if (input.sinarmStatus !== undefined) auditDetails.sinarmStatus = input.sinarmStatus;
+        if (input.sinarmOpenDate !== undefined) auditDetails.sinarmOpenDate = input.sinarmOpenDate;
         if (input.protocolNumber !== undefined) auditDetails.protocolNumber = input.protocolNumber;
 
         if (tenantDb) {
@@ -887,6 +918,43 @@ export const appRouter = router({
         }
         
         return { success: true };
+      }),
+
+    getSinarmCommentsHistory: tenantProcedure
+      .input(z.object({ stepId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+
+        const step = tenantDb
+          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
+          : await db.getWorkflowStepById(input.stepId);
+
+        if (!step) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
+        }
+
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, step.clientId)
+          : await db.getClientById(step.clientId);
+
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+
+        const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
+        const isDespachante = ctx.user.role === 'despachante';
+        const isSinarmStep =
+          step.stepId === 'acompanhamento-sinarm' ||
+          step.stepId === 'acompanhamento-sinarm-cac' ||
+          step.stepTitle?.toLowerCase().includes('sinarm') === true;
+
+        if (!hasGeneralPermission && !(isDespachante && isSinarmStep)) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        }
+
+        return tenantDb
+          ? await db.getSinarmCommentsByWorkflowStepIdFromDb(tenantDb, input.stepId)
+          : await db.getSinarmCommentsByWorkflowStepId(input.stepId);
       }),
 
     updateSubTask: protectedProcedure

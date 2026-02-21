@@ -37,6 +37,14 @@ import Footer from "@/components/Footer";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
@@ -97,6 +105,13 @@ export default function ClientWorkflow() {
   const [clientFormData, setClientFormData] = useState<Record<string, string>>({});
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedSubTask, setSelectedSubTask] = useState<{id: number, label: string, stepId: number} | null>(null);
+
+  const [isSinarmStatusDialogOpen, setIsSinarmStatusDialogOpen] = useState(false);
+  const [pendingSinarmStatusChange, setPendingSinarmStatusChange] = useState<{
+    stepId: number;
+    status: string;
+  } | null>(null);
+  const [sinarmComment, setSinarmComment] = useState("");
 
   const { data: client } = trpc.clients.getById.useQuery(
     { id: Number(clientId) },
@@ -1379,10 +1394,9 @@ export default function ClientWorkflow() {
                             <Select
                               value={step.sinarmStatus || ""}
                               onValueChange={(value) => {
-                                updateStepMutation.mutate({
-                                  stepId: step.id,
-                                  sinarmStatus: value,
-                                });
+                                setPendingSinarmStatusChange({ stepId: step.id, status: value });
+                                setSinarmComment("");
+                                setIsSinarmStatusDialogOpen(true);
                               }}
                             >
                               <SelectTrigger className="mt-1">
@@ -1398,6 +1412,68 @@ export default function ClientWorkflow() {
                               </SelectContent>
                             </Select>
                           </div>
+
+                          <Dialog open={isSinarmStatusDialogOpen} onOpenChange={setIsSinarmStatusDialogOpen}>
+                            <DialogContent className="sm:max-w-lg">
+                              <DialogHeader>
+                                <DialogTitle>Alterar status do SINARM</DialogTitle>
+                                <DialogDescription>
+                                  Você pode registrar um comentário sobre esta alteração (opcional).
+                                </DialogDescription>
+                              </DialogHeader>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="sinarmComment" className="text-sm font-medium text-gray-700">
+                                  Comentário (opcional)
+                                </Label>
+                                <Textarea
+                                  id="sinarmComment"
+                                  value={sinarmComment}
+                                  onChange={(e) => setSinarmComment(e.target.value)}
+                                  placeholder="Ex: enviado comprovante, aguardando retorno, etc."
+                                />
+                              </div>
+
+                              <DialogFooter>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setIsSinarmStatusDialogOpen(false);
+                                    setPendingSinarmStatusChange(null);
+                                    setSinarmComment("");
+                                  }}
+                                >
+                                  Cancelar
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    if (!pendingSinarmStatusChange) return;
+
+                                    const trimmed = sinarmComment.trim();
+                                    updateStepMutation.mutate({
+                                      stepId: pendingSinarmStatusChange.stepId,
+                                      sinarmStatus: pendingSinarmStatusChange.status,
+                                      ...(trimmed ? { sinarmComment: trimmed } : {}),
+                                    });
+
+                                    setIsSinarmStatusDialogOpen(false);
+                                    setPendingSinarmStatusChange(null);
+                                    setSinarmComment("");
+                                  }}
+                                  disabled={updateStepMutation.isPending || !pendingSinarmStatusChange}
+                                >
+                                  {updateStepMutation.isPending ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Salvando...
+                                    </>
+                                  ) : (
+                                    'Salvar'
+                                  )}
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                           
                           <div>
                             <Label htmlFor="protocolNumber" className="text-sm font-medium text-gray-700">Número de Protocolo</Label>
