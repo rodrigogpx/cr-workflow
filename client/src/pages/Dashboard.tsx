@@ -22,7 +22,7 @@ interface jsPDFWithPlugin extends jsPDF {
   autoTable: (options: any) => jsPDF;
 }
 
-type PhaseKey = 'all' | 'cadastro' | 'agendamento-psicotecnico' | 'agendamento-laudo' | 'juntada-documento' | 'concluido' | 'solicitado' | 'aguardando-gru' | 'em-analise' | 'restituido' | 'deferido' | 'indeferido';
+type PhaseKey = 'all' | 'cadastro' | 'agendamento-psicotecnico' | 'agendamento-laudo' | 'juntada-documento' | 'concluido' | 'sem-protocolo' | 'solicitado' | 'aguardando-gru' | 'em-analise' | 'restituido' | 'deferido' | 'indeferido';
 
 const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, colorClass: string }> = {
   'all': { title: 'Todos os Clientes', icon: Users, colorClass: 'text-blue-500' },
@@ -31,6 +31,7 @@ const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, c
   'agendamento-laudo': { title: 'Laudo Técnico Pendente', icon: Clock, colorClass: 'text-indigo-500' },
   'juntada-documento': { title: 'Juntada de Documentos Pendente', icon: FileText, colorClass: 'text-pink-500' },
   'concluido': { title: 'Workflow Concluído', icon: CheckCircle2, colorClass: 'text-green-500' },
+  'sem-protocolo': { title: 'Sem Número de Protocolo', icon: FileText, colorClass: 'text-red-500' },
   'solicitado': { title: 'Solicitado', icon: FileText, colorClass: 'text-blue-500' },
   'aguardando-gru': { title: 'Aguardando Baixa GRU', icon: Clock, colorClass: 'text-yellow-600' },
   'em-analise': { title: 'Em Análise', icon: Search, colorClass: 'text-blue-400' },
@@ -163,6 +164,13 @@ export default function Dashboard() {
     // Para concluídos: mostrar clientes que realmente concluíram o workflow
     if (phase === 'concluido') {
       return baseFilteredClients.filter(c => c.currentPendingStep === 'concluido');
+    }
+    
+    // Sem número de protocolo: clientes na fase SINARM sem protocolNumber
+    if (phase === 'sem-protocolo') {
+      return baseFilteredClients.filter(c => 
+        c.currentPendingStep === 'acompanhamento-sinarm' && !c.protocolNumber
+      );
     }
     
     // Status SINARM: mostrar APENAS clientes com o status EXATO correspondente ao card
@@ -491,8 +499,8 @@ export default function Dashboard() {
               <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wide border-b-2 border-dashed border-white/20 pb-2">
                 Acompanhamento SINARM CAC
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                {['solicitado', 'aguardando-gru', 'em-analise', 'restituido', 'deferido', 'indeferido'].map((phaseKey) => {
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-6">
+                {['sem-protocolo', 'solicitado', 'aguardando-gru', 'em-analise', 'restituido', 'deferido', 'indeferido'].map((phaseKey) => {
                   const phase = phaseKey as PhaseKey;
                   const phaseInfo = PHASE_LABELS[phase];
                   const Icon = phaseInfo.icon;

@@ -270,6 +270,7 @@ export const appRouter = router({
             // Extrair status detalhado do SINARM
             const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
             const sinarmStatus: string | null = sinarmStep?.sinarmStatus || null;
+            const protocolNumber: string | null = sinarmStep?.protocolNumber || null;
             
             return {
               ...client,
@@ -280,6 +281,7 @@ export const appRouter = router({
               currentPendingStep,
               completedPhases,
               sinarmStatus,
+              protocolNumber,
               assignedOperator: client.operatorId ? (() => {
                 const u = assignedUserMap.get(client.operatorId);
                 return u ? { id: u.id, name: u.name, email: u.email } : null;
