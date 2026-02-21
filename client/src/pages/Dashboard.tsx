@@ -442,18 +442,6 @@ export default function Dashboard() {
                           <Icon className={`w-5 h-5 ${phaseInfo.colorClass}`} />
                           {phaseInfo.title}
                         </CardTitle>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCardClick(phase);
-                          }}
-                          title="Gerar Relatório"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
                       </CardHeader>
                       <CardContent>
                         <div className="text-4xl font-bold" style={{color: '#434242'}}>{count}</div>
@@ -487,18 +475,6 @@ export default function Dashboard() {
                           <Icon className={`w-5 h-5 shrink-0 ${phaseInfo.colorClass}`} />
                           <span className="leading-tight">{phaseInfo.title}</span>
                         </CardTitle>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCardClick(phase);
-                          }}
-                          title="Gerar Relatório"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
                       </CardHeader>
                       <CardContent>
                         <div className="text-4xl font-bold" style={{color: '#434242'}}>{count}</div>
@@ -532,18 +508,6 @@ export default function Dashboard() {
                           <Icon className={`w-5 h-5 shrink-0 ${phaseInfo.colorClass}`} />
                           <span className="leading-tight">{phaseInfo.title}</span>
                         </CardTitle>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCardClick(phase);
-                          }}
-                          title="Gerar Relatório"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
                       </CardHeader>
                       <CardContent>
                         <div className="text-4xl font-bold" style={{color: '#434242'}}>{count}</div>
