@@ -185,114 +185,122 @@ export const appRouter = router({
   // Clients router
   clients: router({
     list: tenantProcedure.query(async ({ ctx }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
-      const tenantId = ctx.tenant?.id;
-      
-      // Admin vê todos os clientes, operador vê todos os clientes
-      // Despachante vê clientes com "Juntada de Documentos" concluída
-      let clients: any[] = [];
-      if (ctx.user.role === 'admin') {
-        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
-      } else if (ctx.user.role === 'operator') {
-        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
-      } else if (ctx.user.role === 'despachante') {
-        // Despachante vê TODOS os clientes, mas filtraremos depois pela etapa concluída
-        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
-      } else {
-        clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
-      }
-
-      const safeClients: any[] = Array.isArray(clients) ? clients : [];
-
-      const assignedUserIds: number[] = safeClients
-        .map((c: any) => c.operatorId)
-        .filter((id: any): id is number => typeof id === 'number');
-
-      const uniqueAssignedUserIds: number[] = Array.from(new Set<number>(assignedUserIds));
-      const assignedUsers = tenantDb
-        ? await db.getUsersByIdsFromDb(tenantDb, uniqueAssignedUserIds)
-        : await db.getUsersByIds(uniqueAssignedUserIds);
+      try {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id;
         
-      const safeAssignedUsers: any[] = Array.isArray(assignedUsers) ? assignedUsers : [];
-      const assignedUserMap = new Map<number, any>(safeAssignedUsers.map((u: any) => [u.id, u]));
-      
-      // Ordem canônica das fases do workflow
-      const PHASE_ORDER = [
-        'cadastro',
-        'agendamento-psicotecnico',
-        'agendamento-laudo',
-        'juntada-documento',
-        'acompanhamento-sinarm',
-      ];
+        // Admin vê todos os clientes, operador vê todos os clientes
+        // Despachante vê clientes com "Juntada de Documentos" concluída
+        let clients: any[] = [];
+        if (ctx.user.role === 'admin') {
+          clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+        } else if (ctx.user.role === 'operator') {
+          clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+        } else if (ctx.user.role === 'despachante') {
+          // Despachante vê TODOS os clientes, mas filtraremos depois pela etapa concluída
+          clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+        } else {
+          clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
+        }
 
-      // Adicionar estatísticas de workflow para cada cliente
-      const clientsWithProgress = await Promise.all(
-        safeClients.map(async (client) => {
-          const rawWorkflow = tenantDb
-            ? await db.getWorkflowByClientFromDb(tenantDb, client.id)
-            : await db.getWorkflowByClient(client.id);
-            
-          const workflow: any[] = Array.isArray(rawWorkflow) ? rawWorkflow : [];
+        const safeClients: any[] = Array.isArray(clients) ? clients : [];
+
+        const assignedUserIds: number[] = safeClients
+          .map((c: any) => c.operatorId)
+          .filter((id: any): id is number => typeof id === 'number');
+
+        const uniqueAssignedUserIds: number[] = Array.from(new Set<number>(assignedUserIds));
+        const assignedUsers = tenantDb
+          ? await db.getUsersByIdsFromDb(tenantDb, uniqueAssignedUserIds)
+          : await db.getUsersByIds(uniqueAssignedUserIds);
           
-          const totalSteps = workflow.length;
-          const completedSteps = workflow.filter((s: any) => s.completed).length;
-          const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
-          
-          // Verificar se "Juntada de Documentos" está concluída (stepId 2 ou título contendo "juntada"/"documentos")
-          const juntadaStep = workflow.find((s: any) => 
-            s.stepId === 2 || 
-            s.stepId === '2' ||
-            s.stepId === 'juntada-documento' ||
-            s.stepTitle?.toLowerCase().includes('juntada') ||
-            s.stepTitle?.toLowerCase().includes('documentos')
-          );
-          const juntadaConcluida = juntadaStep?.completed === true;
+        const safeAssignedUsers: any[] = Array.isArray(assignedUsers) ? assignedUsers : [];
+        const assignedUserMap = new Map<number, any>(safeAssignedUsers.map((u: any) => [u.id, u]));
+        
+        // Ordem canônica das fases do workflow
+        const PHASE_ORDER = [
+          'cadastro',
+          'agendamento-psicotecnico',
+          'agendamento-laudo',
+          'juntada-documento',
+          'acompanhamento-sinarm',
+        ];
 
-          // Determinar a fase pendente atual (primeira não concluída na ordem canônica)
-          let currentPendingStep: string | null = null;
-          let completedPhases: Record<string, boolean> = {};
-
-          for (const phaseId of PHASE_ORDER) {
-            const step = workflow.find((s: any) => s.stepId === phaseId);
-            const isCompleted = step ? step.completed : false;
-            completedPhases[phaseId] = isCompleted;
+        // Adicionar estatísticas de workflow para cada cliente
+        const clientsWithProgress = await Promise.all(
+          safeClients.map(async (client) => {
+            const rawWorkflow = tenantDb
+              ? await db.getWorkflowByClientFromDb(tenantDb, client.id)
+              : await db.getWorkflowByClient(client.id);
+              
+            const workflow: any[] = Array.isArray(rawWorkflow) ? rawWorkflow : [];
             
-            if (!isCompleted && !currentPendingStep) {
-              currentPendingStep = phaseId;
+            const totalSteps = workflow.length;
+            const completedSteps = workflow.filter((s: any) => s.completed).length;
+            const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+            
+            // Verificar se "Juntada de Documentos" está concluída (stepId 2 ou título contendo "juntada"/"documentos")
+            const juntadaStep = workflow.find((s: any) => 
+              s.stepId === 2 || 
+              s.stepId === '2' ||
+              s.stepId === 'juntada-documento' ||
+              s.stepTitle?.toLowerCase().includes('juntada') ||
+              s.stepTitle?.toLowerCase().includes('documentos')
+            );
+            const juntadaConcluida = juntadaStep?.completed === true;
+
+            // Determinar a fase pendente atual (primeira não concluída na ordem canônica)
+            let currentPendingStep: string | null = null;
+            let completedPhases: Record<string, boolean> = {};
+
+            for (const phaseId of PHASE_ORDER) {
+              const step = workflow.find((s: any) => s.stepId === phaseId);
+              const isCompleted = step ? step.completed : false;
+              completedPhases[phaseId] = isCompleted;
+              
+              if (!isCompleted && !currentPendingStep) {
+                currentPendingStep = phaseId;
+              }
             }
-          }
-          // Se todas as fases canônicas estão concluídas, marcar como 'concluido'
-          if (!currentPendingStep && completedSteps > 0 && completedSteps >= totalSteps) {
-            currentPendingStep = 'concluido';
-          }
+            // Se todas as fases canônicas estão concluídas, marcar como 'concluido'
+            if (!currentPendingStep && completedSteps > 0 && completedSteps >= totalSteps) {
+              currentPendingStep = 'concluido';
+            }
 
-          // Extrair status detalhado do SINARM
-          const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
-          const sinarmStatus: string | null = sinarmStep?.sinarmStatus || null;
-          
-          return {
-            ...client,
-            progress,
-            totalSteps,
-            completedSteps,
-            juntadaConcluida,
-            currentPendingStep,
-            completedPhases,
-            sinarmStatus,
-            assignedOperator: client.operatorId ? (() => {
-              const u = assignedUserMap.get(client.operatorId);
-              return u ? { id: u.id, name: u.name, email: u.email } : null;
-            })() : null,
-          };
-        })
-      );
-      
-      // Se for despachante, filtrar apenas clientes com Juntada de Documentos concluída
-      const filteredClients = ctx.user.role === 'despachante'
-        ? clientsWithProgress.filter(c => c.juntadaConcluida)
-        : clientsWithProgress;
-      
-      return filteredClients;
+            // Extrair status detalhado do SINARM
+            const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
+            const sinarmStatus: string | null = sinarmStep?.sinarmStatus || null;
+            
+            return {
+              ...client,
+              progress,
+              totalSteps,
+              completedSteps,
+              juntadaConcluida,
+              currentPendingStep,
+              completedPhases,
+              sinarmStatus,
+              assignedOperator: client.operatorId ? (() => {
+                const u = assignedUserMap.get(client.operatorId);
+                return u ? { id: u.id, name: u.name, email: u.email } : null;
+              })() : null,
+            };
+          })
+        );
+        
+        // Se for despachante, filtrar apenas clientes com Juntada de Documentos concluída
+        const filteredClients = ctx.user.role === 'despachante'
+          ? clientsWithProgress.filter(c => c.juntadaConcluida)
+          : clientsWithProgress;
+        
+        return filteredClients;
+      } catch (error: any) {
+        console.error('[clients.list] Error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error?.message || 'Erro interno ao listar clientes',
+        });
+      }
     }),
 
     getById: tenantProcedure
