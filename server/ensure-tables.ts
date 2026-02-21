@@ -254,6 +254,29 @@ export async function ensureMissingTables() {
       ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "featureIAT" boolean DEFAULT false;
     `);
 
+    // Sinarm Comments History
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "sinarmCommentsHistory" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "workflowStepId" integer NOT NULL,
+        "oldStatus" varchar(50),
+        "newStatus" varchar(50) NOT NULL,
+        "comment" text NOT NULL,
+        "createdBy" integer NOT NULL,
+        "createdAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // Add sinarmOpenDate to workflowSteps if missing
+    await db.execute(sql`
+      ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "sinarmOpenDate" timestamp;
+    `);
+
+    // Add protocolNumber to workflowSteps if missing
+    await db.execute(sql`
+      ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "protocolNumber" varchar(100);
+    `);
+
     console.log("[Migration] Missing tables created successfully.");
   } catch (error) {
     console.error("[Migration] Error creating tables:", error);
