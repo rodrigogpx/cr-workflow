@@ -102,6 +102,7 @@ export const workflowSteps = pgTable("workflowSteps", {
   examinerName: varchar("examinerName", { length: 255 }),
   // Campos para Acompanhamento Sinarm-CAC
   sinarmStatus: varchar("sinarmStatus", { length: 50 }),
+  sinarmOpenDate: timestamp("sinarmOpenDate"),
   protocolNumber: varchar("protocolNumber", { length: 100 }),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
@@ -169,6 +170,31 @@ export const workflowStepsRelations = relations(workflowSteps, ({ one, many }) =
   }),
   subTasks: many(subTasks),
   documents: many(documents),
+  sinarmComments: many(sinarmCommentsHistory),
+}));
+
+export const sinarmCommentsHistory = pgTable("sinarmCommentsHistory", {
+  id: serial("id").primaryKey(),
+  workflowStepId: integer("workflowStepId").notNull(),
+  oldStatus: varchar("oldStatus", { length: 50 }),
+  newStatus: varchar("newStatus", { length: 50 }).notNull(),
+  comment: text("comment").notNull(),
+  createdBy: integer("createdBy").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type SinarmCommentHistory = typeof sinarmCommentsHistory.$inferSelect;
+export type InsertSinarmCommentHistory = typeof sinarmCommentsHistory.$inferInsert;
+
+export const sinarmCommentsHistoryRelations = relations(sinarmCommentsHistory, ({ one }) => ({
+  workflowStep: one(workflowSteps, {
+    fields: [sinarmCommentsHistory.workflowStepId],
+    references: [workflowSteps.id],
+  }),
+  user: one(users, {
+    fields: [sinarmCommentsHistory.createdBy],
+    references: [users.id],
+  }),
 }));
 
 export const subTasksRelations = relations(subTasks, ({ one }) => ({
