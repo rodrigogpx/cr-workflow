@@ -243,11 +243,15 @@ export const appRouter = router({
 
           // Determinar a fase pendente atual (primeira não concluída na ordem canônica)
           let currentPendingStep: string | null = null;
+          let completedPhases: Record<string, boolean> = {};
+
           for (const phaseId of PHASE_ORDER) {
             const step = workflow.find((s: any) => s.stepId === phaseId);
-            if (step && !step.completed) {
+            const isCompleted = step ? step.completed : false;
+            completedPhases[phaseId] = isCompleted;
+            
+            if (!isCompleted && !currentPendingStep) {
               currentPendingStep = phaseId;
-              break;
             }
           }
           // Se todas as fases canônicas estão concluídas, marcar como 'concluido'
@@ -266,6 +270,7 @@ export const appRouter = router({
             completedSteps,
             juntadaConcluida,
             currentPendingStep,
+            completedPhases,
             sinarmStatus,
             assignedOperator: client.operatorId ? (() => {
               const u = assignedUserMap.get(client.operatorId);

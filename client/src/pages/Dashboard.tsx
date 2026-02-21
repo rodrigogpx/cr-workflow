@@ -155,12 +155,8 @@ export default function Dashboard() {
     // Para fases do workflow: mostrar TODOS os clientes que NÃO concluíram a fase específica
     if (['cadastro', 'agendamento-psicotecnico', 'agendamento-laudo', 'juntada-documento'].includes(phase)) {
       return baseFilteredClients.filter(c => {
-        // Se o workflow não existe ou não tem a fase, considera como não concluído
-        if (!c.workflow || c.workflow.length === 0) return true;
-        
-        const phaseStep = c.workflow.find((step: any) => step.stepId === phase);
-        // Se não encontrou a fase ou não está marcada como completed, mostra no card
-        return !phaseStep || phaseStep.completed !== true;
+        // Se a fase não está marcada como concluída no objeto completedPhases enviado pelo backend
+        return !c.completedPhases || c.completedPhases[phase] !== true;
       });
     }
     
@@ -169,38 +165,22 @@ export default function Dashboard() {
       return baseFilteredClients.filter(c => c.currentPendingStep === 'concluido');
     }
     
-    // Status SINARM: mostrar clientes que NÃO atingiram status superior
+    // Status SINARM: mostrar APENAS clientes com o status EXATO correspondente ao card
     const sinarmClients = baseFilteredClients.filter(c => c.currentPendingStep === 'acompanhamento-sinarm');
     switch (phase) {
       case 'solicitado': 
-        // Mostrar todos que ainda não passaram de "Solicitado" (incluindo sem status)
-        return sinarmClients.filter(c => 
-          !c.sinarmStatus || 
-          c.sinarmStatus === 'Solicitado' || 
-          c.sinarmStatus === 'Aguardando Baixa GRU' ||
-          c.sinarmStatus === 'Em Análise' ||
-          c.sinarmStatus === 'Correção Solicitada'
-        );
+        // Apenas status "Solicitado" ou recém-chegado na fase (sem status)
+        return sinarmClients.filter(c => !c.sinarmStatus || c.sinarmStatus === 'Solicitado');
       case 'aguardando-gru': 
-        // Mostrar todos que ainda não foram deferidos/indeferidos
-        return sinarmClients.filter(c => 
-          c.sinarmStatus !== 'Deferido' && 
-          c.sinarmStatus !== 'Indeferido'
-        );
+        return sinarmClients.filter(c => c.sinarmStatus === 'Aguardando Baixa GRU');
       case 'em-analise': 
-        // Mostrar todos que ainda não foram deferidos/indeferidos
-        return sinarmClients.filter(c => 
-          c.sinarmStatus !== 'Deferido' && 
-          c.sinarmStatus !== 'Indeferido'
-        );
+        // Em análise ou caso volte para correção
+        return sinarmClients.filter(c => c.sinarmStatus === 'Em Análise' || c.sinarmStatus === 'Correção Solicitada');
       case 'restituido': 
-        // Mostrar todos com status "Restituído"
         return sinarmClients.filter(c => c.sinarmStatus === 'Restituído');
       case 'deferido': 
-        // Apenas os que foram deferidos (status final)
         return sinarmClients.filter(c => c.sinarmStatus === 'Deferido');
       case 'indeferido': 
-        // Apenas os que foram indeferidos (status final)
         return sinarmClients.filter(c => c.sinarmStatus === 'Indeferido');
       default: return [];
     }
