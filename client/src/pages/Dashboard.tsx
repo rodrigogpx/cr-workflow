@@ -226,8 +226,9 @@ export default function Dashboard() {
       styles: { fontSize: 8 }
     });
 
-    doc.save(`relatorio_${phase}_${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success("Relatório PDF gerado com sucesso!");
+    // Abre o PDF em uma nova aba
+    window.open(URL.createObjectURL(doc.output("blob")), "_blank");
+    toast.success("Relatório PDF aberto em nova aba!");
   };
 
   // Dados para o Sheet Modal
