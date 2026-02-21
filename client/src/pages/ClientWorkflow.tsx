@@ -95,6 +95,48 @@ const formatCEP = (value: string): string => {
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 };
 
+function SinarmCommentsInline({ stepId }: { stepId: number }) {
+  const { data: comments } = trpc.workflow.getSinarmCommentsHistory.useQuery(
+    { stepId },
+    { enabled: !!stepId }
+  );
+
+  return (
+    <div className="mt-2">
+      <p className="text-xs font-semibold text-purple-800 mb-2 flex items-center gap-1">
+        <FileText className="h-3.5 w-3.5" />
+        Histórico de Comentários
+      </p>
+      {!comments || comments.length === 0 ? (
+        <p className="text-xs text-gray-400 italic">Nenhum comentário registrado.</p>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          {comments.map((c: any) => (
+            <div key={c.id} className="p-2.5 bg-white rounded border border-purple-100 space-y-1">
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span className="font-medium text-gray-700">{c.createdByName || 'Usuário'}</span>
+                <span>{new Date(c.createdAt).toLocaleString('pt-BR')}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                {c.oldStatus && (
+                  <>
+                    <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">{c.oldStatus}</span>
+                    <span className="text-gray-400">→</span>
+                  </>
+                )}
+                <span className="px-1.5 py-0.5 bg-purple-100 rounded text-purple-800 font-medium">{c.newStatus}</span>
+              </div>
+              {c.comment && (
+                <p className="text-xs text-gray-600 mt-0.5">{c.comment}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ClientWorkflow() {
   const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
@@ -112,8 +154,6 @@ export default function ClientWorkflow() {
     status: string;
   } | null>(null);
   const [sinarmComment, setSinarmComment] = useState("");
-  const [isCommentsHistoryOpen, setIsCommentsHistoryOpen] = useState(false);
-  const [selectedSinarmStepId, setSelectedSinarmStepId] = useState<number | null>(null);
 
   const { data: client } = trpc.clients.getById.useQuery(
     { id: Number(clientId) },
@@ -133,11 +173,6 @@ export default function ClientWorkflow() {
   const { data: documents } = trpc.documents.list.useQuery(
     { clientId: Number(clientId) },
     { enabled: !!clientId && isAuthenticated }
-  );
-
-  const { data: sinarmComments, refetch: refetchSinarmComments } = trpc.workflow.getSinarmCommentsHistory.useQuery(
-    { stepId: selectedSinarmStepId! },
-    { enabled: !!selectedSinarmStepId && isCommentsHistoryOpen }
   );
 
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
@@ -1395,30 +1430,73 @@ export default function ClientWorkflow() {
                         </div>
                         
                         <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="sinarmStatus" className="text-sm font-medium text-gray-700">Status do Processo</Label>
-                            <Select
-                              value={step.sinarmStatus || ""}
-                              onValueChange={(value) => {
-                                setPendingSinarmStatusChange({ stepId: step.id, status: value });
-                                setSinarmComment("");
-                                setIsSinarmStatusDialogOpen(true);
-                              }}
-                            >
-                              <SelectTrigger className="mt-1">
-                                <SelectValue placeholder="Selecione o status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Solicitado">Solicitado</SelectItem>
-                                <SelectItem value="Aguardando Baixa GRU">Aguardando Baixa GRU</SelectItem>
-                                <SelectItem value="Em Análise">Em Análise</SelectItem>
-                                <SelectItem value="Restituído">Restituído</SelectItem>
-                                <SelectItem value="Deferido">Deferido</SelectItem>
-                                <SelectItem value="Indeferido">Indeferido</SelectItem>
-                              </SelectContent>
-                            </Select>
+                          {/* Linha com 3 campos: Nº Protocolo | Data Abertura | Status */}
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <Label htmlFor="protocolNumber" className="text-sm font-medium text-gray-700">Número de Protocolo</Label>
+                              <Input
+                                id="protocolNumber"
+                                type="text"
+                                placeholder="Ex: 2025/12345"
+                                defaultValue={step.protocolNumber || ""}
+                                onBlur={(e) => {
+                                  if (e.target.value !== (step.protocolNumber || "")) {
+                                    updateStepMutation.mutate({
+                                      stepId: step.id,
+                                      protocolNumber: e.target.value,
+                                    });
+                                  }
+                                }}
+                                className="mt-1"
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="sinarmOpenDate" className="text-sm font-medium text-gray-700">Data de Abertura</Label>
+                              <Input
+                                id="sinarmOpenDate"
+                                type="date"
+                                defaultValue={step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : ""}
+                                onBlur={(e) => {
+                                  const newVal = e.target.value;
+                                  const currentVal = step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : "";
+                                  if (newVal !== currentVal) {
+                                    updateStepMutation.mutate({
+                                      stepId: step.id,
+                                      sinarmOpenDate: newVal ? new Date(newVal).toISOString() : undefined,
+                                    });
+                                  }
+                                }}
+                                className="mt-1"
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="sinarmStatus" className="text-sm font-medium text-gray-700">Status do Processo</Label>
+                              <Select
+                                value={step.sinarmStatus || ""}
+                                onValueChange={(value) => {
+                                  setPendingSinarmStatusChange({ stepId: step.id, status: value });
+                                  setSinarmComment("");
+                                  setIsSinarmStatusDialogOpen(true);
+                                }}
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="Selecione o status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Solicitado">Solicitado</SelectItem>
+                                  <SelectItem value="Aguardando Baixa GRU">Aguardando Baixa GRU</SelectItem>
+                                  <SelectItem value="Em Análise">Em Análise</SelectItem>
+                                  <SelectItem value="Restituído">Restituído</SelectItem>
+                                  <SelectItem value="Deferido">Deferido</SelectItem>
+                                  <SelectItem value="Indeferido">Indeferido</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
 
+                          {/* Modal de alteração de status */}
                           <Dialog open={isSinarmStatusDialogOpen} onOpenChange={setIsSinarmStatusDialogOpen}>
                             <DialogContent className="sm:max-w-lg">
                               <DialogHeader>
@@ -1454,14 +1532,12 @@ export default function ClientWorkflow() {
                                 <Button
                                   onClick={() => {
                                     if (!pendingSinarmStatusChange) return;
-
                                     const trimmed = sinarmComment.trim();
                                     updateStepMutation.mutate({
                                       stepId: pendingSinarmStatusChange.stepId,
                                       sinarmStatus: pendingSinarmStatusChange.status,
                                       ...(trimmed ? { sinarmComment: trimmed } : {}),
                                     });
-
                                     setIsSinarmStatusDialogOpen(false);
                                     setPendingSinarmStatusChange(null);
                                     setSinarmComment("");
@@ -1480,131 +1556,9 @@ export default function ClientWorkflow() {
                               </DialogFooter>
                             </DialogContent>
                           </Dialog>
-                          
-                          <div>
-                            <Label htmlFor="sinarmOpenDate" className="text-sm font-medium text-gray-700">Data de Abertura do Processo</Label>
-                            <Input
-                              id="sinarmOpenDate"
-                              type="date"
-                              defaultValue={step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : ""}
-                              onBlur={(e) => {
-                                const newVal = e.target.value;
-                                const currentVal = step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : "";
-                                if (newVal !== currentVal) {
-                                  updateStepMutation.mutate({
-                                    stepId: step.id,
-                                    sinarmOpenDate: newVal ? new Date(newVal).toISOString() : undefined,
-                                  });
-                                }
-                              }}
-                              className="mt-1"
-                            />
-                          </div>
 
-                          <div>
-                            <Label htmlFor="protocolNumber" className="text-sm font-medium text-gray-700">Número de Protocolo</Label>
-                            <Input
-                              id="protocolNumber"
-                              type="text"
-                              placeholder="Ex: 2025/12345"
-                              defaultValue={step.protocolNumber || ""}
-                              onBlur={(e) => {
-                                if (e.target.value !== (step.protocolNumber || "")) {
-                                  updateStepMutation.mutate({
-                                    stepId: step.id,
-                                    protocolNumber: e.target.value,
-                                  });
-                                }
-                              }}
-                              className="mt-1"
-                            />
-                          </div>
-                          
-                          {step.sinarmStatus && (
-                            <div className="mt-4 p-3 bg-purple-100 rounded border border-purple-300">
-                              <p className="text-sm text-purple-900">
-                                <strong>Status Atual:</strong> {step.sinarmStatus}
-                                {step.protocolNumber && (
-                                  <span className="ml-2">| <strong>Protocolo:</strong> {step.protocolNumber}</span>
-                                )}
-                                {step.sinarmOpenDate && (
-                                  <span className="ml-2">| <strong>Abertura:</strong> {new Date(step.sinarmOpenDate).toLocaleDateString('pt-BR')}</span>
-                                )}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="pt-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full border-purple-300 text-purple-700 hover:bg-purple-50"
-                              onClick={() => {
-                                setSelectedSinarmStepId(step.id);
-                                setIsCommentsHistoryOpen(true);
-                              }}
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              Visualizar Histórico de Comentários
-                            </Button>
-                          </div>
-
-                          {/* Modal de histórico de comentários */}
-                          <Dialog
-                            open={isCommentsHistoryOpen && selectedSinarmStepId === step.id}
-                            onOpenChange={(open) => {
-                              setIsCommentsHistoryOpen(open);
-                              if (!open) setSelectedSinarmStepId(null);
-                            }}
-                          >
-                            <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle>Histórico de Comentários — SINARM</DialogTitle>
-                                <DialogDescription>
-                                  Registro de alterações de status e comentários do processo SINARM-CAC.
-                                </DialogDescription>
-                              </DialogHeader>
-
-                              <div className="space-y-3">
-                                {!sinarmComments || sinarmComments.length === 0 ? (
-                                  <p className="text-sm text-gray-500 text-center py-6">Nenhum comentário registrado.</p>
-                                ) : (
-                                  sinarmComments.map((c: any) => (
-                                    <div key={c.id} className="p-3 bg-gray-50 rounded border border-gray-200 space-y-1">
-                                      <div className="flex items-center justify-between text-xs text-gray-500">
-                                        <span className="font-medium text-gray-700">{c.createdByName || 'Usuário'}</span>
-                                        <span>{new Date(c.createdAt).toLocaleString('pt-BR')}</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 text-xs">
-                                        {c.oldStatus && (
-                                          <>
-                                            <span className="px-2 py-0.5 bg-gray-200 rounded text-gray-700">{c.oldStatus}</span>
-                                            <span className="text-gray-400">→</span>
-                                          </>
-                                        )}
-                                        <span className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-medium">{c.newStatus}</span>
-                                      </div>
-                                      {c.comment && (
-                                        <p className="text-sm text-gray-700 mt-1">{c.comment}</p>
-                                      )}
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-
-                              <DialogFooter>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => {
-                                    setIsCommentsHistoryOpen(false);
-                                    setSelectedSinarmStepId(null);
-                                  }}
-                                >
-                                  Fechar
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
+                          {/* Histórico de comentários inline (sempre visível) */}
+                          <SinarmCommentsInline stepId={step.id} />
                         </div>
                       </div>
                     )}
