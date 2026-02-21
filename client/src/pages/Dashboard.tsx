@@ -435,7 +435,7 @@ export default function Dashboard() {
                     <Card 
                       key={phase}
                       onClick={() => handleCardClick(phase)}
-                      className="cursor-pointer border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group"
+                      className="cursor-pointer border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group relative"
                     >
                       <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
@@ -445,11 +445,14 @@ export default function Dashboard() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => exportPDF(phase, e)}
-                          title="Exportar PDF"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCardClick(phase);
+                          }}
+                          title="Gerar Relatório"
                         >
-                          <Download className="h-4 w-4" />
+                          <FileText className="h-4 w-4" />
                         </Button>
                       </CardHeader>
                       <CardContent>
@@ -477,7 +480,7 @@ export default function Dashboard() {
                     <Card 
                       key={phase}
                       onClick={() => handleCardClick(phase)}
-                      className="cursor-pointer border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group"
+                      className="cursor-pointer border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group relative"
                     >
                       <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-start gap-2 h-10">
@@ -487,11 +490,14 @@ export default function Dashboard() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => exportPDF(phase, e)}
-                          title="Exportar PDF"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCardClick(phase);
+                          }}
+                          title="Gerar Relatório"
                         >
-                          <Download className="h-4 w-4" />
+                          <FileText className="h-4 w-4" />
                         </Button>
                       </CardHeader>
                       <CardContent>
@@ -519,7 +525,7 @@ export default function Dashboard() {
                     <Card 
                       key={phase}
                       onClick={() => handleCardClick(phase)}
-                      className="cursor-pointer border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group"
+                      className="cursor-pointer border-2 border-dashed border-white/20 bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group relative"
                     >
                       <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-start gap-2 h-10">
@@ -529,11 +535,14 @@ export default function Dashboard() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => exportPDF(phase, e)}
-                          title="Exportar PDF"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCardClick(phase);
+                          }}
+                          title="Gerar Relatório"
                         >
-                          <Download className="h-4 w-4" />
+                          <FileText className="h-4 w-4" />
                         </Button>
                       </CardHeader>
                       <CardContent>
@@ -552,17 +561,32 @@ export default function Dashboard() {
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl overflow-y-auto bg-background border-l-2 border-dashed border-white/20">
           <SheetHeader className="mb-6 border-b-2 border-dashed border-white/20 pb-4">
-            <SheetTitle className="text-2xl font-bold uppercase flex items-center gap-3">
-              {selectedPhase && PHASE_LABELS[selectedPhase].icon && (
-                <div className="p-2 bg-card rounded-md">
-                  {React.createElement(PHASE_LABELS[selectedPhase].icon, { className: `w-6 h-6 ${PHASE_LABELS[selectedPhase].colorClass}` })}
-                </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <SheetTitle className="text-2xl font-bold uppercase flex items-center gap-3">
+                  {selectedPhase && PHASE_LABELS[selectedPhase].icon && (
+                    <div className="p-2 bg-card rounded-md shrink-0">
+                      {React.createElement(PHASE_LABELS[selectedPhase].icon, { className: `w-6 h-6 ${PHASE_LABELS[selectedPhase].colorClass}` })}
+                    </div>
+                  )}
+                  {selectedPhase ? PHASE_LABELS[selectedPhase].title : ''}
+                </SheetTitle>
+                <SheetDescription className="mt-2">
+                  Selecione um cliente para ver os detalhes
+                </SheetDescription>
+              </div>
+              
+              {selectedPhase && (
+                <Button 
+                  onClick={(e) => exportPDF(selectedPhase, e)}
+                  className="shrink-0 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 flex items-center gap-2 font-bold uppercase tracking-wide text-xs h-9 border-2 border-dashed border-white/40"
+                  title="Exportar Relatório PDF"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Exportar Relatório</span>
+                </Button>
               )}
-              {selectedPhase ? PHASE_LABELS[selectedPhase].title : ''}
-            </SheetTitle>
-            <SheetDescription>
-              Selecione um cliente para ver os detalhes
-            </SheetDescription>
+            </div>
           </SheetHeader>
 
           <div className="space-y-6">
