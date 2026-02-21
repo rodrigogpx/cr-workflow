@@ -212,7 +212,9 @@ export const appRouter = router({
       const assignedUsers = tenantDb
         ? await db.getUsersByIdsFromDb(tenantDb, uniqueAssignedUserIds)
         : await db.getUsersByIds(uniqueAssignedUserIds);
-      const assignedUserMap = new Map<number, any>(assignedUsers.map((u: any) => [u.id, u]));
+        
+      const safeAssignedUsers: any[] = Array.isArray(assignedUsers) ? assignedUsers : [];
+      const assignedUserMap = new Map<number, any>(safeAssignedUsers.map((u: any) => [u.id, u]));
       
       // Ordem canônica das fases do workflow
       const PHASE_ORDER = [
@@ -226,9 +228,12 @@ export const appRouter = router({
       // Adicionar estatísticas de workflow para cada cliente
       const clientsWithProgress = await Promise.all(
         safeClients.map(async (client) => {
-          const workflow = tenantDb
+          const rawWorkflow = tenantDb
             ? await db.getWorkflowByClientFromDb(tenantDb, client.id)
             : await db.getWorkflowByClient(client.id);
+            
+          const workflow: any[] = Array.isArray(rawWorkflow) ? rawWorkflow : [];
+          
           const totalSteps = workflow.length;
           const completedSteps = workflow.filter((s: any) => s.completed).length;
           const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
