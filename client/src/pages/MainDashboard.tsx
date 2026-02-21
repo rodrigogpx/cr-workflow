@@ -152,7 +152,7 @@ export default function MainDashboard() {
                 </span>
               </div>
               <CardDescription className="text-xs sm:text-sm text-muted-foreground">
-                Gestão de instrutores credenciados PF, cursos, agendamento de provas de capacidade técnica e emissão de laudos.
+                Gestão de instrutores autorisados a ministrar cursos, exames de capacidade técnica para emissão de laudos.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 pt-0">

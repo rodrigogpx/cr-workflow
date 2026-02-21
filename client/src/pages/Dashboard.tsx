@@ -152,11 +152,24 @@ export default function Dashboard() {
   const getClientsByPhase = (phase: PhaseKey) => {
     if (phase === 'all') return baseFilteredClients;
     
-    if (['cadastro', 'agendamento-psicotecnico', 'agendamento-laudo', 'juntada-documento', 'concluido'].includes(phase)) {
-      return baseFilteredClients.filter(c => c.currentPendingStep === phase);
+    // Para fases do workflow: mostrar TODOS os clientes que NÃO concluíram a fase específica
+    if (['cadastro', 'agendamento-psicotecnico', 'agendamento-laudo', 'juntada-documento'].includes(phase)) {
+      return baseFilteredClients.filter(c => {
+        // Se o workflow não existe ou não tem a fase, considera como não concluído
+        if (!c.workflow || c.workflow.length === 0) return true;
+        
+        const phaseStep = c.workflow.find((step: any) => step.stepId === phase);
+        // Se não encontrou a fase ou não está marcada como completed, mostra no card
+        return !phaseStep || phaseStep.completed !== true;
+      });
     }
     
-    // Status SINARM
+    // Para concluídos: mostrar clientes que realmente concluíram o workflow
+    if (phase === 'concluido') {
+      return baseFilteredClients.filter(c => c.currentPendingStep === 'concluido');
+    }
+    
+    // Status SINARM: mostrar clientes com status específico
     const sinarmClients = baseFilteredClients.filter(c => c.currentPendingStep === 'acompanhamento-sinarm');
     switch (phase) {
       case 'solicitado': return sinarmClients.filter(c => c.sinarmStatus === 'Solicitado' || !c.sinarmStatus);
