@@ -31,7 +31,7 @@ const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, c
   'agendamento-laudo': { title: 'Laudo Técnico Pendente', icon: Clock, colorClass: 'text-indigo-500' },
   'juntada-documento': { title: 'Juntada de Documentos Pendente', icon: FileText, colorClass: 'text-pink-500' },
   'concluido': { title: 'Workflow Concluído', icon: CheckCircle2, colorClass: 'text-green-500' },
-  'sem-protocolo': { title: 'Sem Número de Protocolo', icon: FileText, colorClass: 'text-red-500' },
+  'sem-protocolo': { title: 'Aguardando Abertura do Processo', icon: FileText, colorClass: 'text-red-500' },
   'solicitado': { title: 'Solicitado', icon: FileText, colorClass: 'text-blue-500' },
   'aguardando-gru': { title: 'Aguardando Baixa GRU', icon: Clock, colorClass: 'text-yellow-600' },
   'em-analise': { title: 'Em Análise', icon: Search, colorClass: 'text-blue-400' },
