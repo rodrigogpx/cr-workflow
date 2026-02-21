@@ -169,15 +169,39 @@ export default function Dashboard() {
       return baseFilteredClients.filter(c => c.currentPendingStep === 'concluido');
     }
     
-    // Status SINARM: mostrar clientes com status específico
+    // Status SINARM: mostrar clientes que NÃO atingiram status superior
     const sinarmClients = baseFilteredClients.filter(c => c.currentPendingStep === 'acompanhamento-sinarm');
     switch (phase) {
-      case 'solicitado': return sinarmClients.filter(c => c.sinarmStatus === 'Solicitado' || !c.sinarmStatus);
-      case 'aguardando-gru': return sinarmClients.filter(c => c.sinarmStatus === 'Aguardando Baixa GRU');
-      case 'em-analise': return sinarmClients.filter(c => c.sinarmStatus === 'Em Análise');
-      case 'correcao-solicitada': return sinarmClients.filter(c => c.sinarmStatus === 'Correção Solicitada');
-      case 'deferido': return sinarmClients.filter(c => c.sinarmStatus === 'Deferido');
-      case 'indeferido': return sinarmClients.filter(c => c.sinarmStatus === 'Indeferido');
+      case 'solicitado': 
+        // Mostrar todos que ainda não passaram de "Solicitado" (incluindo sem status)
+        return sinarmClients.filter(c => 
+          !c.sinarmStatus || 
+          c.sinarmStatus === 'Solicitado' || 
+          c.sinarmStatus === 'Aguardando Baixa GRU' ||
+          c.sinarmStatus === 'Em Análise' ||
+          c.sinarmStatus === 'Correção Solicitada'
+        );
+      case 'aguardando-gru': 
+        // Mostrar todos que ainda não foram deferidos/indeferidos
+        return sinarmClients.filter(c => 
+          c.sinarmStatus !== 'Deferido' && 
+          c.sinarmStatus !== 'Indeferido'
+        );
+      case 'em-analise': 
+        // Mostrar todos que ainda não foram deferidos/indeferidos
+        return sinarmClients.filter(c => 
+          c.sinarmStatus !== 'Deferido' && 
+          c.sinarmStatus !== 'Indeferido'
+        );
+      case 'restituido': 
+        // Mostrar todos com status "Restituído"
+        return sinarmClients.filter(c => c.sinarmStatus === 'Restituído');
+      case 'deferido': 
+        // Apenas os que foram deferidos (status final)
+        return sinarmClients.filter(c => c.sinarmStatus === 'Deferido');
+      case 'indeferido': 
+        // Apenas os que foram indeferidos (status final)
+        return sinarmClients.filter(c => c.sinarmStatus === 'Indeferido');
       default: return [];
     }
   };
