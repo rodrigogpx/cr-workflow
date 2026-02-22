@@ -458,7 +458,7 @@ export default function Dashboard() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-4xl font-bold" style={{color: '#434242'}}>{count}</div>
+                        <div className="text-4xl font-bold text-center" style={{color: '#434242'}}>{count}</div>
                       </CardContent>
                     </Card>
                   );
@@ -491,7 +491,7 @@ export default function Dashboard() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-4xl font-bold" style={{color: '#434242'}}>{count}</div>
+                        <div className="text-4xl font-bold text-center" style={{color: '#434242'}}>{count}</div>
                       </CardContent>
                     </Card>
                   );
@@ -524,7 +524,7 @@ export default function Dashboard() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-4xl font-bold" style={{color: '#434242'}}>{count}</div>
+                        <div className="text-4xl font-bold text-center" style={{color: '#434242'}}>{count}</div>
                       </CardContent>
                     </Card>
                   );
