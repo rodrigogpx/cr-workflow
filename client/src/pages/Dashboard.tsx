@@ -439,7 +439,7 @@ export default function Dashboard() {
             {/* Seção Geral */}
             <section>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {['all', 'concluido', 'sem-protocolo'].map((phaseKey) => {
+                {['all', 'sem-protocolo', 'concluido'].map((phaseKey) => {
                   const phase = phaseKey as PhaseKey;
                   const phaseInfo = PHASE_LABELS[phase];
                   const Icon = phaseInfo.icon;
