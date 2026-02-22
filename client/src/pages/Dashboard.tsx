@@ -166,11 +166,9 @@ export default function Dashboard() {
       return baseFilteredClients.filter(c => c.currentPendingStep === 'concluido');
     }
     
-    // Sem número de protocolo: clientes na fase SINARM sem protocolNumber
+    // Sem número de protocolo: todos os clientes sem protocolNumber cadastrado
     if (phase === 'sem-protocolo') {
-      return baseFilteredClients.filter(c => 
-        c.currentPendingStep === 'acompanhamento-sinarm' && !c.protocolNumber
-      );
+      return baseFilteredClients.filter(c => !c.protocolNumber);
     }
     
     // Status SINARM: mostrar APENAS clientes com o status EXATO correspondente ao card
