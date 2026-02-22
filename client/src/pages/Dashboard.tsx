@@ -291,6 +291,16 @@ export default function Dashboard() {
               >
                 Home
               </Button>
+              {(user?.role === 'admin' || user?.role === 'operator') && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsCreateDialogOpen(true)}
+                  className="text-white hover:text-primary"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Cadastrar Cliente
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 onClick={handleLogout}
@@ -304,8 +314,8 @@ export default function Dashboard() {
       </header>
 
       <main className="container py-8">
-        {/* Barra de Busca Geral e Filtros */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-card p-4 rounded-lg border-2 border-dashed border-white/20">
+        {/* Barra de Busca Geral */}
+        <div className="flex gap-4 mb-8 bg-card p-4 rounded-lg border-2 border-dashed border-white/20">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
@@ -331,16 +341,12 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
+        </div>
 
-          {(user?.role === 'admin' || user?.role === 'operator') && (
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide">
-                  <Plus className="w-5 h-5 mr-2" />
-                  Novo Cliente
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="border-2 border-dashed border-white/20 bg-card">
+        {/* Modal de Cadastro de Cliente */}
+        {(user?.role === 'admin' || user?.role === 'operator') && (
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogContent className="border-2 border-dashed border-white/20 bg-card">
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-bold uppercase">Cadastrar Novo Cliente</DialogTitle>
                   <DialogDescription>
@@ -420,10 +426,9 @@ export default function Dashboard() {
                     </Button>
                   </DialogFooter>
                 </form>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
         {isLoading ? (
           <div className="flex justify-center items-center py-20">
@@ -434,7 +439,7 @@ export default function Dashboard() {
             {/* Seção Geral */}
             <section>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {['all', 'concluido'].map((phaseKey) => {
+                {['all', 'concluido', 'sem-protocolo'].map((phaseKey) => {
                   const phase = phaseKey as PhaseKey;
                   const phaseInfo = PHASE_LABELS[phase];
                   const Icon = phaseInfo.icon;
@@ -499,8 +504,8 @@ export default function Dashboard() {
               <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wide border-b-2 border-dashed border-white/20 pb-2">
                 Acompanhamento SINARM CAC
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-6">
-                {['sem-protocolo', 'solicitado', 'aguardando-gru', 'em-analise', 'restituido', 'deferido', 'indeferido'].map((phaseKey) => {
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+                {['solicitado', 'aguardando-gru', 'em-analise', 'restituido', 'deferido', 'indeferido'].map((phaseKey) => {
                   const phase = phaseKey as PhaseKey;
                   const phaseInfo = PHASE_LABELS[phase];
                   const Icon = phaseInfo.icon;
