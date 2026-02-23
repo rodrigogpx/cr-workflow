@@ -1773,6 +1773,7 @@ export const appRouter = router({
         // Buscar status do Sinarm-CAC
         const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
         const sinarmStatus = sinarmStep?.sinarmStatus || 'Nao iniciado';
+        const protocolNumber = sinarmStep?.protocolNumber || '';
 
         // Buscar dados de agendamento de laudo (data e examinador)
         const schedulingStep = workflow.find((s: any) => s.stepId === 'agendamento-laudo');
@@ -1827,8 +1828,9 @@ export const appRouter = router({
           return result;
         };
 
-        const finalSubject = replaceVariables(input.subject, client);
-        const finalContent = replaceVariables(input.content, client);
+        const clientWithProtocol = { ...client, protocolNumber };
+        const finalSubject = replaceVariables(input.subject, clientWithProtocol);
+        const finalContent = replaceVariables(input.content, clientWithProtocol);
 
         const templateAttachments = attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }));
         const mergedAttachments = inlineLogo ? [inlineLogo, ...templateAttachments] : templateAttachments;
