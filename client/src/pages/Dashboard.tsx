@@ -554,8 +554,8 @@ export default function Dashboard() {
 
       {/* Modal Lateral (Sheet) de Lista de Clientes */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl overflow-y-auto bg-background border-l-2 border-dashed border-white/20">
-          <SheetHeader className="mb-6 border-b-2 border-dashed border-white/20 pb-4">
+        <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl flex flex-col bg-background border-l-2 border-dashed border-white/20">
+          <SheetHeader className="mb-4 border-b-2 border-dashed border-white/20 pb-4 shrink-0">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <SheetTitle className="text-2xl font-bold uppercase flex items-center gap-3">
@@ -584,8 +584,8 @@ export default function Dashboard() {
             </div>
           </SheetHeader>
 
-          <div className="space-y-6">
-            <div className="relative">
+          <div className="flex flex-col flex-1 overflow-hidden gap-4">
+            <div className="relative shrink-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome ou CPF..."
@@ -595,6 +595,7 @@ export default function Dashboard() {
               />
             </div>
 
+            <div className="overflow-y-auto flex-1">
             {currentPhaseClients.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">Nenhum cliente encontrado.</p>
@@ -624,6 +625,7 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+            </div>
           </div>
         </SheetContent>
       </Sheet>
@@ -631,26 +633,21 @@ export default function Dashboard() {
       {/* Modal Sobreposto (Dialog) de Detalhes do Cliente */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
         <DialogContent className="sm:max-w-2xl border-2 border-dashed border-white/20 bg-card">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-2xl font-bold uppercase border-b-2 border-dashed border-white/10 pb-4">
-                Detalhes do Cliente
-              </DialogTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  console.log('Eye button clicked, current state:', showSensitiveData);
-                  setShowSensitiveData(!showSensitiveData);
-                }}
-                className="text-muted-foreground hover:text-foreground bg-blue-100"
-                title={showSensitiveData ? "Ocultar dados sensíveis" : "Mostrar dados sensíveis"}
-              >
-                {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                <span className="ml-2 text-xs">OLHO</span>
-              </Button>
-            </div>
-          </DialogHeader>
+          <div className="flex items-center justify-between border-b-2 border-dashed border-white/10 pb-4 mb-2">
+            <DialogTitle className="text-2xl font-bold uppercase">
+              Detalhes do Cliente
+            </DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSensitiveData(!showSensitiveData)}
+              className="flex items-center gap-2 shrink-0"
+              title={showSensitiveData ? "Ocultar dados sensíveis" : "Mostrar dados sensíveis"}
+            >
+              {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              <span className="text-xs">{showSensitiveData ? "Ocultar" : "Mostrar"}</span>
+            </Button>
+          </div>
           
           {selectedClient && (
             <div className="space-y-6 py-4">
