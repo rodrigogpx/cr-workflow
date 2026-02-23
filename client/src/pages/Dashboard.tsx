@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone, User, Trash2, FileText, Download } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, Plus, Search, Target, Users, Mail, Phone, User, Trash2, FileText, Download, Eye, EyeOff } from "lucide-react";
 import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -63,6 +63,25 @@ export default function Dashboard() {
   
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [showSensitiveData, setShowSensitiveData] = useState(false);
+
+  // Funções de mascaramento para dados sensíveis
+  const maskCPF = (cpf: string) => {
+    if (!cpf) return '';
+    return cpf.replace(/(\d{3})\d{3}(\d{3})\d{2}/, '$1***$2**');
+  };
+
+  const maskPhone = (phone: string) => {
+    if (!phone) return '';
+    return phone.replace(/(\d{2})\d{5}(\d{4})/, '($1)*****-$2');
+  };
+
+  const maskEmail = (email: string) => {
+    if (!email) return '';
+    const [username, domain] = email.split('@');
+    if (username.length <= 3) return `${username[0]}***@${domain}`;
+    return `${username.substring(0, 3)}***@${domain}`;
+  };
 
   const { data: clients, isLoading, refetch } = trpc.clients.list.useQuery(undefined, {
     enabled: !!user,
@@ -613,9 +632,20 @@ export default function Dashboard() {
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
         <DialogContent className="sm:max-w-2xl border-2 border-dashed border-white/20 bg-card">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold uppercase border-b-2 border-dashed border-white/10 pb-4">
-              Detalhes do Cliente
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-2xl font-bold uppercase border-b-2 border-dashed border-white/10 pb-4">
+                Detalhes do Cliente
+              </DialogTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSensitiveData(!showSensitiveData)}
+                className="text-muted-foreground hover:text-foreground"
+                title={showSensitiveData ? "Ocultar dados sensíveis" : "Mostrar dados sensíveis"}
+              >
+                {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </Button>
+            </div>
           </DialogHeader>
           
           {selectedClient && (
@@ -627,15 +657,15 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">CPF</Label>
-                  <div className="font-mono">{selectedClient.cpf}</div>
+                  <div className="font-mono">{showSensitiveData ? selectedClient.cpf : maskCPF(selectedClient.cpf)}</div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Email</Label>
-                  <div>{selectedClient.email}</div>
+                  <div>{showSensitiveData ? selectedClient.email : maskEmail(selectedClient.email)}</div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Telefone</Label>
-                  <div>{selectedClient.phone}</div>
+                  <div>{showSensitiveData ? selectedClient.phone : maskPhone(selectedClient.phone)}</div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Criado em</Label>
