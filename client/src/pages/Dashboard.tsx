@@ -639,11 +639,15 @@ export default function Dashboard() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowSensitiveData(!showSensitiveData)}
-                className="text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  console.log('Eye button clicked, current state:', showSensitiveData);
+                  setShowSensitiveData(!showSensitiveData);
+                }}
+                className="text-muted-foreground hover:text-foreground bg-blue-100"
                 title={showSensitiveData ? "Ocultar dados sensíveis" : "Mostrar dados sensíveis"}
               >
                 {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <span className="ml-2 text-xs">OLHO</span>
               </Button>
             </div>
           </DialogHeader>
