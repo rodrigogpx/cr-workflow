@@ -1804,6 +1804,7 @@ export const appRouter = router({
           result = result.replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'));
           result = result.replace(/{{status}}/g, progressPercentage + '% concluido');
           result = result.replace(/{{status_sinarm}}/g, sinarmStatus);
+          result = result.replace(/{{protocolNumber}}/g, clientData.protocolNumber || '');
           result = result.replace(/{{email}}/g, clientData.email || '');
           result = result.replace(/{{cpf}}/g, clientData.cpf || '');
           result = result.replace(/{{telefone}}/g, clientData.phone || '');
