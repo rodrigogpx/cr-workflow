@@ -489,13 +489,14 @@ export default function Dashboard() {
               </div>
             </section>
 
-            {/* Fases do Workflow */}
-            <section>
-              <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wide border-b-2 border-dashed border-white/20 pb-2">
-                Fases do Workflow
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {['cadastro', 'agendamento-psicotecnico', 'agendamento-laudo', 'juntada-documento'].map((phaseKey) => {
+            {/* Fases do Workflow - Escondido para Despachante */}
+            {user?.role !== 'despachante' && (
+              <section>
+                <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wide border-b-2 border-dashed border-white/20 pb-2">
+                  Fases do Workflow
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {['cadastro', 'agendamento-psicotecnico', 'agendamento-laudo', 'juntada-documento'].map((phaseKey) => {
                   const phase = phaseKey as PhaseKey;
                   const phaseInfo = PHASE_LABELS[phase];
                   const Icon = phaseInfo.icon;
@@ -520,7 +521,8 @@ export default function Dashboard() {
                   );
                 })}
               </div>
-            </section>
+              </section>
+            )}
 
             {/* Status SINARM */}
             <section>

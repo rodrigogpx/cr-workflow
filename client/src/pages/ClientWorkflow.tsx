@@ -1476,15 +1476,13 @@ export default function ClientWorkflow() {
                               <Select
                                 value={step.sinarmStatus || ""}
                                 onValueChange={(value) => {
-                                  if (value === "Solicitado") {
-                                    const protocolEl = document.getElementById("protocolNumber") as HTMLInputElement | null;
-                                    const dateEl = document.getElementById("sinarmOpenDate") as HTMLInputElement | null;
-                                    const hasProtocol = protocolEl?.value?.trim() || step.protocolNumber;
-                                    const hasDate = dateEl?.value?.trim() || step.sinarmOpenDate;
-                                    if (!hasProtocol || !hasDate) {
-                                      toast.error("Para selecionar 'Solicitado', preencha o Número de Protocolo e a Data de Abertura.");
-                                      return;
-                                    }
+                                  const protocolEl = document.getElementById("protocolNumber") as HTMLInputElement | null;
+                                  const dateEl = document.getElementById("sinarmOpenDate") as HTMLInputElement | null;
+                                  const hasProtocol = protocolEl?.value?.trim() || step.protocolNumber;
+                                  const hasDate = dateEl?.value?.trim() || step.sinarmOpenDate;
+                                  if (!hasProtocol || !hasDate) {
+                                    toast.error("Para alterar o status, preencha o Número de Protocolo e a Data de Abertura.");
+                                    return;
                                   }
                                   setPendingSinarmStatusChange({ stepId: step.id, status: value });
                                   setSinarmComment("");
@@ -1495,6 +1493,7 @@ export default function ClientWorkflow() {
                                   <SelectValue placeholder="Selecione o status" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="Não iniciado">Não iniciado</SelectItem>
                                   <SelectItem value="Solicitado">Solicitado</SelectItem>
                                   <SelectItem value="Aguardando Baixa GRU">Aguardando Baixa GRU</SelectItem>
                                   <SelectItem value="Em Análise">Em Análise</SelectItem>
