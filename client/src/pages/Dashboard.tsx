@@ -68,12 +68,18 @@ export default function Dashboard() {
   // Funções de mascaramento para dados sensíveis
   const maskCPF = (cpf: string) => {
     if (!cpf) return '';
-    return cpf.replace(/(\d{3})\d{3}(\d{3})\d{2}/, '$1***$2**');
+    const digits = cpf.replace(/\D/g, '');
+    if (digits.length !== 11) return cpf.substring(0, 3) + '***' + cpf.substring(cpf.length - 4) + '**';
+    return `${digits.substring(0, 3)}***${digits.substring(6, 9)}**`;
   };
 
   const maskPhone = (phone: string) => {
     if (!phone) return '';
-    return phone.replace(/(\d{2})\d{5}(\d{4})/, '($1)*****-$2');
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 10) return phone.substring(0, 2) + '*****' + phone.substring(phone.length - 4);
+    const ddd = digits.substring(0, 2);
+    const last4 = digits.substring(digits.length - 4);
+    return `(${ddd})*****-${last4}`;
   };
 
   const maskEmail = (email: string) => {
