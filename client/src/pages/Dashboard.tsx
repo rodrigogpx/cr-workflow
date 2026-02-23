@@ -571,16 +571,28 @@ export default function Dashboard() {
                 </SheetDescription>
               </div>
               
-              {selectedPhase && (
-                <Button 
-                  onClick={(e) => exportPDF(selectedPhase, e)}
-                  className="shrink-0 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 flex items-center gap-2 font-bold uppercase tracking-wide text-xs h-9 border-2 border-dashed border-white/40"
-                  title="Exportar Relatório PDF"
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSensitiveData(!showSensitiveData)}
+                  className="flex items-center gap-2 h-9"
+                  title={showSensitiveData ? "Ocultar dados sensíveis" : "Mostrar dados sensíveis"}
                 >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">Exportar Relatório</span>
+                  {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <span className="hidden sm:inline text-xs">{showSensitiveData ? "Ocultar" : "Mostrar"}</span>
                 </Button>
-              )}
+                {selectedPhase && (
+                  <Button 
+                    onClick={(e) => exportPDF(selectedPhase, e)}
+                    className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 flex items-center gap-2 font-bold uppercase tracking-wide text-xs h-9 border-2 border-dashed border-white/40"
+                    title="Exportar Relatório PDF"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Exportar Relatório</span>
+                  </Button>
+                )}
+              </div>
             </div>
           </SheetHeader>
 
@@ -612,8 +624,8 @@ export default function Dashboard() {
                       <div>
                         <h4 className="font-bold uppercase text-foreground">{client.name}</h4>
                         <div className="text-sm text-muted-foreground flex items-center gap-4 mt-1">
-                          <span className="flex items-center gap-1"><User className="w-3 h-3"/> {client.cpf}</span>
-                          <span className="flex items-center gap-1"><Phone className="w-3 h-3"/> {client.phone}</span>
+                          <span className="flex items-center gap-1"><User className="w-3 h-3"/> {showSensitiveData ? client.cpf : maskCPF(client.cpf)}</span>
+                          <span className="flex items-center gap-1"><Phone className="w-3 h-3"/> {showSensitiveData ? client.phone : maskPhone(client.phone)}</span>
                         </div>
                       </div>
                       <div className="text-right">
