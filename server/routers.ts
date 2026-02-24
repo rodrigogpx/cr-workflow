@@ -924,11 +924,15 @@ export const appRouter = router({
             const sinarmEventStatus = input.sinarmStatus === 'Restituído'
               ? 'Correção Solicitada'
               : input.sinarmStatus;
+
+            const effectiveProtocolNumber = input.protocolNumber !== undefined
+              ? (input.protocolNumber || '')
+              : (currentStep.protocolNumber || '');
             await triggerEmails(`SINARM_STATUS:${sinarmEventStatus}`, {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client,
-              extraData: { sinarmStatus: input.sinarmStatus, protocolNumber: input.protocolNumber },
+              extraData: { sinarmStatus: input.sinarmStatus, protocolNumber: effectiveProtocolNumber },
             });
           }
         } catch (triggerError) {
