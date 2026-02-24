@@ -1493,7 +1493,7 @@ export default function ClientWorkflow() {
                                   <SelectValue placeholder="Selecione o status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Não iniciado">Não iniciado</SelectItem>
+                                  <SelectItem value="Iniciado">Iniciado</SelectItem>
                                   <SelectItem value="Solicitado">Solicitado</SelectItem>
                                   <SelectItem value="Aguardando Baixa GRU">Aguardando Baixa GRU</SelectItem>
                                   <SelectItem value="Em Análise">Em Análise</SelectItem>

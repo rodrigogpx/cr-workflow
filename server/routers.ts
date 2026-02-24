@@ -1775,7 +1775,7 @@ export const appRouter = router({
         
         // Buscar status do Sinarm-CAC
         const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
-        const sinarmStatus = sinarmStep?.sinarmStatus || 'Nao iniciado';
+        const sinarmStatus = sinarmStep?.sinarmStatus || 'Iniciado';
         const protocolNumber = sinarmStep?.protocolNumber || '';
 
         // Buscar dados de agendamento de laudo (data e examinador)
