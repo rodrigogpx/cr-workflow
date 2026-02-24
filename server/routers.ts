@@ -3039,6 +3039,7 @@ export const appRouter = router({
         { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
         { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'Confirmação de Agendamento de Laudo Técnico', hasSchedule: true },
         { value: 'SCHEDULE_TECH_REMINDER', label: 'Lembrete de Agendamento de Laudo Técnico', hasSchedule: true },
+        { value: 'SINARM_STATUS:Iniciado', label: 'Sinarm - Iniciado', hasSchedule: false },
         { value: 'SINARM_STATUS:Solicitado', label: 'Sinarm - Solicitado', hasSchedule: false },
         { value: 'SINARM_STATUS:Aguardando Baixa GRU', label: 'Sinarm - Aguardando Baixa GRU', hasSchedule: false },
         { value: 'SINARM_STATUS:Em Análise', label: 'Sinarm - Em Análise', hasSchedule: false },
