@@ -148,6 +148,9 @@ export default function ClientWorkflow() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedSubTask, setSelectedSubTask] = useState<{id: number, label: string, stepId: number} | null>(null);
 
+  const [isOutdatedDocDialogOpen, setIsOutdatedDocDialogOpen] = useState(false);
+  const [outdatedDocInfo, setOutdatedDocInfo] = useState<{ outdated: any; latest: any } | null>(null);
+
   const [isSinarmStatusDialogOpen, setIsSinarmStatusDialogOpen] = useState(false);
   const [pendingSinarmStatusChange, setPendingSinarmStatusChange] = useState<{
     stepId: number;
@@ -225,8 +228,19 @@ export default function ClientWorkflow() {
       toast.info("Buscando documentos...");
 
       const stepDocs = documents?.filter(doc => doc.workflowStepId === stepId) || [];
+
+      const latestDocsByKey = new Map<string, any>();
+      for (const doc of stepDocs) {
+        const key = doc.subTaskId ? `subtask:${doc.subTaskId}` : `doc:${doc.id}`;
+        const current = latestDocsByKey.get(key);
+        if (!current || new Date(doc.createdAt).getTime() > new Date(current.createdAt).getTime()) {
+          latestDocsByKey.set(key, doc);
+        }
+      }
+
+      const latestStepDocs = Array.from(latestDocsByKey.values());
       
-      if (!stepDocs || stepDocs.length === 0) {
+      if (!latestStepDocs || latestStepDocs.length === 0) {
         toast.error("Nenhum documento encontrado");
         setIsDownloading(false);
         setDownloadEnxovalMutation({isPending: false});
@@ -247,7 +261,7 @@ export default function ClientWorkflow() {
         console.error('Erro ao gerar PDF do cadastro:', pdfError);
       }
 
-      for (const doc of stepDocs) {
+      for (const doc of latestStepDocs) {
         try {
           const docResponse = await fetch(doc.fileUrl);
           const blob = await docResponse.blob();
@@ -738,6 +752,8 @@ export default function ClientWorkflow() {
                       
                       {[...step.subTasks].sort((a, b) => a.id - b.id).map((subTask) => {
                         const subTaskDocs = documents?.filter(doc => doc.subTaskId === subTask.id) || [];
+                        const subTaskDocsSorted = [...subTaskDocs].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                        const latestSubTaskDoc = subTaskDocsSorted[0] || null;
                         return (
                           <div key={subTask.id} className={`p-3 rounded-lg border ${subTask.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                             <div className="flex items-start gap-3 justify-between">
@@ -752,17 +768,77 @@ export default function ClientWorkflow() {
                                 {subTask.completed && <CheckCircle className="h-5 w-5 text-green-600" />}
                               </div>
                             </div>
-                            {subTaskDocs.length > 0 && (<div className="mt-3 ml-7 space-y-1 pt-3 border-t border-gray-200"><p className="text-xs font-semibold text-gray-600 mb-2">Documentos ({subTaskDocs.length}):</p>{subTaskDocs.map(doc => (<div key={doc.id} className="flex items-center gap-2 text-xs"><FileText className="h-3 w-3 text-blue-600 flex-shrink-0" /><a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-medium hover:underline truncate flex-1 min-w-0">{doc.fileName}</a><Button variant="ghost" size="sm" asChild className="h-5 w-5 p-0 flex-shrink-0"><a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"><Download className="h-3 w-3" /></a></Button></div>))}</div>)}
+                            {subTaskDocsSorted.length > 0 && (
+                              <div className="mt-3 ml-7 space-y-1 pt-3 border-t border-gray-200">
+                                <p className="text-xs font-semibold text-gray-600 mb-2">Documentos ({subTaskDocsSorted.length}):</p>
+                                {subTaskDocsSorted.map((doc: any) => {
+                                  const isLatest = latestSubTaskDoc?.id === doc.id;
+                                  const rowClass = isLatest
+                                    ? ''
+                                    : 'opacity-60 bg-[repeating-linear-gradient(135deg,rgba(0,0,0,0.06),rgba(0,0,0,0.06)_6px,transparent_6px,transparent_12px)] rounded px-1';
+                                  const nameClass = isLatest
+                                    ? 'text-blue-600 font-medium hover:underline'
+                                    : 'text-gray-700 font-medium line-through';
+
+                                  return (
+                                    <div key={doc.id} className={`flex items-center gap-2 text-xs ${rowClass}`}>
+                                      <FileText className="h-3 w-3 text-blue-600 flex-shrink-0" />
+
+                                      {isLatest ? (
+                                        <a
+                                          href={doc.fileUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={`${nameClass} truncate flex-1 min-w-0`}
+                                        >
+                                          {doc.fileName}
+                                        </a>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOutdatedDocInfo({ outdated: doc, latest: latestSubTaskDoc });
+                                            setIsOutdatedDocDialogOpen(true);
+                                          }}
+                                          className={`${nameClass} truncate flex-1 min-w-0 text-left`}
+                                        >
+                                          {doc.fileName}
+                                        </button>
+                                      )}
+
+                                      {isLatest && (
+                                        <Button variant="ghost" size="sm" asChild className="h-5 w-5 p-0 flex-shrink-0">
+                                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                                            <Download className="h-3 w-3" />
+                                          </a>
+                                        </Button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                       {step.subTasks && step.subTasks.length > 0 && (() => {
                         const allStepDocs = documents?.filter(doc => step.subTasks.some(st => st.id === doc.subTaskId)) || [];
-                        if (allStepDocs.length > 0) {
+                        const latestAllStepDocsMap = new Map<number, any>();
+                        for (const doc of allStepDocs) {
+                          if (!doc.subTaskId) continue;
+                          const current = latestAllStepDocsMap.get(doc.subTaskId);
+                          if (!current || new Date(doc.createdAt).getTime() > new Date(current.createdAt).getTime()) {
+                            latestAllStepDocsMap.set(doc.subTaskId, doc);
+                          }
+                        }
+                        const latestAllStepDocs = Array.from(latestAllStepDocsMap.values());
+                        if (latestAllStepDocs.length > 0) {
                           return (
                             <div className="mt-4 pt-4 border-t border-gray-200">
                               <Button onClick={() => handleDownloadEnxoval(step.id)} disabled={downloadEnxovalMutation.isPending} className="w-full">
-                                {downloadEnxovalMutation.isPending ? <>Gerando...</> : <>Enxoval ({allStepDocs.length})</>
+                                {downloadEnxovalMutation.isPending
+                                  ? 'Gerando...'
+                                  : `Enxoval (${latestAllStepDocs.length})`
                                 }
                               </Button>
                             </div>
@@ -1592,6 +1668,44 @@ export default function ClientWorkflow() {
             onUploadSuccess={(subTaskId) => toggleSubTask(subTaskId, false)}
           />
         )}
+
+        <Dialog open={isOutdatedDocDialogOpen} onOpenChange={setIsOutdatedDocDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Documento desatualizado</DialogTitle>
+              <DialogDescription>
+                Existe um documento mais atual para este item. Este arquivo serve apenas para consulta.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Mais recente</span>
+                <span className="font-medium text-right break-all">{outdatedDocInfo?.latest?.fileName || '-'}</span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Selecionado</span>
+                <span className="font-medium text-right break-all">{outdatedDocInfo?.outdated?.fileName || '-'}</span>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsOutdatedDocDialogOpen(false)}>
+                Fechar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (outdatedDocInfo?.outdated?.fileUrl) {
+                    window.open(outdatedDocInfo.outdated.fileUrl, '_blank');
+                  }
+                  setIsOutdatedDocDialogOpen(false);
+                }}
+              >
+                Abrir para consulta
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
       <Footer />
     </div>
