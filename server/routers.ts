@@ -921,7 +921,10 @@ export const appRouter = router({
           
           // Sinarm status change trigger
           if (input.sinarmStatus) {
-            await triggerEmails(`SINARM_STATUS:${input.sinarmStatus}`, {
+            const sinarmEventStatus = input.sinarmStatus === 'Restituído'
+              ? 'Correção Solicitada'
+              : input.sinarmStatus;
+            await triggerEmails(`SINARM_STATUS:${sinarmEventStatus}`, {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client,
