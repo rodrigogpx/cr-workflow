@@ -33,8 +33,11 @@ export const appRouter = router({
   system: systemRouter,
   iat: iatRouter,
   auth: router({
-    me: publicProcedure.query(opts => {
+    me: publicProcedure.query((opts: any) => {
       return opts.ctx.user;
+    }),
+    platformMe: publicProcedure.query((opts: any) => {
+      return opts.ctx.platformAdmin;
     }),
     platformLogin: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))

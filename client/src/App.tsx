@@ -4,6 +4,7 @@ import { Route, Switch, Redirect, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "./_core/hooks/useAuth";
+import { usePlatformAuth } from "./_core/hooks/usePlatformAuth";
 import { Loader2 } from "lucide-react";
 import React, { Suspense, lazy } from "react";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
