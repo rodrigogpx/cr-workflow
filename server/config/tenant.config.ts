@@ -236,6 +236,10 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
     // Healthcheck rápida para validar credenciais/conectividade
     await client`SELECT 1`;
 
+    if (isSingleDbMode && tenant.id) {
+      await client`SET LOCAL app.current_tenant_id = ${tenant.id.toString()}`;
+    }
+
     // Cachear conexão com metadata
     tenantDbConnections.set(cacheKey, { db, client, lastUsed: Date.now() });
 

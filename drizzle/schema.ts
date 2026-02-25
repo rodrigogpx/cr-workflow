@@ -443,6 +443,22 @@ export type PlatformAdmin = typeof platformAdmins.$inferSelect;
 export type InsertPlatformAdmin = typeof platformAdmins.$inferInsert;
 
 /**
+ * Platform Admin Audit Logs - audit trail for super admin operations
+ */
+export const platformAdminAuditLogs = pgTable("platformAdminAuditLogs", {
+  id: serial("id").primaryKey(),
+  platformAdminId: integer("platformAdminId").notNull(),
+  action: varchar("action", { length: 100 }).notNull(), // TENANT_CREATE, TENANT_DELETE, IMPERSONATE, etc
+  targetTenantId: integer("targetTenantId"),
+  details: text("details"), // JSON with action details
+  ipAddress: varchar("ipAddress", { length: 45 }), // IPv4 or IPv6
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type PlatformAdminAuditLog = typeof platformAdminAuditLogs.$inferSelect;
+export type InsertPlatformAdminAuditLog = typeof platformAdminAuditLogs.$inferInsert;
+
+/**
  * Tenant Activity Logs - audit trail for tenant operations
  */
 export const tenantActivityLogs = pgTable("tenantActivityLogs", {

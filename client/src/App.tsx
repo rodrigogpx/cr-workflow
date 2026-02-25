@@ -9,6 +9,7 @@ import React, { Suspense, lazy } from "react";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 const Login = lazy(() => import("./pages/Login"));
+const PlatformAdminLogin = lazy(() => import("./pages/PlatformAdminLogin"));
 const Register = lazy(() => import("./pages/Register"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MainDashboard = lazy(() => import("./pages/MainDashboard"));
@@ -121,6 +122,7 @@ function Router() {
         </div>
       }>
       <Switch>
+        <Route path={"/platform-admin/login"} component={PlatformAdminLogin} />
         <Route path={"/login"} component={Login} />
         <Route path={"/:tenantSlug/login"} component={Login} />
         <Route path={"/register"} component={Register} />

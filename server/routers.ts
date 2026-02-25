@@ -1,7 +1,7 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64, buildInlineLogoAttachment } from "./emailService";
@@ -36,6 +36,45 @@ export const appRouter = router({
     me: publicProcedure.query(opts => {
       return opts.ctx.user;
     }),
+    platformLogin: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const admin = await db.getPlatformAdminByEmail(input.email);
+        
+        if (!admin || !admin.isActive) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+        }
+
+        const passwordMatch = await comparePassword(input.password, admin.hashedPassword);
+        if (!passwordMatch) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+        }
+
+        const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
+          name: admin.name || "",
+          expiresInMs: ONE_YEAR_MS,
+          isPlatformAdmin: true,
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, { 
+          ...cookieOptions, 
+          maxAge: ONE_YEAR_MS, 
+          path: "/",
+          httpOnly: true,
+          sameSite: "lax",
+        });
+
+        return {
+          success: true,
+          admin: {
+            id: admin.id,
+            name: admin.name,
+            email: admin.email,
+            role: admin.role,
+          },
+        };
+      }),
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
@@ -2262,20 +2301,20 @@ export const appRouter = router({
   // ===========================================
   tenants: router({
     // Limpar dados de mocks (tenants/users/clients @example.com)
-    clearMocks: adminProcedure.mutation(async ({ ctx }) => {
+    clearMocks: platformAdminProcedure.mutation(async ({ ctx }) => {
       try {
         const result = await db.clearMockTenants();
         invalidateTenantCache();
 
         console.log("[AUDIT] Clear mock tenants executed", {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           result,
         });
 
         return { success: true, ...result };
       } catch (error: any) {
         console.error("[ERROR] Clear mock tenants failed", {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           error: error?.message || String(error),
         });
 
@@ -2287,20 +2326,20 @@ export const appRouter = router({
     }),
 
     // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
-    seedMocks: adminProcedure.mutation(async ({ ctx }) => {
+    seedMocks: platformAdminProcedure.mutation(async ({ ctx }) => {
       try {
         const result = await db.seedMockTenants();
         invalidateTenantCache();
 
         console.log("[AUDIT] Seed mock tenants executed", {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           result,
         });
 
         return { success: true, ...result };
       } catch (error: any) {
         console.error("[ERROR] Seed mock tenants failed", {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           error: error?.message || String(error),
         });
 
@@ -2312,13 +2351,13 @@ export const appRouter = router({
     }),
 
     // Listar todos os tenants
-    list: adminProcedure.query(async () => {
+    list: platformAdminProcedure.query(async () => {
       const tenantsList = await db.getAllTenants();
       return tenantsList;
     }),
 
     // Buscar tenant por ID
-    getById: adminProcedure
+    getById: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2337,7 +2376,7 @@ export const appRouter = router({
       }),
 
     // Criar novo tenant
-    create: adminProcedure
+    create: platformAdminProcedure
       .input(z.object({
         slug: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/),
         name: z.string().min(2).max(255),
@@ -2435,12 +2474,12 @@ export const appRouter = router({
           tenantId,
           action: 'created',
           details: JSON.stringify({ slug: input.slug, plan: input.plan, adminEmail: input.adminEmail }),
-          performedBy: ctx.user.id,
+          performedBy: ctx.platformAdmin.id,
         });
         invalidateTenantCache(input.slug);
 
         console.log('[AUDIT] Tenant created', {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           tenantId,
           slug: input.slug,
         });
@@ -2449,7 +2488,7 @@ export const appRouter = router({
       }),
 
     // Atualizar tenant
-    update: adminProcedure
+    update: platformAdminProcedure
       .input(z.object({
         id: z.number(),
         name: z.string().optional(),
@@ -2584,7 +2623,7 @@ export const appRouter = router({
       }),
 
     // Estatísticas do tenant
-    getStats: adminProcedure
+    getStats: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2592,13 +2631,46 @@ export const appRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
 
-        // TODO: Conectar ao banco do tenant e buscar estatísticas reais
-        return {
-          usersCount: 0,
-          clientsCount: 0,
-          storageUsedGB: 0,
-          lastActivity: null,
-        };
+        try {
+          const tenantDb = await getTenantDb(tenant);
+          if (!tenantDb) {
+            return {
+              usersCount: 0,
+              clientsCount: 0,
+              storageUsedGB: 0,
+              lastActivity: null,
+              error: 'Não foi possível conectar ao banco do tenant',
+            };
+          }
+
+          // Count users
+          const usersRes = await tenantDb.execute(sql`SELECT count(*) as count FROM "users"`);
+          const usersCount = Number(usersRes[0]?.count || 0);
+
+          // Count clients
+          const clientsRes = await tenantDb.execute(sql`SELECT count(*) as count FROM "clients"`);
+          const clientsCount = Number(clientsRes[0]?.count || 0);
+
+          // Get last activity log
+          const activityRes = await tenantDb.execute(sql`SELECT "createdAt" FROM "auditLogs" ORDER BY "createdAt" DESC LIMIT 1`);
+          const lastActivity = activityRes[0]?.createdAt || null;
+
+          return {
+            usersCount,
+            clientsCount,
+            storageUsedGB: 0, // Storage API not fully integrated per tenant yet
+            lastActivity,
+          };
+        } catch (error: any) {
+          console.error(`Error fetching stats for tenant ${tenant.id}:`, error);
+          return {
+            usersCount: 0,
+            clientsCount: 0,
+            storageUsedGB: 0,
+            lastActivity: null,
+            error: error.message || 'Erro desconhecido',
+          };
+        }
       }),
 
     // Health check do tenant (verifica conexão com banco)
@@ -2650,26 +2722,53 @@ export const appRouter = router({
       }),
 
     // Impersonate: entrar como admin de um tenant específico
-    impersonate: adminProcedure
-      .input(z.object({ tenantId: z.number() }))
+    impersonate: platformAdminProcedure
+      .input(z.object({ 
+        tenantId: z.number(),
+        confirmPassword: z.string()
+      }))
       .mutation(async ({ input, ctx }) => {
+        // Validar senha do platformAdmin
+        const passwordMatch = await comparePassword(input.confirmPassword, ctx.platformAdmin.hashedPassword);
+        if (!passwordMatch) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Senha incorreta' });
+        }
+
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
 
-        if (!tenant.isActive) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant inativo' });
-        }
-
-        // Buscar o admin do tenant
         const tenantAdmin = await db.getTenantAdmin(input.tenantId);
         if (!tenantAdmin) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Admin do tenant não encontrado' });
         }
 
-        console.log('[AUDIT] Super Admin impersonating tenant', {
-          superAdminId: ctx.user.id,
+        // Criar sessão temporária (1 hora)
+        const impersonationToken = await sdk.createSessionToken(tenantAdmin.id.toString(), {
+          name: tenantAdmin.name || "",
+          tenantSlug: tenant.slug,
+          expiresInMs: 60 * 60 * 1000, // 1 hora
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, impersonationToken, { 
+          ...cookieOptions, 
+          maxAge: 60 * 60 * 1000, 
+          path: "/",
+          httpOnly: true,
+          sameSite: "lax",
+        });
+
+        // Setar flag de impersonation para o frontend
+        ctx.res.cookie('is_impersonating', 'true', {
+          maxAge: 60 * 60 * 1000,
+          path: "/",
+          sameSite: "lax",
+        });
+
+        console.log('[AUDIT] Platform Admin impersonating tenant', {
+          platformAdminId: ctx.platformAdmin.id,
           tenantId: input.tenantId,
           tenantSlug: tenant.slug,
           impersonatedUserId: tenantAdmin.id,
@@ -2678,9 +2777,6 @@ export const appRouter = router({
         return {
           success: true,
           tenantSlug: tenant.slug,
-          adminId: tenantAdmin.id,
-          adminEmail: tenantAdmin.email,
-          adminName: tenantAdmin.name,
         };
       }),
   }),

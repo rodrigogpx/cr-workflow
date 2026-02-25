@@ -31,6 +31,7 @@ import {
   InsertEmailScheduled,
   platformSettings,
   PlatformSetting,
+  platformAdmins,
   sinarmCommentsHistory,
   InsertSinarmCommentHistory,
 } from "../drizzle/schema";
@@ -1162,6 +1163,20 @@ export async function getEmailLogFromDb(
 // ===========================================
 // TENANT FUNCTIONS (Multi-Tenant)
 // ===========================================
+
+export async function getPlatformAdminById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(platformAdmins).where(eq(platformAdmins.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getPlatformAdminByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(platformAdmins).where(eq(platformAdmins.email, email)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
 
 export async function getAllTenants() {
   const db = await getDb();

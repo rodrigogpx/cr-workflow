@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { getDocumentsBaseDir } from "../fileStorage";
 import { installRouter } from "../install/router";
 import { ensureMissingTables } from "../ensure-tables";
+import { tenantApiRouter } from "./tenantApi";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -72,6 +73,10 @@ async function startServer() {
   } else {
     console.log("[Install] INSTALL_WIZARD_ENABLED=false → rota /api/install desabilitada");
   }
+
+  // Tenant Management API (REST)
+  app.use("/api/tenants", tenantApiRouter);
+
   // tRPC API
   app.use(
     "/api/trpc",
