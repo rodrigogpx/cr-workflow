@@ -14,10 +14,10 @@ export default function PlatformAdminLogin() {
   const [password, setPassword] = useState("");
 
   const loginMutation = trpc.auth.platformLogin.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success(`Bem-vindo, ${data.admin.name}!`);
-      // Redirecionar para o dashboard do super admin
-      setLocation("/super-admin/tenants");
+      // Force reload to ensure TRPC context is completely refreshed with new cookie
+      window.location.href = "/super-admin/tenants";
     },
     onError: (error) => {
       toast.error(error.message || "Erro ao fazer login. Verifique suas credenciais.");

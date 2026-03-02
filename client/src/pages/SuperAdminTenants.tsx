@@ -494,7 +494,7 @@ export default function SuperAdminTenants() {
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Globe className="h-3 w-3" />
-                              {tenant.slug}.cac360.com.br
+                              cac360.com.br/{tenant.slug}
                             </span>
                             <span className="flex items-center gap-1">
                               <Database className="h-3 w-3" />

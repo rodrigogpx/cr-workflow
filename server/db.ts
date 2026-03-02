@@ -1504,13 +1504,13 @@ export async function getAuditLogsFromDb(
 
 const mockTenants = [
   {
-    slug: "tiroesp",
-    name: "Clube de Tiro Esportivo SP",
+    slug: "clube",
+    name: "Clube Exemplo",
     dbHost: defaultMockTenantDbConfig?.dbHost ?? "localhost",
     dbPort: defaultMockTenantDbConfig?.dbPort ?? 5432,
-    dbName: defaultMockTenantDbConfig?.dbName ?? "cac360_tiroesp",
-    dbUser: defaultMockTenantDbConfig?.dbUser ?? "tiroesp_user",
-    dbPassword: defaultMockTenantDbConfig?.dbPassword ?? "tiroesp_pass",
+    dbName: defaultMockTenantDbConfig?.dbName ?? "cac360_clube",
+    dbUser: defaultMockTenantDbConfig?.dbUser ?? "clube_user",
+    dbPassword: defaultMockTenantDbConfig?.dbPassword ?? "clube_pass",
     primaryColor: "#1a5c00",
     secondaryColor: "#4d9702",
     featureWorkflowCR: true,
@@ -1524,51 +1524,7 @@ const mockTenants = [
     maxClients: 1000,
     maxStorageGB: 100,
     isActive: true,
-  },
-  {
-    slug: "cluberio",
-    name: "Clube Tiro Rio",
-    dbHost: defaultMockTenantDbConfig?.dbHost ?? "localhost",
-    dbPort: defaultMockTenantDbConfig?.dbPort ?? 5432,
-    dbName: defaultMockTenantDbConfig?.dbName ?? "cac360_cluberio",
-    dbUser: defaultMockTenantDbConfig?.dbUser ?? "cluberio_user",
-    dbPassword: defaultMockTenantDbConfig?.dbPassword ?? "cluberio_pass",
-    primaryColor: "#002366",
-    secondaryColor: "#4169E1",
-    featureWorkflowCR: true,
-    featureApostilamento: false,
-    featureRenovacao: false,
-    featureInsumos: false,
-    plan: "starter" as const,
-    subscriptionStatus: "trial" as const,
-    subscriptionExpiresAt: null,
-    maxUsers: 5,
-    maxClients: 100,
-    maxStorageGB: 50,
-    isActive: true,
-  },
-  {
-    slug: "norteclub",
-    name: "Clube Norte CAC",
-    dbHost: defaultMockTenantDbConfig?.dbHost ?? "localhost",
-    dbPort: defaultMockTenantDbConfig?.dbPort ?? 5432,
-    dbName: defaultMockTenantDbConfig?.dbName ?? "cac360_norteclub",
-    dbUser: defaultMockTenantDbConfig?.dbUser ?? "norte_user",
-    dbPassword: defaultMockTenantDbConfig?.dbPassword ?? "norte_pass",
-    primaryColor: "#0f172a",
-    secondaryColor: "#10b981",
-    featureWorkflowCR: true,
-    featureApostilamento: true,
-    featureRenovacao: false,
-    featureInsumos: true,
-    plan: "enterprise" as const,
-    subscriptionStatus: "active" as const,
-    subscriptionExpiresAt: null,
-    maxUsers: 50,
-    maxClients: 5000,
-    maxStorageGB: 500,
-    isActive: true,
-  },
+  }
 ] as const;
 
 export async function clearMockTenants() {
@@ -1630,7 +1586,7 @@ export async function seedMockTenants() {
       if (inserted?.id) admins.push(inserted.id);
     }
 
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 8; i++) {
       const email = `${t.slug}.op${i}@example.com`;
       const [inserted] = await db
         .insert(users)
@@ -1649,7 +1605,7 @@ export async function seedMockTenants() {
     tenantUserIds[t.slug] = { admins, operators };
   }
 
-  // Seed clients (15 por tenant)
+  // Seed clients (150 por tenant)
   let clientsInserted = 0;
   let tenantIndex = 0;
   for (const t of mocks) {
@@ -1657,7 +1613,7 @@ export async function seedMockTenants() {
     const { operators } = tenantUserIds[t.slug];
     if (!operators || operators.length === 0) continue;
 
-    for (let i = 1; i <= 15; i++) {
+    for (let i = 1; i <= 150; i++) {
       // CPF único por tenant: prefixo baseado no índice do tenant
       const cpf = `${String(tenantIndex).padStart(3, "0")}${String(i).padStart(3, "0")}${String(tenantIndex).padStart(4, "0")}${String(i).padStart(2, "0")}`;
       const email = `${t.slug}.cliente${i}@example.com`;
