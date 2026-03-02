@@ -225,9 +225,15 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
       console.error(`[Tenant] No connection string available for tenant ${tenant.slug}`);
       return null;
     }
+    
+    // Check if the connection string is a URL and has sslmode
+    const hasSslMode = connectionString.includes('sslmode=');
+    const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    
     const client = postgres(connectionString, {
       max: Number(process.env.TENANT_DB_POOL_MAX ?? 5),
-      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+      // Only force SSL if it's explicitly production and not localhost, and no sslmode is defined in URL
+      ssl: (process.env.NODE_ENV === "production" && !isLocalhost && !hasSslMode) ? 'require' : undefined,
       idle_timeout: 60,
       connect_timeout: 10,
     });
