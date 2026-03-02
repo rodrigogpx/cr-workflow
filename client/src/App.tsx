@@ -114,6 +114,24 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PlatformAdminRoute({ children }: { children: React.ReactNode }) {
+  const { admin, loading } = usePlatformAuth({ redirectOnUnauthenticated: true });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!admin) {
+    return <Redirect to="/platform-admin/login" />;
+  }
+
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Suspense
@@ -128,9 +146,9 @@ function Router() {
         
         {/* Super Admin Routes */}
         <Route path={"/super-admin/tenants"}>
-          <AdminRoute>
+          <PlatformAdminRoute>
             <SuperAdminTenants />
-          </AdminRoute>
+          </PlatformAdminRoute>
         </Route>
         
         {/* Global Auth Routes (no tenant) */}
