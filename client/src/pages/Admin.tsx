@@ -103,8 +103,9 @@ export default function Admin() {
                     <p className="text-xs text-muted-foreground">Edite os templates de email enviados aos clientes</p>
                   </div>
                 </div>
+                {/* Platform admin button removed - only platform admins should access platform admin routes */}
                 <Button
-                  onClick={() => setLocation(buildTenantPath(tenantSlug, "/platform-admin/email-templates"))}
+                  onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin/emails"))}
                   className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
                 >
                   Gerenciar →
@@ -125,8 +126,9 @@ export default function Admin() {
                     <p className="text-xs text-muted-foreground">Gerencie e exclua usuários do sistema</p>
                   </div>
                 </div>
+                {/* Platform admin button removed - only platform admins should access platform admin routes */}
                 <Button
-                  onClick={() => setLocation(buildTenantPath(tenantSlug, "/platform-admin/users"))}
+                  onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin/users"))}
                   className="bg-primary hover:bg-primary/90 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
                 >
                   Gerenciar →
