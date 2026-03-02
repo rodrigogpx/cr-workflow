@@ -234,7 +234,7 @@ export const appRouter = router({
 
   // Clients router
   clients: router({
-    list: tenantProcedure.query(async ({ ctx }) => {
+    list: protectedProcedure.query(async ({ ctx }) => {
       try {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
@@ -358,7 +358,7 @@ export const appRouter = router({
       }
     }),
 
-    getById: tenantProcedure
+    getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -377,7 +377,7 @@ export const appRouter = router({
         return client;
       }),
 
-    create: tenantProcedure
+    create: protectedProcedure
       .input(createClientSchema)
       .mutation(async ({ ctx, input }) => {
         // Permissão:
@@ -584,7 +584,7 @@ export const appRouter = router({
         return { id: clientId };
       }),
 
-        update: tenantProcedure
+        update: protectedProcedure
           .input(updateClientSchema)
           .mutation(async ({ ctx, input }) => {
             const tenantDb = await getTenantDbOrNull(ctx);
@@ -700,7 +700,7 @@ export const appRouter = router({
 
   // Workflow router
   workflow: router({
-    getByClient: tenantProcedure
+    getByClient: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -750,7 +750,7 @@ export const appRouter = router({
         return stepsWithSubTasks;
       }),
 
-    updateStep: tenantProcedure
+    updateStep: protectedProcedure
       .input(z.object({
         clientId: z.number().optional(),
         stepId: z.number(),
@@ -995,7 +995,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    getSinarmCommentsHistory: tenantProcedure
+    getSinarmCommentsHistory: protectedProcedure
       .input(z.object({ stepId: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -1165,7 +1165,7 @@ export const appRouter = router({
 
   // Documents router
   documents: router({
-    list: tenantProcedure
+    list: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -1186,7 +1186,7 @@ export const appRouter = router({
           : await db.getDocumentsByClient(input.clientId);
       }),
 
-    upload: tenantProcedure
+    upload: protectedProcedure
       .input(z.object({
         clientId: z.number(),
         workflowStepId: z.number().optional(),
@@ -1299,7 +1299,7 @@ export const appRouter = router({
         return { id: documentId, url: fileUrl };
       }),
 
-    delete: tenantProcedure
+    delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
