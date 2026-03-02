@@ -1,5 +1,6 @@
 import { getDb } from "./db";
 import { sql } from "drizzle-orm";
+import { hashPassword } from "./_core/auth";
 
 export async function ensureMissingTables() {
   const db = await getDb();
@@ -278,23 +279,29 @@ export async function ensureMissingTables() {
     `);
 
     // Ensure default platform admin exists
-    const adminEmails = process.env.SUPER_ADMIN_EMAILS 
-      ? process.env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
-      : ['admin@acrdigital.com.br', 'admin@acedigital.com.br'];
-      
-    if (adminEmails.length > 0) {
-      const { hashPassword } = require('./_core/auth');
-      const hashedPassword = await hashPassword('admin123'); // Default password, they should change it
-      
-      for (const email of adminEmails) {
-        // Safe insert, do nothing if email already exists
-        await db.execute(sql`
-          INSERT INTO "platformAdmins" ("email", "hashedPassword", "name", "isActive", "createdAt", "updatedAt")
-          VALUES (${email}, ${hashedPassword}, 'Platform Admin', true, now(), now())
-          ON CONFLICT ("email") DO NOTHING;
-        `);
+    try {
+      const adminEmails = process.env.SUPER_ADMIN_EMAILS 
+        ? process.env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+        : ['admin@acrdigital.com.br', 'admin@acedigital.com.br'];
+        
+      if (adminEmails.length > 0) {
+        const hashedPassword = await hashPassword('admin123'); // Default password, they should change it
+        
+        for (const email of adminEmails) {
+          // Check if it already exists to avoid ON CONFLICT which might not be supported or erroring
+          const result = await db.execute(sql`SELECT id FROM "platformAdmins" WHERE email = ${email} LIMIT 1`);
+          
+          if (result.length === 0) {
+            await db.execute(sql`
+              INSERT INTO "platformAdmins" ("email", "hashedPassword", "name", "isActive", "createdAt", "updatedAt")
+              VALUES (${email}, ${hashedPassword}, 'Platform Admin', true, now(), now());
+            `);
+            console.log(`[Migration] Created platform admin: ${email}`);
+          }
+        }
       }
-      console.log(`[Migration] Ensured platform admins exist: ${adminEmails.join(', ')}`);
+    } catch (adminErr) {
+      console.error("[Migration] Error ensuring platform admins:", adminErr);
     }
 
     console.log("[Migration] Missing tables created successfully.");
