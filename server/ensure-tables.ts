@@ -277,6 +277,26 @@ export async function ensureMissingTables() {
       ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "protocolNumber" varchar(100);
     `);
 
+    // Ensure default platform admin exists
+    const adminEmails = process.env.SUPER_ADMIN_EMAILS 
+      ? process.env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+      : ['admin@acrdigital.com.br', 'admin@acedigital.com.br'];
+      
+    if (adminEmails.length > 0) {
+      const { hashPassword } = require('./_core/auth');
+      const hashedPassword = await hashPassword('admin123'); // Default password, they should change it
+      
+      for (const email of adminEmails) {
+        // Safe insert, do nothing if email already exists
+        await db.execute(sql`
+          INSERT INTO "platformAdmins" ("email", "hashedPassword", "name", "isActive", "createdAt", "updatedAt")
+          VALUES (${email}, ${hashedPassword}, 'Platform Admin', true, now(), now())
+          ON CONFLICT ("email") DO NOTHING;
+        `);
+      }
+      console.log(`[Migration] Ensured platform admins exist: ${adminEmails.join(', ')}`);
+    }
+
     console.log("[Migration] Missing tables created successfully.");
   } catch (error) {
     console.error("[Migration] Error creating tables:", error);
