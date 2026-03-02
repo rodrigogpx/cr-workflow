@@ -2853,7 +2853,7 @@ export const appRouter = router({
 
           const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
 
-          const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br')
+          const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br,admin@acedigital.com.br')
             .split(',')
             .map(e => e.trim().toLowerCase())
             .filter(Boolean);
@@ -2941,7 +2941,7 @@ export const appRouter = router({
 
         const userMap = new Map(usersFound.map((u: any) => [u.id, u.name || u.email]));
 
-        const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br')
+        const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br,admin@acedigital.com.br')
           .split(',')
           .map(e => e.trim().toLowerCase())
           .filter(Boolean);
