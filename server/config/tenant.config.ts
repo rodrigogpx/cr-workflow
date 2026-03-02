@@ -98,7 +98,7 @@ export function resolveTenantSlug(hostname: string): string | null {
   if (parts.length >= 3) {
     const subdomain = parts[0];
     // Ignorar subdomínios especiais
-    if (['www', 'api', 'admin', 'platform-admin'].includes(subdomain)) {
+    if (['www', 'api', 'admin', 'platform-admin', 'hml', 'app', 'dev', 'staging'].includes(subdomain)) {
       return null;
     }
     return subdomain;

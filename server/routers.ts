@@ -81,7 +81,7 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const tenantSlug = ctx.tenantSlug;
+        let tenantSlug = ctx.tenantSlug;
 
         const user = tenantSlug && ctx.tenant
           ? await (async () => {
@@ -100,6 +100,14 @@ export const appRouter = router({
         const passwordMatch = await comparePassword(input.password, user.hashedPassword);
         if (!passwordMatch) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+        }
+
+        // If no tenantSlug in context but user has tenantId, resolve it
+        if (!tenantSlug && user.tenantId) {
+          const userTenant = await db.getTenantById(user.tenantId);
+          if (userTenant) {
+            tenantSlug = userTenant.slug;
+          }
         }
 
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
@@ -286,8 +294,8 @@ export const appRouter = router({
               s.stepId === 2 || 
               s.stepId === '2' ||
               s.stepId === 'juntada-documento' ||
-              s.stepTitle?.toLowerCase().includes('juntada') ||
-              s.stepTitle?.toLowerCase().includes('documentos')
+              s.stepTitle?.toLowerCase()?.includes('juntada') ||
+              s.stepTitle?.toLowerCase()?.includes('documentos')
             );
             const juntadaConcluida = juntadaStep?.completed === true;
 
@@ -340,9 +348,12 @@ export const appRouter = router({
         return filteredClients;
       } catch (error: any) {
         console.error('[clients.list] Error:', error);
+        if (error instanceof TRPCError) {
+          throw error;
+        }
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: error?.message || 'Erro interno ao listar clientes',
+          message: error instanceof Error ? `ERROR: ${error.message}\nSTACK: ${error.stack}` : (error?.message || 'Erro interno ao listar clientes'),
         });
       }
     }),
@@ -718,7 +729,7 @@ export const appRouter = router({
           ? steps.filter(step => 
               DESPACHANTE_VISIBLE_STEPS.includes(step.stepId) ||
               DESPACHANTE_VISIBLE_TITLES.some(title => 
-                step.stepTitle?.toLowerCase().includes(title)
+                step.stepTitle?.toLowerCase()?.includes(title)
               )
             )
           : steps;
@@ -785,7 +796,7 @@ export const appRouter = router({
         if (input.completed === true) {
           const isLaudoStep =
             currentStep.stepId === 'agendamento-laudo' ||
-            currentStep.stepTitle?.toLowerCase().includes('laudo') === true;
+            currentStep.stepTitle?.toLowerCase()?.includes('laudo') === true;
 
           if (isLaudoStep) {
             // Buscar todas as etapas do cliente
@@ -795,8 +806,8 @@ export const appRouter = router({
             
             const avaliacaoStep = allSteps.find((s: any) => 
               s.stepId === 'agendamento-psicotecnico' || 
-              s.stepTitle?.toLowerCase().includes('avaliação psicológica') ||
-              s.stepTitle?.toLowerCase().includes('psicotécnico')
+              s.stepTitle?.toLowerCase()?.includes('avaliação psicológica') ||
+              s.stepTitle?.toLowerCase()?.includes('psicotécnico')
             );
             
             if (avaliacaoStep && !avaliacaoStep.completed) {
@@ -813,7 +824,7 @@ export const appRouter = router({
           const isJuntadaStep =
             currentStep.stepId === 'juntada-documento' ||
             currentStep.stepId === 'juntada-documentos' ||
-            currentStep.stepTitle?.toLowerCase().includes('juntada') === true;
+            currentStep.stepTitle?.toLowerCase()?.includes('juntada') === true;
 
           if (isJuntadaStep) {
             const subTasksList = tenantDb
@@ -945,8 +956,8 @@ export const appRouter = router({
               stepExtraData.examinador = currentStep.examinerName;
             }
             // Determinar tipo de agendamento baseado no step
-            const isPsychStep = currentStep.stepId.includes('psico') || currentStep.stepTitle?.toLowerCase().includes('psico');
-            const isLaudoStep = currentStep.stepId.includes('laudo') || currentStep.stepTitle?.toLowerCase().includes('laudo');
+            const isPsychStep = String(currentStep.stepId).includes('psico') || currentStep.stepTitle?.toLowerCase()?.includes('psico');
+            const isLaudoStep = String(currentStep.stepId).includes('laudo') || currentStep.stepTitle?.toLowerCase()?.includes('laudo');
             if (isPsychStep) {
               stepExtraData.tipoAgendamento = 'Avaliação Psicológica';
             } else if (isLaudoStep) {
@@ -1010,7 +1021,7 @@ export const appRouter = router({
         const isSinarmStep =
           step.stepId === 'acompanhamento-sinarm' ||
           step.stepId === 'acompanhamento-sinarm-cac' ||
-          step.stepTitle?.toLowerCase().includes('sinarm') === true;
+          step.stepTitle?.toLowerCase()?.includes('sinarm') === true;
 
         if (!hasGeneralPermission && !(isDespachante && isSinarmStep)) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
@@ -1129,7 +1140,7 @@ export const appRouter = router({
         if (input.scheduledDate) {
           try {
             const scheduledDate = new Date(input.scheduledDate);
-            const isPsych = currentStep.stepId.includes('psico') || currentStep.stepTitle.toLowerCase().includes('psico');
+            const isPsych = String(currentStep.stepId).includes('psico') || currentStep.stepTitle?.toLowerCase()?.includes('psico');
             const eventType = isPsych ? 'SCHEDULE_PSYCH_CREATED' : 'SCHEDULE_TECH_CONFIRMATION';
             
             await triggerEmails(eventType, {

@@ -10,6 +10,14 @@ const RESERVED_PREFIXES = [
   "api",
   "files",
   "health",
+  "dashboard",
+  "cr-workflow",
+  "client",
+  "iat",
+  "hml",
+  "app",
+  "dev",
+  "staging"
 ];
 
 export function extractTenantSlugFromPath(pathname: string): string | null {

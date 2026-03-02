@@ -123,33 +123,98 @@ function Router() {
         </div>
       }>
       <Switch>
+        {/* Platform Admin Routes */}
         <Route path={"/platform-admin/login"} component={PlatformAdminLogin} />
+        
+        {/* Super Admin Routes */}
+        <Route path={"/super-admin/tenants"}>
+          <AdminRoute>
+            <SuperAdminTenants />
+          </AdminRoute>
+        </Route>
+        
+        {/* Global Auth Routes (no tenant) */}
         <Route path={"/login"} component={Login} />
-        <Route path={"/:tenantSlug/login"} component={Login} />
         <Route path={"/register"} component={Register} />
-        <Route path={"/:tenantSlug/register"} component={Register} />
         <Route path={"/pending-approval"}>
           <AuthenticatedRoute>
             <PendingApproval />
           </AuthenticatedRoute>
         </Route>
+        
+        {/* Global Dashboard Routes (no tenant) */}
+        <Route path={"/dashboard"}>
+          <ApprovedRoute>
+            <MainDashboard />
+          </ApprovedRoute>
+        </Route>
+        <Route path={"/cr-workflow"}>
+          <ApprovedRoute>
+            <Dashboard />
+          </ApprovedRoute>
+        </Route>
+        <Route path={"/client/:id"}>
+          <ApprovedRoute>
+            <ClientWorkflow />
+          </ApprovedRoute>
+        </Route>
+        
+        {/* Global Admin Routes (no tenant) */}
+        <Route path={"/admin"}>
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/users"}>
+          <AdminRoute>
+            <AdminUsers />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/operators"}>
+          <AdminRoute>
+            <AdminOperators />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/emails"}>
+          <AdminRoute>
+            <AdminEmails />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/email-triggers"}>
+          <AdminRoute>
+            <AdminEmailTriggers />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/settings"}>
+          <AdminRoute>
+            <AdminSettings />
+          </AdminRoute>
+        </Route>
+        <Route path={"/admin/audit"}>
+          <AdminRoute>
+            <AdminAudit />
+          </AdminRoute>
+        </Route>
+        
+        {/* Global IAT Module (no tenant) */}
+        <Route path={"/iat"}>
+          <ApprovedRoute>
+            <IATModule />
+          </ApprovedRoute>
+        </Route>
+        
+        {/* Root Route */}
+        <Route path={"/"} component={Login} />
+        
+        {/* Tenant-specific Routes - MUST come after all specific routes */}
+        <Route path={"/:tenantSlug/login"} component={Login} />
+        <Route path={"/:tenantSlug/register"} component={Register} />
         <Route path={"/:tenantSlug/pending-approval"}>
           <AuthenticatedRoute>
             <PendingApproval />
           </AuthenticatedRoute>
         </Route>
-        <Route path={"/"} component={Login} />
-        <Route path={"/:tenantSlug"}>
-          {({ tenantSlug }: { tenantSlug: string }) => (
-            <Redirect to={buildTenantPath(tenantSlug, "/dashboard")} />
-          )}
-        </Route>
         <Route path={"/:tenantSlug/dashboard"}>
-          <ApprovedRoute>
-            <MainDashboard />
-          </ApprovedRoute>
-        </Route>
-        <Route path={"/dashboard"}>
           <ApprovedRoute>
             <MainDashboard />
           </ApprovedRoute>
@@ -159,28 +224,12 @@ function Router() {
             <Dashboard />
           </ApprovedRoute>
         </Route>
-        <Route path={"/cr-workflow"}>
-          <ApprovedRoute>
-            <Dashboard />
-          </ApprovedRoute>
-        </Route>
         <Route path={"/:tenantSlug/client/:id"}>
           <ApprovedRoute>
             <ClientWorkflow />
           </ApprovedRoute>
         </Route>
-        <Route path={"/client/:id"}>
-          <ApprovedRoute>
-            <ClientWorkflow />
-          </ApprovedRoute>
-        </Route>
-        {/* Tenant Admin - Unified */}
         <Route path={"/:tenantSlug/admin"}>
-          <AdminRoute>
-            <AdminDashboard />
-          </AdminRoute>
-        </Route>
-        <Route path={"/admin"}>
           <AdminRoute>
             <AdminDashboard />
           </AdminRoute>
@@ -190,17 +239,7 @@ function Router() {
             <AdminUsers />
           </AdminRoute>
         </Route>
-        <Route path={"/admin/users"}>
-          <AdminRoute>
-            <AdminUsers />
-          </AdminRoute>
-        </Route>
         <Route path={"/:tenantSlug/admin/operators"}>
-          <AdminRoute>
-            <AdminOperators />
-          </AdminRoute>
-        </Route>
-        <Route path={"/admin/operators"}>
           <AdminRoute>
             <AdminOperators />
           </AdminRoute>
@@ -210,17 +249,7 @@ function Router() {
             <AdminEmails />
           </AdminRoute>
         </Route>
-        <Route path={"/admin/emails"}>
-          <AdminRoute>
-            <AdminEmails />
-          </AdminRoute>
-        </Route>
         <Route path={"/:tenantSlug/admin/email-triggers"}>
-          <AdminRoute>
-            <AdminEmailTriggers />
-          </AdminRoute>
-        </Route>
-        <Route path={"/admin/email-triggers"}>
           <AdminRoute>
             <AdminEmailTriggers />
           </AdminRoute>
@@ -230,38 +259,17 @@ function Router() {
             <AdminSettings />
           </AdminRoute>
         </Route>
-        <Route path={"/admin/settings"}>
-          <AdminRoute>
-            <AdminSettings />
-          </AdminRoute>
-        </Route>
         <Route path={"/:tenantSlug/admin/audit"}>
           <AdminRoute>
             <AdminAudit />
           </AdminRoute>
         </Route>
-        <Route path={"/admin/audit"}>
-          <AdminRoute>
-            <AdminAudit />
-          </AdminRoute>
-        </Route>
-        {/* IAT Module */}
         <Route path={"/:tenantSlug/iat"}>
           <ApprovedRoute>
             <IATModule />
           </ApprovedRoute>
         </Route>
-        <Route path={"/iat"}>
-          <ApprovedRoute>
-            <IATModule />
-          </ApprovedRoute>
-        </Route>
-        {/* Super Admin */}
-        <Route path={"/super-admin/tenants"}>
-          <AdminRoute>
-            <SuperAdminTenants />
-          </AdminRoute>
-        </Route>
+        
         {/* Legacy redirects */}
         <Route path={"/:tenantSlug/platform-admin/users"}>
           {({ tenantSlug }: { tenantSlug: string }) => (
@@ -283,6 +291,15 @@ function Router() {
             <Redirect to={buildTenantPath(tenantSlug, "/admin/operators")} />
           )}
         </Route>
+        
+        {/* Generic tenant redirect - MUST be last before 404 */}
+        <Route path={"/:tenantSlug"}>
+          {({ tenantSlug }: { tenantSlug: string }) => (
+            <Redirect to={buildTenantPath(tenantSlug, "/dashboard")} />
+          )}
+        </Route>
+        
+        {/* 404 Routes */}
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
