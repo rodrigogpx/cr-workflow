@@ -86,13 +86,15 @@ export const cpfOptionalSchema = z
 export const emailSchema = z
   .string()
   .email("Email inválido")
-  .min(1, "Email é obrigatório");
+  .min(1, "Email é obrigatório")
+  .transform((val: string) => val.toLowerCase());
 
 export const emailOptionalSchema = z
   .string()
   .email("Email inválido")
   .optional()
-  .or(z.literal(""));
+  .or(z.literal(""))
+  .transform((val: string | undefined | null) => val ? val.toLowerCase() : val);
 
 // Telefone brasileiro (10 ou 11 dígitos)
 export const phoneSchema = z
