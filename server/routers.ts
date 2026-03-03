@@ -19,6 +19,15 @@ import { iatRouter } from "./routers/iat";
 
 async function getTenantDbOrNull(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
+    // No single-db mode, usar o platformDb diretamente (sem healthcheck que falha no Railway)
+    const isSingleDbMode = process.env.TENANT_DB_MODE === 'single' || process.env.NODE_ENV === 'production';
+    if (isSingleDbMode) {
+      const platformDb = await db.getDb();
+      if (!platformDb) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco de dados não disponível' });
+      }
+      return platformDb;
+    }
     const tenantDb = await getTenantDb(ctx.tenant);
     if (!tenantDb) {
       throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
