@@ -6,7 +6,7 @@ import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
-import { getTenantConfig, getTenantDb } from "../config/tenant.config";
+import { getTenantConfig } from "../config/tenant.config";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -273,33 +273,13 @@ class SDKServer {
       throw new ForbiddenError("Invalid user ID in session");
     }
 
-    // Quando houver tenantSlug na sessão, o usuário é autenticado no DB do tenant.
-    if (session.tenantSlug) {
-      const tenant = await getTenantConfig(session.tenantSlug);
-      if (!tenant) {
-        throw new ForbiddenError("Tenant not found");
-      }
-
-      const tenantDb = await getTenantDb(tenant);
-      if (!tenantDb) {
-        throw new ForbiddenError("Tenant database not available");
-      }
-
-      const user = await db.getUserByIdFromDb(tenantDb, userId);
-      if (!user) {
-        throw new ForbiddenError("User not found");
-      }
-
-      return { user, tenantSlug: session.tenantSlug };
-    }
-
-    // Fallback de compatibilidade (sessões antigas / modo single-DB)
+    // Buscar usuário diretamente pelo ID (funciona tanto em single-db quanto multi-db)
     const user = await db.getUserById(userId);
     if (!user) {
       throw new ForbiddenError("User not found");
     }
 
-    return { user, tenantSlug: null };
+    return { user, tenantSlug: session.tenantSlug };
   }
 
   async getUserInfoWithJwt(
