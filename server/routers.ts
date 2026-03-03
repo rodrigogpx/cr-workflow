@@ -43,10 +43,16 @@ export const appRouter = router({
   iat: iatRouter,
   auth: router({
     me: publicProcedure.query((opts: any) => {
-      return opts.ctx.user;
+      if (!opts.ctx.user) return null;
+      // Remover a senha (hashedPassword) do retorno do tRPC
+      const { hashedPassword, ...safeUser } = opts.ctx.user;
+      return safeUser;
     }),
     platformMe: publicProcedure.query((opts: any) => {
-      return opts.ctx.platformAdmin;
+      if (!opts.ctx.platformAdmin) return null;
+      // Remover a senha do platformAdmin também, por segurança
+      const { hashedPassword, ...safeAdmin } = opts.ctx.platformAdmin;
+      return safeAdmin;
     }),
     platformLogin: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
