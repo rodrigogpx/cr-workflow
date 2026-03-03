@@ -981,7 +981,25 @@ export default function ClientWorkflow() {
                                 id="birthDate"
                                 type="date"
                                 value={clientFormData.birthDate || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, birthDate: e.target.value }))}
+                                onChange={(e) => {
+                                  const dateValue = e.target.value;
+                                  setClientFormData(prev => ({ ...prev, birthDate: dateValue }));
+                                  
+                                  if (dateValue) {
+                                    const birthDateObj = new Date(dateValue);
+                                    const today = new Date();
+                                    let age = today.getFullYear() - birthDateObj.getFullYear();
+                                    const m = today.getMonth() - birthDateObj.getMonth();
+                                    
+                                    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+                                      age--;
+                                    }
+                                    
+                                    if (age < 18) {
+                                      window.alert("ATENÇÃO: O cliente ainda não possui 18 anos completos.");
+                                    }
+                                  }
+                                }}
                                 className="mt-1"
                               />
                             </div>
