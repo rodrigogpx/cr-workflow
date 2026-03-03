@@ -720,7 +720,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="featureApostilamento">Apostilamento</Label>
+                    <Label htmlFor="featureApostilamento">Aquisição & CRAF</Label>
                     <Switch
                       id="featureApostilamento"
                       checked={newTenant.featureApostilamento}
@@ -728,7 +728,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="featureRenovacao">Renovação</Label>
+                    <Label htmlFor="featureRenovacao">Compliance & Vencimentos</Label>
                     <Switch
                       id="featureRenovacao"
                       checked={newTenant.featureRenovacao}
@@ -736,7 +736,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="featureInsumos">Insumos</Label>
+                    <Label htmlFor="featureInsumos">Munições & Insumos</Label>
                     <Switch
                       id="featureInsumos"
                       checked={newTenant.featureInsumos}
@@ -854,7 +854,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="editFeatureApostilamento">Apostilamento</Label>
+                    <Label htmlFor="editFeatureApostilamento">Aquisição & CRAF</Label>
                     <Switch
                       id="editFeatureApostilamento"
                       checked={editingTenant.featureApostilamento}
@@ -862,7 +862,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="editFeatureRenovacao">Renovação</Label>
+                    <Label htmlFor="editFeatureRenovacao">Compliance & Vencimentos</Label>
                     <Switch
                       id="editFeatureRenovacao"
                       checked={editingTenant.featureRenovacao}
@@ -870,7 +870,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="edit-featureInsumos">Insumos</Label>
+                    <Label htmlFor="edit-featureInsumos">Munições & Insumos</Label>
                     <Switch 
                       id="edit-featureInsumos" 
                       checked={editingTenant.featureInsumos}
