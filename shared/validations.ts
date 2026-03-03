@@ -143,12 +143,14 @@ export const dateOptionalSchema = z
 export const nameSchema = z
   .string()
   .min(2, "Nome deve ter pelo menos 2 caracteres")
-  .regex(/^[^\d]+$/, "Nome não pode conter números");
+  .regex(/^[^\d]+$/, "Nome não pode conter números")
+  .transform((val: string) => val.toUpperCase());
 
 export const nameOptionalSchema = z
   .string()
   .optional()
-  .refine((val: string | undefined) => !val || val.length >= 2, "Nome deve ter pelo menos 2 caracteres");
+  .refine((val: string | undefined) => !val || val.length >= 2, "Nome deve ter pelo menos 2 caracteres")
+  .transform((val: string | undefined) => val?.toUpperCase());
 
 // Senha (mínimo 6 caracteres)
 export const passwordSchema = z
@@ -206,47 +208,47 @@ export const updateClientSchema = z.object({
   email: emailSchema,
   operatorId: z.number().optional(),
   // Dados pessoais adicionais
-  identityNumber: z.string().optional(),
+  identityNumber: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
   identityIssueDate: dateOptionalSchema,
-  identityIssuer: z.string().optional(),
+  identityIssuer: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
   identityUf: ufOptionalSchema,
   birthDate: dateOptionalSchema,
-  birthCountry: z.string().optional(),
+  birthCountry: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
   birthUf: ufOptionalSchema,
-  birthPlace: z.string().optional(),
-  gender: z.string().optional(),
-  profession: z.string().optional(),
-  otherProfession: z.string().optional(),
-  registrationNumber: z.string().optional(),
-  currentActivities: z.string().optional(),
+  birthPlace: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  gender: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  profession: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  otherProfession: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  registrationNumber: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  currentActivities: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
   phone2: phoneOptionalSchema,
-  motherName: z.string().optional(),
-  fatherName: z.string().optional(),
-  maritalStatus: z.string().optional(),
-  requestType: z.string().optional(),
-  cacNumber: z.string().optional(),
-  cacCategory: z.string().optional(),
-  previousCrNumber: z.string().optional(),
+  motherName: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  fatherName: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  maritalStatus: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  requestType: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  cacNumber: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  cacCategory: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  previousCrNumber: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
   psychReportValidity: dateOptionalSchema,
   techReportValidity: dateOptionalSchema,
   residenceUf: ufOptionalSchema,
   // Endereço
   cep: cepOptionalSchema,
-  address: z.string().optional(),
-  addressNumber: z.string().optional(),
-  neighborhood: z.string().optional(),
-  city: z.string().optional(),
-  complement: z.string().optional(),
+  address: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  addressNumber: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  neighborhood: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  city: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  complement: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
   // Geolocalização / Segundo Endereço do Acervo
   latitude: z.string().optional(),
   longitude: z.string().optional(),
   acervoCep: cepOptionalSchema,
-  acervoAddress: z.string().optional(),
-  acervoAddressNumber: z.string().optional(),
-  acervoNeighborhood: z.string().optional(),
-  acervoCity: z.string().optional(),
+  acervoAddress: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  acervoAddressNumber: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  acervoNeighborhood: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
+  acervoCity: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
   acervoUf: ufOptionalSchema,
-  acervoComplement: z.string().optional(),
+  acervoComplement: z.string().optional().transform((val: string | undefined) => val?.toUpperCase()),
   acervoLatitude: z.string().optional(),
   acervoLongitude: z.string().optional(),
 });
