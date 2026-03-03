@@ -65,7 +65,16 @@ export default function MainDashboard() {
             <span className="text-muted-foreground truncate max-w-[180px] sm:max-w-xs text-right">
               {user?.name || user?.email}
             </span>
-            {/* Platform admin button removed - only platform admins should access platform admin routes */}
+            {user?.role === "admin" && (
+              <Button
+                variant="outline"
+                onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin"))}
+                className="mt-1 h-8 px-4 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-wide bg-primary text-white border-2 border-primary hover:bg-primary/90 hover:border-primary/90 shadow-lg shadow-primary/30 flex items-center gap-1.5"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                Administração
+              </Button>
+            )}
             <Button
               variant="ghost"
               onClick={handleLogout}
