@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { APP_LOGO } from "@/const";
 import { Target, Shield, BookOpen, RefreshCcw, Inbox, MapPin, ChevronRight, LogOut, Lock } from "lucide-react";
 import { useLocation } from "wouter";
