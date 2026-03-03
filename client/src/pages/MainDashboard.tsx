@@ -29,6 +29,7 @@ export default function MainDashboard() {
     featureApostilamento: false,
     featureRenovacao: false,
     featureInsumos: false,
+    featureIAT: false,
   };
 
   return (
@@ -124,83 +125,77 @@ export default function MainDashboard() {
 
           {/* Módulo Aquisição & CRAF */}
           <Card className={`border-2 border-dashed ${features.featureApostilamento ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20' : 'border-white/10 opacity-80 hover:opacity-100'} bg-card/90 backdrop-blur-sm transition-all duration-300`}>
-            <CardHeader className="space-y-2 pb-3">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureApostilamento && 'text-muted-foreground'}`}>
                   <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${features.featureApostilamento ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
                     {features.featureApostilamento ? <Inbox className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                   </span>
-                  Aquisição &amp; CRAF
+                  Aquisição & CRAF
                 </CardTitle>
                 {features.featureApostilamento ? (
-                  <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
-                    Ativo
-                  </span>
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold tracking-wider">ATIVO</Badge>
                 ) : (
-                  <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-amber-500 text-white border border-amber-200/60 shadow-sm uppercase font-bold tracking-wide">
-                    Fase 2
-                  </span>
+                  <Badge variant="secondary" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px] font-bold tracking-wider">FASE 2</Badge>
                 )}
               </div>
-              <CardDescription className="text-xs sm:text-sm text-muted-foreground">
-                Fluxo para autorização de compra, upload de NF e emissão do CRAF, com cofre digital.
-              </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3 pt-0">
-              <p className="text-[0.7rem] sm:text-xs text-muted-foreground">
-                {features.featureApostilamento 
-                  ? "Gerencie aquisições, apostilamentos e o acervo de armas dos seus clientes."
-                  : "Módulo planejado. Em breve será possível acompanhar todas as aquisições do cliente a partir deste painel."}
-              </p>
+            <CardContent>
+              <div className="space-y-4">
+                <p className={`text-sm ${features.featureApostilamento ? 'text-muted-foreground' : 'text-muted-foreground/60'}`}>
+                  Fluxo para autorização de compra, upload de NF e emissão do CRAF, com cofre digital.
+                </p>
+                <div className={`text-xs ${features.featureApostilamento ? 'text-muted-foreground' : 'text-muted-foreground/60'} pt-2 border-t border-border/50`}>
+                  Módulo planejado. Em breve será possível acompanhar todas as aquisições do cliente a partir deste painel.
+                </div>
+              </div>
+            </CardContent>
+            <div className="p-4 pt-0 mt-auto">
               <Button disabled={!features.featureApostilamento} className="w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide" variant="outline">
                 {features.featureApostilamento ? "Acessar Módulo" : "Em breve"}
               </Button>
-            </CardContent>
+            </div>
           </Card>
 
           {/* Módulo IAT */}
-          <Card className={`border-2 border-dashed ${features.featureWorkflowCR ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20' : 'border-white/20 bg-card/95 backdrop-blur-sm hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20'} bg-card/95 backdrop-blur-sm transition-all duration-300`}>
-            <CardHeader className="space-y-2 pb-3">
+          <Card className={`border-2 border-dashed ${features.featureIAT ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20' : 'border-white/20 bg-card/95 backdrop-blur-sm hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20'} bg-card/95 backdrop-blur-sm transition-all duration-300`}>
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureWorkflowCR && 'text-muted-foreground'}`}>
-                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${features.featureWorkflowCR ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
-                    {features.featureWorkflowCR ? <BookOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureIAT && 'text-muted-foreground'}`}>
+                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${features.featureIAT ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
+                    {features.featureIAT ? <BookOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                   </span>
                   IAT – Instrução de Armamento e Tiro
                 </CardTitle>
-                {features.featureWorkflowCR ? (
-                  <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
-                    Ativo
-                  </span>
+                {features.featureIAT ? (
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold tracking-wider">ATIVO</Badge>
                 ) : (
-                  <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/40 uppercase font-semibold tracking-wide">
-                    Desabilitado
-                  </span>
+                  <Badge variant="secondary" className="bg-slate-500/10 text-slate-400 border-slate-500/40 text-[10px] font-bold tracking-wider uppercase">DESABILITADO</Badge>
                 )}
               </div>
-              <CardDescription className="text-xs sm:text-sm text-muted-foreground">
-                Gestão de instrutores autorizados a ministrar cursos, exames de capacidade técnica para emissão de laudos.
-              </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3 pt-0">
-              <p className="text-[0.7rem] sm:text-xs text-muted-foreground">
-                Módulo para instrutores de armamento e tiro (IAT) conforme legislação vigente. Controle de credenciamento PF para emissão de laudos.
-              </p>
-              <Button
-                disabled={!features.featureWorkflowCR}
-                className={`w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide border-2 border-dashed ${features.featureWorkflowCR ? 'border-white/40' : 'border-transparent'}`}
-                onClick={() => setLocation(buildTenantPath(tenantSlug, "/iat"))}
-              >
-                {features.featureWorkflowCR ? (
-                  <>
-                    Acessar Módulo IAT
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </>
-                ) : (
-                  "Módulo Indisponível"
-                )}
-              </Button>
+            <CardContent>
+              <div className="space-y-4">
+                <p className={`text-sm ${features.featureIAT ? 'text-muted-foreground' : 'text-muted-foreground/60'}`}>
+                  Gestão de instrutores autorizados a ministrar cursos, exames de capacidade técnica para emissão de laudos.
+                </p>
+                <div className={`text-xs ${features.featureIAT ? 'text-muted-foreground' : 'text-muted-foreground/60'} pt-2 border-t border-border/50`}>
+                  Módulo para instrutores de armamento e tiro (IAT) conforme legislação vigente. Controle de credenciamento PF para emissão de laudos.
+                </div>
+              </div>
             </CardContent>
+            <div className="p-4 pt-0 mt-auto">
+              <Button 
+                variant="default" 
+                onClick={() => setLocation(`/${tenantSlug}/iat`)}
+                disabled={!features.featureIAT}
+                className={`w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide border-2 border-dashed ${features.featureIAT ? 'border-white/40' : 'border-transparent'}`}
+              >
+                {features.featureIAT ? (
+                  <>Acessar Módulo IAT <ChevronRight className="ml-2 h-4 w-4" /></>
+                ) : "Em breve"}
+              </Button>
+            </div>
           </Card>
 
           {/* Módulo Munições & Insumos */}

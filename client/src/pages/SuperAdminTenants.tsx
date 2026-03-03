@@ -52,6 +52,7 @@ interface Tenant {
   featureApostilamento: boolean;
   featureRenovacao: boolean;
   featureInsumos: boolean;
+  featureIAT: boolean;
   plan: "starter" | "professional" | "enterprise";
   subscriptionStatus: "active" | "suspended" | "trial" | "cancelled";
   subscriptionExpiresAt: string | null;
@@ -123,6 +124,7 @@ export default function SuperAdminTenants() {
     featureApostilamento: false,
     featureRenovacao: false,
     featureInsumos: false,
+    featureIAT: false,
   });
 
   const { data: tenants = [], isLoading: isLoadingTenants, isFetching } = trpc.tenants.list.useQuery();
@@ -144,6 +146,7 @@ export default function SuperAdminTenants() {
         featureApostilamento: false,
         featureRenovacao: false,
         featureInsumos: false,
+        featureIAT: false,
       });
       utils.tenants.list.invalidate();
     },
@@ -292,6 +295,7 @@ export default function SuperAdminTenants() {
       featureApostilamento: Boolean(newTenant.featureApostilamento),
       featureRenovacao: Boolean(newTenant.featureRenovacao),
       featureInsumos: Boolean(newTenant.featureInsumos),
+      featureIAT: Boolean(newTenant.featureIAT),
       plan: newTenant.plan,
     });
   };
@@ -307,6 +311,7 @@ export default function SuperAdminTenants() {
       featureApostilamento: editingTenant.featureApostilamento,
       featureRenovacao: editingTenant.featureRenovacao,
       featureInsumos: editingTenant.featureInsumos,
+      featureIAT: editingTenant.featureIAT,
       maxUsers: editingTenant.maxUsers,
       maxClients: editingTenant.maxClients,
       plan: editingTenant.plan,
@@ -529,7 +534,10 @@ export default function SuperAdminTenants() {
                           <Badge variant="secondary" className="text-xs">REN</Badge>
                         )}
                         {tenant.featureInsumos && (
-                          <Badge variant="secondary" className="text-xs">INS</Badge>
+                          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-xs">Insumos</Badge>
+                        )}
+                        {tenant.featureIAT && (
+                          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-xs">IAT</Badge>
                         )}
                       </div>
 
@@ -735,6 +743,14 @@ export default function SuperAdminTenants() {
                       onCheckedChange={(checked) => setNewTenant({ ...newTenant, featureInsumos: checked })}
                     />
                   </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="featureIAT">Módulo IAT</Label>
+                    <Switch
+                      id="featureIAT"
+                      checked={newTenant.featureIAT}
+                      onCheckedChange={(checked) => setNewTenant({ ...newTenant, featureIAT: checked })}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -854,11 +870,19 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="editFeatureInsumos">Insumos</Label>
-                    <Switch
-                      id="editFeatureInsumos"
+                    <Label htmlFor="edit-featureInsumos">Insumos</Label>
+                    <Switch 
+                      id="edit-featureInsumos" 
                       checked={editingTenant.featureInsumos}
                       onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureInsumos: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-featureIAT">Módulo IAT</Label>
+                    <Switch 
+                      id="edit-featureIAT" 
+                      checked={editingTenant.featureIAT}
+                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureIAT: checked })}
                     />
                   </div>
                 </div>
