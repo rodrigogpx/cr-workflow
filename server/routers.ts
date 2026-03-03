@@ -2646,33 +2646,33 @@ export const appRouter = router({
         }
 
         try {
-          const tenantDb = await getTenantDb(tenant);
-          if (!tenantDb) {
+          const platformDb = await db.getDb();
+          if (!platformDb) {
             return {
               usersCount: 0,
               clientsCount: 0,
               storageUsedGB: 0,
               lastActivity: null,
-              error: 'Não foi possível conectar ao banco do tenant',
+              error: 'Banco de dados não disponível',
             };
           }
 
-          // Count users
-          const usersRes = await tenantDb.execute(sql`SELECT count(*) as count FROM "users"`);
+          // Count users for this tenant
+          const usersRes = await platformDb.execute(sql`SELECT count(*) as count FROM "users" WHERE "tenantId" = ${input.id}`);
           const usersCount = Number(usersRes[0]?.count || 0);
 
-          // Count clients
-          const clientsRes = await tenantDb.execute(sql`SELECT count(*) as count FROM "clients"`);
+          // Count clients for this tenant
+          const clientsRes = await platformDb.execute(sql`SELECT count(*) as count FROM "clients" WHERE "tenantId" = ${input.id}`);
           const clientsCount = Number(clientsRes[0]?.count || 0);
 
-          // Get last activity log
-          const activityRes = await tenantDb.execute(sql`SELECT "createdAt" FROM "auditLogs" ORDER BY "createdAt" DESC LIMIT 1`);
+          // Get last activity log for this tenant
+          const activityRes = await platformDb.execute(sql`SELECT "createdAt" FROM "auditLogs" WHERE "tenantId" = ${input.id} ORDER BY "createdAt" DESC LIMIT 1`);
           const lastActivity = activityRes[0]?.createdAt || null;
 
           return {
             usersCount,
             clientsCount,
-            storageUsedGB: 0, // Storage API not fully integrated per tenant yet
+            storageUsedGB: 0,
             lastActivity,
           };
         } catch (error: any) {
