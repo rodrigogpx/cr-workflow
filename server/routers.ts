@@ -2428,6 +2428,123 @@ export const appRouter = router({
         adminPassword: z.string().min(6),
         // Customization
         primaryColor: z.string().optional(),
+        secondaryColor: z.string().optional(),
+        featureWorkflowCR: z.boolean().default(true),
+        featureApostilamento: z.boolean().default(false),
+        featureRenovacao: z.boolean().default(false),
+        featureInsumos: z.boolean().default(false),
+        featureIAT: z.boolean().default(false),
+        plan: z.enum(['starter', 'professional', 'enterprise']).default('starter'),
+        maxUsers: z.number().default(10),
+        maxClients: z.number().default(500),
+        maxStorageGB: z.number().default(50),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Verificar se slug já existe
+        const existing = await db.getTenantBySlug(input.slug);
+        if (existing) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este slug já está em uso' });
+        }
+
+        // Verificar se email do admin já existe
+        const existingUser = await db.getUserByEmail(input.adminEmail);
+        if (existingUser) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
+        }
+
+        // No modo single-db, usar valores do DATABASE_URL
+        const isSingleDbMode = process.env.TENANT_DB_MODE === 'single';
+        let dbConfig = {
+          dbHost: input.dbHost || 'localhost',
+          dbPort: input.dbPort,
+          dbName: input.dbName || `cac360_${input.slug}`,
+          dbUser: input.dbUser || '',
+          dbPassword: input.dbPassword || '',
+        };
+
+        if (isSingleDbMode) {
+          // Extrair config do DATABASE_URL
+          const rawUrl = process.env.DATABASE_URL;
+          if (rawUrl) {
+            try {
+              const url = new URL(rawUrl);
+              dbConfig = {
+                dbHost: url.hostname,
+                dbPort: Number(url.port || 5432),
+                dbName: (url.pathname || '').replace(/^\//, ''),
+                dbUser: decodeURIComponent(url.username || ''),
+                dbPassword: decodeURIComponent(url.password || ''),
+              };
+            } catch { /* ignore parse errors */ }
+          }
+        }
+
+        const tenantId = await db.createTenant({
+          slug: input.slug,
+          name: input.name,
+          ...dbConfig,
+          primaryColor: input.primaryColor,
+          secondaryColor: input.secondaryColor,
+          featureWorkflowCR: input.featureWorkflowCR,
+          featureApostilamento: input.featureApostilamento,
+          featureRenovacao: input.featureRenovacao,
+          featureInsumos: input.featureInsumos,
+          featureIAT: input.featureIAT,
+          plan: input.plan,
+          maxUsers: input.maxUsers,
+          maxClients: input.maxClients,
+          maxStorageGB: input.maxStorageGB,
+          subscriptionStatus: 'trial',
+          isActive: true,
+        });
+
+        // Criar admin do tenant
+        const hashedPassword = await hashPassword(input.adminPassword);
+        await db.upsertUser({
+          tenantId,
+          name: input.adminName,
+          email: input.adminEmail,
+          hashedPassword,
+          role: 'admin',
+        });
+
+        await db.logTenantActivity({
+          tenantId,
+          action: 'created',
+          details: JSON.stringify({ slug: input.slug, plan: input.plan, adminEmail: input.adminEmail }),
+          performedBy: ctx.platformAdmin.id,
+        });
+        invalidateTenantCache(input.slug);
+
+        console.log('[AUDIT] Tenant created', {
+          actorId: ctx.platformAdmin.id,
+          tenantId,
+          slug: input.slug,
+        });
+
+        return { success: true, tenantId };
+      }),
+
+    // Atualizar tenant
+    update: platformAdminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        primaryColor: z.string().optional(),
+        secondaryColor: z.string().optional(),
+        logo: z.string().optional(),
+        favicon: z.string().optional(),
+        featureWorkflowCR: z.boolean().optional(),
+        featureApostilamento: z.boolean().optional(),
+        featureRenovacao: z.boolean().optional(),
+        featureInsumos: z.boolean().optional(),
+        featureIAT: z.boolean().optional(),
+        smtpHost: z.string().optional(),
+        smtpPort: z.number().optional(),
+        smtpUser: z.string().optional(),
+        smtpPassword: z.string().optional(),
+        smtpFrom: z.string().optional(),
+        plan: z.enum(['starter', 'professional', 'enterprise']).optional(),
         maxUsers: z.number().optional(),
         maxClients: z.number().optional(),
         maxStorageGB: z.number().optional(),
