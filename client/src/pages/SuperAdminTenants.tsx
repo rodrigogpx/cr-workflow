@@ -30,7 +30,9 @@ import {
   Edit,
   Eye,
   Globe,
-  Loader
+  Loader,
+  PlayCircle,
+  PauseCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -543,7 +545,11 @@ export default function SuperAdminTenants() {
                         onClick={() => toggleStatus(tenant)}
                         disabled={setStatus.isLoading}
                       >
-                        <Settings className="h-4 w-4" />
+                        {tenant.subscriptionStatus === "suspended" ? (
+                          <PlayCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <PauseCircle className="h-4 w-4 text-yellow-600" />
+                        )}
                       </Button>
                       <Button 
                         variant="ghost" 
