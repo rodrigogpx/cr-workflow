@@ -2551,6 +2551,92 @@ export const appRouter = router({
           tenantId: id,
           updates: Object.keys(updates),
         });
+
+        return { success: true };
+      }),
+
+    // Suspender/Ativar tenant
+    setStatus: platformAdminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(['active', 'suspended', 'trial', 'cancelled']),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const tenant = await db.getTenantById(input.id);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        await db.updateTenant(input.id, { subscriptionStatus: input.status });
+        invalidateTenantCache(tenant.slug);
+
+        await db.logTenantActivity({
+          tenantId: input.id,
+          action: 'status_changed',
+          details: JSON.stringify({ from: tenant.subscriptionStatus, to: input.status }),
+          performedBy: ctx.platformAdmin.id,
+        });
+
+        console.log('[AUDIT] Tenant status changed', {
+          actorId: ctx.platformAdmin.id,
+          tenantId: input.id,
+          oldStatus: tenant.subscriptionStatus,
+          newStatus: input.status,
+        });
+
+        return { success: true };
+      }),
+
+    // Deletar tenant (soft delete)
+    delete: platformAdminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const tenant = await db.getTenantById(input.id);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        await db.updateTenant(input.id, { isActive: false, subscriptionStatus: 'cancelled' });
+        invalidateTenantCache(tenant.slug);
+
+        await db.logTenantActivity({
+          tenantId: input.id,
+          action: 'deleted',
+          details: JSON.stringify({ slug: tenant.slug }),
+          performedBy: ctx.platformAdmin.id,
+        });
+
+        console.log('[AUDIT] Tenant deleted (soft)', {
+          actorId: ctx.platformAdmin.id,
+          tenantId: input.id,
+          slug: tenant.slug,
+        });
+
+        return { success: true };
+      }),
+
+    // Deletar tenant DEFINITIVAMENTE (hard delete)
+    hardDelete: platformAdminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const tenant = await db.getTenantById(input.id);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        await db.hardDeleteTenant(input.id);
+        invalidateTenantCache(tenant.slug);
+
+        // Não conseguimos logar atividade no tenant pois ele foi deletado
+        // Mas podemos logar se tivermos um log global de plataforma (futuro)
+        
+        console.log('[AUDIT] Tenant deleted (HARD)', {
+          actorId: ctx.platformAdmin.id,
+          tenantId: input.id,
+          slug: tenant.slug,
+        });
+
+        return { success: true };
       }),
 
     // Estatísticas do tenant
