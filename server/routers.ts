@@ -46,7 +46,19 @@ export const appRouter = router({
       if (!opts.ctx.user) return null;
       // Remover a senha (hashedPassword) do retorno do tRPC
       const { hashedPassword, ...safeUser } = opts.ctx.user;
-      return safeUser;
+      
+      // Injetar também as features do tenant no payload de usuário, se existir, para o front-end
+      const tenantFeatures = opts.ctx.tenant ? {
+        featureWorkflowCR: opts.ctx.tenant.featureWorkflowCR,
+        featureApostilamento: opts.ctx.tenant.featureApostilamento,
+        featureRenovacao: opts.ctx.tenant.featureRenovacao,
+        featureInsumos: opts.ctx.tenant.featureInsumos,
+      } : null;
+
+      return {
+        ...safeUser,
+        tenantFeatures
+      };
     }),
     platformMe: publicProcedure.query((opts: any) => {
       if (!opts.ctx.platformAdmin) return null;
