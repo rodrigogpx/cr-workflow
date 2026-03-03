@@ -573,7 +573,7 @@ export default function SuperAdminTenants() {
 
       {/* Create Tenant Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false); }}>
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle>Criar Novo Tenant</CardTitle>
@@ -741,7 +741,7 @@ export default function SuperAdminTenants() {
 
       {/* Edit Tenant Modal */}
       {editingTenant && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setEditingTenant(null); }}>
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle>Editar Tenant</CardTitle>
@@ -865,13 +865,16 @@ export default function SuperAdminTenants() {
       )}
       {/* Impersonate Password Modal */}
       {impersonatingTenantId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) { setImpersonatingTenantId(null); setImpersonatePassword(""); } }}>
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-indigo-500" />
-                Confirmação de Acesso
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-indigo-500" />
+                  Confirmação de Acesso
+                </CardTitle>
+                <button onClick={() => { setImpersonatingTenantId(null); setImpersonatePassword(""); }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+              </div>
               <CardDescription>
                 Para acessar este tenant como administrador, digite sua senha de Super Admin.
               </CardDescription>
