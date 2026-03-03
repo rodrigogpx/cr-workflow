@@ -101,6 +101,7 @@ function TenantStats({ tenantId }: { tenantId: number }) {
 export default function SuperAdminTenants() {
   const [, setLocation] = useLocation();
   const utils = trpc.useContext();
+  const { admin } = usePlatformAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
@@ -345,14 +346,20 @@ export default function SuperAdminTenants() {
                 <p className="text-sm text-purple-200">Gerenciamento de Tenants</p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              className="text-white border-white/50 hover:bg-white/10"
-              onClick={() => setLocation("/platform-admin/users")}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
+            <div className="flex items-center gap-6">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold">{admin?.name || "Admin"}</p>
+                <p className="text-xs text-purple-200">{admin?.email || ""}</p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="text-white border-white/50 hover:bg-white/10"
+                onClick={() => setLocation("/platform-admin/users")}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+            </div>
           </div>
         </div>
       </header>
