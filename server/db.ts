@@ -309,6 +309,13 @@ export async function getUserByEmailFromDb(tenantDb: ReturnType<typeof drizzle>,
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByEmailAndTenant(email: string, tenantId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(and(eq(users.email, email), eq(users.tenantId, tenantId))).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function upsertUserToDb(
   tenantDb: ReturnType<typeof drizzle>,
   user: InsertUser & { id?: number }

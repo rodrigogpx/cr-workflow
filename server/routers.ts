@@ -84,13 +84,7 @@ export const appRouter = router({
         let tenantSlug = ctx.tenantSlug;
 
         const user = tenantSlug && ctx.tenant
-          ? await (async () => {
-              const tenantDb = await getTenantDb(ctx.tenant);
-              if (!tenantDb) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
-              }
-              return await db.getUserByEmailFromDb(tenantDb, input.email);
-            })()
+          ? await db.getUserByEmailAndTenant(input.email, ctx.tenant.id)
           : await db.getUserByEmail(input.email);
 
         if (!user) {
