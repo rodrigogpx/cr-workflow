@@ -10,7 +10,7 @@ import { useEffectiveTenantSlug, buildTenantPath } from "@/_core/hooks/useTenant
 export default function MainDashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
-  const tenantSlug = useTenantSlug();
+  const tenantSlug = useEffectiveTenantSlug();
 
   const handleLogout = async () => {
     await logout();
