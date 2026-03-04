@@ -37,6 +37,14 @@ import Footer from "@/components/Footer";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
@@ -87,6 +95,48 @@ const formatCEP = (value: string): string => {
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 };
 
+function SinarmCommentsInline({ stepId }: { stepId: number }) {
+  const { data: comments } = trpc.workflow.getSinarmCommentsHistory.useQuery(
+    { stepId },
+    { enabled: !!stepId }
+  );
+
+  return (
+    <div className="mt-2">
+      <p className="text-xs font-semibold text-purple-800 mb-2 flex items-center gap-1">
+        <FileText className="h-3.5 w-3.5" />
+        Histórico de Comentários
+      </p>
+      {!comments || comments.length === 0 ? (
+        <p className="text-xs text-gray-400 italic">Nenhum comentário registrado.</p>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          {comments.map((c: any) => (
+            <div key={c.id} className="p-2.5 bg-white rounded border border-purple-100 space-y-1">
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span className="font-medium text-gray-700">{c.createdByName || 'Usuário'}</span>
+                <span>{new Date(c.createdAt).toLocaleString('pt-BR')}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                {c.oldStatus && (
+                  <>
+                    <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">{c.oldStatus}</span>
+                    <span className="text-gray-400">→</span>
+                  </>
+                )}
+                <span className="px-1.5 py-0.5 bg-purple-100 rounded text-purple-800 font-medium">{c.newStatus}</span>
+              </div>
+              {c.comment && (
+                <p className="text-xs text-gray-600 mt-0.5">{c.comment}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ClientWorkflow() {
   const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
@@ -97,6 +147,16 @@ export default function ClientWorkflow() {
   const [clientFormData, setClientFormData] = useState<Record<string, string>>({});
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedSubTask, setSelectedSubTask] = useState<{id: number, label: string, stepId: number} | null>(null);
+
+  const [isOutdatedDocDialogOpen, setIsOutdatedDocDialogOpen] = useState(false);
+  const [outdatedDocInfo, setOutdatedDocInfo] = useState<{ outdated: any; latest: any } | null>(null);
+
+  const [isSinarmStatusDialogOpen, setIsSinarmStatusDialogOpen] = useState(false);
+  const [pendingSinarmStatusChange, setPendingSinarmStatusChange] = useState<{
+    stepId: number;
+    status: string;
+  } | null>(null);
+  const [sinarmComment, setSinarmComment] = useState("");
 
   const { data: client } = trpc.clients.getById.useQuery(
     { id: Number(clientId) },
@@ -117,7 +177,6 @@ export default function ClientWorkflow() {
     { clientId: Number(clientId) },
     { enabled: !!clientId && isAuthenticated }
   );
-
 
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
     onSuccess: () => {
@@ -169,8 +228,19 @@ export default function ClientWorkflow() {
       toast.info("Buscando documentos...");
 
       const stepDocs = documents?.filter(doc => doc.workflowStepId === stepId) || [];
+
+      const latestDocsByKey = new Map<string, any>();
+      for (const doc of stepDocs) {
+        const key = doc.subTaskId ? `subtask:${doc.subTaskId}` : `doc:${doc.id}`;
+        const current = latestDocsByKey.get(key);
+        if (!current || new Date(doc.createdAt).getTime() > new Date(current.createdAt).getTime()) {
+          latestDocsByKey.set(key, doc);
+        }
+      }
+
+      const latestStepDocs = Array.from(latestDocsByKey.values());
       
-      if (!stepDocs || stepDocs.length === 0) {
+      if (!latestStepDocs || latestStepDocs.length === 0) {
         toast.error("Nenhum documento encontrado");
         setIsDownloading(false);
         setDownloadEnxovalMutation({isPending: false});
@@ -191,7 +261,7 @@ export default function ClientWorkflow() {
         console.error('Erro ao gerar PDF do cadastro:', pdfError);
       }
 
-      for (const doc of stepDocs) {
+      for (const doc of latestStepDocs) {
         try {
           const docResponse = await fetch(doc.fileUrl);
           const blob = await docResponse.blob();
@@ -682,6 +752,8 @@ export default function ClientWorkflow() {
                       
                       {[...step.subTasks].sort((a, b) => a.id - b.id).map((subTask) => {
                         const subTaskDocs = documents?.filter(doc => doc.subTaskId === subTask.id) || [];
+                        const subTaskDocsSorted = [...subTaskDocs].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                        const latestSubTaskDoc = subTaskDocsSorted[0] || null;
                         return (
                           <div key={subTask.id} className={`p-3 rounded-lg border ${subTask.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                             <div className="flex items-start gap-3 justify-between">
@@ -696,17 +768,77 @@ export default function ClientWorkflow() {
                                 {subTask.completed && <CheckCircle className="h-5 w-5 text-green-600" />}
                               </div>
                             </div>
-                            {subTaskDocs.length > 0 && (<div className="mt-3 ml-7 space-y-1 pt-3 border-t border-gray-200"><p className="text-xs font-semibold text-gray-600 mb-2">Documentos ({subTaskDocs.length}):</p>{subTaskDocs.map(doc => (<div key={doc.id} className="flex items-center gap-2 text-xs"><FileText className="h-3 w-3 text-blue-600 flex-shrink-0" /><a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-medium hover:underline truncate flex-1 min-w-0">{doc.fileName}</a><Button variant="ghost" size="sm" asChild className="h-5 w-5 p-0 flex-shrink-0"><a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"><Download className="h-3 w-3" /></a></Button></div>))}</div>)}
+                            {subTaskDocsSorted.length > 0 && (
+                              <div className="mt-3 ml-7 space-y-1 pt-3 border-t border-gray-200">
+                                <p className="text-xs font-semibold text-gray-600 mb-2">Documentos ({subTaskDocsSorted.length}):</p>
+                                {subTaskDocsSorted.map((doc: any) => {
+                                  const isLatest = latestSubTaskDoc?.id === doc.id;
+                                  const rowClass = isLatest
+                                    ? ''
+                                    : 'opacity-60 bg-[repeating-linear-gradient(135deg,rgba(0,0,0,0.06),rgba(0,0,0,0.06)_6px,transparent_6px,transparent_12px)] rounded px-1';
+                                  const nameClass = isLatest
+                                    ? 'text-blue-600 font-medium hover:underline'
+                                    : 'text-gray-700 font-medium line-through';
+
+                                  return (
+                                    <div key={doc.id} className={`flex items-center gap-2 text-xs ${rowClass}`}>
+                                      <FileText className="h-3 w-3 text-blue-600 flex-shrink-0" />
+
+                                      {isLatest ? (
+                                        <a
+                                          href={doc.fileUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={`${nameClass} truncate flex-1 min-w-0`}
+                                        >
+                                          {doc.fileName}
+                                        </a>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOutdatedDocInfo({ outdated: doc, latest: latestSubTaskDoc });
+                                            setIsOutdatedDocDialogOpen(true);
+                                          }}
+                                          className={`${nameClass} truncate flex-1 min-w-0 text-left`}
+                                        >
+                                          {doc.fileName}
+                                        </button>
+                                      )}
+
+                                      {isLatest && (
+                                        <Button variant="ghost" size="sm" asChild className="h-5 w-5 p-0 flex-shrink-0">
+                                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                                            <Download className="h-3 w-3" />
+                                          </a>
+                                        </Button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                       {step.subTasks && step.subTasks.length > 0 && (() => {
                         const allStepDocs = documents?.filter(doc => step.subTasks.some(st => st.id === doc.subTaskId)) || [];
-                        if (allStepDocs.length > 0) {
+                        const latestAllStepDocsMap = new Map<number, any>();
+                        for (const doc of allStepDocs) {
+                          if (!doc.subTaskId) continue;
+                          const current = latestAllStepDocsMap.get(doc.subTaskId);
+                          if (!current || new Date(doc.createdAt).getTime() > new Date(current.createdAt).getTime()) {
+                            latestAllStepDocsMap.set(doc.subTaskId, doc);
+                          }
+                        }
+                        const latestAllStepDocs = Array.from(latestAllStepDocsMap.values());
+                        if (latestAllStepDocs.length > 0) {
                           return (
                             <div className="mt-4 pt-4 border-t border-gray-200">
                               <Button onClick={() => handleDownloadEnxoval(step.id)} disabled={downloadEnxovalMutation.isPending} className="w-full">
-                                {downloadEnxovalMutation.isPending ? <>Gerando...</> : <>Enxoval ({allStepDocs.length})</>
+                                {downloadEnxovalMutation.isPending
+                                  ? 'Gerando...'
+                                  : `Enxoval (${latestAllStepDocs.length})`
                                 }
                               </Button>
                             </div>
@@ -849,7 +981,25 @@ export default function ClientWorkflow() {
                                 id="birthDate"
                                 type="date"
                                 value={clientFormData.birthDate || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, birthDate: e.target.value }))}
+                                onChange={(e) => {
+                                  const dateValue = e.target.value;
+                                  setClientFormData(prev => ({ ...prev, birthDate: dateValue }));
+                                  
+                                  if (dateValue) {
+                                    const birthDateObj = new Date(dateValue);
+                                    const today = new Date();
+                                    let age = today.getFullYear() - birthDateObj.getFullYear();
+                                    const m = today.getMonth() - birthDateObj.getMonth();
+                                    
+                                    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+                                      age--;
+                                    }
+                                    
+                                    if (age < 18) {
+                                      window.alert("ATENÇÃO: O cliente ainda não possui 18 anos completos.");
+                                    }
+                                  }
+                                }}
                                 className="mt-1"
                               />
                             </div>
@@ -1374,60 +1524,144 @@ export default function ClientWorkflow() {
                         </div>
                         
                         <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="sinarmStatus" className="text-sm font-medium text-gray-700">Status do Processo</Label>
-                            <Select
-                              value={step.sinarmStatus || ""}
-                              onValueChange={(value) => {
-                                updateStepMutation.mutate({
-                                  stepId: step.id,
-                                  sinarmStatus: value,
-                                });
-                              }}
-                            >
-                              <SelectTrigger className="mt-1">
-                                <SelectValue placeholder="Selecione o status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Solicitado">Solicitado</SelectItem>
-                                <SelectItem value="Aguardando Baixa GRU">Aguardando Baixa GRU</SelectItem>
-                                <SelectItem value="Em Análise">Em Análise</SelectItem>
-                                <SelectItem value="Correção Solicitada">Correção Solicitada</SelectItem>
-                                <SelectItem value="Deferido">Deferido</SelectItem>
-                                <SelectItem value="Indeferido">Indeferido</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor="protocolNumber" className="text-sm font-medium text-gray-700">Número de Protocolo</Label>
-                            <Input
-                              id="protocolNumber"
-                              type="text"
-                              placeholder="Ex: 2025/12345"
-                              defaultValue={step.protocolNumber || ""}
-                              onBlur={(e) => {
-                                if (e.target.value !== (step.protocolNumber || "")) {
-                                  updateStepMutation.mutate({
-                                    stepId: step.id,
-                                    protocolNumber: e.target.value,
-                                  });
-                                }
-                              }}
-                              className="mt-1"
-                            />
-                          </div>
-                          
-                          {step.sinarmStatus && (
-                            <div className="mt-4 p-3 bg-purple-100 rounded border border-purple-300">
-                              <p className="text-sm text-purple-900">
-                                <strong>Status Atual:</strong> {step.sinarmStatus}
-                                {step.protocolNumber && (
-                                  <span className="ml-2">| <strong>Protocolo:</strong> {step.protocolNumber}</span>
-                                )}
-                              </p>
+                          {/* Linha com 3 campos: Nº Protocolo | Data Abertura | Status */}
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <Label htmlFor="protocolNumber" className="text-sm font-medium text-gray-700">Número de Protocolo</Label>
+                              <Input
+                                id="protocolNumber"
+                                type="text"
+                                placeholder="Ex: 2025/12345"
+                                defaultValue={step.protocolNumber || ""}
+                                onBlur={(e) => {
+                                  if (e.target.value !== (step.protocolNumber || "")) {
+                                    updateStepMutation.mutate({
+                                      stepId: step.id,
+                                      protocolNumber: e.target.value,
+                                    });
+                                  }
+                                }}
+                                className="mt-1"
+                              />
                             </div>
-                          )}
+
+                            <div>
+                              <Label htmlFor="sinarmOpenDate" className="text-sm font-medium text-gray-700">Data de Abertura</Label>
+                              <Input
+                                id="sinarmOpenDate"
+                                type="date"
+                                defaultValue={step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : ""}
+                                onBlur={(e) => {
+                                  const newVal = e.target.value;
+                                  const currentVal = step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : "";
+                                  if (newVal !== currentVal) {
+                                    updateStepMutation.mutate({
+                                      stepId: step.id,
+                                      sinarmOpenDate: newVal ? new Date(newVal).toISOString() : undefined,
+                                    });
+                                  }
+                                }}
+                                className="mt-1"
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="sinarmStatus" className="text-sm font-medium text-gray-700">Status do Processo</Label>
+                              <Select
+                                value={step.sinarmStatus || ""}
+                                onValueChange={(value) => {
+                                  const protocolEl = document.getElementById("protocolNumber") as HTMLInputElement | null;
+                                  const dateEl = document.getElementById("sinarmOpenDate") as HTMLInputElement | null;
+                                  const hasProtocol = protocolEl?.value?.trim() || step.protocolNumber;
+                                  const hasDate = dateEl?.value?.trim() || step.sinarmOpenDate;
+                                  if (!hasProtocol || !hasDate) {
+                                    toast.error("Para alterar o status, preencha o Número de Protocolo e a Data de Abertura.");
+                                    return;
+                                  }
+                                  setPendingSinarmStatusChange({ stepId: step.id, status: value });
+                                  setSinarmComment("");
+                                  setIsSinarmStatusDialogOpen(true);
+                                }}
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="Selecione o status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Iniciado">Iniciado</SelectItem>
+                                  <SelectItem value="Solicitado">Solicitado</SelectItem>
+                                  <SelectItem value="Aguardando Baixa GRU">Aguardando Baixa GRU</SelectItem>
+                                  <SelectItem value="Em Análise">Em Análise</SelectItem>
+                                  <SelectItem value="Restituído">Restituído</SelectItem>
+                                  <SelectItem value="Deferido">Deferido</SelectItem>
+                                  <SelectItem value="Indeferido">Indeferido</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Modal de alteração de status */}
+                          <Dialog open={isSinarmStatusDialogOpen} onOpenChange={setIsSinarmStatusDialogOpen}>
+                            <DialogContent className="sm:max-w-lg">
+                              <DialogHeader>
+                                <DialogTitle>Alterar status do SINARM</DialogTitle>
+                                <DialogDescription>
+                                  Você pode registrar um comentário sobre esta alteração (opcional).
+                                </DialogDescription>
+                              </DialogHeader>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="sinarmComment" className="text-sm font-medium text-gray-700">
+                                  Comentário (opcional)
+                                </Label>
+                                <Textarea
+                                  id="sinarmComment"
+                                  value={sinarmComment}
+                                  onChange={(e) => setSinarmComment(e.target.value)}
+                                  placeholder="Ex: enviado comprovante, aguardando retorno, etc."
+                                />
+                              </div>
+
+                              <DialogFooter>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setIsSinarmStatusDialogOpen(false);
+                                    setPendingSinarmStatusChange(null);
+                                    setSinarmComment("");
+                                  }}
+                                >
+                                  Cancelar
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    if (!pendingSinarmStatusChange) return;
+                                    const trimmed = sinarmComment.trim();
+                                    updateStepMutation.mutate({
+                                      stepId: pendingSinarmStatusChange.stepId,
+                                      sinarmStatus: pendingSinarmStatusChange.status,
+                                      ...(trimmed ? { sinarmComment: trimmed } : {}),
+                                    });
+                                    setIsSinarmStatusDialogOpen(false);
+                                    setPendingSinarmStatusChange(null);
+                                    setSinarmComment("");
+                                  }}
+                                  disabled={updateStepMutation.isPending || !pendingSinarmStatusChange}
+                                >
+                                  {updateStepMutation.isPending ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Salvando...
+                                    </>
+                                  ) : (
+                                    'Salvar'
+                                  )}
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+
+                          {/* Histórico de comentários inline (sempre visível) */}
+                          <SinarmCommentsInline stepId={step.id} />
                         </div>
                       </div>
                     )}
@@ -1452,6 +1686,44 @@ export default function ClientWorkflow() {
             onUploadSuccess={(subTaskId) => toggleSubTask(subTaskId, false)}
           />
         )}
+
+        <Dialog open={isOutdatedDocDialogOpen} onOpenChange={setIsOutdatedDocDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Documento desatualizado</DialogTitle>
+              <DialogDescription>
+                Existe um documento mais atual para este item. Este arquivo serve apenas para consulta.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Mais recente</span>
+                <span className="font-medium text-right break-all">{outdatedDocInfo?.latest?.fileName || '-'}</span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Selecionado</span>
+                <span className="font-medium text-right break-all">{outdatedDocInfo?.outdated?.fileName || '-'}</span>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsOutdatedDocDialogOpen(false)}>
+                Fechar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (outdatedDocInfo?.outdated?.fileUrl) {
+                    window.open(outdatedDocInfo.outdated.fileUrl, '_blank');
+                  }
+                  setIsOutdatedDocDialogOpen(false);
+                }}
+              >
+                Abrir para consulta
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
       <Footer />
     </div>

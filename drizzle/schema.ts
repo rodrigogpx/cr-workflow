@@ -102,6 +102,7 @@ export const workflowSteps = pgTable("workflowSteps", {
   examinerName: varchar("examinerName", { length: 255 }),
   // Campos para Acompanhamento Sinarm-CAC
   sinarmStatus: varchar("sinarmStatus", { length: 50 }),
+  sinarmOpenDate: timestamp("sinarmOpenDate"),
   protocolNumber: varchar("protocolNumber", { length: 100 }),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
@@ -169,6 +170,31 @@ export const workflowStepsRelations = relations(workflowSteps, ({ one, many }) =
   }),
   subTasks: many(subTasks),
   documents: many(documents),
+  sinarmComments: many(sinarmCommentsHistory),
+}));
+
+export const sinarmCommentsHistory = pgTable("sinarmCommentsHistory", {
+  id: serial("id").primaryKey(),
+  workflowStepId: integer("workflowStepId").notNull(),
+  oldStatus: varchar("oldStatus", { length: 50 }),
+  newStatus: varchar("newStatus", { length: 50 }).notNull(),
+  comment: text("comment").notNull(),
+  createdBy: integer("createdBy").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type SinarmCommentHistory = typeof sinarmCommentsHistory.$inferSelect;
+export type InsertSinarmCommentHistory = typeof sinarmCommentsHistory.$inferInsert;
+
+export const sinarmCommentsHistoryRelations = relations(sinarmCommentsHistory, ({ one }) => ({
+  workflowStep: one(workflowSteps, {
+    fields: [sinarmCommentsHistory.workflowStepId],
+    references: [workflowSteps.id],
+  }),
+  user: one(users, {
+    fields: [sinarmCommentsHistory.createdBy],
+    references: [users.id],
+  }),
 }));
 
 export const subTasksRelations = relations(subTasks, ({ one }) => ({
@@ -352,6 +378,7 @@ export const tenants = pgTable("tenants", {
   featureApostilamento: boolean("featureApostilamento").default(false),
   featureRenovacao: boolean("featureRenovacao").default(false),
   featureInsumos: boolean("featureInsumos").default(false),
+  featureIAT: boolean("featureIAT").default(false),
   // Email Settings (per tenant)
   emailMethod: varchar("emailMethod", { length: 20 }).default("gateway").$type<"smtp" | "gateway">(), // smtp = direto, gateway = HTTP relay
   smtpHost: varchar("smtpHost", { length: 255 }),
@@ -416,6 +443,22 @@ export type PlatformAdmin = typeof platformAdmins.$inferSelect;
 export type InsertPlatformAdmin = typeof platformAdmins.$inferInsert;
 
 /**
+ * Platform Admin Audit Logs - audit trail for super admin operations
+ */
+export const platformAdminAuditLogs = pgTable("platformAdminAuditLogs", {
+  id: serial("id").primaryKey(),
+  platformAdminId: integer("platformAdminId").notNull(),
+  action: varchar("action", { length: 100 }).notNull(), // TENANT_CREATE, TENANT_DELETE, IMPERSONATE, etc
+  targetTenantId: integer("targetTenantId"),
+  details: text("details"), // JSON with action details
+  ipAddress: varchar("ipAddress", { length: 45 }), // IPv4 or IPv6
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type PlatformAdminAuditLog = typeof platformAdminAuditLogs.$inferSelect;
+export type InsertPlatformAdminAuditLog = typeof platformAdminAuditLogs.$inferInsert;
+
+/**
  * Tenant Activity Logs - audit trail for tenant operations
  */
 export const tenantActivityLogs = pgTable("tenantActivityLogs", {
@@ -452,5 +495,133 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   user: one(users, {
     fields: [auditLogs.userId],
     references: [users.id],
+  }),
+}));
+
+/**
+ * ============================================
+ * IAT MODULE TABLES
+ * ============================================
+ */
+
+/**
+ * IAT Instructors
+ */
+export const iatInstructors = pgTable("iat_instructors", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  userId: integer("userId"), // Optional link to system user
+  name: varchar("name", { length: 255 }).notNull(),
+  cpf: varchar("cpf", { length: 20 }),
+  crNumber: varchar("cr_number", { length: 50 }),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 255 }),
+  isPfAccredited: boolean("is_pf_accredited").default(false).notNull(),
+  pfAccreditationNumber: varchar("pf_accreditation_number", { length: 100 }),
+  signatureImage: text("signature_image"), // URL to uploaded signature
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type IatInstructor = typeof iatInstructors.$inferSelect;
+export type InsertIatInstructor = typeof iatInstructors.$inferInsert;
+
+export const iatInstructorsRelations = relations(iatInstructors, ({ one, many }) => ({
+  user: one(users, {
+    fields: [iatInstructors.userId],
+    references: [users.id],
+  }),
+  exams: many(iatExams),
+}));
+
+/**
+ * IAT Courses
+ */
+export const iatCourses = pgTable("iat_courses", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  workloadHours: integer("workload_hours").default(0),
+  courseType: varchar("course_type", { length: 100 }).notNull(), // Tiro Básico, Especialização, etc
+  institutionName: varchar("institution_name", { length: 255 }), // Nome da instituição
+  completionDate: timestamp("completion_date", { withTimezone: false }), // Data de conclusão
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type IatCourse = typeof iatCourses.$inferSelect;
+export type InsertIatCourse = typeof iatCourses.$inferInsert;
+
+export const iatCoursesRelations = relations(iatCourses, ({ many }) => ({
+  exams: many(iatExams),
+  schedules: many(iatSchedules),
+}));
+
+/**
+ * IAT Schedules
+ */
+export const iatSchedules = pgTable("iat_schedules", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").notNull(),
+  scheduleDate: timestamp("schedule_date", { withTimezone: false }).notNull(),
+  scheduleTime: varchar("schedule_time", { length: 10 }).notNull(),
+  location: varchar("location", { length: 255 }),
+  instructorId: integer("instructor_id"),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type IatSchedule = typeof iatSchedules.$inferSelect;
+export type InsertIatSchedule = typeof iatSchedules.$inferInsert;
+
+export const iatSchedulesRelations = relations(iatSchedules, ({ one }) => ({
+  course: one(iatCourses, {
+    fields: [iatSchedules.courseId],
+    references: [iatCourses.id],
+  }),
+  instructor: one(iatInstructors, {
+    fields: [iatSchedules.instructorId],
+    references: [iatInstructors.id],
+  }),
+}));
+
+/**
+ * IAT Exams & Tests
+ */
+export const iatExams = pgTable("iat_exams", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  clientId: integer("clientId").notNull(),
+  instructorId: integer("instructorId").notNull(),
+  courseId: integer("courseId"),
+  scheduledDate: timestamp("scheduled_date", { withTimezone: false }),
+  examType: varchar("exam_type", { length: 100 }).notNull(), // Laudo PF, Laudo Exército, Curso de Tiro
+  status: varchar("status", { length: 50 }).default('agendado').notNull(), // agendado, realizado, aprovado, reprovado, cancelado
+  weaponType: varchar("weapon_type", { length: 100 }), // Espécie de arma avaliada
+  score: varchar("score", { length: 50 }),
+  observations: text("observations"),
+  laudoPdfUrl: text("laudo_pdf_url"),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type IatExam = typeof iatExams.$inferSelect;
+export type InsertIatExam = typeof iatExams.$inferInsert;
+
+export const iatExamsRelations = relations(iatExams, ({ one }) => ({
+  client: one(clients, {
+    fields: [iatExams.clientId],
+    references: [clients.id],
+  }),
+  instructor: one(iatInstructors, {
+    fields: [iatExams.instructorId],
+    references: [iatInstructors.id],
+  }),
+  course: one(iatCourses, {
+    fields: [iatExams.courseId],
+    references: [iatCourses.id],
   }),
 }));

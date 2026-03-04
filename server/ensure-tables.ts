@@ -1,5 +1,6 @@
 import { getDb } from "./db";
 import { sql } from "drizzle-orm";
+import { hashPassword } from "./_core/auth";
 
 export async function ensureMissingTables() {
   const db = await getDb();
@@ -30,6 +31,7 @@ export async function ensureMissingTables() {
         "featureApostilamento" boolean DEFAULT false,
         "featureRenovacao" boolean DEFAULT false,
         "featureInsumos" boolean DEFAULT false,
+        "featureIAT" boolean DEFAULT false,
         "emailMethod" varchar(20) DEFAULT 'gateway',
         "smtpHost" varchar(255),
         "smtpPort" integer DEFAULT 587,
@@ -166,6 +168,141 @@ export async function ensureMissingTables() {
         "createdAt" timestamp DEFAULT now() NOT NULL
       );
     `);
+
+    // IAT Instructors
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_instructors" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "userId" integer,
+        "name" varchar(255) NOT NULL,
+        "cpf" varchar(20),
+        "cr_number" varchar(50),
+        "phone" varchar(20),
+        "email" varchar(255),
+        "is_pf_accredited" boolean DEFAULT false NOT NULL,
+        "pf_accreditation_number" varchar(100),
+        "signature_image" text,
+        "is_active" boolean DEFAULT true NOT NULL,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // IAT Courses
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_courses" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "title" varchar(255) NOT NULL,
+        "description" text,
+        "workload_hours" integer DEFAULT 0,
+        "course_type" varchar(100) NOT NULL,
+        "institution_name" varchar(255),
+        "completion_date" timestamp,
+        "is_active" boolean DEFAULT true NOT NULL,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // Add new columns to iat_courses if missing (for existing tables)
+    await db.execute(sql`ALTER TABLE "iat_courses" ADD COLUMN IF NOT EXISTS "institution_name" varchar(255);`);
+    await db.execute(sql`ALTER TABLE "iat_courses" ADD COLUMN IF NOT EXISTS "completion_date" timestamp;`);
+
+    // IAT Schedules
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_schedules" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "scheduleType" varchar(20) NOT NULL,
+        "courseId" integer,
+        "examId" integer,
+        "instructorId" integer,
+        "scheduledDate" timestamp NOT NULL,
+        "scheduledTime" varchar(10),
+        "location" varchar(255),
+        "title" varchar(255) NOT NULL,
+        "notes" text,
+        "status" varchar(50) DEFAULT 'agendado' NOT NULL,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // IAT Exams
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_exams" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "clientId" integer NOT NULL,
+        "instructorId" integer NOT NULL,
+        "courseId" integer,
+        "scheduled_date" timestamp,
+        "exam_type" varchar(100) NOT NULL,
+        "status" varchar(50) DEFAULT 'agendado' NOT NULL,
+        "weapon_type" varchar(100),
+        "score" varchar(50),
+        "observations" text,
+        "laudo_pdf_url" text,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // Alter tenants to add featureIAT if missing
+    await db.execute(sql`
+      ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "featureIAT" boolean DEFAULT false;
+    `);
+
+    // Sinarm Comments History
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "sinarmCommentsHistory" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "workflowStepId" integer NOT NULL,
+        "oldStatus" varchar(50),
+        "newStatus" varchar(50) NOT NULL,
+        "comment" text NOT NULL,
+        "createdBy" integer NOT NULL,
+        "createdAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // Add sinarmOpenDate to workflowSteps if missing
+    await db.execute(sql`
+      ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "sinarmOpenDate" timestamp;
+    `);
+
+    // Add protocolNumber to workflowSteps if missing
+    await db.execute(sql`
+      ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "protocolNumber" varchar(100);
+    `);
+
+    // Ensure default platform admin exists
+    try {
+      const adminEmails = process.env.SUPER_ADMIN_EMAILS 
+        ? process.env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+        : ['admin@acrdigital.com.br', 'admin@acedigital.com.br'];
+        
+      if (adminEmails.length > 0) {
+        const hashedPassword = await hashPassword('admin123'); // Default password, they should change it
+        
+        for (const email of adminEmails) {
+          // Check if it already exists to avoid ON CONFLICT which might not be supported or erroring
+          const result = await db.execute(sql`SELECT id FROM "platformAdmins" WHERE email = ${email} LIMIT 1`);
+          
+          if (result.length === 0) {
+            await db.execute(sql`
+              INSERT INTO "platformAdmins" ("email", "hashedPassword", "name", "isActive", "createdAt", "updatedAt")
+              VALUES (${email}, ${hashedPassword}, 'Platform Admin', true, now(), now());
+            `);
+            console.log(`[Migration] Created platform admin: ${email}`);
+          }
+        }
+      }
+    } catch (adminErr) {
+      console.error("[Migration] Error ensuring platform admins:", adminErr);
+    }
 
     console.log("[Migration] Missing tables created successfully.");
   } catch (error) {

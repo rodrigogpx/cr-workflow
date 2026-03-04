@@ -4,9 +4,10 @@
  * Página para gerenciamento de tenants (clubes) da plataforma CAC 360
  */
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,9 @@ import {
   Edit,
   Eye,
   Globe,
-  Loader
+  Loader,
+  PlayCircle,
+  PauseCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,6 +52,7 @@ interface Tenant {
   featureApostilamento: boolean;
   featureRenovacao: boolean;
   featureInsumos: boolean;
+  featureIAT: boolean;
   plan: "starter" | "professional" | "enterprise";
   subscriptionStatus: "active" | "suspended" | "trial" | "cancelled";
   subscriptionExpiresAt: string | null;
@@ -58,9 +62,48 @@ interface Tenant {
   createdAt: string;
 }
 
+function TenantStats({ tenantId }: { tenantId: number }) {
+  const { data, isLoading } = trpc.tenants.getStats.useQuery({ id: tenantId });
+  
+  if (isLoading) {
+    return <span className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Carregando...</span>;
+  }
+  
+  if (!data) return null;
+  
+  return (
+    <div className="flex items-center gap-3 text-xs mt-2">
+      <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+        <Users className="h-3 w-3" /> {data.usersCount} usuários
+      </span>
+      <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+        <Building2 className="h-3 w-3" /> {data.clientsCount} clientes
+      </span>
+      {data.lastActivity && (
+        <span className="flex items-center gap-1 text-gray-500" title={new Date(data.lastActivity).toLocaleString()}>
+          <Clock className="h-3 w-3" /> Última ativ.: {new Date(data.lastActivity).toLocaleDateString()}
+        </span>
+      )}
+      {(data as any).error && (
+        <span className="flex items-center gap-1 text-red-500" title={(data as any).error}>
+          <AlertCircle className="h-3 w-3" /> Erro BD
+        </span>
+      )}
+      
+      {/* Basic Notifications / Alerts logic */}
+      {data.usersCount > 0 && data.clientsCount === 0 && (
+        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full" title="Tenant configurado mas sem clientes cadastrados.">
+          <AlertCircle className="h-3 w-3" /> Inativo
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function SuperAdminTenants() {
   const [, setLocation] = useLocation();
   const utils = trpc.useContext();
+  const { admin } = usePlatformAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
@@ -81,6 +124,7 @@ export default function SuperAdminTenants() {
     featureApostilamento: false,
     featureRenovacao: false,
     featureInsumos: false,
+    featureIAT: false,
   });
 
   const { data: tenants = [], isLoading: isLoadingTenants, isFetching } = trpc.tenants.list.useQuery();
@@ -102,6 +146,7 @@ export default function SuperAdminTenants() {
         featureApostilamento: false,
         featureRenovacao: false,
         featureInsumos: false,
+        featureIAT: false,
       });
       utils.tenants.list.invalidate();
     },
@@ -157,14 +202,33 @@ export default function SuperAdminTenants() {
     onError: (err) => toast.error(err.message || "Erro ao rodar seed"),
   });
 
+  const [impersonatePassword, setImpersonatePassword] = useState("");
+  const [impersonatingTenantId, setImpersonatingTenantId] = useState<number | null>(null);
+
   const impersonate = trpc.tenants.impersonate.useMutation({
     onSuccess: (data) => {
-      toast.success(`Entrando como admin de ${data.adminName || data.tenantSlug}...`);
-      // Redirecionar para o tenant
-      window.location.href = `/${data.tenantSlug}/cr-workflow`;
+      toast.success(`Entrando como admin de ${data.tenantSlug}...`);
+      window.location.href = `/${data.tenantSlug}/dashboard`;
     },
-    onError: (err) => toast.error(err.message || "Erro ao acessar tenant"),
+    onError: (error) => {
+      toast.error(error.message || "Erro ao tentar acessar o tenant");
+      setImpersonatingTenantId(null);
+      setImpersonatePassword("");
+    }
   });
+
+  const handleImpersonate = (tenantId: number) => {
+    setImpersonatingTenantId(tenantId);
+  };
+
+  const confirmImpersonate = () => {
+    if (!impersonatingTenantId || !impersonatePassword) return;
+    
+    impersonate.mutate({ 
+      tenantId: impersonatingTenantId,
+      confirmPassword: impersonatePassword
+    });
+  };
 
   const filteredTenants = useMemo(
     () =>
@@ -231,6 +295,7 @@ export default function SuperAdminTenants() {
       featureApostilamento: Boolean(newTenant.featureApostilamento),
       featureRenovacao: Boolean(newTenant.featureRenovacao),
       featureInsumos: Boolean(newTenant.featureInsumos),
+      featureIAT: Boolean(newTenant.featureIAT),
       plan: newTenant.plan,
     });
   };
@@ -246,6 +311,7 @@ export default function SuperAdminTenants() {
       featureApostilamento: editingTenant.featureApostilamento,
       featureRenovacao: editingTenant.featureRenovacao,
       featureInsumos: editingTenant.featureInsumos,
+      featureIAT: editingTenant.featureIAT,
       maxUsers: editingTenant.maxUsers,
       maxClients: editingTenant.maxClients,
       plan: editingTenant.plan,
@@ -286,14 +352,20 @@ export default function SuperAdminTenants() {
                 <p className="text-sm text-purple-200">Gerenciamento de Tenants</p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              className="text-white border-white/50 hover:bg-white/10"
-              onClick={() => setLocation("/platform-admin/users")}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
+            <div className="flex items-center gap-6">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold">{admin?.name || "Admin"}</p>
+                <p className="text-xs text-purple-200">{admin?.email || ""}</p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="text-white border-white/50 hover:bg-white/10"
+                onClick={() => setLocation("/platform-admin/users")}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -433,19 +505,18 @@ export default function SuperAdminTenants() {
                           {getStatusBadge(tenant.subscriptionStatus)}
                           {getPlanBadge(tenant.plan)}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1">
-                            <Globe className="h-3 w-3" />
-                            {tenant.slug}.cac360.com.br
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Database className="h-3 w-3" />
-                            {tenant.dbName}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Users className="h-3 w-3" />
-                            {tenant.maxUsers} usuários / {tenant.maxClients} clientes
-                          </span>
+                        <div className="flex flex-col gap-1 mt-1">
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Globe className="h-3 w-3" />
+                              cac360.com.br/{tenant.slug}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Database className="h-3 w-3" />
+                              {tenant.dbName}
+                            </span>
+                          </div>
+                          <TenantStats tenantId={tenant.id} />
                         </div>
                       </div>
                     </div>
@@ -463,19 +534,22 @@ export default function SuperAdminTenants() {
                           <Badge variant="secondary" className="text-xs">REN</Badge>
                         )}
                         {tenant.featureInsumos && (
-                          <Badge variant="secondary" className="text-xs">INS</Badge>
+                          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-xs">Insumos</Badge>
+                        )}
+                        {tenant.featureIAT && (
+                          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-xs">IAT</Badge>
                         )}
                       </div>
 
                       {/* Actions */}
                       <Button 
-                        variant="ghost" 
-                        size="icon" 
+                        variant="outline" 
+                        size="icon"
                         title="Entrar como Admin"
-                        onClick={() => impersonate.mutate({ tenantId: tenant.id })}
-                        disabled={impersonate.isLoading || !tenant.isActive}
+                        onClick={() => handleImpersonate(tenant.id)}
+                        disabled={impersonate.isPending || !tenant.isActive}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Globe className="h-4 w-4 text-indigo-500" />
                       </Button>
                       <Button variant="ghost" size="icon" title="Editar" onClick={() => setEditingTenant(tenant)}>
                         <Edit className="h-4 w-4" />
@@ -487,7 +561,11 @@ export default function SuperAdminTenants() {
                         onClick={() => toggleStatus(tenant)}
                         disabled={setStatus.isLoading}
                       >
-                        <Settings className="h-4 w-4" />
+                        {tenant.subscriptionStatus === "suspended" ? (
+                          <PlayCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <PauseCircle className="h-4 w-4 text-yellow-600" />
+                        )}
                       </Button>
                       <Button 
                         variant="ghost" 
@@ -517,7 +595,7 @@ export default function SuperAdminTenants() {
 
       {/* Create Tenant Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false); }}>
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle>Criar Novo Tenant</CardTitle>
@@ -642,7 +720,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="featureApostilamento">Apostilamento</Label>
+                    <Label htmlFor="featureApostilamento">Aquisição & CRAF</Label>
                     <Switch
                       id="featureApostilamento"
                       checked={newTenant.featureApostilamento}
@@ -650,7 +728,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="featureRenovacao">Renovação</Label>
+                    <Label htmlFor="featureRenovacao">Compliance & Vencimentos</Label>
                     <Switch
                       id="featureRenovacao"
                       checked={newTenant.featureRenovacao}
@@ -658,11 +736,19 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="featureInsumos">Insumos</Label>
+                    <Label htmlFor="featureInsumos">Munições & Insumos</Label>
                     <Switch
                       id="featureInsumos"
                       checked={newTenant.featureInsumos}
                       onCheckedChange={(checked) => setNewTenant({ ...newTenant, featureInsumos: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="featureIAT">Módulo IAT</Label>
+                    <Switch
+                      id="featureIAT"
+                      checked={newTenant.featureIAT}
+                      onCheckedChange={(checked) => setNewTenant({ ...newTenant, featureIAT: checked })}
                     />
                   </div>
                 </div>
@@ -685,7 +771,7 @@ export default function SuperAdminTenants() {
 
       {/* Edit Tenant Modal */}
       {editingTenant && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setEditingTenant(null); }}>
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle>Editar Tenant</CardTitle>
@@ -768,7 +854,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="editFeatureApostilamento">Apostilamento</Label>
+                    <Label htmlFor="editFeatureApostilamento">Aquisição & CRAF</Label>
                     <Switch
                       id="editFeatureApostilamento"
                       checked={editingTenant.featureApostilamento}
@@ -776,7 +862,7 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="editFeatureRenovacao">Renovação</Label>
+                    <Label htmlFor="editFeatureRenovacao">Compliance & Vencimentos</Label>
                     <Switch
                       id="editFeatureRenovacao"
                       checked={editingTenant.featureRenovacao}
@@ -784,11 +870,19 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="editFeatureInsumos">Insumos</Label>
-                    <Switch
-                      id="editFeatureInsumos"
+                    <Label htmlFor="edit-featureInsumos">Munições & Insumos</Label>
+                    <Switch 
+                      id="edit-featureInsumos" 
                       checked={editingTenant.featureInsumos}
                       onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureInsumos: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-featureIAT">Módulo IAT</Label>
+                    <Switch 
+                      id="edit-featureIAT" 
+                      checked={editingTenant.featureIAT}
+                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureIAT: checked })}
                     />
                   </div>
                 </div>
@@ -801,6 +895,63 @@ export default function SuperAdminTenants() {
                 <Button onClick={handleUpdateTenant} className="bg-purple-600 hover:bg-purple-700" disabled={updateTenant.isLoading}>
                   {updateTenant.isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Salvar alterações
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {/* Impersonate Password Modal */}
+      {impersonatingTenantId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) { setImpersonatingTenantId(null); setImpersonatePassword(""); } }}>
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-indigo-500" />
+                  Confirmação de Acesso
+                </CardTitle>
+                <button onClick={() => { setImpersonatingTenantId(null); setImpersonatePassword(""); }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+              </div>
+              <CardDescription>
+                Para acessar este tenant como administrador, digite sua senha de Super Admin.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="impersonatePassword">Sua Senha</Label>
+                <Input
+                  id="impersonatePassword"
+                  type="password"
+                  placeholder="Sua senha de Super Admin"
+                  value={impersonatePassword}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setImpersonatePassword(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      confirmImpersonate();
+                    }
+                  }}
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setImpersonatingTenantId(null);
+                    setImpersonatePassword("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={confirmImpersonate}
+                  disabled={!impersonatePassword || impersonate.isPending}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  {impersonate.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Confirmar Acesso
                 </Button>
               </div>
             </CardContent>

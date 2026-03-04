@@ -1,10 +1,10 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
-import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails } from "./emailService";
+import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64, buildInlineLogoAttachment } from "./emailService";
 import * as db from "./db";
 import { invalidateTenantCache } from "./config/tenant.config";
 import { storagePut } from "./storage";
@@ -15,9 +15,19 @@ import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
 import { getTenantDb } from "./config/tenant.config";
 import { createClientSchema, updateClientSchema } from "@shared/validations";
+import { iatRouter } from "./routers/iat";
 
 async function getTenantDbOrNull(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
+    // No single-db mode, usar o platformDb diretamente (sem healthcheck que falha no Railway)
+    const isSingleDbMode = process.env.TENANT_DB_MODE === 'single' || process.env.NODE_ENV === 'production';
+    if (isSingleDbMode) {
+      const platformDb = await db.getDb();
+      if (!platformDb) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco de dados não disponível' });
+      }
+      return platformDb;
+    }
     const tenantDb = await getTenantDb(ctx.tenant);
     if (!tenantDb) {
       throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
@@ -30,23 +40,79 @@ async function getTenantDbOrNull(ctx: any) {
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  iat: iatRouter,
   auth: router({
-    me: publicProcedure.query(opts => {
-      return opts.ctx.user;
+    me: publicProcedure.query((opts: any) => {
+      if (!opts.ctx.user) return null;
+      // Remover a senha (hashedPassword) do retorno do tRPC
+      const { hashedPassword, ...safeUser } = opts.ctx.user;
+      
+      // Injetar também as features do tenant no payload de usuário, se existir, para o front-end
+      const tenantFeatures = opts.ctx.tenant ? {
+        featureWorkflowCR: opts.ctx.tenant.featureWorkflowCR,
+        featureApostilamento: opts.ctx.tenant.featureApostilamento,
+        featureRenovacao: opts.ctx.tenant.featureRenovacao,
+        featureInsumos: opts.ctx.tenant.featureInsumos,
+        featureIAT: opts.ctx.tenant.featureIAT,
+      } : null;
+
+      return {
+        ...safeUser,
+        tenantFeatures
+      };
     }),
+    platformMe: publicProcedure.query((opts: any) => {
+      if (!opts.ctx.platformAdmin) return null;
+      // Remover a senha do platformAdmin também, por segurança
+      const { hashedPassword, ...safeAdmin } = opts.ctx.platformAdmin;
+      return safeAdmin;
+    }),
+    platformLogin: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const admin = await db.getPlatformAdminByEmail(input.email);
+        
+        if (!admin || !admin.isActive) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+        }
+
+        const passwordMatch = await comparePassword(input.password, admin.hashedPassword);
+        if (!passwordMatch) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+        }
+
+        const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
+          name: admin.name || "",
+          expiresInMs: ONE_YEAR_MS,
+          isPlatformAdmin: true,
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, { 
+          ...cookieOptions, 
+          maxAge: ONE_YEAR_MS, 
+          path: "/",
+          httpOnly: true,
+          sameSite: "lax",
+        });
+
+        return {
+          success: true,
+          admin: {
+            id: admin.id,
+            name: admin.name,
+            email: admin.email,
+            role: admin.role,
+          },
+        };
+      }),
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const tenantSlug = ctx.tenantSlug;
+        let tenantSlug = ctx.tenantSlug;
 
         const user = tenantSlug && ctx.tenant
-          ? await (async () => {
-              const tenantDb = await getTenantDb(ctx.tenant);
-              if (!tenantDb) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
-              }
-              return await db.getUserByEmailFromDb(tenantDb, input.email);
-            })()
+          ? await db.getUserByEmailAndTenant(input.email, ctx.tenant.id)
           : await db.getUserByEmail(input.email);
 
         if (!user) {
@@ -56,6 +122,14 @@ export const appRouter = router({
         const passwordMatch = await comparePassword(input.password, user.hashedPassword);
         if (!passwordMatch) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+        }
+
+        // If no tenantSlug in context but user has tenantId, resolve it
+        if (!tenantSlug && user.tenantId) {
+          const userTenant = await db.getTenantById(user.tenantId);
+          if (userTenant) {
+            tenantSlug = userTenant.slug;
+          }
         }
 
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
@@ -182,77 +256,131 @@ export const appRouter = router({
 
   // Clients router
   clients: router({
-    list: tenantProcedure.query(async ({ ctx }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
-      const tenantId = ctx.tenant?.id;
-      
-      // Admin vê todos os clientes, operador vê todos os clientes
-      // Despachante vê clientes com "Juntada de Documentos" concluída
-      let clients;
-      if (ctx.user.role === 'admin') {
-        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
-      } else if (ctx.user.role === 'operator') {
-        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
-      } else if (ctx.user.role === 'despachante') {
-        // Despachante vê TODOS os clientes, mas filtraremos depois pela etapa concluída
-        clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
-      } else {
-        clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
+    list: protectedProcedure.query(async ({ ctx }) => {
+      try {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id;
+        
+        // Admin vê todos os clientes, operador vê todos os clientes
+        // Despachante vê clientes com "Juntada de Documentos" concluída
+        let clients: any[] = [];
+        if (ctx.user.role === 'admin') {
+          clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+        } else if (ctx.user.role === 'operator') {
+          clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+        } else if (ctx.user.role === 'despachante') {
+          // Despachante vê TODOS os clientes, mas filtraremos depois pela etapa concluída
+          clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+        } else {
+          clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
+        }
+
+        const safeClients: any[] = Array.isArray(clients) ? clients : [];
+
+        const assignedUserIds: number[] = safeClients
+          .map((c: any) => c.operatorId)
+          .filter((id: any): id is number => typeof id === 'number');
+
+        const uniqueAssignedUserIds: number[] = Array.from(new Set<number>(assignedUserIds));
+        const assignedUsers = tenantDb
+          ? await db.getUsersByIdsFromDb(tenantDb, uniqueAssignedUserIds)
+          : await db.getUsersByIds(uniqueAssignedUserIds);
+          
+        const safeAssignedUsers: any[] = Array.isArray(assignedUsers) ? assignedUsers : [];
+        const assignedUserMap = new Map<number, any>(safeAssignedUsers.map((u: any) => [u.id, u]));
+        
+        // Ordem canônica das fases do workflow
+        const PHASE_ORDER = [
+          'cadastro',
+          'agendamento-psicotecnico',
+          'agendamento-laudo',
+          'juntada-documento',
+          'acompanhamento-sinarm',
+        ];
+
+        // Adicionar estatísticas de workflow para cada cliente
+        const clientsWithProgress = await Promise.all(
+          safeClients.map(async (client) => {
+            const rawWorkflow = tenantDb
+              ? await db.getWorkflowByClientFromDb(tenantDb, client.id)
+              : await db.getWorkflowByClient(client.id);
+              
+            const workflow: any[] = Array.isArray(rawWorkflow) ? rawWorkflow : [];
+            
+            const totalSteps = workflow.length;
+            const completedSteps = workflow.filter((s: any) => s.completed).length;
+            const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+            
+            // Verificar se "Juntada de Documentos" está concluída (stepId 2 ou título contendo "juntada"/"documentos")
+            const juntadaStep = workflow.find((s: any) => 
+              s.stepId === 2 || 
+              s.stepId === '2' ||
+              s.stepId === 'juntada-documento' ||
+              s.stepTitle?.toLowerCase()?.includes('juntada') ||
+              s.stepTitle?.toLowerCase()?.includes('documentos')
+            );
+            const juntadaConcluida = juntadaStep?.completed === true;
+
+            // Determinar a fase pendente atual (primeira não concluída na ordem canônica)
+            let currentPendingStep: string | null = null;
+            let completedPhases: Record<string, boolean> = {};
+
+            for (const phaseId of PHASE_ORDER) {
+              const step = workflow.find((s: any) => s.stepId === phaseId);
+              const isCompleted = step ? step.completed : false;
+              completedPhases[phaseId] = isCompleted;
+              
+              if (!isCompleted && !currentPendingStep) {
+                currentPendingStep = phaseId;
+              }
+            }
+            // Se todas as fases canônicas estão concluídas, marcar como 'concluido'
+            if (!currentPendingStep && completedSteps > 0 && completedSteps >= totalSteps) {
+              currentPendingStep = 'concluido';
+            }
+
+            // Extrair status detalhado do SINARM
+            const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
+            const sinarmStatus: string | null = sinarmStep?.sinarmStatus || null;
+            const protocolNumber: string | null = sinarmStep?.protocolNumber || null;
+            
+            return {
+              ...client,
+              progress,
+              totalSteps,
+              completedSteps,
+              juntadaConcluida,
+              currentPendingStep,
+              completedPhases,
+              sinarmStatus,
+              protocolNumber,
+              assignedOperator: client.operatorId ? (() => {
+                const u = assignedUserMap.get(client.operatorId);
+                return u ? { id: u.id, name: u.name, email: u.email } : null;
+              })() : null,
+            };
+          })
+        );
+        
+        // Se for despachante, filtrar apenas clientes com Juntada de Documentos concluída
+        const filteredClients = ctx.user.role === 'despachante'
+          ? clientsWithProgress.filter(c => c.juntadaConcluida)
+          : clientsWithProgress;
+        
+        return filteredClients;
+      } catch (error: any) {
+        console.error('[clients.list] Error:', error);
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error instanceof Error ? `ERROR: ${error.message}\nSTACK: ${error.stack}` : (error?.message || 'Erro interno ao listar clientes'),
+        });
       }
-
-      const assignedUserIds: number[] = (clients || [])
-        .map((c: any) => c.operatorId)
-        .filter((id: any): id is number => typeof id === 'number');
-
-      const uniqueAssignedUserIds: number[] = Array.from(new Set<number>(assignedUserIds));
-      const assignedUsers = tenantDb
-        ? await db.getUsersByIdsFromDb(tenantDb, uniqueAssignedUserIds)
-        : await db.getUsersByIds(uniqueAssignedUserIds);
-      const assignedUserMap = new Map<number, any>(assignedUsers.map((u: any) => [u.id, u]));
-      
-      // Adicionar estatísticas de workflow para cada cliente
-      const clientsWithProgress = await Promise.all(
-        clients.map(async (client) => {
-          const workflow = tenantDb
-            ? await db.getWorkflowByClientFromDb(tenantDb, client.id)
-            : await db.getWorkflowByClient(client.id);
-          const totalSteps = workflow.length;
-          const completedSteps = workflow.filter((s: any) => s.completed).length;
-          const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
-          
-          // Verificar se "Juntada de Documentos" está concluída (stepId 2 ou título contendo "juntada"/"documentos")
-          const juntadaStep = workflow.find((s: any) => 
-            s.stepId === 2 || 
-            s.stepId === '2' ||
-            s.stepId === 'juntada-documento' ||
-            s.stepTitle?.toLowerCase().includes('juntada') ||
-            s.stepTitle?.toLowerCase().includes('documentos')
-          );
-          const juntadaConcluida = juntadaStep?.completed === true;
-          
-          return {
-            ...client,
-            progress,
-            totalSteps,
-            completedSteps,
-            juntadaConcluida,
-            assignedOperator: client.operatorId ? (() => {
-              const u = assignedUserMap.get(client.operatorId);
-              return u ? { id: u.id, name: u.name, email: u.email } : null;
-            })() : null,
-          };
-        })
-      );
-      
-      // Se for despachante, filtrar apenas clientes com Juntada de Documentos concluída
-      const filteredClients = ctx.user.role === 'despachante'
-        ? clientsWithProgress.filter(c => c.juntadaConcluida)
-        : clientsWithProgress;
-      
-      return filteredClients;
     }),
 
-    getById: tenantProcedure
+    getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -271,7 +399,7 @@ export const appRouter = router({
         return client;
       }),
 
-    create: tenantProcedure
+    create: protectedProcedure
       .input(createClientSchema)
       .mutation(async ({ ctx, input }) => {
         // Permissão:
@@ -384,10 +512,12 @@ export const appRouter = router({
             : await db.getEmailTemplate('boasvindas-filiado');
           
           if (welcomeTemplate && input.email) {
-            // Buscar logo do tenant para variável {{logo}}
+            // Buscar logo do tenant para variável {{logo}} e converter para base64
             const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
             const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+            const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
             
+            // Logo já está salva como base64 no banco
             // Substituir variáveis no template
             const replaceVariables = (text: string) => {
               let result = text;
@@ -396,9 +526,9 @@ export const appRouter = router({
               result = result.replace(/{{email}}/g, input.email || '');
               result = result.replace(/{{cpf}}/g, input.cpf || '');
               result = result.replace(/{{telefone}}/g, input.phone || '');
-              // Variável {{logo}} - renderiza como tag <img> se houver logo configurada
+              // Variável {{logo}} - renderiza como inline attachment (CID)
               if (emailLogoUrl) {
-                result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+                result = result.replace(/{{logo}}/g, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
               } else {
                 result = result.replace(/{{logo}}/g, '');
               }
@@ -412,6 +542,7 @@ export const appRouter = router({
               to: input.email,
               subject: finalSubject,
               html: finalContent,
+              attachments: inlineLogo ? [inlineLogo] : undefined,
               tenantDb,
               tenantId: ctx.tenant?.id,
             });
@@ -475,7 +606,7 @@ export const appRouter = router({
         return { id: clientId };
       }),
 
-        update: tenantProcedure
+        update: protectedProcedure
           .input(updateClientSchema)
           .mutation(async ({ ctx, input }) => {
             const tenantDb = await getTenantDbOrNull(ctx);
@@ -591,7 +722,7 @@ export const appRouter = router({
 
   // Workflow router
   workflow: router({
-    getByClient: tenantProcedure
+    getByClient: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -620,7 +751,7 @@ export const appRouter = router({
           ? steps.filter(step => 
               DESPACHANTE_VISIBLE_STEPS.includes(step.stepId) ||
               DESPACHANTE_VISIBLE_TITLES.some(title => 
-                step.stepTitle?.toLowerCase().includes(title)
+                step.stepTitle?.toLowerCase()?.includes(title)
               )
             )
           : steps;
@@ -641,13 +772,15 @@ export const appRouter = router({
         return stepsWithSubTasks;
       }),
 
-    updateStep: tenantProcedure
+    updateStep: protectedProcedure
       .input(z.object({
         clientId: z.number().optional(),
         stepId: z.number(),
         completed: z.boolean().optional(),
         sinarmStatus: z.string().optional(),
-        protocolNumber: z.string().optional(),
+        sinarmOpenDate: z.string().optional().nullable(),
+        protocolNumber: z.string().optional().nullable(),
+        sinarmComment: z.string().optional()
       }))
       .mutation(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -669,7 +802,12 @@ export const appRouter = router({
         // Verificar permissão
         // Despachantes podem alterar sinarmStatus e protocolNumber na fase Acompanhamento Sinarm-CAC
         const isDespachante = ctx.user.role === 'despachante';
-        const isUpdatingSinarmOnly = (input.sinarmStatus !== undefined || input.protocolNumber !== undefined) && input.completed === undefined;
+        const isUpdatingSinarmOnly = (
+          input.sinarmStatus !== undefined || 
+          input.protocolNumber !== undefined ||
+          input.sinarmOpenDate !== undefined ||
+          input.sinarmComment !== undefined
+        ) && input.completed === undefined;
         const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
         
         if (!hasGeneralPermission && !(isDespachante && isUpdatingSinarmOnly)) {
@@ -680,7 +818,7 @@ export const appRouter = router({
         if (input.completed === true) {
           const isLaudoStep =
             currentStep.stepId === 'agendamento-laudo' ||
-            currentStep.stepTitle?.toLowerCase().includes('laudo') === true;
+            currentStep.stepTitle?.toLowerCase()?.includes('laudo') === true;
 
           if (isLaudoStep) {
             // Buscar todas as etapas do cliente
@@ -690,8 +828,8 @@ export const appRouter = router({
             
             const avaliacaoStep = allSteps.find((s: any) => 
               s.stepId === 'agendamento-psicotecnico' || 
-              s.stepTitle?.toLowerCase().includes('avaliação psicológica') ||
-              s.stepTitle?.toLowerCase().includes('psicotécnico')
+              s.stepTitle?.toLowerCase()?.includes('avaliação psicológica') ||
+              s.stepTitle?.toLowerCase()?.includes('psicotécnico')
             );
             
             if (avaliacaoStep && !avaliacaoStep.completed) {
@@ -708,7 +846,7 @@ export const appRouter = router({
           const isJuntadaStep =
             currentStep.stepId === 'juntada-documento' ||
             currentStep.stepId === 'juntada-documentos' ||
-            currentStep.stepTitle?.toLowerCase().includes('juntada') === true;
+            currentStep.stepTitle?.toLowerCase()?.includes('juntada') === true;
 
           if (isJuntadaStep) {
             const subTasksList = tenantDb
@@ -739,12 +877,33 @@ export const appRouter = router({
         
         if (input.completed !== undefined) updateData.completed = input.completed;
         if (input.sinarmStatus !== undefined) updateData.sinarmStatus = input.sinarmStatus;
+        if (input.sinarmOpenDate !== undefined) updateData.sinarmOpenDate = input.sinarmOpenDate ? new Date(input.sinarmOpenDate) : null;
         if (input.protocolNumber !== undefined) updateData.protocolNumber = input.protocolNumber;
         
         if (tenantDb) {
           await db.upsertWorkflowStepToDb(tenantDb, updateData);
+          
+          if (input.sinarmStatus !== undefined && input.sinarmComment) {
+            await db.insertSinarmCommentToDb(tenantDb, {
+              workflowStepId: input.stepId,
+              oldStatus: currentStep.sinarmStatus || 'Novo',
+              newStatus: input.sinarmStatus,
+              comment: input.sinarmComment,
+              createdBy: ctx.user.id
+            });
+          }
         } else {
           await db.upsertWorkflowStep(updateData);
+
+          if (input.sinarmStatus !== undefined && input.sinarmComment) {
+            await db.insertSinarmComment({
+              workflowStepId: input.stepId,
+              oldStatus: currentStep.sinarmStatus || 'Novo',
+              newStatus: input.sinarmStatus,
+              comment: input.sinarmComment,
+              createdBy: ctx.user.id
+            });
+          }
         }
 
         // Log de auditoria
@@ -758,6 +917,7 @@ export const appRouter = router({
         };
         if (input.completed !== undefined) auditDetails.completed = input.completed;
         if (input.sinarmStatus !== undefined) auditDetails.sinarmStatus = input.sinarmStatus;
+        if (input.sinarmOpenDate !== undefined) auditDetails.sinarmOpenDate = input.sinarmOpenDate;
         if (input.protocolNumber !== undefined) auditDetails.protocolNumber = input.protocolNumber;
 
         if (tenantDb) {
@@ -818,8 +978,8 @@ export const appRouter = router({
               stepExtraData.examinador = currentStep.examinerName;
             }
             // Determinar tipo de agendamento baseado no step
-            const isPsychStep = currentStep.stepId.includes('psico') || currentStep.stepTitle?.toLowerCase().includes('psico');
-            const isLaudoStep = currentStep.stepId.includes('laudo') || currentStep.stepTitle?.toLowerCase().includes('laudo');
+            const isPsychStep = String(currentStep.stepId).includes('psico') || currentStep.stepTitle?.toLowerCase()?.includes('psico');
+            const isLaudoStep = String(currentStep.stepId).includes('laudo') || currentStep.stepTitle?.toLowerCase()?.includes('laudo');
             if (isPsychStep) {
               stepExtraData.tipoAgendamento = 'Avaliação Psicológica';
             } else if (isLaudoStep) {
@@ -836,11 +996,18 @@ export const appRouter = router({
           
           // Sinarm status change trigger
           if (input.sinarmStatus) {
-            await triggerEmails(`SINARM_STATUS:${input.sinarmStatus}`, {
+            const sinarmEventStatus = input.sinarmStatus === 'Restituído'
+              ? 'Correção Solicitada'
+              : input.sinarmStatus;
+
+            const effectiveProtocolNumber = input.protocolNumber !== undefined
+              ? (input.protocolNumber || '')
+              : (currentStep.protocolNumber || '');
+            await triggerEmails(`SINARM_STATUS:${sinarmEventStatus}`, {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client,
-              extraData: { sinarmStatus: input.sinarmStatus, protocolNumber: input.protocolNumber },
+              extraData: { sinarmStatus: input.sinarmStatus, protocolNumber: effectiveProtocolNumber },
             });
           }
         } catch (triggerError) {
@@ -848,6 +1015,43 @@ export const appRouter = router({
         }
         
         return { success: true };
+      }),
+
+    getSinarmCommentsHistory: protectedProcedure
+      .input(z.object({ stepId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+
+        const step = tenantDb
+          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
+          : await db.getWorkflowStepById(input.stepId);
+
+        if (!step) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
+        }
+
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, step.clientId)
+          : await db.getClientById(step.clientId);
+
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+
+        const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
+        const isDespachante = ctx.user.role === 'despachante';
+        const isSinarmStep =
+          step.stepId === 'acompanhamento-sinarm' ||
+          step.stepId === 'acompanhamento-sinarm-cac' ||
+          step.stepTitle?.toLowerCase()?.includes('sinarm') === true;
+
+        if (!hasGeneralPermission && !(isDespachante && isSinarmStep)) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        }
+
+        return tenantDb
+          ? await db.getSinarmCommentsByWorkflowStepIdFromDb(tenantDb, input.stepId)
+          : await db.getSinarmCommentsByWorkflowStepId(input.stepId);
       }),
 
     updateSubTask: protectedProcedure
@@ -958,7 +1162,7 @@ export const appRouter = router({
         if (input.scheduledDate) {
           try {
             const scheduledDate = new Date(input.scheduledDate);
-            const isPsych = currentStep.stepId.includes('psico') || currentStep.stepTitle.toLowerCase().includes('psico');
+            const isPsych = String(currentStep.stepId).includes('psico') || currentStep.stepTitle?.toLowerCase()?.includes('psico');
             const eventType = isPsych ? 'SCHEDULE_PSYCH_CREATED' : 'SCHEDULE_TECH_CONFIRMATION';
             
             await triggerEmails(eventType, {
@@ -983,7 +1187,7 @@ export const appRouter = router({
 
   // Documents router
   documents: router({
-    list: tenantProcedure
+    list: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -1004,7 +1208,7 @@ export const appRouter = router({
           : await db.getDocumentsByClient(input.clientId);
       }),
 
-    upload: tenantProcedure
+    upload: protectedProcedure
       .input(z.object({
         clientId: z.number(),
         workflowStepId: z.number().optional(),
@@ -1117,7 +1321,7 @@ export const appRouter = router({
         return { id: documentId, url: fileUrl };
       }),
 
-    delete: tenantProcedure
+    delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -1484,40 +1688,25 @@ export const appRouter = router({
             }
           }
 
-          // Tentar usar storage proxy se disponível, senão usar URL externa diretamente
-          let finalLogoUrl = input.logoUrl;
+          // IMPORTANTE: Converter a imagem para base64 e salvar diretamente no banco.
+          // Isso garante que a imagem esteja sempre disponível, independente de URLs externas.
+          console.log("[ImportLogo] Fetching image to convert to base64...");
           
-          const hasStorageProxy = ENV.forgeApiUrl && ENV.forgeApiKey;
-          
-          if (hasStorageProxy) {
-            try {
-              const response = await fetch(input.logoUrl);
-              if (response.ok) {
-                const imageBuffer = Buffer.from(await response.arrayBuffer());
-                
-                const extMap: Record<string, string> = {
-                  "image/png": "png",
-                  "image/jpeg": "jpg",
-                  "image/jpg": "jpg",
-                  "image/gif": "gif",
-                  "image/webp": "webp",
-                  "image/svg+xml": "svg",
-                };
-                const ext = extMap[contentType] || "png";
-                
-                const fileName = `email-logo-${tenantId}-${Date.now()}.${ext}`;
-                const fileKey = `tenants/${tenantId}/email-logos/${fileName}`;
-                
-                const { url: uploadedUrl } = await storagePut(fileKey, imageBuffer, contentType);
-                finalLogoUrl = uploadedUrl;
-              }
-            } catch (storageError) {
-              // Se falhar o upload, usa a URL externa diretamente
-              console.log("[ImportLogo] Storage upload failed, using external URL directly");
-            }
+          const imageResponse = await fetch(input.logoUrl);
+          if (!imageResponse.ok) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Não foi possível baixar a imagem: ${imageResponse.statusText}`,
+            });
           }
           
-          // Salvar a URL no banco de dados
+          const imageBuffer = await imageResponse.arrayBuffer();
+          const base64 = Buffer.from(imageBuffer).toString('base64');
+          const finalLogoUrl = `data:${contentType};base64,${base64}`;
+          
+          console.log(`[ImportLogo] Image converted to base64, size: ${base64.length} chars`);
+          
+          // Salvar o base64 no banco de dados
           await db.updateTenantSmtpSettings(tenantId, {
             emailLogoUrl: finalLogoUrl,
           });
@@ -1665,7 +1854,8 @@ export const appRouter = router({
         
         // Buscar status do Sinarm-CAC
         const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
-        const sinarmStatus = sinarmStep?.sinarmStatus || 'Nao iniciado';
+        const sinarmStatus = sinarmStep?.sinarmStatus || 'Iniciado';
+        const protocolNumber = sinarmStep?.protocolNumber || '';
 
         // Buscar dados de agendamento de laudo (data e examinador)
         const schedulingStep = workflow.find((s: any) => s.stepId === 'agendamento-laudo');
@@ -1683,9 +1873,13 @@ export const appRouter = router({
           schedulingExaminer = schedulingStep.examinerName;
         }
 
-        // Buscar logo do tenant para variável {{logo}}
+        // Buscar logo do tenant (já salva como base64 no banco)
         const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
         const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+        const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
+        
+        const isBase64Logo = emailLogoUrl.startsWith('data:');
+        console.log(`[SendEmail] Logo from settings: ${emailLogoUrl ? (isBase64Logo ? 'BASE64 (' + emailLogoUrl.length + ' chars)' : 'URL') : 'EMPTY'}`);
 
         const replaceVariables = (text: string, clientData: any) => {
           let result = text;
@@ -1693,6 +1887,7 @@ export const appRouter = router({
           result = result.replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'));
           result = result.replace(/{{status}}/g, progressPercentage + '% concluido');
           result = result.replace(/{{status_sinarm}}/g, sinarmStatus);
+          result = result.replace(/{{protocolNumber}}/g, clientData.protocolNumber || '');
           result = result.replace(/{{email}}/g, clientData.email || '');
           result = result.replace(/{{cpf}}/g, clientData.cpf || '');
           result = result.replace(/{{telefone}}/g, clientData.phone || '');
@@ -1705,9 +1900,9 @@ export const appRouter = router({
             result = result.replace(/{{examinador}}/g, schedulingExaminer);
           }
 
-          // Variável {{logo}} - renderiza como tag <img> se houver logo configurada
+          // Variável {{logo}} - renderiza como inline attachment (CID)
           if (emailLogoUrl) {
-            result = result.replace(/{{logo}}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+            result = result.replace(/{{logo}}/g, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
           } else {
             result = result.replace(/{{logo}}/g, '');
           }
@@ -1715,15 +1910,19 @@ export const appRouter = router({
           return result;
         };
 
-        const finalSubject = replaceVariables(input.subject, client);
-        const finalContent = replaceVariables(input.content, client);
+        const clientWithProtocol = { ...client, protocolNumber };
+        const finalSubject = replaceVariables(input.subject, clientWithProtocol);
+        const finalContent = replaceVariables(input.content, clientWithProtocol);
+
+        const templateAttachments = attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }));
+        const mergedAttachments = inlineLogo ? [inlineLogo, ...templateAttachments] : templateAttachments;
 
         try {
           await sendEmail({
             to: input.recipientEmail,
             subject: finalSubject,
             html: finalContent,
-            attachments: attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl })),
+            attachments: mergedAttachments,
             tenantDb,
             tenantId: ctx.tenant?.id,
           });
@@ -2138,20 +2337,20 @@ export const appRouter = router({
   // ===========================================
   tenants: router({
     // Limpar dados de mocks (tenants/users/clients @example.com)
-    clearMocks: adminProcedure.mutation(async ({ ctx }) => {
+    clearMocks: platformAdminProcedure.mutation(async ({ ctx }) => {
       try {
         const result = await db.clearMockTenants();
         invalidateTenantCache();
 
         console.log("[AUDIT] Clear mock tenants executed", {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           result,
         });
 
         return { success: true, ...result };
       } catch (error: any) {
         console.error("[ERROR] Clear mock tenants failed", {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           error: error?.message || String(error),
         });
 
@@ -2163,20 +2362,20 @@ export const appRouter = router({
     }),
 
     // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
-    seedMocks: adminProcedure.mutation(async ({ ctx }) => {
+    seedMocks: platformAdminProcedure.mutation(async ({ ctx }) => {
       try {
         const result = await db.seedMockTenants();
         invalidateTenantCache();
 
         console.log("[AUDIT] Seed mock tenants executed", {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           result,
         });
 
         return { success: true, ...result };
       } catch (error: any) {
         console.error("[ERROR] Seed mock tenants failed", {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           error: error?.message || String(error),
         });
 
@@ -2188,13 +2387,13 @@ export const appRouter = router({
     }),
 
     // Listar todos os tenants
-    list: adminProcedure.query(async () => {
+    list: platformAdminProcedure.query(async () => {
       const tenantsList = await db.getAllTenants();
       return tenantsList;
     }),
 
     // Buscar tenant por ID
-    getById: adminProcedure
+    getById: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2213,7 +2412,7 @@ export const appRouter = router({
       }),
 
     // Criar novo tenant
-    create: adminProcedure
+    create: platformAdminProcedure
       .input(z.object({
         slug: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/),
         name: z.string().min(2).max(255),
@@ -2234,6 +2433,7 @@ export const appRouter = router({
         featureApostilamento: z.boolean().default(false),
         featureRenovacao: z.boolean().default(false),
         featureInsumos: z.boolean().default(false),
+        featureIAT: z.boolean().default(false),
         plan: z.enum(['starter', 'professional', 'enterprise']).default('starter'),
         maxUsers: z.number().default(10),
         maxClients: z.number().default(500),
@@ -2289,6 +2489,7 @@ export const appRouter = router({
           featureApostilamento: input.featureApostilamento,
           featureRenovacao: input.featureRenovacao,
           featureInsumos: input.featureInsumos,
+          featureIAT: input.featureIAT,
           plan: input.plan,
           maxUsers: input.maxUsers,
           maxClients: input.maxClients,
@@ -2311,12 +2512,12 @@ export const appRouter = router({
           tenantId,
           action: 'created',
           details: JSON.stringify({ slug: input.slug, plan: input.plan, adminEmail: input.adminEmail }),
-          performedBy: ctx.user.id,
+          performedBy: ctx.platformAdmin.id,
         });
         invalidateTenantCache(input.slug);
 
         console.log('[AUDIT] Tenant created', {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           tenantId,
           slug: input.slug,
         });
@@ -2325,7 +2526,7 @@ export const appRouter = router({
       }),
 
     // Atualizar tenant
-    update: adminProcedure
+    update: platformAdminProcedure
       .input(z.object({
         id: z.number(),
         name: z.string().optional(),
@@ -2337,6 +2538,7 @@ export const appRouter = router({
         featureApostilamento: z.boolean().optional(),
         featureRenovacao: z.boolean().optional(),
         featureInsumos: z.boolean().optional(),
+        featureIAT: z.boolean().optional(),
         smtpHost: z.string().optional(),
         smtpPort: z.number().optional(),
         smtpUser: z.string().optional(),
@@ -2376,7 +2578,7 @@ export const appRouter = router({
       }),
 
     // Suspender/Ativar tenant
-    setStatus: adminProcedure
+    setStatus: platformAdminProcedure
       .input(z.object({
         id: z.number(),
         status: z.enum(['active', 'suspended', 'trial', 'cancelled']),
@@ -2394,11 +2596,11 @@ export const appRouter = router({
           tenantId: input.id,
           action: 'status_changed',
           details: JSON.stringify({ from: tenant.subscriptionStatus, to: input.status }),
-          performedBy: ctx.user.id,
+          performedBy: ctx.platformAdmin.id,
         });
 
         console.log('[AUDIT] Tenant status changed', {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           tenantId: input.id,
           oldStatus: tenant.subscriptionStatus,
           newStatus: input.status,
@@ -2408,7 +2610,7 @@ export const appRouter = router({
       }),
 
     // Deletar tenant (soft delete)
-    delete: adminProcedure
+    delete: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2423,11 +2625,11 @@ export const appRouter = router({
           tenantId: input.id,
           action: 'deleted',
           details: JSON.stringify({ slug: tenant.slug }),
-          performedBy: ctx.user.id,
+          performedBy: ctx.platformAdmin.id,
         });
 
         console.log('[AUDIT] Tenant deleted (soft)', {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           tenantId: input.id,
           slug: tenant.slug,
         });
@@ -2436,7 +2638,7 @@ export const appRouter = router({
       }),
 
     // Deletar tenant DEFINITIVAMENTE (hard delete)
-    hardDelete: adminProcedure
+    hardDelete: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2451,7 +2653,7 @@ export const appRouter = router({
         // Mas podemos logar se tivermos um log global de plataforma (futuro)
         
         console.log('[AUDIT] Tenant deleted (HARD)', {
-          actorId: ctx.user.id,
+          actorId: ctx.platformAdmin.id,
           tenantId: input.id,
           slug: tenant.slug,
         });
@@ -2460,7 +2662,7 @@ export const appRouter = router({
       }),
 
     // Estatísticas do tenant
-    getStats: adminProcedure
+    getStats: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2468,13 +2670,46 @@ export const appRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
 
-        // TODO: Conectar ao banco do tenant e buscar estatísticas reais
-        return {
-          usersCount: 0,
-          clientsCount: 0,
-          storageUsedGB: 0,
-          lastActivity: null,
-        };
+        try {
+          const platformDb = await db.getDb();
+          if (!platformDb) {
+            return {
+              usersCount: 0,
+              clientsCount: 0,
+              storageUsedGB: 0,
+              lastActivity: null,
+              error: 'Banco de dados não disponível',
+            };
+          }
+
+          // Count users for this tenant
+          const usersRes = await platformDb.execute(sql`SELECT count(*) as count FROM "users" WHERE "tenantId" = ${input.id}`);
+          const usersCount = Number(usersRes[0]?.count || 0);
+
+          // Count clients for this tenant
+          const clientsRes = await platformDb.execute(sql`SELECT count(*) as count FROM "clients" WHERE "tenantId" = ${input.id}`);
+          const clientsCount = Number(clientsRes[0]?.count || 0);
+
+          // Get last activity log for this tenant
+          const activityRes = await platformDb.execute(sql`SELECT "createdAt" FROM "auditLogs" WHERE "tenantId" = ${input.id} ORDER BY "createdAt" DESC LIMIT 1`);
+          const lastActivity = activityRes[0]?.createdAt || null;
+
+          return {
+            usersCount,
+            clientsCount,
+            storageUsedGB: 0,
+            lastActivity,
+          };
+        } catch (error: any) {
+          console.error(`Error fetching stats for tenant ${tenant.id}:`, error);
+          return {
+            usersCount: 0,
+            clientsCount: 0,
+            storageUsedGB: 0,
+            lastActivity: null,
+            error: error.message || 'Erro desconhecido',
+          };
+        }
       }),
 
     // Health check do tenant (verifica conexão com banco)
@@ -2526,26 +2761,53 @@ export const appRouter = router({
       }),
 
     // Impersonate: entrar como admin de um tenant específico
-    impersonate: adminProcedure
-      .input(z.object({ tenantId: z.number() }))
+    impersonate: platformAdminProcedure
+      .input(z.object({ 
+        tenantId: z.number(),
+        confirmPassword: z.string()
+      }))
       .mutation(async ({ input, ctx }) => {
+        // Validar senha do platformAdmin
+        const passwordMatch = await comparePassword(input.confirmPassword, ctx.platformAdmin.hashedPassword);
+        if (!passwordMatch) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Senha incorreta' });
+        }
+
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
 
-        if (!tenant.isActive) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant inativo' });
-        }
-
-        // Buscar o admin do tenant
         const tenantAdmin = await db.getTenantAdmin(input.tenantId);
         if (!tenantAdmin) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Admin do tenant não encontrado' });
         }
 
-        console.log('[AUDIT] Super Admin impersonating tenant', {
-          superAdminId: ctx.user.id,
+        // Criar sessão temporária (1 hora)
+        const impersonationToken = await sdk.createSessionToken(tenantAdmin.id.toString(), {
+          name: tenantAdmin.name || "",
+          tenantSlug: tenant.slug,
+          expiresInMs: 60 * 60 * 1000, // 1 hora
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, impersonationToken, { 
+          ...cookieOptions, 
+          maxAge: 60 * 60 * 1000, 
+          path: "/",
+          httpOnly: true,
+          sameSite: "lax",
+        });
+
+        // Setar flag de impersonation para o frontend
+        ctx.res.cookie('is_impersonating', 'true', {
+          maxAge: 60 * 60 * 1000,
+          path: "/",
+          sameSite: "lax",
+        });
+
+        console.log('[AUDIT] Platform Admin impersonating tenant', {
+          platformAdminId: ctx.platformAdmin.id,
           tenantId: input.tenantId,
           tenantSlug: tenant.slug,
           impersonatedUserId: tenantAdmin.id,
@@ -2554,9 +2816,6 @@ export const appRouter = router({
         return {
           success: true,
           tenantSlug: tenant.slug,
-          adminId: tenantAdmin.id,
-          adminEmail: tenantAdmin.email,
-          adminName: tenantAdmin.name,
         };
       }),
   }),
@@ -2619,7 +2878,7 @@ export const appRouter = router({
 
           const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
 
-          const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br')
+          const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br,admin@acedigital.com.br')
             .split(',')
             .map(e => e.trim().toLowerCase())
             .filter(Boolean);
@@ -2707,7 +2966,7 @@ export const appRouter = router({
 
         const userMap = new Map(usersFound.map((u: any) => [u.id, u.name || u.email]));
 
-        const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br')
+        const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br,admin@acedigital.com.br')
           .split(',')
           .map(e => e.trim().toLowerCase())
           .filter(Boolean);
@@ -2919,6 +3178,7 @@ export const appRouter = router({
         { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
         { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'Confirmação de Agendamento de Laudo Técnico', hasSchedule: true },
         { value: 'SCHEDULE_TECH_REMINDER', label: 'Lembrete de Agendamento de Laudo Técnico', hasSchedule: true },
+        { value: 'SINARM_STATUS:Iniciado', label: 'Sinarm - Iniciado', hasSchedule: false },
         { value: 'SINARM_STATUS:Solicitado', label: 'Sinarm - Solicitado', hasSchedule: false },
         { value: 'SINARM_STATUS:Aguardando Baixa GRU', label: 'Sinarm - Aguardando Baixa GRU', hasSchedule: false },
         { value: 'SINARM_STATUS:Em Análise', label: 'Sinarm - Em Análise', hasSchedule: false },

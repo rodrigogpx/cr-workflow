@@ -1,4 +1,4 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { AXIOS_TIMEOUT_MS, COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
@@ -6,7 +6,7 @@ import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
-import { getTenantConfig, getTenantDb } from "../config/tenant.config";
+import { getTenantConfig } from "../config/tenant.config";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -23,6 +23,7 @@ export type SessionPayload = {
   userId: string;
   name: string;
   tenantSlug?: string | null;
+  isPlatformAdmin?: boolean;
 };
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
@@ -167,13 +168,14 @@ class SDKServer {
    */
   async createSessionToken(
     userId: string,
-    options: { expiresInMs?: number; name?: string; tenantSlug?: string | null } = {}
+    options: { expiresInMs?: number; name?: string; tenantSlug?: string | null; isPlatformAdmin?: boolean } = {}
   ): Promise<string> {
     return this.signSession(
       {
         userId,
         name: options.name || "",
         tenantSlug: options.tenantSlug ?? null,
+        isPlatformAdmin: options.isPlatformAdmin,
       },
       options
     );
@@ -192,6 +194,7 @@ class SDKServer {
       userId: payload.userId,
       name: payload.name,
       tenantSlug: payload.tenantSlug ?? null,
+      isPlatformAdmin: payload.isPlatformAdmin,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
@@ -200,7 +203,7 @@ class SDKServer {
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ userId: string; name: string; tenantSlug: string | null } | null> {
+  ): Promise<{ userId: string; name: string; tenantSlug: string | null; isPlatformAdmin?: boolean } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -211,7 +214,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { userId, name, tenantSlug } = payload as Record<string, unknown>;
+      const { userId, name, tenantSlug, isPlatformAdmin } = payload as Record<string, unknown>;
 
       if (!isNonEmptyString(userId) || typeof name !== 'string') {
         console.warn("[Auth] Session payload missing required fields");
@@ -226,11 +229,34 @@ class SDKServer {
         userId,
         name,
         tenantSlug: normalizedTenantSlug,
+        isPlatformAdmin: !!isPlatformAdmin,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
       return null;
     }
+  }
+
+  async authenticatePlatformAdminRequest(req: Request): Promise<{ platformAdmin: any; tenantSlug: string | null }> {
+    const cookies = this.parseCookies(req.headers.cookie);
+    const sessionCookie = cookies.get(PLATFORM_COOKIE_NAME);
+    const session = await this.verifySession(sessionCookie);
+
+    if (!session || !session.isPlatformAdmin) {
+      throw new ForbiddenError("Invalid platform admin session cookie");
+    }
+
+    const userId = parseInt(session.userId, 10);
+    if (isNaN(userId)) {
+      throw new ForbiddenError("Invalid user ID in session");
+    }
+
+    const platformAdmin = await db.getPlatformAdminById(userId);
+    if (!platformAdmin || !platformAdmin.isActive) {
+      throw new ForbiddenError("Platform admin not found or inactive");
+    }
+
+    return { platformAdmin, tenantSlug: session.tenantSlug };
   }
 
   async authenticateRequestWithTenant(req: Request): Promise<{ user: User; tenantSlug: string | null }> {
@@ -247,33 +273,13 @@ class SDKServer {
       throw new ForbiddenError("Invalid user ID in session");
     }
 
-    // Quando houver tenantSlug na sessão, o usuário é autenticado no DB do tenant.
-    if (session.tenantSlug) {
-      const tenant = await getTenantConfig(session.tenantSlug);
-      if (!tenant) {
-        throw new ForbiddenError("Tenant not found");
-      }
-
-      const tenantDb = await getTenantDb(tenant);
-      if (!tenantDb) {
-        throw new ForbiddenError("Tenant database not available");
-      }
-
-      const user = await db.getUserByIdFromDb(tenantDb, userId);
-      if (!user) {
-        throw new ForbiddenError("User not found");
-      }
-
-      return { user, tenantSlug: session.tenantSlug };
-    }
-
-    // Fallback de compatibilidade (sessões antigas / modo single-DB)
+    // Buscar usuário diretamente pelo ID (funciona tanto em single-db quanto multi-db)
     const user = await db.getUserById(userId);
     if (!user) {
       throw new ForbiddenError("User not found");
     }
 
-    return { user, tenantSlug: null };
+    return { user, tenantSlug: session.tenantSlug };
   }
 
   async getUserInfoWithJwt(

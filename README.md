@@ -38,6 +38,8 @@ O **CAC 360** é uma plataforma moderna que automatiza e gerencia todo o process
 | Vínculo com operador | Cada cliente atribuído a um responsável |
 | Histórico de emails | Registro de todas as comunicações |
 | Dashboard visual | Cards com indicador de progresso |
+| Mascaramento de dados | CPF, telefone e email mascarados por padrão com toggle Eye/EyeOff |
+| Cadastrar Cliente no header | Botão "Cadastrar Cliente" disponível diretamente no menu superior |
 
 ### 📋 Workflow de 6 Etapas
 
@@ -110,6 +112,42 @@ Sistema flexível de triggers para envio automático de emails:
 - Acesso às etapas: Cadastro, Juntada, Acompanhamento Sinarm
 - Pode gerar/baixar Enxoval, atualizar status Sinarm
 - Não pode fazer upload ou excluir documentos
+
+### 📊 Dashboard Inteligente
+
+O Dashboard foi completamente reorganizado para melhor acompanhamento operacional:
+
+**Primeira linha — Visão Geral:**
+| Card | Descrição |
+|------|-----------|
+| Todos os Clientes | Total de clientes cadastrados no sistema |
+| Aguardando Abertura do Processo | Clientes sem número de protocolo registrado |
+| Workflow Concluído | Clientes que finalizaram todas as etapas |
+
+**Segunda linha — Fases do Workflow:**
+- Cadastro Pendente, Avaliação Psicológica Pendente, Laudo Técnico Pendente, Juntada de Documentos Pendente
+
+**Terceira linha — Acompanhamento SINARM CAC:**
+- Solicitado, Aguardando Baixa GRU, Em Análise, Restituído, Deferido, Indeferido
+
+**Funcionalidades do Dashboard:**
+- **Filtro global**: Busca por nome, CPF ou email em tempo real
+- **Filtro por operador**: Visualização segmentada por responsável
+- **Clique nos cards**: Abre painel lateral com lista filtrada de clientes
+- **Mascaramento de dados**: CPF, telefone e email mascarados por padrão (toggle Eye/EyeOff)
+- **Exportar Relatório PDF**: Exportação da lista de clientes por fase
+- **Cadastrar Cliente**: Botão no menu superior para acesso rápido
+- **Números centralizados**: Contadores alinhados ao centro em todos os cards
+
+### 🔐 Privacidade e Mascaramento de Dados
+
+Para proteção de dados sensíveis dos clientes:
+
+- **CPF**: Exibido como `123***456**` por padrão
+- **Telefone**: Exibido como `(61)*****-4237` por padrão
+- **Email**: Exibido como `abc***@dominio.com` por padrão
+- **Botão Eye/EyeOff**: Alterna entre dados mascarados e completos na lista e no modal de detalhes
+- **Compatível com múltiplos formatos**: Funciona com CPFs formatados (`123.456.789-00`) e dígitos puros
 
 ### 📊 Relatórios e Auditoria
 
@@ -311,6 +349,8 @@ ACME_EMAIL=admin@cac360.com.br
 - **Auditoria completa** de ações
 - **Rate limiting** em endpoints sensíveis
 - **Validação de entrada** com Zod
+- **Mascaramento de dados sensíveis**: CPF, telefone e email mascarados por padrão na interface
+- **Controle de visibilidade**: Usuário decide quando revelar dados completos via botão Eye/EyeOff
 
 ---
 

@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { getDocumentsBaseDir } from "../fileStorage";
 import { installRouter } from "../install/router";
 import { ensureMissingTables } from "../ensure-tables";
+import { tenantApiRouter } from "./tenantApi";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -72,6 +73,10 @@ async function startServer() {
   } else {
     console.log("[Install] INSTALL_WIZARD_ENABLED=false → rota /api/install desabilitada");
   }
+
+  // Tenant Management API (REST)
+  app.use("/api/tenants", tenantApiRouter);
+
   // tRPC API
   app.use(
     "/api/trpc",
@@ -87,15 +92,15 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
-
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  // Na Railway (ou outros PaaS), NUNCA podemos trocar a porta se ela vier do process.env.PORT
+  let port = parseInt(process.env.PORT || "3000");
+  
+  if (process.env.NODE_ENV === "development" && !process.env.PORT) {
+    port = await findAvailablePort(port);
   }
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 }
 

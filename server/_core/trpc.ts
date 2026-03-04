@@ -82,6 +82,21 @@ const requireAdmin = t.middleware(async opts => {
   });
 });
 
+const requirePlatformAdmin = t.middleware(async opts => {
+  const { ctx, next } = opts;
+
+  if (!ctx.platformAdmin) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Acesso restrito à administração da plataforma" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      platformAdmin: ctx.platformAdmin,
+    },
+  });
+});
+
 // Middleware OBRIGATÓRIO de tenant: bloqueia se tenant não estiver presente e ativo
 const requireTenant = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -135,3 +150,6 @@ export const tenantAdminProcedure = t.procedure
   .use(requireUser)
   .use(requireTenant)
   .use(requireAdmin);
+
+export const platformAdminProcedure = t.procedure
+  .use(requirePlatformAdmin);
