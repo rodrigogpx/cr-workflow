@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
 
 const RESERVED_PREFIXES = [
   "login",
@@ -38,4 +39,22 @@ export function buildTenantPath(tenantSlug: string | null, subPath: string): str
   const normalized = subPath.startsWith("/") ? subPath : `/${subPath}`;
   if (!tenantSlug) return normalized;
   return `/${tenantSlug}${normalized}`;
+}
+
+/**
+ * Retorna o slug do tenant de forma efetiva:
+ * 1. Da URL (/:tenantSlug/...) se disponível
+ * 2. Da sessão do usuário (tenantSlug gravado no JWT) como fallback
+ *
+ * Resolve o problema de rotas sem slug na URL (ex: /admin, /dashboard)
+ * que perdem o contexto do tenant ao navegar.
+ */
+export function useEffectiveTenantSlug(): string | null {
+  const slugFromUrl = useTenantSlug();
+  const { data: me } = trpc.auth.me.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+    enabled: slugFromUrl === null,
+  });
+  return slugFromUrl ?? (me as any)?.tenantSlug ?? null;
 }
