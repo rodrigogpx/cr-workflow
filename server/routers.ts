@@ -58,7 +58,8 @@ export const appRouter = router({
 
       return {
         ...safeUser,
-        tenantFeatures
+        tenantFeatures,
+        tenantSlug: opts.ctx.tenantSlug ?? null,
       };
     }),
     platformMe: publicProcedure.query((opts: any) => {

@@ -4,7 +4,7 @@ import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Shield, Users, Mail, Settings, UserCheck, LayoutDashboard, FileText, Zap } from "lucide-react";
 import { useLocation } from "wouter";
-import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
+import { useEffectiveTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 interface TenantAdminLayoutProps {
   children: ReactNode;
@@ -14,7 +14,7 @@ interface TenantAdminLayoutProps {
 export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const tenantSlug = useTenantSlug();
+  const tenantSlug = useEffectiveTenantSlug();
 
   const items = [
     {
