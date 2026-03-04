@@ -65,24 +65,26 @@ export default function MainDashboard() {
             <span className="text-muted-foreground truncate max-w-[180px] sm:max-w-xs text-right">
               {user?.name || user?.email}
             </span>
-            {user?.role === "admin" && (
+            <div className="flex items-center gap-2 mt-1">
+              {user?.role === "admin" && (
+                <Button
+                  variant="outline"
+                  onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin"))}
+                  className="h-8 px-4 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-wide bg-primary text-white border-2 border-primary hover:bg-primary/90 hover:border-primary/90 shadow-lg shadow-primary/30 flex items-center gap-1.5"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  Administração
+                </Button>
+              )}
               <Button
-                variant="outline"
-                onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin"))}
-                className="mt-1 h-8 px-4 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-wide bg-primary text-white border-2 border-primary hover:bg-primary/90 hover:border-primary/90 shadow-lg shadow-primary/30 flex items-center gap-1.5"
+                variant="ghost"
+                onClick={handleLogout}
+                className="h-8 px-3 text-[0.65rem] sm:text-[0.7rem] font-semibold uppercase tracking-wide text-red-300 hover:text-red-100 hover:bg-red-500/10 flex items-center gap-1"
               >
-                <Shield className="h-3.5 w-3.5" />
-                Administração
+                <LogOut className="h-3 w-3" />
+                Sair
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              onClick={handleLogout}
-              className="mt-1 h-8 px-3 text-[0.65rem] sm:text-[0.7rem] font-semibold uppercase tracking-wide text-red-300 hover:text-red-100 hover:bg-red-500/10 flex items-center gap-1"
-            >
-              <LogOut className="h-3 w-3" />
-              Sair
-            </Button>
+            </div>
           </div>
         </header>
 
@@ -279,6 +281,7 @@ export default function MainDashboard() {
               </Button>
             </CardContent>
           </Card>
+
         </section>
       </div>
     </div>
