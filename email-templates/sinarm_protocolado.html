@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{assunto}}</title>
+    <style type="text/css">
+        /* Reset & Base Styles */
+        body, table, td, p, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; }
+        body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #F9FAFB; }
+        
+        /* Container */
+        .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        
+        /* Header */
+        .header { background-color: #ffffff; padding: 30px 40px; text-align: center; border-bottom: 3px solid #123A63; }
+        
+        /* Hero Section */
+        .hero-section { background-color: #123A63; padding: 40px; text-align: center; }
+        .status-badge { display: inline-block; background-color: #3498db; color: #ffffff; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-family: Arial, sans-serif; font-size: 13px; margin-bottom: 20px; text-transform: uppercase; }
+        .hero-title { font-family: 'Arial Black', Arial, sans-serif; font-size: 24px; color: #ffffff; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* Content Section */
+        .content-section { background-color: #ffffff; padding: 40px; }
+        .info-box { background-color: #F9FAFB; border-left: 4px solid #3498db; padding: 20px; margin-bottom: 25px; }
+        .info-box p { font-family: Arial, sans-serif; font-size: 14px; color: #E5E7EB; margin: 0; line-height: 1.6; }
+        
+        /* Footer */
+        .footer { background-color: #ffffff; padding: 30px; text-align: center; border-top: 1px solid #333333; }
+        .footer p { font-family: Arial; font-size: 11px; color: #666; margin: 0; }
+    </style>
+</head>
+<body>
+    <center>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #F9FAFB;">
+            <tr>
+                <td>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="email-container" align="center">
+                        
+                        <tr>
+                            <td class="header"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td align="center">{{logo}}</td></tr></table></td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="hero-section">
+                                <div class="status-badge">STATUS: SOLICITADO</div> <div class="status-badge"> Protocolo Sinarm CAC: {{protocolNumber}} </div>
+                                <h1 class="hero-title">Seu Processo foi<br><span style="color: #3498db;">Protocolado no SINARM CAC </span></h1>
+                                <p style="color: #E5E7EB; font-family: Arial; font-size: 15px; line-height: 1.6;">O primeiro passo para o seu Certificado de Registro foi dado.</p>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="content-section">
+                                <div class="info-box">
+                                    <p><strong style="color: #ffffff;">O que acontece agora?</strong></p>
+                                    <p style="margin-top: 10px;">Sua solicitaÃ§Ã£o jÃ¡ estÃ¡ registrada em nosso sistema. O prÃ³ximo passo Ã© o <strong>pagamento da taxa de fiscalizaÃ§Ã£o (GRU)</strong>. </p>
+                                    <p style="margin-top: 10px;">Assim que a guia for gerada, vocÃª receberÃ¡ um novo aviso para realizar o pagamento. ApÃ³s quitada, iniciaremos o perÃ­odo de espera para a <strong>baixa bancÃ¡ria</strong> junto ao Ã³rgÃ£o oficial.</p>
+                                </div>
+                                <p style="color: #888; font-family: Arial; font-size: 12px; text-align: center; line-height: 1.5;">
+                                    Fique atento ao seu e-mail, notificaremos vocÃª em cada etapa deste processo.
+                                </p>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td class="footer">
+                                <p style="margin-bottom: 10px; color: #fff;"><strong>{{nome_clube}} - Tiro e CaÃ§a</strong></p>
+                                <p>Â© 2026 CAC 360 - ACR Digital. Todos os Direitos Reservados.</p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </center>
+</body>
+</html>
+
+
