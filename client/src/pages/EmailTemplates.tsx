@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -53,19 +53,24 @@ export default function EmailTemplates() {
     if (emailLogoUrl) {
       return html.replace(/\{\{logo\}\}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
     }
-    return html.replace(/\{\{logo\}\}/g, '<span style="color: #999; font-style: italic;">[Logo não configurada]</span>');
+    return html.replace(/\{\{logo\}\}/g, '<span style="color: #999; font-style: italic;">[Logo nÃ£o configurada]</span>');
   };
 
   const getTemplateTitle = (key: string) => {
-    // Títulos amigáveis para templates conhecidos (opcional, apenas para exibição)
+    // TÃ­tulos amigÃ¡veis para templates conhecidos (opcional, apenas para exibiÃ§Ã£o)
     const titles: Record<string, string> = {
-      welcome: "Boas Vindas",
-      workflow_cr: "Workflow CR",
-      psicotecnico: "Encaminhamento Psicotécnico",
-      laudo_tecnico: "Agendamento Laudo Técnico",
+      'boasvindas-filiado': "Boas Vindas (AutomÃ¡tico)",
+      process_cr: "Processo CR",
+      psicotecnico: "Encaminhamento PsicotÃ©cnico",
+      laudo_tecnico: "Agendamento Laudo TÃ©cnico",
       juntada_documentos: "Juntada de Documentos",
-      acompanhamento_sinarm: "Acompanhamento Sinarm CAC",
-      'boasvindas-filiado': "Boas Vindas (Automático)",
+      psicotecnico_concluido: "AvaliaÃ§Ã£o PsicolÃ³gica ConcluÃ­da",
+      laudo_tecnico_concluido: "Laudo TÃ©cnico ConcluÃ­do",
+      sinarm_montagem_iniciada: "Status Sinarm: Montagem Iniciada",
+      sinarm_protocolado: "Status Sinarm: Processo Protocolado",
+      sinarm_aguardando_gru: "Status Sinarm: Aguardando Baixa GRU",
+      sinarm_em_analise: "Status Sinarm: Em AnÃ¡lise",
+      sinarm_restituido: "Status Sinarm: Processo RestituÃ­do",
     };
     return titles[key] || key;
   };
@@ -104,9 +109,9 @@ export default function EmailTemplates() {
 
   const deleteTemplateMutation = trpc.emails.deleteTemplate.useMutation({
     onSuccess: () => {
-      toast.success("Template excluído com sucesso!");
+      toast.success("Template excluÃ­do com sucesso!");
       utils.emails.getAllTemplates.invalidate();
-      // Limpar a aba ativa para que o useEffect selecione o primeiro disponível
+      // Limpar a aba ativa para que o useEffect selecione o primeiro disponÃ­vel
       setActiveTab('');
     },
     onError: (error) => {
@@ -151,7 +156,7 @@ export default function EmailTemplates() {
   };
 
   const handleDeleteTemplate = () => {
-    if (!confirm("Tem certeza que deseja excluir este template? Se for um template padrão, ele será resetado.")) {
+    if (!confirm("Tem certeza que deseja excluir este template? Se for um template padrÃ£o, ele serÃ¡ resetado.")) {
       return;
     }
     deleteTemplateMutation.mutate({
@@ -188,7 +193,7 @@ export default function EmailTemplates() {
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle>Acesso Negado</CardTitle>
-            <CardDescription>Apenas administradores podem acessar esta página.</CardDescription>
+            <CardDescription>Apenas administradores podem acessar esta pÃ¡gina.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => setLocation(dashboardPath)}>Voltar ao Dashboard</Button>
@@ -269,7 +274,7 @@ export default function EmailTemplates() {
                         />
                       </div>
                       <div>
-                        <Label>Conteúdo (HTML)</Label>
+                        <Label>ConteÃºdo (HTML)</Label>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-xs text-gray-500 mb-2">Editor HTML</p>
@@ -277,17 +282,17 @@ export default function EmailTemplates() {
                               value={templates[activeTab]?.content || ''}
                               onChange={(e) => handleTemplateChange('content', e.target.value)}
                               className="w-full min-h-[500px] p-3 border rounded-md font-mono text-sm"
-                              placeholder="Digite o conteúdo do email em HTML...\n\nExemplo:\n<p>Olá <strong>{{nome}}</strong>,</p>\n<p>Seja bem-vindo!</p>"
+                              placeholder="Digite o conteÃºdo do email em HTML...\n\nExemplo:\n<p>OlÃ¡ <strong>{{nome}}</strong>,</p>\n<p>Seja bem-vindo!</p>"
                             />
                             <div className="mt-2 text-xs text-gray-500 space-y-1">
                               <p>
-                                Variáveis disponíveis no HTML: <span className="font-mono">{"{{nome}}"}</span>, <span className="font-mono">{"{{email}}"}</span>, <span className="font-mono">{"{{cpf}}"}</span>, <span className="font-mono">{"{{telefone}}"}</span>, <span className="font-mono">{"{{endereco}}"}</span>, <span className="font-mono">{"{{cidade}}"}</span>, <span className="font-mono">{"{{cep}}"}</span>, <span className="font-mono">{"{{data}}"}</span>, <span className="font-mono">{"{{logo}}"}</span>.
+                                VariÃ¡veis disponÃ­veis no HTML: <span className="font-mono">{"{{nome}}"}</span>, <span className="font-mono">{"{{email}}"}</span>, <span className="font-mono">{"{{cpf}}"}</span>, <span className="font-mono">{"{{telefone}}"}</span>, <span className="font-mono">{"{{endereco}}"}</span>, <span className="font-mono">{"{{cidade}}"}</span>, <span className="font-mono">{"{{cep}}"}</span>, <span className="font-mono">{"{{data}}"}</span>, <span className="font-mono">{"{{logo}}"}</span>.
                               </p>
                               <p>
-                                Variáveis extras (dependem do evento): qualquer chave enviada pelo sistema. Exemplos: <span className="font-mono">{"{{sinarmStatus}}"}</span>, <span className="font-mono">{"{{protocolNumber}}"}</span>, <span className="font-mono">{"{{dataAgendamento}}"}</span>, <span className="font-mono">{"{{examinador}}"}</span>, <span className="font-mono">{"{{tipoAgendamento}}"}</span>.
+                                VariÃ¡veis extras (dependem do evento): qualquer chave enviada pelo sistema. Exemplos: <span className="font-mono">{"{{sinarmStatus}}"}</span>, <span className="font-mono">{"{{protocolNumber}}"}</span>, <span className="font-mono">{"{{dataAgendamento}}"}</span>, <span className="font-mono">{"{{examinador}}"}</span>, <span className="font-mono">{"{{tipoAgendamento}}"}</span>.
                               </p>
                               <p>
-                                Exemplo: <span className="font-mono">&lt;p&gt;Olá {"{{nome}}"}, seu protocolo é {"{{protocolNumber}}"}.&lt;/p&gt;</span>
+                                Exemplo: <span className="font-mono">&lt;p&gt;OlÃ¡ {"{{nome}}"}, seu protocolo Ã© {"{{protocolNumber}}"}.&lt;/p&gt;</span>
                               </p>
                             </div>
                           </div>
@@ -295,7 +300,7 @@ export default function EmailTemplates() {
                             <p className="text-xs text-gray-500 mb-2">Preview</p>
                             <div 
                               className="w-full min-h-[500px] p-3 border rounded-md bg-white overflow-auto"
-                              dangerouslySetInnerHTML={{ __html: replaceLogoVariable(templates[activeTab]?.content) || '<p className="text-gray-400">O preview aparecerá aqui...</p>' }}
+                              dangerouslySetInnerHTML={{ __html: replaceLogoVariable(templates[activeTab]?.content) || '<p className="text-gray-400">O preview aparecerÃ¡ aqui...</p>' }}
                             />
                           </div>
                         </div>
@@ -353,10 +358,10 @@ export default function EmailTemplates() {
                   value={newTemplateKey}
                   onChange={(e) => setNewTemplateKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
                 />
-                <p className="text-xs text-gray-500 mt-1">Use apenas letras minúsculas, números e underscore</p>
+                <p className="text-xs text-gray-500 mt-1">Use apenas letras minÃºsculas, nÃºmeros e underscore</p>
               </div>
               <div>
-                <Label htmlFor="templateTitle">Título do Template</Label>
+                <Label htmlFor="templateTitle">TÃ­tulo do Template</Label>
                 <Input
                   id="templateTitle"
                   placeholder="ex: Boas Vindas Premium"
@@ -404,3 +409,4 @@ export default function EmailTemplates() {
     </div>
   );
 }
+
