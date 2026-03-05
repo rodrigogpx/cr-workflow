@@ -5,12 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { APP_LOGO } from "@/const";
 import { Target, Shield, BookOpen, RefreshCcw, Inbox, MapPin, ChevronRight, LogOut, Lock } from "lucide-react";
 import { useLocation } from "wouter";
-import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
+import { useEffectiveTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 export default function MainDashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
-  const tenantSlug = useTenantSlug();
+  const tenantSlug = useEffectiveTenantSlug();
 
   const handleLogout = async () => {
     await logout();
