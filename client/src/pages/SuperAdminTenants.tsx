@@ -33,9 +33,13 @@ import {
   Globe,
   Loader,
   PlayCircle,
-  PauseCircle
+  PauseCircle,
+  Mail
 } from "lucide-react";
 import { toast } from "sonner";
+import { EmailConfigPanel } from "@/components/super-admin/EmailConfigPanel";
+import { EmailTemplatesPanel } from "@/components/super-admin/EmailTemplatesPanel";
+import { EmailTriggersPanel } from "@/components/super-admin/EmailTriggersPanel";
 
 // Logo
 const APP_LOGO = "/logo.png";
@@ -72,30 +76,37 @@ function TenantStats({ tenantId }: { tenantId: number }) {
   if (!data) return null;
   
   return (
-    <div className="flex items-center gap-3 text-xs mt-2">
-      <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-        <Users className="h-3 w-3" /> {data.usersCount} usuários
-      </span>
-      <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-        <Building2 className="h-3 w-3" /> {data.clientsCount} clientes
-      </span>
-      {data.lastActivity && (
-        <span className="flex items-center gap-1 text-gray-500" title={new Date(data.lastActivity).toLocaleString()}>
-          <Clock className="h-3 w-3" /> Última ativ.: {new Date(data.lastActivity).toLocaleDateString()}
+    <div className="flex flex-col gap-1 mt-2 text-xs">
+      <div className="flex items-center gap-2">
+        <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full" title="Usuários">
+          <Users className="h-3 w-3" /> {data.usersCount}
         </span>
-      )}
-      {(data as any).error && (
-        <span className="flex items-center gap-1 text-red-500" title={(data as any).error}>
-          <AlertCircle className="h-3 w-3" /> Erro BD
+        <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full" title="Clientes">
+          <Building2 className="h-3 w-3" /> {data.clientsCount}
         </span>
-      )}
+      </div>
       
-      {/* Basic Notifications / Alerts logic */}
-      {data.usersCount > 0 && data.clientsCount === 0 && (
-        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full" title="Tenant configurado mas sem clientes cadastrados.">
-          <AlertCircle className="h-3 w-3" /> Inativo
+      <div className="flex items-center gap-2 mt-1">
+        <span className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full" title="Tamanho do Banco de Dados">
+          <Database className="h-3 w-3" /> {data.dbSizeMB} MB
         </span>
-      )}
+        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full" title="Armazenamento de Arquivos Usado">
+          <Database className="h-3 w-3" /> {data.storageUsedGB} GB
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2 mt-1">
+        {data.lastActivity && (
+          <span className="flex items-center gap-1 text-gray-500" title={`Última atividade: ${new Date(data.lastActivity).toLocaleString()}`}>
+            <Clock className="h-3 w-3" /> {new Date(data.lastActivity).toLocaleDateString()}
+          </span>
+        )}
+        {(data as any).error && (
+          <span className="flex items-center gap-1 text-red-500" title={(data as any).error}>
+            <AlertCircle className="h-3 w-3" /> Erro BD
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -107,6 +118,7 @@ export default function SuperAdminTenants() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [activeTab, setActiveTab] = useState<"general" | "email" | "templates" | "triggers">("general");
 
   // Form state for new tenant
   const [newTenant, setNewTenant] = useState({
@@ -780,6 +792,54 @@ export default function SuperAdminTenants() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Tabs Navigation */}
+              <div className="flex gap-2 border-b">
+                <button
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "general"
+                      ? "border-b-2 border-purple-600 text-purple-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  onClick={() => setActiveTab("general")}
+                >
+                  Geral
+                </button>
+                <button
+                  className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
+                    activeTab === "email"
+                      ? "border-b-2 border-purple-600 text-purple-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  onClick={() => setActiveTab("email")}
+                >
+                  <Mail className="h-4 w-4" />
+                  Email & SMTP
+                </button>
+                <button
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "templates"
+                      ? "border-b-2 border-purple-600 text-purple-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  onClick={() => setActiveTab("templates")}
+                >
+                  Templates
+                </button>
+                <button
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "triggers"
+                      ? "border-b-2 border-purple-600 text-purple-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  onClick={() => setActiveTab("triggers")}
+                >
+                  Automações
+                </button>
+              </div>
+
+              {/* Tab Content - General */}
+              {activeTab === "general" && (
+                <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nome</Label>
@@ -888,15 +948,32 @@ export default function SuperAdminTenants() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={() => setEditingTenant(null)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleUpdateTenant} className="bg-purple-600 hover:bg-purple-700" disabled={updateTenant.isLoading}>
-                  {updateTenant.isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Salvar alterações
-                </Button>
-              </div>
+                  <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button variant="outline" onClick={() => setEditingTenant(null)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleUpdateTenant} className="bg-purple-600 hover:bg-purple-700" disabled={updateTenant.isLoading}>
+                      {updateTenant.isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Salvar alterações
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab Content - Email */}
+              {activeTab === "email" && (
+                <EmailConfigPanel tenantId={editingTenant.id} />
+              )}
+
+              {/* Tab Content - Templates */}
+              {activeTab === "templates" && (
+                <EmailTemplatesPanel tenantId={editingTenant.id} />
+              )}
+
+              {/* Tab Content - Triggers */}
+              {activeTab === "triggers" && (
+                <EmailTriggersPanel tenantId={editingTenant.id} />
+              )}
             </CardContent>
           </Card>
         </div>

@@ -991,6 +991,18 @@ export async function saveEmailSettingsToDb(
   `);
 }
 
+export async function getDatabaseSize(dbInstance: ReturnType<typeof drizzle>): Promise<number> {
+  try {
+    const result = await dbInstance.execute(sql`SELECT pg_database_size(current_database()) as size`);
+    // O formato do resultado depende do driver, mas geralmente é um array de linhas
+    const row = result[0] as any;
+    return Number(row?.size || 0);
+  } catch (error) {
+    console.error("[Database] Error getting DB size:", error);
+    return 0;
+  }
+}
+
 // Email template operations
 export async function getAllEmailTemplates(module?: string) {
   const db = await getDb();

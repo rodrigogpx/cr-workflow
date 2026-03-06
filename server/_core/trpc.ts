@@ -131,6 +131,45 @@ const requireTenant = t.middleware(async opts => {
   });
 });
 
+// Middleware RIGOROSO de tenant: exige tenant E injeta tenantDb no contexto
+const requireStrictTenant = t.middleware(async opts => {
+  const { ctx, next } = opts;
+
+  if (!ctx.tenant?.id) {
+    throw new TRPCError({ 
+      code: "FORBIDDEN", 
+      message: "Operação requer contexto de tenant válido" 
+    });
+  }
+
+  if (!isTenantActive(ctx.tenant)) {
+    throw new TRPCError({ 
+      code: "FORBIDDEN", 
+      message: "Tenant suspenso ou com assinatura expirada" 
+    });
+  }
+
+  // Importar getTenantDb dinamicamente para evitar dependência circular
+  const { getTenantDb } = await import("../config/tenant.config");
+  const tenantDb = await getTenantDb(ctx.tenant);
+  
+  if (!tenantDb) {
+    throw new TRPCError({ 
+      code: "INTERNAL_SERVER_ERROR", 
+      message: "Banco de dados do tenant indisponível" 
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      tenant: ctx.tenant,
+      tenantSlug: ctx.tenantSlug,
+      tenantDb, // Injetar tenantDb no contexto
+    },
+  });
+});
+
 export const protectedProcedure = t.procedure
   .use(requireUser)
   .use(requireTenantIfPresent);
@@ -153,3 +192,14 @@ export const tenantAdminProcedure = t.procedure
 
 export const platformAdminProcedure = t.procedure
   .use(requirePlatformAdmin);
+
+// Procedure RIGOROSO que exige tenant válido E injeta tenantDb
+export const strictTenantProcedure = t.procedure
+  .use(requireUser)
+  .use(requireStrictTenant);
+
+// Procedure admin RIGOROSO que exige tenant válido E injeta tenantDb
+export const strictTenantAdminProcedure = t.procedure
+  .use(requireUser)
+  .use(requireStrictTenant)
+  .use(requireAdmin);

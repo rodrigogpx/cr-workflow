@@ -9,13 +9,14 @@ import * as db from "./db";
 import { invalidateTenantCache } from "./config/tenant.config";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
-import { saveClientDocumentFile } from "./fileStorage";
+import { saveClientDocumentFile, getTenantStorageUsage } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
 import { getTenantDb } from "./config/tenant.config";
 import { createClientSchema, updateClientSchema } from "@shared/validations";
 import { iatRouter } from "./routers/iat";
+import { Buffer } from "node:buffer";
 
 async function getTenantDbOrNull(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
@@ -1261,6 +1262,7 @@ export const appRouter = router({
         if (process.env.DOCUMENTS_STORAGE_DIR) {
           const stored = await saveClientDocumentFile({
             clientId: input.clientId,
+            tenantId: ctx.tenant?.id,
             fileName: input.fileName,
             buffer,
           });
@@ -2744,10 +2746,27 @@ export const appRouter = router({
           const activityRes = await platformDb.execute(sql`SELECT "createdAt" FROM "auditLogs" WHERE "tenantId" = ${input.id} ORDER BY "createdAt" DESC LIMIT 1`);
           const lastActivity = activityRes[0]?.createdAt || null;
 
+          // Calculate storage usage (filesystem)
+          const storageBytes = await getTenantStorageUsage(input.id);
+          const storageUsedGB = Number((storageBytes / (1024 * 1024 * 1024)).toFixed(3));
+
+          // Calculate DB size
+          let dbSizeMB = 0;
+          try {
+            const tenantDb = await getTenantDb(tenant);
+            if (tenantDb) {
+              const sizeBytes = await db.getDatabaseSize(tenantDb);
+              dbSizeMB = Number((sizeBytes / (1024 * 1024)).toFixed(2));
+            }
+          } catch (dbErr) {
+            console.error(`Error getting DB size for tenant ${tenant.id}:`, dbErr);
+          }
+
           return {
             usersCount,
             clientsCount,
-            storageUsedGB: 0,
+            storageUsedGB,
+            dbSizeMB,
             lastActivity,
           };
         } catch (error: any) {
@@ -2759,6 +2778,45 @@ export const appRouter = router({
             lastActivity: null,
             error: error.message || 'Erro desconhecido',
           };
+        }
+      }),
+
+    // Estatísticas Globais (Super Admin Dashboard)
+    getGlobalStats: platformAdminProcedure
+      .query(async () => {
+        const platformDb = await db.getDb();
+        if (!platformDb) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
+        }
+
+        try {
+          // Contagens globais
+          const [tenantsRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "tenants"`);
+          const [usersRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "users"`);
+          const [clientsRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "clients"`);
+          
+          // Tamanho do banco da plataforma
+          const platformDbSizeBytes = await db.getDatabaseSize(platformDb as any);
+          const platformDbSizeMB = Number((platformDbSizeBytes / (1024 * 1024)).toFixed(2));
+
+          // Armazenamento Global de Arquivos
+          const { getGlobalStorageUsage } = await import('./fileStorage');
+          const globalStorageBytes = await getGlobalStorageUsage();
+          const globalStorageGB = Number((globalStorageBytes / (1024 * 1024 * 1024)).toFixed(3));
+
+          return {
+            totalTenants: Number(tenantsRes?.count || 0),
+            totalUsers: Number(usersRes?.count || 0),
+            totalClients: Number(clientsRes?.count || 0),
+            platformDbSizeMB,
+            globalStorageGB,
+          };
+        } catch (error: any) {
+          console.error('[getGlobalStats] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: 'Erro ao calcular estatísticas globais: ' + error.message 
+          });
         }
       }),
 
@@ -2867,6 +2925,205 @@ export const appRouter = router({
           success: true,
           tenantSlug: tenant.slug,
         };
+      }),
+
+    // ===========================================
+    // EMAIL CONFIGURATION (Super Admin)
+    // ===========================================
+    
+    // Obter configurações de email de um tenant
+    getEmailConfig: platformAdminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        const settings = await db.getTenantSmtpSettings(input.tenantId);
+        
+        if (!settings) {
+          return {
+            emailMethod: "gateway" as const,
+            smtpHost: "",
+            smtpPort: 587,
+            smtpUser: "",
+            smtpFrom: "",
+            postmanGpxBaseUrl: "",
+            hasPostmanGpxApiKey: false,
+            hasSmtpPassword: false,
+            emailLogoUrl: null,
+          };
+        }
+        
+        return {
+          emailMethod: settings.emailMethod || "gateway",
+          smtpHost: settings.smtpHost || "",
+          smtpPort: settings.smtpPort || 587,
+          smtpUser: settings.smtpUser || "",
+          smtpFrom: settings.smtpFrom || "",
+          postmanGpxBaseUrl: (settings as any).postmanGpxBaseUrl || "",
+          hasPostmanGpxApiKey: Boolean((settings as any).postmanGpxApiKey),
+          hasSmtpPassword: Boolean(settings.smtpPassword),
+          emailLogoUrl: (settings as any).emailLogoUrl || null,
+        };
+      }),
+
+    // Atualizar configurações de email de um tenant
+    updateEmailConfig: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        emailMethod: z.enum(["smtp", "gateway"]),
+        smtpHost: z.string().optional(),
+        smtpPort: z.number().optional(),
+        smtpUser: z.string().optional(),
+        smtpPassword: z.string().optional(),
+        smtpFrom: z.string(),
+        postmanGpxBaseUrl: z.string().optional(),
+        postmanGpxApiKey: z.string().optional(),
+        emailLogoUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { tenantId, ...config } = input;
+        
+        // Validações
+        if (config.emailMethod === "smtp") {
+          if (!config.smtpHost || !config.smtpUser) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "SMTP requer host e usuário",
+            });
+          }
+          
+          // Se senha não foi fornecida, manter a existente
+          const existing = await db.getTenantSmtpSettings(tenantId);
+          const smtpPassword = config.smtpPassword !== undefined && config.smtpPassword !== ""
+            ? config.smtpPassword
+            : existing?.smtpPassword || "";
+          
+          if (!smtpPassword) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Informe a senha SMTP",
+            });
+          }
+          
+          await db.updateTenantSmtpSettings(tenantId, {
+            emailMethod: "smtp",
+            smtpHost: config.smtpHost,
+            smtpPort: config.smtpPort || 587,
+            smtpUser: config.smtpUser,
+            smtpPassword,
+            smtpFrom: config.smtpFrom,
+          });
+        } else if (config.emailMethod === "gateway") {
+          if (!config.postmanGpxBaseUrl) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Gateway requer URL base",
+            });
+          }
+          
+          const existing = await db.getTenantSmtpSettings(tenantId);
+          const postmanGpxApiKey = config.postmanGpxApiKey !== undefined && config.postmanGpxApiKey !== ""
+            ? config.postmanGpxApiKey
+            : (existing as any)?.postmanGpxApiKey || "";
+          
+          if (!postmanGpxApiKey) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Informe a API Key do gateway",
+            });
+          }
+          
+          await db.updateTenantSmtpSettings(tenantId, {
+            emailMethod: "gateway",
+            smtpFrom: config.smtpFrom,
+            postmanGpxBaseUrl: config.postmanGpxBaseUrl,
+            postmanGpxApiKey,
+          });
+        }
+        
+        console.log('[AUDIT] Tenant email config updated by super admin', {
+          platformAdminId: ctx.platformAdmin.id,
+          tenantId,
+          emailMethod: config.emailMethod,
+        });
+        
+        return { success: true };
+      }),
+
+    // Testar configuração de email de um tenant
+    testEmailConfig: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        testEmail: z.string().email(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const settings = await db.getTenantSmtpSettings(input.tenantId);
+        
+        if (!settings) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Configuração não encontrada' });
+        }
+        
+        const tenant = await db.getTenantById(input.tenantId);
+        
+        // Enviar email de teste
+        const result = await sendTestEmailWithSettings({
+          host: settings.smtpHost || "",
+          port: settings.smtpPort || 587,
+          user: settings.smtpUser || "",
+          pass: settings.smtpPassword || "",
+          secure: settings.smtpPort === 465,
+          from: settings.smtpFrom || "",
+          toEmail: input.testEmail,
+          subject: `[CAC 360] Teste de Configuração - ${tenant?.name || 'Tenant'}`,
+          body: `<p>Este é um email de teste da configuração SMTP do tenant <strong>${tenant?.name || input.tenantId}</strong>.</p><p>Enviado por: ${ctx.platformAdmin.name || ctx.platformAdmin.email}</p>`,
+          useGateway: settings.emailMethod === "gateway",
+          postmanGpxBaseUrl: (settings as any).postmanGpxBaseUrl,
+          postmanGpxApiKey: (settings as any).postmanGpxApiKey,
+        });
+        
+        console.log('[AUDIT] Email test sent by super admin', {
+          platformAdminId: ctx.platformAdmin.id,
+          tenantId: input.tenantId,
+          testEmail: input.testEmail,
+          success: result.success,
+        });
+        
+        return result;
+      }),
+
+    // Obter templates de email de um tenant
+    getEmailTemplates: platformAdminProcedure
+      .input(z.object({ 
+        tenantId: z.number(),
+        module: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+        
+        const tenantDb = await getTenantDb(tenant);
+        if (!tenantDb) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB indisponível' });
+        }
+        
+        return await db.getAllEmailTemplatesFromDb(tenantDb, input.module, input.tenantId);
+      }),
+
+    // Obter triggers de email de um tenant
+    getEmailTriggers: platformAdminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+        
+        const tenantDb = await getTenantDb(tenant);
+        if (!tenantDb) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB indisponível' });
+        }
+        
+        return await db.getEmailTriggersFromDb(tenantDb, input.tenantId);
       }),
   }),
 
@@ -3260,4 +3517,5 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+
 

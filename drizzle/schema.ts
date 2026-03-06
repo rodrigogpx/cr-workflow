@@ -116,6 +116,7 @@ export type InsertWorkflowStep = typeof workflowSteps.$inferInsert;
  */
 export const subTasks = pgTable("subTasks", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenantId"), // nullable for migration, populated from workflowSteps
   workflowStepId: integer("workflowStepId").notNull(),
   subTaskId: varchar("subTaskId", { length: 100 }).notNull(),
   label: varchar("label", { length: 255 }).notNull(),
@@ -133,6 +134,7 @@ export type InsertSubTask = typeof subTasks.$inferInsert;
  */
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenantId"), // nullable for migration, populated from clients
   clientId: integer("clientId").notNull(),
   workflowStepId: integer("workflowStepId"),
   subTaskId: integer("subTaskId"), // ID da subtarefa associada ao documento
@@ -175,6 +177,7 @@ export const workflowStepsRelations = relations(workflowSteps, ({ one, many }) =
 
 export const sinarmCommentsHistory = pgTable("sinarmCommentsHistory", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenantId"), // nullable for migration, populated from workflowSteps
   workflowStepId: integer("workflowStepId").notNull(),
   oldStatus: varchar("oldStatus", { length: 50 }),
   newStatus: varchar("newStatus", { length: 50 }).notNull(),
