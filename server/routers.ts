@@ -1827,6 +1827,14 @@ export const appRouter = router({
           if (tenantDb) {
             return await db.getAllEmailTemplatesFromDb(tenantDb, input?.module, ctx.tenant?.id);
           }
+          
+          // For Super Admin (no tenant), return empty array since platform DB doesn't have emailTemplates
+          // Super Admin should manage email templates through tenant impersonation or a separate interface
+          if (ctx.platformAdmin) {
+            console.log('[emails.getAllTemplates] Super Admin accessed - returning empty array');
+            return [];
+          }
+          
           return await db.getAllEmailTemplates(input?.module);
         } catch (error: any) {
           console.error('[emails.getAllTemplates] Error:', error);
