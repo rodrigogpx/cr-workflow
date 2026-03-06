@@ -38,7 +38,6 @@ import {
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
 import bcrypt from "bcryptjs";
-import { seedTenantEmailTemplates } from "./defaults/seedTenant";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
@@ -1268,15 +1267,6 @@ export async function createTenant(tenant: InsertTenant) {
     .insert(tenants)
     .values(payload)
     .returning({ id: tenants.id });
-
-  if (tenant.dbUrl) {
-    try {
-      const tenantDb = drizzle(postgres(tenant.dbUrl));
-      await seedTenantEmailTemplates(tenantDb, inserted.id);
-    } catch (error) {
-      console.error("Failed to seed email templates for new tenant:", error);
-    }
-  }
 
   return inserted.id;
 }

@@ -1,9 +1,8 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { APP_LOGO } from "@/const";
-import { Target, Shield, BookOpen, RefreshCcw, Inbox, MapPin, ChevronRight, LogOut, Lock } from "lucide-react";
+import { Target, Shield, BookOpen, RefreshCcw, Inbox, LogOut, Lock } from "lucide-react";
 import { useLocation } from "wouter";
 import { useEffectiveTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
@@ -91,7 +90,10 @@ export default function MainDashboard() {
         {/* Grid de módulos */}
         <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {/* Módulo CR Workflow */}
-          <Card className={`border-2 border-dashed ${features.featureWorkflowCR ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}>
+          <Card
+            onClick={() => features.featureWorkflowCR && setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
+            className={`border-2 border-dashed ${features.featureWorkflowCR ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
+          >
             <CardHeader className="space-y-2 pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureWorkflowCR && 'text-muted-foreground'}`}>
@@ -118,25 +120,14 @@ export default function MainDashboard() {
               <p className="text-[0.7rem] sm:text-xs text-muted-foreground">
                 Use este módulo para inserir novos clientes no CAC 360 e acompanhar o fluxo de aprovação do Certificado de Registro.
               </p>
-              <Button
-                disabled={!features.featureWorkflowCR}
-                className={`w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide border-2 border-dashed ${features.featureWorkflowCR ? 'border-white/40' : 'border-transparent'}`}
-                onClick={() => setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
-              >
-                {features.featureWorkflowCR ? (
-                  <>
-                    Acessar Workflow CR
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </>
-                ) : (
-                  "Módulo Indisponível"
-                )}
-              </Button>
             </CardContent>
           </Card>
 
           {/* Módulo Aquisição & CRAF */}
-          <Card className={`border-2 border-dashed ${features.featureApostilamento ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20' : 'border-white/10 opacity-80 hover:opacity-100'} bg-card/90 backdrop-blur-sm transition-all duration-300`}>
+          <Card
+            onClick={() => features.featureApostilamento && setLocation(buildTenantPath(tenantSlug, "/aquisicao"))}
+            className={`border-2 border-dashed ${features.featureApostilamento ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
+          >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureApostilamento && 'text-muted-foreground'}`}>
@@ -146,9 +137,13 @@ export default function MainDashboard() {
                   Aquisição & CRAF
                 </CardTitle>
                 {features.featureApostilamento ? (
-                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold tracking-wider">ATIVO</Badge>
+                  <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
+                    Ativo
+                  </span>
                 ) : (
-                  <Badge variant="secondary" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px] font-bold tracking-wider">FASE 2</Badge>
+                  <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
+                    Desabilitado
+                  </span>
                 )}
               </div>
             </CardHeader>
@@ -162,15 +157,13 @@ export default function MainDashboard() {
                 </div>
               </div>
             </CardContent>
-            <div className="p-4 pt-0 mt-auto">
-              <Button disabled={!features.featureApostilamento} className="w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide" variant="outline">
-                {features.featureApostilamento ? "Acessar Módulo" : "Em breve"}
-              </Button>
-            </div>
           </Card>
 
           {/* Módulo IAT */}
-          <Card className={`border-2 border-dashed ${features.featureIAT ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20' : 'border-white/20 bg-card/95 backdrop-blur-sm hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20'} bg-card/95 backdrop-blur-sm transition-all duration-300`}>
+          <Card
+            onClick={() => features.featureIAT && setLocation(buildTenantPath(tenantSlug, "/iat"))}
+            className={`border-2 border-dashed ${features.featureIAT ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
+          >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureIAT && 'text-muted-foreground'}`}>
@@ -180,9 +173,13 @@ export default function MainDashboard() {
                   IAT – Instrução de Armamento e Tiro
                 </CardTitle>
                 {features.featureIAT ? (
-                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold tracking-wider">ATIVO</Badge>
+                  <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
+                    Ativo
+                  </span>
                 ) : (
-                  <Badge variant="secondary" className="bg-slate-500/10 text-slate-400 border-slate-500/40 text-[10px] font-bold tracking-wider uppercase">DESABILITADO</Badge>
+                  <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
+                    Desabilitado
+                  </span>
                 )}
               </div>
             </CardHeader>
@@ -196,22 +193,13 @@ export default function MainDashboard() {
                 </div>
               </div>
             </CardContent>
-            <div className="p-4 pt-0 mt-auto">
-              <Button 
-                variant="default" 
-                onClick={() => setLocation(`/${tenantSlug}/iat`)}
-                disabled={!features.featureIAT}
-                className={`w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide border-2 border-dashed ${features.featureIAT ? 'border-white/40' : 'border-transparent'}`}
-              >
-                {features.featureIAT ? (
-                  <>Acessar Módulo IAT <ChevronRight className="ml-2 h-4 w-4" /></>
-                ) : "Em breve"}
-              </Button>
-            </div>
           </Card>
 
           {/* Módulo Munições & Insumos */}
-          <Card className={`border-2 border-dashed ${features.featureInsumos ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20' : 'border-white/10 opacity-80 hover:opacity-100'} bg-card/90 backdrop-blur-sm transition-all duration-300`}>
+          <Card
+            onClick={() => features.featureInsumos && setLocation(buildTenantPath(tenantSlug, "/insumos"))}
+            className={`border-2 border-dashed ${features.featureInsumos ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
+          >
             <CardHeader className="space-y-2 pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureInsumos && 'text-muted-foreground'}`}>
@@ -240,14 +228,14 @@ export default function MainDashboard() {
                   ? "Acesse para gerenciar cotas e insumos do atirador."
                   : "Ideal para atiradores de IPSC e alto volume. Planejado para fases futuras da plataforma."}
               </p>
-              <Button disabled={!features.featureInsumos} className="w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide" variant="outline">
-                {features.featureInsumos ? "Acessar Módulo" : "Em breve"}
-              </Button>
             </CardContent>
           </Card>
 
           {/* Módulo Compliance & Validade (Renovação) */}
-          <Card className={`border-2 border-dashed ${features.featureRenovacao ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20' : 'border-white/10 opacity-80 hover:opacity-100'} bg-card/90 backdrop-blur-sm transition-all duration-300`}>
+          <Card
+            onClick={() => features.featureRenovacao && setLocation(buildTenantPath(tenantSlug, "/compliance"))}
+            className={`border-2 border-dashed ${features.featureRenovacao ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
+          >
             <CardHeader className="space-y-2 pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureRenovacao && 'text-muted-foreground'}`}>
@@ -262,7 +250,7 @@ export default function MainDashboard() {
                   </span>
                 ) : (
                   <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
-                    Roadmap
+                    Desabilitado
                   </span>
                 )}
               </div>
@@ -276,9 +264,6 @@ export default function MainDashboard() {
                   ? "Controle as renovações pendentes da sua base de atiradores e despachos em lote."
                   : "Módulo avançado de retenção e renovação. Previsto para integração com Whatsapp no futuro."}
               </p>
-              <Button disabled={!features.featureRenovacao} className="w-full h-9 text-xs sm:text-sm font-semibold uppercase tracking-wide" variant="outline">
-                {features.featureRenovacao ? "Acessar Módulo" : "Em breve"}
-              </Button>
             </CardContent>
           </Card>
 

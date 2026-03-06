@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -6,15 +7,15 @@ import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64, buildInlineLogoAttachment } from "./emailService";
 import * as db from "./db";
-import { invalidateTenantCache } from "./config/tenant.config";
+import { invalidateTenantCache, getTenantConfig, getTenantDb } from "./config/tenant.config";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
 import { saveClientDocumentFile, getTenantStorageUsage } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
-import { getTenantDb } from "./config/tenant.config";
 import { createClientSchema, updateClientSchema } from "@shared/validations";
+import { seedTenantEmailTemplates } from "./defaults/seedTenant";
 import { iatRouter } from "./routers/iat";
 import { Buffer } from "node:buffer";
 
@@ -441,8 +442,11 @@ export const appRouter = router({
                 tenantId: ctx.tenant?.id,
               });
         } catch (error: any) {
-          // Check for duplicate CPF error (MySQL error code 1062)
-          if (error.message && error.message.includes('Duplicate entry')) {
+          // Check for duplicate CPF error (PostgreSQL code 23505 or MySQL 'Duplicate entry')
+          if (
+            error?.code === '23505' ||
+            (error?.message && (error.message.includes('duplicate key value violates unique constraint') || error.message.includes('Duplicate entry')))
+          ) {
             throw new TRPCError({
               code: 'CONFLICT',
               message: 'Este CPF já está cadastrado no sistema.',
@@ -1818,11 +1822,17 @@ export const appRouter = router({
         module: z.string().optional(),
       }).optional())
       .query(async ({ input, ctx }) => {
-        const tenantDb = await getTenantDbOrNull(ctx);
-        if (tenantDb) {
-          return await db.getAllEmailTemplatesFromDb(tenantDb, input?.module, ctx.tenant?.id);
+        try {
+          const tenantDb = await getTenantDbOrNull(ctx);
+          if (tenantDb) {
+            return await db.getAllEmailTemplatesFromDb(tenantDb, input?.module, ctx.tenant?.id);
+          }
+          return await db.getAllEmailTemplates(input?.module);
+        } catch (error: any) {
+          console.error('[emails.getAllTemplates] Error:', error);
+          if (error instanceof TRPCError) throw error;
+          return [];
         }
-        return await db.getAllEmailTemplates(input?.module);
       }),
 
     // Save email template
@@ -2559,6 +2569,30 @@ export const appRouter = router({
           hashedPassword,
           role: 'admin',
         });
+
+        // Seed default email templates
+        try {
+          // Invalidate cache to ensure we fetch the fresh tenant record
+          invalidateTenantCache(input.slug);
+          
+          // Fetch config using helper that handles password decryption
+          const tenantConfig = await getTenantConfig(input.slug);
+          
+          if (tenantConfig) {
+            const tenantDb = await getTenantDb(tenantConfig);
+            if (tenantDb) {
+              await seedTenantEmailTemplates(tenantDb, tenantId);
+              console.log(`[Tenant] Seeded email templates for tenant ${input.slug}`);
+            } else {
+              console.error(`[Tenant] Failed to connect to DB for seeding templates: ${input.slug}`);
+            }
+          } else {
+            console.error(`[Tenant] Failed to load tenant config for seeding: ${input.slug}`);
+          }
+        } catch (seedError) {
+          console.error(`[Tenant] Error seeding email templates for ${input.slug}:`, seedError);
+          // Não falhar a criação do tenant se o seed falhar, apenas logar erro
+        }
 
         await db.logTenantActivity({
           tenantId,
@@ -3317,23 +3351,29 @@ export const appRouter = router({
   // Email Triggers Router - Automação de emails
   emailTriggers: router({
     list: adminProcedure.query(async ({ ctx }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
-      const tenantId = ctx.tenant?.id;
-      const triggers = tenantDb
-        ? await db.getEmailTriggersFromDb(tenantDb, tenantId)
-        : await db.getEmailTriggers(tenantId);
-      
-      // Load templates for each trigger
-      const triggersWithTemplates = await Promise.all(
-        triggers.map(async (trigger) => {
-          const templates = tenantDb
-            ? await db.getTemplatesByTriggerIdFromDb(tenantDb, trigger.id)
-            : await db.getTemplatesByTriggerId(trigger.id);
-          return { ...trigger, templates };
-        })
-      );
-      
-      return triggersWithTemplates;
+      try {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id;
+        const triggers = tenantDb
+          ? await db.getEmailTriggersFromDb(tenantDb, tenantId)
+          : await db.getEmailTriggers(tenantId);
+        
+        // Load templates for each trigger
+        const triggersWithTemplates = await Promise.all(
+          triggers.map(async (trigger) => {
+            const templates = tenantDb
+              ? await db.getTemplatesByTriggerIdFromDb(tenantDb, trigger.id)
+              : await db.getTemplatesByTriggerId(trigger.id);
+            return { ...trigger, templates };
+          })
+        );
+        
+        return triggersWithTemplates;
+      } catch (error: any) {
+        console.error('[emailTriggers.list] Error:', error);
+        if (error instanceof TRPCError) throw error;
+        return [];
+      }
     }),
 
     getById: adminProcedure
@@ -3517,5 +3557,6 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+
 
 

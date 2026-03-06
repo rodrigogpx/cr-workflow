@@ -15,7 +15,8 @@ import {
 } from "../db";
 import { hashPassword } from "../_core/auth";
 import { sendTestEmailWithSettings } from "../emailService";
-import { invalidateTenantCache } from "../config/tenant.config";
+import { invalidateTenantCache, getTenantConfig, getTenantDb } from "../config/tenant.config";
+import { seedTenantEmailTemplates } from "../defaults/seedTenant";
 
 const installRouter = Router();
 
@@ -216,12 +217,30 @@ installRouter.post("/complete", async (req: Request, res: Response) => {
     };
 
     const existingTenant = await getTenantBySlug(payload.tenant.slug);
+    let tenantId = existingTenant?.id;
+    
     if (existingTenant) {
       await updateTenant(existingTenant.id, tenantPayload);
     } else {
-      await createTenant(tenantPayload as any);
+      tenantId = await createTenant(tenantPayload as any);
     }
     await invalidateTenantCache(payload.tenant.slug);
+
+    // Seed default email templates
+    if (tenantId) {
+      try {
+        const tenantConfig = await getTenantConfig(payload.tenant.slug);
+        if (tenantConfig) {
+          const tenantDb = await getTenantDb(tenantConfig);
+          if (tenantDb) {
+            await seedTenantEmailTemplates(tenantDb, tenantId);
+            console.log(`[Install] Seeded email templates for tenant ${payload.tenant.slug}`);
+          }
+        }
+      } catch (error) {
+        console.error(`[Install] Failed to seed email templates:`, error);
+      }
+    }
 
     await saveEmailSettings({
       smtpHost: payload.smtp.host,

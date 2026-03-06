@@ -2,7 +2,8 @@ import express, { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import * as db from "../db";
 import { hashPassword } from "./auth";
-import { invalidateTenantCache } from "../config/tenant.config";
+import { invalidateTenantCache, getTenantConfig, getTenantDb } from "../config/tenant.config";
+import { seedTenantEmailTemplates } from "../defaults/seedTenant";
 
 export const tenantApiRouter = express.Router();
 
@@ -140,6 +141,22 @@ tenantApiRouter.post("/", async (req: express.Request, res: express.Response) =>
     });
 
     invalidateTenantCache(data.slug);
+
+    // Seed default email templates
+    try {
+      const tenantConfig = await getTenantConfig(data.slug);
+      if (tenantConfig) {
+        const tenantDb = await getTenantDb(tenantConfig);
+        if (tenantDb) {
+          await seedTenantEmailTemplates(tenantDb, tenantId);
+          console.log(`[TenantApi] Seeded email templates for tenant ${data.slug}`);
+        } else {
+          console.error(`[TenantApi] Failed to connect to DB for seeding templates: ${data.slug}`);
+        }
+      }
+    } catch (seedError) {
+      console.error(`[TenantApi] Error seeding email templates for ${data.slug}:`, seedError);
+    }
 
     res.status(201).json({ success: true, data: { id: tenantId, slug: data.slug } });
   } catch (error: any) {
