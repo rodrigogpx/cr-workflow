@@ -179,9 +179,9 @@ export default function ClientWorkflow() {
     { enabled: !!clientId && isAuthenticated }
   );
 
-  const updateStdata, variablesepMutation = trpc.workflow.updateStep.useMutation({
-    onSuccess();
-      utils.workflow.getSinarmCommentsHistory.invalidate:{ stepId: variables.stepId } () => {
+  const updateStepMutation = trpc.workflow.updateStep.useMutation({
+    onSuccess: (data, variables) => {
+      utils.workflow.getSinarmCommentsHistory.invalidate({ stepId: variables.stepId });
       refetch();
       toast.success("Etapa atualizada com sucesso!");
     },
