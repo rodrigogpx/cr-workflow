@@ -993,12 +993,28 @@ export async function saveEmailSettingsToDb(
 export async function getDatabaseSize(dbInstance: ReturnType<typeof drizzle>): Promise<number> {
   try {
     const result = await dbInstance.execute(sql`SELECT pg_database_size(current_database()) as size`);
-    // O formato do resultado depende do driver, mas geralmente é um array de linhas
-    const row = result[0] as any;
-    return Number(row?.size || 0);
+    // Handle different result formats from drizzle/postgres-js
+    const rows = (result as any)?.rows || result;
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    const size = Number(row?.size || 0);
+    if (!size) {
+      console.warn("[Database] pg_database_size returned 0. Raw result:", JSON.stringify(result).substring(0, 500));
+    }
+    return size;
   } catch (error) {
-    console.error("[Database] Error getting DB size:", error);
-    return 0;
+    // pg_database_size may fail due to permissions - try alternative
+    console.warn("[Database] pg_database_size failed, trying pg_stat_database fallback:", (error as any)?.message);
+    try {
+      const fallback = await dbInstance.execute(
+        sql`SELECT pg_database_size AS size FROM pg_stat_database WHERE datname = current_database()`
+      );
+      const rows = (fallback as any)?.rows || fallback;
+      const row = Array.isArray(rows) ? rows[0] : rows;
+      return Number(row?.size || 0);
+    } catch (fallbackErr) {
+      console.error("[Database] Both DB size methods failed:", (fallbackErr as any)?.message);
+      return 0;
+    }
   }
 }
 

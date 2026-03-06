@@ -2799,10 +2799,15 @@ export const appRouter = router({
             if (tenantDb) {
               const sizeBytes = await db.getDatabaseSize(tenantDb);
               dbSizeMB = Number((sizeBytes / (1024 * 1024)).toFixed(2));
+              console.log(`[Stats] Tenant ${tenant.id} DB size: ${sizeBytes} bytes (${dbSizeMB} MB)`);
+            } else {
+              console.warn(`[Stats] getTenantDb returned null for tenant ${tenant.id} (${tenant.slug})`);
             }
-          } catch (dbErr) {
-            console.error(`Error getting DB size for tenant ${tenant.id}:`, dbErr);
+          } catch (dbErr: any) {
+            console.error(`[Stats] Error getting DB size for tenant ${tenant.id}:`, dbErr?.message);
           }
+
+          console.log(`[Stats] Tenant ${tenant.id}: users=${usersCount}, clients=${clientsCount}, storage=${storageUsedGB}GB, db=${dbSizeMB}MB`);
 
           return {
             usersCount,
@@ -2817,6 +2822,7 @@ export const appRouter = router({
             usersCount: 0,
             clientsCount: 0,
             storageUsedGB: 0,
+            dbSizeMB: 0,
             lastActivity: null,
             error: error.message || 'Erro desconhecido',
           };
