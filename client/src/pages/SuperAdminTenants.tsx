@@ -490,7 +490,7 @@ export default function SuperAdminTenants() {
         </div>
 
         {/* Tenants List */}
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {isLoadingTenants ? (
             <Card className="text-center py-12">
               <CardContent>
