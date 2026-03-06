@@ -3187,6 +3187,25 @@ export const appRouter = router({
           return [];
         }
       }),
+
+    // Seed email templates for an existing tenant
+    seedEmailTemplates: platformAdminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .mutation(async ({ input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+        
+        const tenantDb = await getTenantDb(tenant);
+        if (!tenantDb) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        }
+        
+        const result = await seedTenantEmailTemplates(tenantDb, input.tenantId);
+        console.log(`[tenants.seedEmailTemplates] Tenant ${input.tenantId}:`, result);
+        return result;
+      }),
   }),
 
   // ===========================================
