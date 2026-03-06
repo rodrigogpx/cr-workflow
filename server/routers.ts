@@ -3144,34 +3144,48 @@ export const appRouter = router({
         module: z.string().optional(),
       }))
       .query(async ({ input }) => {
-        const tenant = await db.getTenantById(input.tenantId);
-        if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        try {
+          const tenant = await db.getTenantById(input.tenantId);
+          if (!tenant) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          }
+          
+          const tenantDb = await getTenantDb(tenant);
+          if (!tenantDb) {
+            console.warn(`[tenants.getEmailTemplates] DB indisponível para tenant ${input.tenantId}`);
+            return [];
+          }
+          
+          return await db.getAllEmailTemplatesFromDb(tenantDb, input.module, input.tenantId);
+        } catch (error: any) {
+          console.error(`[tenants.getEmailTemplates] Error for tenant ${input.tenantId}:`, error?.message);
+          if (error instanceof TRPCError) throw error;
+          return [];
         }
-        
-        const tenantDb = await getTenantDb(tenant);
-        if (!tenantDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB indisponível' });
-        }
-        
-        return await db.getAllEmailTemplatesFromDb(tenantDb, input.module, input.tenantId);
       }),
 
     // Obter triggers de email de um tenant
     getEmailTriggers: platformAdminProcedure
       .input(z.object({ tenantId: z.number() }))
       .query(async ({ input }) => {
-        const tenant = await db.getTenantById(input.tenantId);
-        if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        try {
+          const tenant = await db.getTenantById(input.tenantId);
+          if (!tenant) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          }
+          
+          const tenantDb = await getTenantDb(tenant);
+          if (!tenantDb) {
+            console.warn(`[tenants.getEmailTriggers] DB indisponível para tenant ${input.tenantId}`);
+            return [];
+          }
+          
+          return await db.getEmailTriggersFromDb(tenantDb, input.tenantId);
+        } catch (error: any) {
+          console.error(`[tenants.getEmailTriggers] Error for tenant ${input.tenantId}:`, error?.message);
+          if (error instanceof TRPCError) throw error;
+          return [];
         }
-        
-        const tenantDb = await getTenantDb(tenant);
-        if (!tenantDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB indisponível' });
-        }
-        
-        return await db.getEmailTriggersFromDb(tenantDb, input.tenantId);
       }),
   }),
 
