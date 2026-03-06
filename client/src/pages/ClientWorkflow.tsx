@@ -140,6 +140,7 @@ function SinarmCommentsInline({ stepId }: { stepId: number }) {
 export default function ClientWorkflow() {
   const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
+  const utils = trpc.useContext();
   const tenantSlug = useTenantSlug();
   const { user, isAuthenticated } = useAuth();
   const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
@@ -178,8 +179,9 @@ export default function ClientWorkflow() {
     { enabled: !!clientId && isAuthenticated }
   );
 
-  const updateStepMutation = trpc.workflow.updateStep.useMutation({
-    onSuccess: () => {
+  const updateStdata, variablesepMutation = trpc.workflow.updateStep.useMutation({
+    onSuccess();
+      utils.workflow.getSinarmCommentsHistory.invalidate:{ stepId: variables.stepId } () => {
       refetch();
       toast.success("Etapa atualizada com sucesso!");
     },

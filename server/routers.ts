@@ -894,24 +894,28 @@ export const appRouter = router({
         if (tenantDb) {
           await db.upsertWorkflowStepToDb(tenantDb, updateData);
           
-          if (input.sinarmStatus !== undefined && input.sinarmComment) {
+          if (input.sinarmStatus !== undefined) {
+            const comment = input.sinarmComment || `Status alterado de "${currentStep.sinarmStatus || 'Novo'}" para "${input.sinarmStatus}"`;
+            
             await db.insertSinarmCommentToDb(tenantDb, {
               workflowStepId: input.stepId,
               oldStatus: currentStep.sinarmStatus || 'Novo',
               newStatus: input.sinarmStatus,
-              comment: input.sinarmComment,
+              comment: comment,
               createdBy: ctx.user.id
             });
           }
         } else {
           await db.upsertWorkflowStep(updateData);
 
-          if (input.sinarmStatus !== undefined && input.sinarmComment) {
+          if (input.sinarmStatus !== undefined) {
+            const comment = input.sinarmComment || `Status alterado de "${currentStep.sinarmStatus || 'Novo'}" para "${input.sinarmStatus}"`;
+
             await db.insertSinarmComment({
               workflowStepId: input.stepId,
               oldStatus: currentStep.sinarmStatus || 'Novo',
               newStatus: input.sinarmStatus,
-              comment: input.sinarmComment,
+              comment: comment,
               createdBy: ctx.user.id
             });
           }
