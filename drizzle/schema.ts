@@ -224,6 +224,7 @@ export const documentsRelations = relations(documents, ({ one }) => ({
  */
 export const emailTemplates = pgTable("emailTemplates", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenantId"), // null = global default template, populated = tenant specific template
   module: varchar("module", { length: 50 }).notNull().default('workflow-cr'), // 'workflow-cr', 'platform', etc
   templateKey: varchar("templateKey", { length: 100 }).notNull(), // 'welcome', 'process', 'status'
   templateTitle: varchar("templateTitle", { length: 255 }), // Human-readable title for display

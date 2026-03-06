@@ -131,6 +131,15 @@ export const appRouter = router({
           if (userTenant) {
             tenantSlug = userTenant.slug;
           }
+        } else if (!user.tenantId) {
+          // Fallback para usuários legados: associar ao primeiro tenant existente
+          const allTenants = await db.getAllTenants();
+          if (allTenants && allTenants.length > 0) {
+            const firstTenant = allTenants[0];
+            await db.updateUser(user.id, { tenantId: firstTenant.id });
+            tenantSlug = firstTenant.slug;
+            user.tenantId = firstTenant.id;
+          }
         }
 
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
@@ -149,10 +158,10 @@ export const appRouter = router({
         });
 
         // Log audit entry for login
-        if (ctx.tenant?.id) {
+        if (ctx.tenant?.id || user.tenantId) {
           const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
           await db.logAudit({
-            tenantId: ctx.tenant.id,
+            tenantId: ctx.tenant?.id || user.tenantId!,
             userId: user.id,
             action: 'LOGIN',
             entity: 'AUTH',
@@ -168,6 +177,7 @@ export const appRouter = router({
             name: user.name,
             email: user.email,
             role: user.role,
+            tenantId: user.tenantId,
           },
         };
       }),
@@ -1455,7 +1465,14 @@ export const appRouter = router({
     // SMTP configuration - admin only (tenant-isolated)
     getSmtpConfig: adminProcedure
       .query(async ({ ctx }) => {
-        const tenantId = ctx.tenant?.id;
+        let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
+        
+        if (!tenantId) {
+          const allTenants = await db.getAllTenants();
+          if (allTenants && allTenants.length > 0) {
+            tenantId = allTenants[0].id;
+          }
+        }
         
         // Se tem tenantId, busca da tabela tenants
         if (tenantId) {
@@ -1519,7 +1536,14 @@ export const appRouter = router({
         useSecure: z.boolean().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const tenantId = ctx.tenant?.id;
+        let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
+        
+        if (!tenantId) {
+          const allTenants = await db.getAllTenants();
+          if (allTenants && allTenants.length > 0) {
+            tenantId = allTenants[0].id;
+          }
+        }
         
         if (!tenantId) {
           throw new TRPCError({
@@ -1598,7 +1622,14 @@ export const appRouter = router({
         useMethod: z.enum(["smtp", "gateway"]).optional(),
       }).optional())
       .mutation(async ({ ctx, input }) => {
-        const tenantId = ctx.tenant?.id;
+        let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
+        
+        if (!tenantId) {
+          const allTenants = await db.getAllTenants();
+          if (allTenants && allTenants.length > 0) {
+            tenantId = allTenants[0].id;
+          }
+        }
         
         // Buscar settings do tenant
         const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
@@ -1647,7 +1678,14 @@ export const appRouter = router({
         logoUrl: z.string().url(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const tenantId = ctx.tenant?.id;
+        let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
+        
+        if (!tenantId) {
+          const allTenants = await db.getAllTenants();
+          if (allTenants && allTenants.length > 0) {
+            tenantId = allTenants[0].id;
+          }
+        }
         
         if (!tenantId) {
           throw new TRPCError({
@@ -1731,8 +1769,15 @@ export const appRouter = router({
     // Remove email logo
     removeEmailLogo: adminProcedure
       .mutation(async ({ ctx }) => {
-        const tenantId = ctx.tenant?.id;
+        let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
         
+        if (!tenantId) {
+          const allTenants = await db.getAllTenants();
+          if (allTenants && allTenants.length > 0) {
+            tenantId = allTenants[0].id;
+          }
+        }
+
         if (!tenantId) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -1769,7 +1814,7 @@ export const appRouter = router({
       .query(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         if (tenantDb) {
-          return await db.getAllEmailTemplatesFromDb(tenantDb, input?.module);
+          return await db.getAllEmailTemplatesFromDb(tenantDb, input?.module, ctx.tenant?.id);
         }
         return await db.getAllEmailTemplates(input?.module);
       }),
@@ -1787,7 +1832,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const templateId = tenantDb
-          ? await db.saveEmailTemplateToDb(tenantDb, input)
+          ? await db.saveEmailTemplateToDb(tenantDb, input, ctx.tenant?.id)
           : await db.saveEmailTemplate(input);
         return { success: true, templateId };
       }),
@@ -1801,7 +1846,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         if (tenantDb) {
-          await db.deleteEmailTemplateFromDb(tenantDb, input.templateKey, input.module);
+          await db.deleteEmailTemplateFromDb(tenantDb, input.templateKey, input.module, ctx.tenant?.id);
         } else {
           await db.deleteEmailTemplate(input.templateKey, input.module);
         }
@@ -2838,8 +2883,7 @@ export const appRouter = router({
       .query(async ({ input, ctx }) => {
         try {
           const tenantDb = await getTenantDbOrNull(ctx);
-          const tenantId = ctx.tenant?.id;
-
+          const tenantId = ctx.tenant?.id || ctx.user?.tenantId;
           if (!tenantId) {
             throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
           }
@@ -2938,9 +2982,8 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
-        const tenantId = ctx.tenant?.id;
-
-        if (!tenantId) {
+        const tenantId = ctx.tenant?.id || ctx.user?.tenantId;
+          if (!tenantId) {
           throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
         }
 
@@ -3213,3 +3256,4 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+

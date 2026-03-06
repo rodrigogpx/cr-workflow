@@ -38,6 +38,7 @@ import {
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
 import bcrypt from "bcryptjs";
+import { seedTenantEmailTemplates } from "./defaults/seedTenant";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
@@ -147,10 +148,11 @@ export async function upsertUser(user: InsertUser & { id?: number }): Promise<nu
 
 export async function saveEmailTemplateToDb(
   tenantDb: ReturnType<typeof drizzle>,
-  template: InsertEmailTemplate & { module?: string }
+  template: InsertEmailTemplate & { module?: string },
+  tenantId?: number
 ) {
   const moduleValue = template.module || 'workflow-cr';
-  const existing = await getEmailTemplateFromDb(tenantDb, template.templateKey, moduleValue);
+  const existing = await getEmailTemplateFromDb(tenantDb, template.templateKey, moduleValue, tenantId);
 
   if (existing) {
     await tenantDb
@@ -168,7 +170,7 @@ export async function saveEmailTemplateToDb(
 
   const [inserted] = await tenantDb
     .insert(emailTemplates)
-    .values({ ...template, module: moduleValue })
+    .values({ ...template, module: moduleValue, tenantId })
     .returning({ id: emailTemplates.id });
   return inserted.id;
 }
@@ -276,24 +278,21 @@ export async function getUserByEmail(email: string) {
 export async function getEmailTemplateFromDb(
   tenantDb: ReturnType<typeof drizzle>,
   templateKey: string,
-  module?: string
+  module?: string,
+  tenantId?: number
 ) {
+  let conditions = [eq(emailTemplates.templateKey, templateKey)];
   if (module) {
-    const result = await tenantDb
-      .select()
-      .from(emailTemplates)
-      .where(and(
-        eq(emailTemplates.templateKey, templateKey),
-        eq(emailTemplates.module, module)
-      ))
-      .limit(1);
-    return result.length > 0 ? result[0] : undefined;
+    conditions.push(eq(emailTemplates.module, module));
+  }
+  if (tenantId) {
+    conditions.push(eq(emailTemplates.tenantId, tenantId));
   }
 
   const result = await tenantDb
     .select()
     .from(emailTemplates)
-    .where(eq(emailTemplates.templateKey, templateKey))
+    .where(and(...conditions))
     .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
@@ -1009,18 +1008,25 @@ export async function getAllEmailTemplates(module?: string) {
 
 export async function getAllEmailTemplatesFromDb(
   tenantDb: ReturnType<typeof drizzle>,
-  module?: string
+  module?: string,
+  tenantId?: number
 ) {
+  let conditions = [];
   if (module) {
-    const result = await tenantDb
-      .select()
-      .from(emailTemplates)
-      .where(eq(emailTemplates.module, module));
-    return result;
+    conditions.push(eq(emailTemplates.module, module));
+  }
+  if (tenantId) {
+    conditions.push(eq(emailTemplates.tenantId, tenantId));
   }
 
-  const result = await tenantDb.select().from(emailTemplates);
-  return result;
+  if (conditions.length > 0) {
+    return await tenantDb
+      .select()
+      .from(emailTemplates)
+      .where(and(...conditions));
+  }
+
+  return await tenantDb.select().from(emailTemplates);
 }
 
 export async function getEmailTemplate(templateKey: string, module?: string) {
@@ -1088,14 +1094,24 @@ export async function deleteEmailTemplate(templateKey: string, module?: string) 
     ));
 }
 
-export async function deleteEmailTemplateFromDb(tenantDb: ReturnType<typeof drizzle>, templateKey: string, module?: string) {
+export async function deleteEmailTemplateFromDb(
+  tenantDb: ReturnType<typeof drizzle>, 
+  templateKey: string, 
+  module?: string,
+  tenantId?: number
+) {
   const moduleValue = module || 'workflow-cr';
 
+  let conditions = [
+    eq(emailTemplates.templateKey, templateKey),
+    eq(emailTemplates.module, moduleValue)
+  ];
+  if (tenantId) {
+    conditions.push(eq(emailTemplates.tenantId, tenantId));
+  }
+
   await tenantDb.delete(emailTemplates)
-    .where(and(
-      eq(emailTemplates.templateKey, templateKey),
-      eq(emailTemplates.module, moduleValue)
-    ));
+    .where(and(...conditions));
 }
 
 export async function logEmailSent(log: InsertEmailLog) {
@@ -1240,6 +1256,16 @@ export async function createTenant(tenant: InsertTenant) {
     .insert(tenants)
     .values(payload)
     .returning({ id: tenants.id });
+
+  if (tenant.dbUrl) {
+    try {
+      const tenantDb = drizzle(postgres(tenant.dbUrl));
+      await seedTenantEmailTemplates(tenantDb, inserted.id);
+    } catch (error) {
+      console.error("Failed to seed email templates for new tenant:", error);
+    }
+  }
+
   return inserted.id;
 }
 

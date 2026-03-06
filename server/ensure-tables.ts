@@ -120,6 +120,28 @@ export async function ensureMissingTables() {
       );
     `);
 
+    // Email Templates
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "emailTemplates" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer,
+        "module" varchar(50) DEFAULT 'workflow-cr' NOT NULL,
+        "templateKey" varchar(100) NOT NULL,
+        "templateTitle" varchar(255),
+        "subject" varchar(255) NOT NULL,
+        "content" text NOT NULL,
+        "attachments" text,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // Ensure tenantId exists for existing installations
+    await db.execute(sql`
+      ALTER TABLE "emailTemplates"
+        ADD COLUMN IF NOT EXISTS "tenantId" integer;
+    `);
+
     // Email Triggers
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "emailTriggers" (
