@@ -28,7 +28,22 @@ function extractEmailAddress(fromValue: string | undefined | null): string | und
   return undefined;
 }
 
-async function resolveSmtpConfig(tenantDb?: any): Promise<SmtpConfig> {
+async function resolveSmtpConfig(tenantDb?: any, tenantId?: number): Promise<SmtpConfig> {
+  if (tenantId) {
+    const { getTenantSmtpSettings } = await import('./db');
+    const tenantConfig = await getTenantSmtpSettings(tenantId);
+    if (tenantConfig && tenantConfig.emailMethod === 'smtp' && tenantConfig.smtpHost) {
+      return {
+        smtpHost: tenantConfig.smtpHost,
+        smtpPort: tenantConfig.smtpPort || 587,
+        smtpUser: tenantConfig.smtpUser || '',
+        smtpPass: tenantConfig.smtpPassword || '',
+        smtpFrom: tenantConfig.smtpFrom || '',
+        useSecure: tenantConfig.smtpPort === 465,
+      };
+    }
+  }
+
   const dbConfig: EmailSettings | null = tenantDb
     ? await getEmailSettingsFromDb(tenantDb)
     : await getEmailSettings();
@@ -58,8 +73,8 @@ async function resolveSmtpConfig(tenantDb?: any): Promise<SmtpConfig> {
   };
 }
 
-async function getTransporterWithConfig(tenantDb?: any): Promise<{ transporter: nodemailer.Transporter; config: SmtpConfig }> {
-  const config = await resolveSmtpConfig(tenantDb);
+async function getTransporterWithConfig(tenantDb?: any, tenantId?: number): Promise<{ transporter: nodemailer.Transporter; config: SmtpConfig }> {
+  const config = await resolveSmtpConfig(tenantDb, tenantId);
   const configKey = `${config.smtpHost}:${config.smtpPort}:${config.smtpUser}:${config.useSecure}`;
 
   if (!transporter || currentConfigKey !== configKey) {
@@ -156,8 +171,28 @@ export function buildInlineLogoAttachment(emailLogoValue: string | undefined | n
  */
 export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; tenantId?: number }): Promise<{ success: boolean; messageId?: string }> {
   const { tenantDb, tenantId, ...emailOptions } = options;
-  // Em produção, usar Gateway para contornar restrições SMTP do Railway
-  const useGateway = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true';
+  
+  let finalTenantId = tenantId;
+  
+  if (!finalTenantId) {
+    const { getAllTenants } = await import('./db');
+    const allTenants = await getAllTenants();
+    if (allTenants && allTenants.length > 0) {
+      finalTenantId = allTenants[0].id;
+    }
+  }
+
+  const { getTenantSmtpSettings } = await import('./db');
+  let emailMethod = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true' ? 'gateway' : 'smtp';
+  
+  if (finalTenantId) {
+    const tenantSettings = await getTenantSmtpSettings(finalTenantId);
+    if (tenantSettings && tenantSettings.emailMethod) {
+      emailMethod = tenantSettings.emailMethod;
+    }
+  }
+
+  const useGateway = emailMethod === 'gateway';
 
   if (useGateway) {
     console.log('[EmailService] Using PostmanGPX for sendEmail (gateway mode)');
@@ -166,7 +201,7 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
       subject: emailOptions.subject,
       html: emailOptions.html,
       attachments: emailOptions.attachments,
-    }, tenantId);
+    }, finalTenantId);
 
     if (!result.success) {
       throw new Error(result.error || 'Falha ao enviar email via Gateway');
@@ -175,9 +210,9 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
     return { success: true, messageId: 'gateway-' + Date.now() };
   }
 
-  // Desenvolvimento: usar SMTP direto
+  // SMTP direto
   try {
-    const { transporter: transport, config } = await getTransporterWithConfig(tenantDb);
+    const { transporter: transport, config } = await getTransporterWithConfig(tenantDb, finalTenantId);
 
     // Prepare attachments for Nodemailer
     const attachments: Attachment[] = options.attachments?.map(att => ({
@@ -219,16 +254,24 @@ async function sendEmailViaPostmanGpx(
   tenantId?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { getTenantSmtpSettings } = await import('./db');
+    const { getTenantSmtpSettings, getAllTenants } = await import('./db');
+    
+    let finalTenantId = tenantId;
+    if (!finalTenantId) {
+      const allTenants = await getAllTenants();
+      if (allTenants && allTenants.length > 0) {
+        finalTenantId = allTenants[0].id;
+      }
+    }
 
     let baseUrl = POSTMANGPX_BASE_URL;
     let apiKey = POSTMANGPX_API_KEY;
     let smtpFrom: string | undefined;
 
     try {
-      if (tenantId) {
-        console.log(`[EmailService] Looking up PostmanGPX settings for tenant ${tenantId}`);
-        const tenantSettings = await getTenantSmtpSettings(tenantId);
+      if (finalTenantId) {
+        console.log(`[EmailService] Looking up PostmanGPX settings for tenant ${finalTenantId}`);
+        const tenantSettings = await getTenantSmtpSettings(finalTenantId);
         console.log(`[EmailService] Tenant settings found:`, tenantSettings ? 'yes' : 'no');
         baseUrl = tenantSettings?.postmanGpxBaseUrl || baseUrl;
         apiKey = tenantSettings?.postmanGpxApiKey || apiKey;
