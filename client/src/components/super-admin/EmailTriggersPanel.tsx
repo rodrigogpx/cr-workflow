@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,20 +35,7 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   const [editSendImmediate, setEditSendImmediate] = useState(true);
   const [editSendBeforeHours, setEditSendBeforeHours] = useState<number | null>(null);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<number[]>([]);
-
-  const { data: triggerTemplates = [], isLoading: loadingTriggerTemplates } =
-    trpc.tenants.getTriggerTemplates.useQuery(
-      { tenantId, triggerId: selectedTrigger?.id ?? 0 },
-      { enabled: !!selectedTrigger }
-    );
-
-  useEffect(() => {
-    if (triggerTemplates.length > 0) {
-      setSelectedTemplateIds(triggerTemplates.map((tt: any) => tt.templateId));
-    } else if (selectedTrigger) {
-      setSelectedTemplateIds([]);
-    }
-  }, [triggerTemplates, selectedTrigger]);
+  const [loadingTriggerTemplates, setLoadingTriggerTemplates] = useState(false);
 
   const updateMutation = trpc.tenants.updateEmailTrigger.useMutation({
     onError: (error: any) => {
@@ -62,7 +49,7 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
     },
   });
 
-  const openSheet = (trigger: any) => {
+  const openSheet = async (trigger: any) => {
     setSelectedTrigger(trigger);
     setEditName(trigger.name);
     setEditEvent(trigger.triggerEvent);
@@ -70,6 +57,17 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
     setEditRecipientType(trigger.recipientType || "client");
     setEditSendImmediate(trigger.sendImmediate ?? true);
     setEditSendBeforeHours(trigger.sendBeforeHours ?? null);
+    setSelectedTemplateIds([]);
+    setLoadingTriggerTemplates(true);
+
+    try {
+      const linked = await utils.tenants.getTriggerTemplates.fetch({ tenantId, triggerId: trigger.id });
+      setSelectedTemplateIds(linked.map((tt: any) => tt.templateId));
+    } catch {
+      setSelectedTemplateIds([]);
+    } finally {
+      setLoadingTriggerTemplates(false);
+    }
   };
 
   const toggleTemplate = (templateId: number) => {
