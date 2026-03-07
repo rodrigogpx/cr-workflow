@@ -3366,7 +3366,7 @@ export const appRouter = router({
               }
             }
 
-            return log.userId ? 'Usuário removido' : 'Sistema';
+            return log.userId ? 'Admin da plataforma' : 'Sistema';
           };
 
           const enrichedLogs = result.logs.map(log => ({
@@ -3453,7 +3453,7 @@ export const appRouter = router({
             }
           }
 
-          return log.userId ? 'Usuário removido' : 'Sistema';
+          return log.userId ? 'Admin da plataforma' : 'Sistema';
         };
 
         const csvHeader = 'Data/Hora,Usuário,Ação,Entidade,ID Entidade,Detalhes,IP\n';
