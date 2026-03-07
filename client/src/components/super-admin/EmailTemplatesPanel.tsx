@@ -243,7 +243,7 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
                     </div>
                     <div className="p-1 bg-white">
                       <iframe
-                        srcDoc={editContent}
+                        srcDoc={editContent.includes('<meta charset') ? editContent : `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${editContent}</body></html>`}
                         className="w-full border-0"
                         style={{ minHeight: '500px' }}
                         title="Email Preview"
