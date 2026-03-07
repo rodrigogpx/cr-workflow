@@ -140,6 +140,21 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                     <p className="text-sm text-muted-foreground">
                       Evento: {trigger.triggerEvent}
                     </p>
+                    {trigger.templates?.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {trigger.templates.map((triggerTemplate: any) => (
+                          <Badge key={triggerTemplate.id} variant="secondary" className="max-w-full">
+                            <span className="truncate">
+                              {triggerTemplate.template?.templateTitle || triggerTemplate.template?.templateKey || `Template ${triggerTemplate.templateId}`}
+                            </span>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted-foreground italic">
+                        Nenhum template configurado
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />

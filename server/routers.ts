@@ -3208,8 +3208,15 @@ export const appRouter = router({
             console.warn(`[tenants.getEmailTriggers] DB indisponível para tenant ${input.tenantId}`);
             return [];
           }
-          
-          return await db.getEmailTriggersFromDb(tenantDb, input.tenantId);
+
+          const triggers = await db.getEmailTriggersFromDb(tenantDb, input.tenantId);
+
+          return await Promise.all(
+            triggers.map(async (trigger) => {
+              const templates = await db.getTemplatesByTriggerIdFromDb(tenantDb, trigger.id);
+              return { ...trigger, templates };
+            })
+          );
         } catch (error: any) {
           console.error(`[tenants.getEmailTriggers] Error for tenant ${input.tenantId}:`, error?.message);
           if (error instanceof TRPCError) throw error;
