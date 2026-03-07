@@ -3150,7 +3150,13 @@ export const appRouter = router({
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
           }
           
-          const tenantDb = await getTenantDb(tenant);
+          const tenantConfig = await getTenantConfig(tenant.slug);
+          if (!tenantConfig) {
+            console.warn(`[tenants.getEmailTemplates] Configuração não encontrada para tenant ${input.tenantId}`);
+            return [];
+          }
+
+          const tenantDb = await getTenantDb(tenantConfig);
           if (!tenantDb) {
             console.warn(`[tenants.getEmailTemplates] DB indisponível para tenant ${input.tenantId}`);
             return [];
@@ -3174,7 +3180,13 @@ export const appRouter = router({
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
           }
           
-          const tenantDb = await getTenantDb(tenant);
+          const tenantConfig = await getTenantConfig(tenant.slug);
+          if (!tenantConfig) {
+            console.warn(`[tenants.getEmailTriggers] Configuração não encontrada para tenant ${input.tenantId}`);
+            return [];
+          }
+
+          const tenantDb = await getTenantDb(tenantConfig);
           if (!tenantDb) {
             console.warn(`[tenants.getEmailTriggers] DB indisponível para tenant ${input.tenantId}`);
             return [];
@@ -3197,7 +3209,12 @@ export const appRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         
-        const tenantDb = await getTenantDb(tenant);
+        const tenantConfig = await getTenantConfig(tenant.slug);
+        if (!tenantConfig) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Configuração do tenant não encontrada' });
+        }
+
+        const tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) {
           throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         }
