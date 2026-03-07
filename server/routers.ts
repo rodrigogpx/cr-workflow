@@ -3205,6 +3205,45 @@ export const appRouter = router({
         }
       }),
 
+    // Save/update a single email template for a tenant (Super Admin)
+    saveEmailTemplate: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        templateKey: z.string(),
+        module: z.string().optional(),
+        templateTitle: z.string().optional(),
+        subject: z.string(),
+        content: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        let tenantDb: any = null;
+        const tenantConfig = await getTenantConfig(tenant.slug);
+        if (tenantConfig) {
+          tenantDb = await getTenantDb(tenantConfig);
+        }
+        if (!tenantDb) {
+          tenantDb = await db.getDb();
+        }
+        if (!tenantDb) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        }
+
+        const templateId = await db.saveEmailTemplateToDb(tenantDb, {
+          templateKey: input.templateKey,
+          module: input.module,
+          templateTitle: input.templateTitle,
+          subject: input.subject,
+          content: input.content,
+        }, input.tenantId);
+
+        return { success: true, templateId };
+      }),
+
     // Seed email templates for an existing tenant
     seedEmailTemplates: platformAdminProcedure
       .input(z.object({ tenantId: z.number() }))

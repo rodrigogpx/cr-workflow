@@ -817,7 +817,7 @@ export default function SuperAdminTenants() {
 
           {/* Panel - slides from right */}
           <div
-            className={`absolute top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+            className={`absolute top-0 right-0 h-full w-[75vw] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
               panelMounted ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
