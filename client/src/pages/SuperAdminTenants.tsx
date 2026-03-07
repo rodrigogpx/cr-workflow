@@ -4,7 +4,7 @@
  * Página para gerenciamento de tenants (clubes) da plataforma CAC 360
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
@@ -119,6 +119,24 @@ export default function SuperAdminTenants() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [activeTab, setActiveTab] = useState<"general" | "email" | "templates" | "triggers">("general");
+  const [panelMounted, setPanelMounted] = useState(false);
+
+  useEffect(() => {
+    if (editingTenant) {
+      const timer = setTimeout(() => setPanelMounted(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setPanelMounted(false);
+    }
+  }, [editingTenant]);
+
+  const closeEditPanel = () => {
+    setPanelMounted(false);
+    setTimeout(() => {
+      setEditingTenant(null);
+      setActiveTab("general");
+    }, 300);
+  };
 
   // Form state for new tenant
   const [newTenant, setNewTenant] = useState({
@@ -168,7 +186,7 @@ export default function SuperAdminTenants() {
   const updateTenant = trpc.tenants.update.useMutation({
     onSuccess: () => {
       toast.success("Tenant atualizado");
-      setEditingTenant(null);
+      closeEditPanel();
       utils.tenants.list.invalidate();
     },
     onError: (err) => toast.error(err.message || "Erro ao atualizar tenant"),
@@ -781,17 +799,38 @@ export default function SuperAdminTenants() {
         </div>
       )}
 
-      {/* Edit Tenant Modal */}
+      {/* Edit Tenant Sliding Panel */}
       {editingTenant && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setEditingTenant(null); }}>
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <CardTitle>Editar Tenant</CardTitle>
-              <CardDescription>
-                Ajuste dados e módulos do tenant {editingTenant.name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+        <div className="fixed inset-0 z-50">
+          {/* Backdrop */}
+          <div
+            className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${panelMounted ? 'opacity-100' : 'opacity-0'}`}
+            onClick={closeEditPanel}
+          />
+
+          {/* Panel - slides from right */}
+          <div
+            className={`absolute top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+              panelMounted ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
+            {/* Panel Header */}
+            <div className="bg-purple-700 px-6 py-4 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-white font-semibold text-lg">Editar Tenant</h2>
+                <p className="text-white/60 text-sm">{editingTenant.name} &middot; {editingTenant.slug}</p>
+              </div>
+              <button
+                onClick={closeEditPanel}
+                className="text-white/60 hover:text-white hover:bg-white/10 rounded-lg p-2 transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Panel Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-6">
               {/* Tabs Navigation */}
               <div className="flex gap-2 border-b">
                 <button
@@ -949,7 +988,7 @@ export default function SuperAdminTenants() {
               </div>
 
                   <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button variant="outline" onClick={() => setEditingTenant(null)}>
+                    <Button variant="outline" onClick={closeEditPanel}>
                       Cancelar
                     </Button>
                     <Button onClick={handleUpdateTenant} className="bg-purple-600 hover:bg-purple-700" disabled={updateTenant.isLoading}>
@@ -974,8 +1013,9 @@ export default function SuperAdminTenants() {
               {activeTab === "triggers" && (
                 <EmailTriggersPanel tenantId={editingTenant.id} />
               )}
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          </div>
         </div>
       )}
       {/* Impersonate Password Modal */}
