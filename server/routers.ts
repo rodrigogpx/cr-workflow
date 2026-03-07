@@ -3282,6 +3282,49 @@ export const appRouter = router({
         console.log(`[tenants.seedEmailTemplates] Tenant ${input.tenantId}:`, result);
         return result;
       }),
+
+    // Update an email trigger for a tenant (Super Admin)
+    updateEmailTrigger: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        triggerId: z.number(),
+        name: z.string().min(1).optional(),
+        triggerEvent: z.string().min(1).optional(),
+        isActive: z.boolean().optional(),
+        recipientType: z.string().optional(),
+        sendImmediate: z.boolean().optional(),
+        sendBeforeHours: z.number().nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        let tenantDb: any = null;
+        const tenantConfig = await getTenantConfig(tenant.slug);
+        if (tenantConfig) {
+          tenantDb = await getTenantDb(tenantConfig);
+        }
+        if (!tenantDb) {
+          tenantDb = await db.getDb();
+        }
+        if (!tenantDb) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        }
+
+        const { tenantId: _tid, triggerId, ...updateFields } = input;
+        const updateData: any = {};
+        if (updateFields.name !== undefined) updateData.name = updateFields.name;
+        if (updateFields.triggerEvent !== undefined) updateData.triggerEvent = updateFields.triggerEvent;
+        if (updateFields.isActive !== undefined) updateData.isActive = updateFields.isActive;
+        if (updateFields.recipientType !== undefined) updateData.recipientType = updateFields.recipientType;
+        if (updateFields.sendImmediate !== undefined) updateData.sendImmediate = updateFields.sendImmediate;
+        if (updateFields.sendBeforeHours !== undefined) updateData.sendBeforeHours = updateFields.sendBeforeHours;
+
+        await db.updateEmailTriggerToDb(tenantDb, triggerId, updateData);
+        return { success: true };
+      }),
   }),
 
   // ===========================================

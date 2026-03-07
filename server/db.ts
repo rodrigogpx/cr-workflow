@@ -1074,7 +1074,8 @@ export async function getAllEmailTemplatesFromDb(
     conditions.push(eq(emailTemplates.module, module));
   }
   if (tenantId) {
-    conditions.push(eq(emailTemplates.tenantId, tenantId));
+    const { isNull, or } = await import('drizzle-orm');
+    conditions.push(or(eq(emailTemplates.tenantId, tenantId), isNull(emailTemplates.tenantId))!);
   }
 
   if (conditions.length > 0) {
