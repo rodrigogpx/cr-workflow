@@ -277,6 +277,43 @@ export async function ensureMissingTables() {
       ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "featureIAT" boolean DEFAULT false;
     `);
 
+    // IAT Course Classes (Turmas)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_course_classes" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "courseId" integer NOT NULL,
+        "instructorId" integer,
+        "classNumber" varchar(50),
+        "title" varchar(255),
+        "scheduledDate" timestamp,
+        "scheduledTime" varchar(10),
+        "location" varchar(255),
+        "maxStudents" integer,
+        "status" varchar(30) DEFAULT 'agendada' NOT NULL,
+        "notes" text,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // IAT Class Enrollments (Matrículas)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_class_enrollments" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "classId" integer NOT NULL,
+        "clientId" integer NOT NULL,
+        "status" varchar(30) DEFAULT 'inscrito' NOT NULL,
+        "enrolledAt" timestamp DEFAULT now() NOT NULL,
+        "completedAt" timestamp,
+        "certificateUrl" text,
+        "certificateIssuedAt" timestamp,
+        "createdAt" timestamp DEFAULT now() NOT NULL,
+        "updatedAt" timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
     // Sinarm Comments History
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "sinarmCommentsHistory" (

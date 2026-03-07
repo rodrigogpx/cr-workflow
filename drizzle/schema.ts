@@ -537,6 +537,7 @@ export const iatInstructorsRelations = relations(iatInstructors, ({ one, many })
     references: [users.id],
   }),
   exams: many(iatExams),
+  classes: many(iatCourseClasses),
 }));
 
 /**
@@ -562,6 +563,7 @@ export type InsertIatCourse = typeof iatCourses.$inferInsert;
 export const iatCoursesRelations = relations(iatCourses, ({ many }) => ({
   exams: many(iatExams),
   schedules: many(iatSchedules),
+  classes: many(iatCourseClasses),
 }));
 
 /**
@@ -569,11 +571,17 @@ export const iatCoursesRelations = relations(iatCourses, ({ many }) => ({
  */
 export const iatSchedules = pgTable("iat_schedules", {
   id: serial("id").primaryKey(),
-  courseId: integer("course_id").notNull(),
-  scheduleDate: timestamp("schedule_date", { withTimezone: false }).notNull(),
-  scheduleTime: varchar("schedule_time", { length: 10 }).notNull(),
+  tenantId: integer("tenantId").notNull(),
+  scheduleType: varchar("scheduleType", { length: 20 }).notNull(), // 'curso' or 'exame'
+  courseId: integer("courseId"),
+  examId: integer("examId"),
+  instructorId: integer("instructorId"),
+  scheduledDate: timestamp("scheduledDate", { withTimezone: false }).notNull(),
+  scheduledTime: varchar("scheduledTime", { length: 10 }),
   location: varchar("location", { length: 255 }),
-  instructorId: integer("instructor_id"),
+  title: varchar("title", { length: 255 }).notNull(),
+  notes: text("notes"),
+  status: varchar("status", { length: 50 }).default('agendado').notNull(), // agendado, realizado, cancelado
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
 });
@@ -589,6 +597,10 @@ export const iatSchedulesRelations = relations(iatSchedules, ({ one }) => ({
   instructor: one(iatInstructors, {
     fields: [iatSchedules.instructorId],
     references: [iatInstructors.id],
+  }),
+  exam: one(iatExams, {
+    fields: [iatSchedules.examId],
+    references: [iatExams.id],
   }),
 }));
 
@@ -627,5 +639,75 @@ export const iatExamsRelations = relations(iatExams, ({ one }) => ({
   course: one(iatCourses, {
     fields: [iatExams.courseId],
     references: [iatCourses.id],
+  }),
+}));
+
+/**
+ * ============================================
+ * IAT COURSE CLASSES (Turmas)
+ * ============================================
+ */
+export const iatCourseClasses = pgTable("iat_course_classes", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  courseId: integer("courseId").notNull(),
+  instructorId: integer("instructorId"),
+  classNumber: varchar("classNumber", { length: 50 }), // Ex: "01/2026"
+  title: varchar("title", { length: 255 }),
+  scheduledDate: timestamp("scheduledDate", { withTimezone: false }),
+  scheduledTime: varchar("scheduledTime", { length: 10 }),
+  location: varchar("location", { length: 255 }),
+  maxStudents: integer("maxStudents"),
+  status: varchar("status", { length: 30 }).default('agendada').notNull(), // agendada, em_andamento, concluida, cancelada
+  notes: text("notes"),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type IatCourseClass = typeof iatCourseClasses.$inferSelect;
+export type InsertIatCourseClass = typeof iatCourseClasses.$inferInsert;
+
+export const iatCourseClassesRelations = relations(iatCourseClasses, ({ one, many }) => ({
+  course: one(iatCourses, {
+    fields: [iatCourseClasses.courseId],
+    references: [iatCourses.id],
+  }),
+  instructor: one(iatInstructors, {
+    fields: [iatCourseClasses.instructorId],
+    references: [iatInstructors.id],
+  }),
+  enrollments: many(iatClassEnrollments),
+}));
+
+/**
+ * ============================================
+ * IAT CLASS ENROLLMENTS (Matrículas)
+ * ============================================
+ */
+export const iatClassEnrollments = pgTable("iat_class_enrollments", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  classId: integer("classId").notNull(),
+  clientId: integer("clientId").notNull(),
+  status: varchar("status", { length: 30 }).default('inscrito').notNull(), // inscrito, confirmado, concluido, cancelado
+  enrolledAt: timestamp("enrolledAt", { withTimezone: false }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: false }),
+  certificateUrl: text("certificateUrl"),
+  certificateIssuedAt: timestamp("certificateIssuedAt", { withTimezone: false }),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type IatClassEnrollment = typeof iatClassEnrollments.$inferSelect;
+export type InsertIatClassEnrollment = typeof iatClassEnrollments.$inferInsert;
+
+export const iatClassEnrollmentsRelations = relations(iatClassEnrollments, ({ one }) => ({
+  courseClass: one(iatCourseClasses, {
+    fields: [iatClassEnrollments.classId],
+    references: [iatCourseClasses.id],
+  }),
+  client: one(clients, {
+    fields: [iatClassEnrollments.clientId],
+    references: [clients.id],
   }),
 }));
