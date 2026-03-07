@@ -370,9 +370,15 @@ export default function SuperAdminTenants() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen relative bg-gray-950">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/background-super-admin.png')" }}
+      />
+      <div className="absolute inset-0 bg-slate-950/70" />
+      <div className="relative z-10 min-h-screen">
       {/* Header */}
-      <header className="bg-gradient-to-r from-purple-900 to-purple-700 text-white sticky top-0 z-10">
+      <header className="bg-gradient-to-r from-purple-900/95 to-purple-700/95 text-white sticky top-0 z-10 backdrop-blur-sm border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -404,7 +410,7 @@ export default function SuperAdminTenants() {
       <main className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
+          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -415,7 +421,7 @@ export default function SuperAdminTenants() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -428,7 +434,7 @@ export default function SuperAdminTenants() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -441,7 +447,7 @@ export default function SuperAdminTenants() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -518,7 +524,7 @@ export default function SuperAdminTenants() {
             </Card>
           ) : filteredTenants.length > 0 ? (
             filteredTenants.map((tenant) => (
-              <Card key={tenant.id} className="hover:shadow-md transition-shadow">
+              <Card key={tenant.id} className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl hover:shadow-2xl transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -613,7 +619,7 @@ export default function SuperAdminTenants() {
               </Card>
             ))
           ) : (
-            <Card className="text-center py-12">
+            <Card className="text-center py-12 bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
               <CardContent>
                 <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-4" />
                 <p className="text-gray-500">Nenhum tenant encontrado</p>
@@ -622,6 +628,7 @@ export default function SuperAdminTenants() {
           )}
         </div>
       </main>
+      </div>
 
       {/* Create Tenant Modal */}
       {showCreateModal && (
