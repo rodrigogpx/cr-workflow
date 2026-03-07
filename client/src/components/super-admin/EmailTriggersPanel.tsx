@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Sheet,
   SheetContent,
@@ -14,7 +15,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Loader2, Save, Pencil } from "lucide-react";
+import { Loader2, Save, Pencil, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 interface EmailTriggersPanelProps {
@@ -24,6 +25,7 @@ interface EmailTriggersPanelProps {
 export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   const utils = trpc.useUtils();
   const { data: triggers = [], isLoading } = trpc.tenants.getEmailTriggers.useQuery({ tenantId });
+  const { data: allTemplates = [] } = trpc.tenants.getEmailTemplates.useQuery({ tenantId });
 
   const [selectedTrigger, setSelectedTrigger] = useState<any>(null);
   const [editName, setEditName] = useState("");
@@ -32,15 +34,31 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   const [editRecipientType, setEditRecipientType] = useState("client");
   const [editSendImmediate, setEditSendImmediate] = useState(true);
   const [editSendBeforeHours, setEditSendBeforeHours] = useState<number | null>(null);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<number[]>([]);
+
+  const { data: triggerTemplates = [], isLoading: loadingTriggerTemplates } =
+    trpc.tenants.getTriggerTemplates.useQuery(
+      { tenantId, triggerId: selectedTrigger?.id ?? 0 },
+      { enabled: !!selectedTrigger }
+    );
+
+  useEffect(() => {
+    if (triggerTemplates.length > 0) {
+      setSelectedTemplateIds(triggerTemplates.map((tt: any) => tt.templateId));
+    } else if (selectedTrigger) {
+      setSelectedTemplateIds([]);
+    }
+  }, [triggerTemplates, selectedTrigger]);
 
   const updateMutation = trpc.tenants.updateEmailTrigger.useMutation({
-    onSuccess: () => {
-      toast.success("Trigger atualizado com sucesso");
-      utils.tenants.getEmailTriggers.invalidate({ tenantId });
-      setSelectedTrigger(null);
-    },
     onError: (error: any) => {
       toast.error(`Erro ao atualizar trigger: ${error.message}`);
+    },
+  });
+
+  const updateTemplatesMutation = trpc.tenants.updateTriggerTemplates.useMutation({
+    onError: (error: any) => {
+      toast.error(`Erro ao atualizar templates: ${error.message}`);
     },
   });
 
@@ -54,19 +72,45 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
     setEditSendBeforeHours(trigger.sendBeforeHours ?? null);
   };
 
-  const handleSave = () => {
-    if (!selectedTrigger) return;
-    updateMutation.mutate({
-      tenantId,
-      triggerId: selectedTrigger.id,
-      name: editName,
-      triggerEvent: editEvent,
-      isActive: editActive,
-      recipientType: editRecipientType,
-      sendImmediate: editSendImmediate,
-      sendBeforeHours: editSendImmediate ? null : editSendBeforeHours,
-    });
+  const toggleTemplate = (templateId: number) => {
+    setSelectedTemplateIds((prev) =>
+      prev.includes(templateId)
+        ? prev.filter((id) => id !== templateId)
+        : [...prev, templateId]
+    );
   };
+
+  const handleSave = async () => {
+    if (!selectedTrigger) return;
+
+    try {
+      await updateMutation.mutateAsync({
+        tenantId,
+        triggerId: selectedTrigger.id,
+        name: editName,
+        triggerEvent: editEvent,
+        isActive: editActive,
+        recipientType: editRecipientType,
+        sendImmediate: editSendImmediate,
+        sendBeforeHours: editSendImmediate ? null : editSendBeforeHours,
+      });
+
+      await updateTemplatesMutation.mutateAsync({
+        tenantId,
+        triggerId: selectedTrigger.id,
+        templateIds: selectedTemplateIds,
+      });
+
+      toast.success("Trigger atualizado com sucesso");
+      utils.tenants.getEmailTriggers.invalidate({ tenantId });
+      utils.tenants.getTriggerTemplates.invalidate({ tenantId, triggerId: selectedTrigger.id });
+      setSelectedTrigger(null);
+    } catch {
+      // errors handled by individual mutation onError
+    }
+  };
+
+  const isSaving = updateMutation.isPending || updateTemplatesMutation.isPending;
 
   if (isLoading) {
     return (
@@ -195,11 +239,61 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                 </p>
               </div>
             )}
+
+            {/* Templates associados */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Templates de Email
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Selecione os templates que serão enviados quando este trigger for disparado.
+              </p>
+
+              {loadingTriggerTemplates ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : allTemplates.length > 0 ? (
+                <div className="space-y-1 max-h-48 overflow-y-auto rounded-md border p-2">
+                  {allTemplates.map((template: any) => (
+                    <label
+                      key={template.id}
+                      className="flex items-start gap-3 rounded-md p-2 hover:bg-muted/50 cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedTemplateIds.includes(template.id)}
+                        onCheckedChange={() => toggleTemplate(template.id)}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {template.templateTitle || template.templateKey}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {template.subject}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic py-2">
+                  Nenhum template disponível. Carregue os templates padrão na aba Templates.
+                </p>
+              )}
+
+              {selectedTemplateIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedTemplateIds.length} template(s) selecionado(s)
+                </p>
+              )}
+            </div>
           </div>
 
           <SheetFooter>
-            <Button className="w-full" onClick={handleSave} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? (
+            <Button className="w-full" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <Save className="h-4 w-4 mr-2" />

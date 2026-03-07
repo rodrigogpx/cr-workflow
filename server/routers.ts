@@ -3325,6 +3325,61 @@ export const appRouter = router({
         await db.updateEmailTriggerToDb(tenantDb, triggerId, updateData);
         return { success: true };
       }),
+
+    // Get templates linked to a specific trigger (Super Admin)
+    getTriggerTemplates: platformAdminProcedure
+      .input(z.object({ tenantId: z.number(), triggerId: z.number() }))
+      .query(async ({ input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) return [];
+
+        let tenantDb: any = null;
+        const tenantConfig = await getTenantConfig(tenant.slug);
+        if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
+        if (!tenantDb) tenantDb = await db.getDb();
+        if (!tenantDb) return [];
+
+        return await db.getTemplatesByTriggerIdFromDb(tenantDb, input.triggerId);
+      }),
+
+    // Update templates linked to a trigger (Super Admin)
+    updateTriggerTemplates: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        triggerId: z.number(),
+        templateIds: z.array(z.number()),
+      }))
+      .mutation(async ({ input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        let tenantDb: any = null;
+        const tenantConfig = await getTenantConfig(tenant.slug);
+        if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
+        if (!tenantDb) tenantDb = await db.getDb();
+        if (!tenantDb) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        }
+
+        // Remove all existing associations
+        const { emailTriggerTemplates } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        await tenantDb.delete(emailTriggerTemplates).where(eq(emailTriggerTemplates.triggerId, input.triggerId));
+
+        // Insert new associations
+        for (let i = 0; i < input.templateIds.length; i++) {
+          await db.addTemplateToTriggerToDb(tenantDb, {
+            triggerId: input.triggerId,
+            templateId: input.templateIds[i],
+            sendOrder: i + 1,
+            isForReminder: false,
+          });
+        }
+
+        return { success: true };
+      }),
   }),
 
   // ===========================================
