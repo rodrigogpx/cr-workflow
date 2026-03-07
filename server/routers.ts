@@ -741,51 +741,57 @@ export const appRouter = router({
     getByClient: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
-        const tenantDb = await getTenantDbOrNull(ctx);
-        const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
-          : await db.getClientById(input.clientId);
-        if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
-        }
-        
-        // Verificar permissão (despachante pode ver clientes do operador a que está vinculado)
-        if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
-        }
-        
-        const steps = tenantDb
-          ? await db.getWorkflowByClientFromDb(tenantDb, input.clientId)
-          : await db.getWorkflowByClient(input.clientId);
-        
-        // Etapas visíveis para despachante (por stepId ou título)
-        const DESPACHANTE_VISIBLE_STEPS = [1, 2, 6]; // Cadastro, Juntada de Documentos, Acompanhamento Sinarm-CAC
-        const DESPACHANTE_VISIBLE_TITLES = ['cadastro', 'juntada', 'documentos', 'sinarm', 'acompanhamento'];
-        
-        // Filtrar etapas se for despachante
-        const filteredSteps = ctx.user.role === 'despachante'
-          ? steps.filter(step => 
-              DESPACHANTE_VISIBLE_STEPS.includes(step.stepId) ||
-              DESPACHANTE_VISIBLE_TITLES.some(title => 
-                step.stepTitle?.toLowerCase()?.includes(title)
+        try {
+          const tenantDb = await getTenantDbOrNull(ctx);
+          const client = tenantDb
+            ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+            : await db.getClientById(input.clientId);
+          if (!client) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          }
+          
+          // Verificar permissão (despachante pode ver clientes do operador a que está vinculado)
+          if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+          }
+          
+          const steps = tenantDb
+            ? await db.getWorkflowByClientFromDb(tenantDb, input.clientId)
+            : await db.getWorkflowByClient(input.clientId);
+          
+          // Etapas visíveis para despachante (por stepId ou título)
+          const DESPACHANTE_VISIBLE_STEPS = [1, 2, 6]; // Cadastro, Juntada de Documentos, Acompanhamento Sinarm-CAC
+          const DESPACHANTE_VISIBLE_TITLES = ['cadastro', 'juntada', 'documentos', 'sinarm', 'acompanhamento'];
+          
+          // Filtrar etapas se for despachante
+          const filteredSteps = ctx.user.role === 'despachante'
+            ? steps.filter(step => 
+                DESPACHANTE_VISIBLE_STEPS.includes(step.stepId) ||
+                DESPACHANTE_VISIBLE_TITLES.some(title => 
+                  step.stepTitle?.toLowerCase()?.includes(title)
+                )
               )
-            )
-          : steps;
-        
-        // Buscar subtarefas para cada step
-        const stepsWithSubTasks = await Promise.all(
-          filteredSteps.map(async (step) => {
-            const subTasksList = tenantDb
-              ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, step.id)
-              : await db.getSubTasksByWorkflowStep(step.id);
-            return {
-              ...step,
-              subTasks: subTasksList,
-            };
-          })
-        );
-        
-        return stepsWithSubTasks;
+            : steps;
+          
+          // Buscar subtarefas para cada step
+          const stepsWithSubTasks = await Promise.all(
+            filteredSteps.map(async (step) => {
+              const subTasksList = tenantDb
+                ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, step.id)
+                : await db.getSubTasksByWorkflowStep(step.id);
+              return {
+                ...step,
+                subTasks: subTasksList,
+              };
+            })
+          );
+          
+          return stepsWithSubTasks;
+        } catch (error: any) {
+          console.error('[workflow.getByClient] ERROR:', error?.message || error, { clientId: input.clientId, tenantSlug: ctx.tenantSlug });
+          if (error instanceof TRPCError) throw error;
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Erro ao carregar workflow: ${error?.message || 'erro desconhecido'}` });
+        }
       }),
 
     updateStep: protectedProcedure
@@ -1210,22 +1216,28 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {
-        const tenantDb = await getTenantDbOrNull(ctx);
-        const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
-          : await db.getClientById(input.clientId);
-        if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        try {
+          const tenantDb = await getTenantDbOrNull(ctx);
+          const client = tenantDb
+            ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+            : await db.getClientById(input.clientId);
+          if (!client) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          }
+          
+          // Verificar permissão
+          if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+          }
+          
+          return tenantDb
+            ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
+            : await db.getDocumentsByClient(input.clientId);
+        } catch (error: any) {
+          console.error('[documents.list] ERROR:', error?.message || error, { clientId: input.clientId, tenantSlug: ctx.tenantSlug });
+          if (error instanceof TRPCError) throw error;
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Erro ao listar documentos: ${error?.message || 'erro desconhecido'}` });
         }
-        
-        // Verificar permissão
-        if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
-        }
-        
-        return tenantDb
-          ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
-          : await db.getDocumentsByClient(input.clientId);
       }),
 
     upload: protectedProcedure
