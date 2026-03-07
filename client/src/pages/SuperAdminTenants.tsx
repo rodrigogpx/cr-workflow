@@ -483,7 +483,7 @@ export default function SuperAdminTenants() {
                 clearMocks.mutate();
               }}
               disabled={clearMocks.isLoading || seedMocks.isLoading}
-              className="flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
+              className="flex items-center gap-2 border-red-500/70 bg-red-500/12 text-red-100 hover:bg-red-500/20 hover:text-red-50"
             >
               {clearMocks.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -496,7 +496,7 @@ export default function SuperAdminTenants() {
               variant="outline"
               onClick={() => seedMocks.mutate()}
               disabled={seedMocks.isLoading}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 border-slate-500/70 bg-slate-500/12 text-slate-100 hover:bg-slate-500/20 hover:text-white"
             >
               {seedMocks.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -506,7 +506,7 @@ export default function SuperAdminTenants() {
               Rodar seed mock
             </Button>
             {isFetching && <Loader className="h-4 w-4 animate-spin text-gray-500" />}
-            <Button onClick={() => setShowCreateModal(true)} className="bg-purple-600 hover:bg-purple-700">
+            <Button onClick={() => setShowCreateModal(true)} className="bg-purple-600 text-white shadow-lg shadow-purple-900/30 hover:bg-purple-500">
               <Plus className="h-4 w-4 mr-2" />
               Novo Tenant
             </Button>
