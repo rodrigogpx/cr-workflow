@@ -41,6 +41,36 @@ import bcrypt from "bcryptjs";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
+let _schemaChecked = false;
+
+async function ensureSchemaColumns(db: ReturnType<typeof drizzle>) {
+  if (_schemaChecked) return;
+  _schemaChecked = true;
+  const alterations = [
+    sql`ALTER TABLE "subTasks" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
+    sql`ALTER TABLE "subTasks" ADD COLUMN IF NOT EXISTS "subTaskId" varchar(100)`,
+    sql`ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
+    sql`ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "subTaskId" integer`,
+    sql`ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "mimeType" varchar(100)`,
+    sql`ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "fileSize" integer`,
+    sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "scheduledDate" timestamp`,
+    sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "examinerName" varchar(255)`,
+    sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "sinarmStatus" varchar(50)`,
+    sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "sinarmOpenDate" timestamp`,
+    sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "protocolNumber" varchar(100)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
+    sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
+    sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "approved" boolean DEFAULT true`,
+  ];
+  for (const alter of alterations) {
+    try {
+      await db.execute(alter);
+    } catch (error: any) {
+      console.warn('[Schema] column alter skipped:', error?.message || error);
+    }
+  }
+  console.log('[Schema] ensureSchemaColumns completed');
+}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -48,6 +78,7 @@ export async function getDb() {
     try {
       _client = postgres(process.env.DATABASE_URL);
       _db = drizzle(_client);
+      await ensureSchemaColumns(_db);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
