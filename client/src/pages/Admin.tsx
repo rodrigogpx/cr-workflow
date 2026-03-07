@@ -65,7 +65,7 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f0f0f0' }}>
-      {/* Header com estilo Firing Range */}
+      {/* Header com estilo CAC 360 */}
       <header className="border-b-2 border-dashed border-white/20 bg-black sticky top-0 z-10">
         <div className="container py-4">
           <div className="flex items-center justify-between">

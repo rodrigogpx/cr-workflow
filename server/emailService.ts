@@ -68,7 +68,7 @@ async function resolveSmtpConfig(tenantDb?: any, tenantId?: number): Promise<Smt
     smtpPort: Number(process.env.SMTP_PORT),
     smtpUser: process.env.SMTP_USER,
     smtpPass: process.env.SMTP_PASS,
-    smtpFrom: process.env.SMTP_FROM || `"Firing Range" <${process.env.SMTP_USER}>`,
+    smtpFrom: process.env.SMTP_FROM || `"CAC 360" <${process.env.SMTP_USER}>`,
     useSecure: Number(process.env.SMTP_PORT) === 465,
   };
 }

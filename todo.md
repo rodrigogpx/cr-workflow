@@ -1,4 +1,4 @@
-# Fire Range Workflow - TODO
+# CAC 360 Workflow - TODO
 
 ## Funcionalidades Principais
 
@@ -17,7 +17,7 @@
 - [x] Indicadores visuais de progresso
 - [x] Persistência de dados no localStorage
 - [x] Design responsivo
-- [x] Identidade visual Fire Range (vermelho, preto, branco)
+- [x] Identidade visual CAC 360 (vermelho, preto, branco)
 
 
 ## Novas Funcionalidades - Sistema de Login e Gestão de Clientes
@@ -126,7 +126,7 @@
 
 ## Redesign UI/UX Moderno
 
-- [x] Analisar identidade visual do Fire Range
+- [x] Analisar identidade visual do CAC 360
 - [x] Atualizar paleta de cores no design system
 - [x] Aplicar tipografia oficial (usando sans-serif padrão)
 - [x] Redesenhar Dashboard com layout moderno
@@ -140,7 +140,7 @@
 ## Melhorias Finais
 
 - [x] Investigar bug de tarefas concluídas sumindo (não há filtro, todas são renderizadas)
-- [x] Redesenhar página de Workflow com identidade Firing Range
+- [x] Redesenhar página de Workflow com identidade CAC 360
 - [x] Reorganizar workflow em coluna única
 - [x] Adicionar barra de progresso segmentada por fases
 - [x] Adicionar indicadores de progresso nos cards de clientes
@@ -332,10 +332,10 @@
 - [x] Criar checkpoint
 
 
-## Correção - Nome do Clube (Fire Range → Firing Range)
+## Correção - Nome do Clube (CAC 360 → CAC 360)
 
-- [x] Buscar todas as ocorrências de "Fire Range" no código
-- [x] Substituir por "Firing Range" em todos os arquivos
+- [x] Buscar todas as ocorrências de "CAC 360" no código
+- [x] Substituir por "CAC 360" em todos os arquivos
 - [x] Verificar se não há ocorrências perdidas
 - [x] Criar checkpoint
 
@@ -509,7 +509,7 @@
 
 ## Criação de Templates de Email Profissionais
 
-- [x] Criar 3 templates HTML com design Firing Range
+- [x] Criar 3 templates HTML com design CAC 360
 - [x] Adicionar logo e identidade visual (vermelho, preto, branco)
 - [x] Incluir variáveis dinâmicas ({{nome}}, {{data}}, {{status}})
 - [x] Atualizar templates no banco de dados
@@ -532,7 +532,7 @@
 
 ## Correção da Logo nos Templates de Email
 
-- [x] Verificar logo atual do Firing Range
+- [x] Verificar logo atual do CAC 360
 - [x] Atualizar templates com URL absoluta da logo
 - [x] Testar envio com logo corrigida
 - [ ] Criar checkpoint final
@@ -549,7 +549,7 @@
 ## Remover Imagem da Logo - Apenas Texto
 
 - [x] Atualizar templates removendo tag img
-- [x] Adicionar texto "FIRING RANGE" estilizado
+- [x] Adicionar texto "CAC 360" estilizado
 - [x] Testar envio
 - [x] Criar checkpoint final
 

@@ -1,4 +1,4 @@
-# Análise do Projeto CR-Workflow - Firing Range
+# Análise do Projeto CR-Workflow - CAC 360
 
 **Data:** Novembro/2025  
 **Autor:** Análise Técnica
@@ -151,7 +151,7 @@ previousCrNumber: varchar("previousCrNumber", { length: 50 }), // Para renovaç�
 ### 3.1 Análise da Interface Atual
 
 #### Pontos Positivos
-- ✅ Identidade visual consistente (vermelho Firing Range #C41E3A)
+- ✅ Identidade visual consistente (vermelho CAC 360 #C41E3A)
 - ✅ Uso de bordas tracejadas como elemento de design
 - ✅ Cards bem estruturados
 - ✅ Responsividade básica implementada
@@ -258,7 +258,7 @@ previousCrNumber: varchar("previousCrNumber", { length: 50 }), // Para renovaç�
 #### 3.5.1 Dashboard Redesenhado
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ 🎯 FIRING RANGE               [🔍 Buscar...]  [👤 Admin ▼] [🚪] │
+│ 🎯 CAC 360               [🔍 Buscar...]  [👤 Admin ▼] [🚪] │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │

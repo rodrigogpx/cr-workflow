@@ -1,6 +1,6 @@
 # 🚂 Guia de Implantação no Railway
 
-**Sistema de Workflow CR - Firing Range**  
+**Sistema de Workflow CR - CAC 360**  
 **Versão:** 1.0  
 **Data:** Novembro/2025
 
@@ -128,7 +128,7 @@ No serviço da aplicação, vá em **Settings** → **Variables** e adicione:
 | `SMTP_PORT` | `587` | Porta SMTP (587 para TLS, 465 para SSL) |
 | `SMTP_USER` | `seu-email@gmail.com` | Usuário SMTP |
 | `SMTP_PASS` | `sua-senha-app` | Senha ou App Password |
-| `SMTP_FROM` | `Firing Range <noreply@firingrange.com>` | Remetente dos emails |
+| `SMTP_FROM` | `CAC 360 <noreply@firingrange.com>` | Remetente dos emails |
 | `SMTP_SECURE` | `false` | `true` para SSL, `false` para TLS |
 
 ### Variáveis para S3 (Armazenamento de Arquivos)
@@ -164,7 +164,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=firingrange.sistema@gmail.com
 SMTP_PASS=abcd efgh ijkl mnop
-SMTP_FROM=Firing Range <firingrange.sistema@gmail.com>
+SMTP_FROM=CAC 360 <firingrange.sistema@gmail.com>
 SMTP_SECURE=false
 
 # S3 (se usar armazenamento externo)
@@ -494,5 +494,5 @@ railway variables
 
 ---
 
-**Desenvolvido por ACR Digital para Firing Range**  
+**Desenvolvido por ACR Digital para CAC 360**  
 **© 2025 Todos os direitos reservados**

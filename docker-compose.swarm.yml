@@ -23,7 +23,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@acrdigital.com.br}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       TENANT_SLUG: ${TENANT_SLUG:-firingrange}
-      TENANT_NAME: ${TENANT_NAME:-Firing Range}
+      TENANT_NAME: ${TENANT_NAME:-CAC 360}
       TENANT_DB_HOST: ${TENANT_DB_HOST:-postgres}
       TENANT_DB_PORT: ${TENANT_DB_PORT:-5432}
       TENANT_DB_NAME: ${TENANT_DB_NAME:-cac360}
@@ -119,7 +119,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@acrdigital.com.br}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       TENANT_SLUG: ${TENANT_SLUG:-firingrange}
-      TENANT_NAME: ${TENANT_NAME:-Firing Range}
+      TENANT_NAME: ${TENANT_NAME:-CAC 360}
       TENANT_DB_HOST: ${TENANT_DB_HOST:-postgres}
       TENANT_DB_PORT: ${TENANT_DB_PORT:-5432}
       TENANT_DB_NAME: ${TENANT_DB_NAME:-cac360}

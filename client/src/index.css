@@ -43,7 +43,7 @@
 }
 
 :root {
-  --primary: #123A63; /* Vermelho Firing Range #C41E3A */
+  --primary: #123A63; /* Vermelho CAC 360 #C41E3A */
   --primary-foreground: #ffffff;
   --sidebar-primary: #123A63;
   --sidebar-primary-foreground: #ffffff;
@@ -79,11 +79,11 @@
 }
 
 .dark {
-  --primary: #F37321; /* Vermelho Firing Range #C41E3A */
+  --primary: #F37321; /* Vermelho CAC 360 #C41E3A */
   --primary-foreground: #ffffff;
   --sidebar-primary: #123A63;
   --sidebar-primary-foreground: #E5E7EB;
-  --background: #050816; /* Fundo mais escuro Firing Range */
+  --background: #050816; /* Fundo mais escuro CAC 360 */
   --foreground: #E5E7EB;
   --card: #0B1220; /* Cards mais escuros */
   --card-foreground: #E5E7EB;
@@ -93,7 +93,7 @@
   --secondary-foreground: #ffffff;
   --muted: #1F2937;
   --muted-foreground: #9CA3AF;
-  --accent: #F89A3C; /* Accent vermelho Firing Range */
+  --accent: #F89A3C; /* Accent vermelho CAC 360 */
   --accent-foreground: #111827;
   --destructive: #DC2626;
   --destructive-foreground: #F9FAFB;
