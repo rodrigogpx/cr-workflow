@@ -1,10 +1,35 @@
 import { QueryClient } from '@tanstack/react-query';
-import { httpBatchLink, httpLink, splitLink } from '@trpc/client';
+import { httpBatchLink, httpLink, splitLink, TRPCClientError } from '@trpc/client';
 import superjson from 'superjson';
 import { trpc } from './trpc';
 import { extractTenantSlugFromPath } from '@/_core/hooks/useTenantSlug';
+import { UNAUTHED_ERR_MSG } from '@shared/const';
+import { getLoginUrl } from '../const';
+
+function redirectToLoginIfUnauthorized(error: unknown) {
+  if (typeof window === 'undefined') return;
+  if (error instanceof TRPCClientError && error.message === UNAUTHED_ERR_MSG) {
+    window.location.href = getLoginUrl();
+  }
+}
 
 export const queryClient = new QueryClient();
+
+queryClient.getQueryCache().subscribe(event => {
+  if (event.type === 'updated' && event.action.type === 'error') {
+    const error = event.query.state.error;
+    redirectToLoginIfUnauthorized(error);
+    console.error('[API Query Error]', error);
+  }
+});
+
+queryClient.getMutationCache().subscribe(event => {
+  if (event.type === 'updated' && event.action.type === 'error') {
+    const error = event.mutation.state.error;
+    redirectToLoginIfUnauthorized(error);
+    console.error('[API Mutation Error]', error);
+  }
+});
 
 function getTrpcHeaders() {
   const slug = typeof window !== 'undefined'
