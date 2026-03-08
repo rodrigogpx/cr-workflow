@@ -51,20 +51,12 @@ function trpcFetch(url: URL | RequestInfo, options?: RequestInit) {
 
 export const trpcClient = trpc.createClient({
   links: [
-    splitLink({
-      condition: (op) => op.type === 'mutation',
-      true: httpLink({
-        url: '/api/trpc',
-        transformer: superjson,
-        headers: getTrpcHeaders,
-        fetch: trpcFetch,
-      }),
-      false: httpBatchLink({
-        url: '/api/trpc',
-        transformer: superjson,
-        headers: getTrpcHeaders,
-        fetch: trpcFetch,
-      }),
+    httpBatchLink({
+      url: '/api/trpc',
+      transformer: superjson,
+      headers: getTrpcHeaders,
+      fetch: trpcFetch,
+      maxURLLength: 0, // Force POST for all requests (mutations and queries)
     }),
   ],
 });
