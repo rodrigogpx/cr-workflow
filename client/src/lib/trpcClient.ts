@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import { httpBatchLink, httpLink, splitLink, TRPCClientError } from '@trpc/client';
+import { httpLink, TRPCClientError } from '@trpc/client';
 import superjson from 'superjson';
 import { trpc } from './trpc';
 import { extractTenantSlugFromPath } from '@/_core/hooks/useTenantSlug';
@@ -51,12 +51,11 @@ function trpcFetch(url: URL | RequestInfo, options?: RequestInit) {
 
 export const trpcClient = trpc.createClient({
   links: [
-    httpBatchLink({
+    httpLink({
       url: '/api/trpc',
       transformer: superjson,
       headers: getTrpcHeaders,
       fetch: trpcFetch,
-      maxURLLength: 0, // Force POST for all requests (mutations and queries)
     }),
   ],
 });
