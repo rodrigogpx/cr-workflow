@@ -156,6 +156,8 @@ export default function ClientWorkflow() {
   const [pendingSinarmStatusChange, setPendingSinarmStatusChange] = useState<{
     stepId: number;
     status: string;
+    protocolNumber?: string;
+    sinarmOpenDate?: string;
   } | null>(null);
   const [sinarmComment, setSinarmComment] = useState("");
 
@@ -1580,7 +1582,16 @@ export default function ClientWorkflow() {
                                     toast.error("Para alterar o status, preencha o Número de Protocolo e a Data de Abertura.");
                                     return;
                                   }
-                                  setPendingSinarmStatusChange({ stepId: step.id, status: value });
+                                  setPendingSinarmStatusChange({
+                                    stepId: step.id,
+                                    status: value,
+                                    protocolNumber: protocolEl?.value?.trim() || step.protocolNumber || undefined,
+                                    sinarmOpenDate: dateEl?.value?.trim()
+                                      ? new Date(dateEl.value).toISOString()
+                                      : step.sinarmOpenDate
+                                        ? new Date(step.sinarmOpenDate).toISOString()
+                                        : undefined,
+                                  });
                                   setSinarmComment("");
                                   setIsSinarmStatusDialogOpen(true);
                                 }}
@@ -1641,6 +1652,8 @@ export default function ClientWorkflow() {
                                     updateStepMutation.mutate({
                                       stepId: pendingSinarmStatusChange.stepId,
                                       sinarmStatus: pendingSinarmStatusChange.status,
+                                      ...(pendingSinarmStatusChange.protocolNumber ? { protocolNumber: pendingSinarmStatusChange.protocolNumber } : {}),
+                                      ...(pendingSinarmStatusChange.sinarmOpenDate ? { sinarmOpenDate: pendingSinarmStatusChange.sinarmOpenDate } : {}),
                                       ...(trimmed ? { sinarmComment: trimmed } : {}),
                                     });
                                     setIsSinarmStatusDialogOpen(false);

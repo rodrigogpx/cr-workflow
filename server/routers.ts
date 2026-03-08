@@ -904,31 +904,52 @@ export const appRouter = router({
         
         if (tenantDb) {
           await db.upsertWorkflowStepToDb(tenantDb, updateData);
-          
-          if (input.sinarmStatus !== undefined) {
-            const comment = input.sinarmComment || `Status alterado de "${currentStep.sinarmStatus || 'Novo'}" para "${input.sinarmStatus}"`;
-            
-            await db.insertSinarmCommentToDb(tenantDb, {
-              workflowStepId: input.stepId,
-              oldStatus: currentStep.sinarmStatus || 'Novo',
-              newStatus: input.sinarmStatus,
-              comment: comment,
-              createdBy: ctx.user.id
-            });
-          }
         } else {
           await db.upsertWorkflowStep(updateData);
+        }
 
-          if (input.sinarmStatus !== undefined) {
-            const comment = input.sinarmComment || `Status alterado de "${currentStep.sinarmStatus || 'Novo'}" para "${input.sinarmStatus}"`;
+        // Registrar comentário no histórico para qualquer alteração Sinarm
+        const hasStatusChange = input.sinarmStatus !== undefined;
+        const hasProtocolChange = input.protocolNumber !== undefined && input.protocolNumber !== (currentStep.protocolNumber || '');
+        const hasDateChange = input.sinarmOpenDate !== undefined;
 
-            await db.insertSinarmComment({
-              workflowStepId: input.stepId,
-              oldStatus: currentStep.sinarmStatus || 'Novo',
-              newStatus: input.sinarmStatus,
-              comment: comment,
-              createdBy: ctx.user.id
-            });
+        if (hasStatusChange || hasProtocolChange || hasDateChange) {
+          const parts: string[] = [];
+          if (hasStatusChange) {
+            parts.push(`Status: "${currentStep.sinarmStatus || 'Novo'}" → "${input.sinarmStatus}"`);
+          }
+          if (hasProtocolChange) {
+            parts.push(`Protocolo: "${currentStep.protocolNumber || '—'}" → "${input.protocolNumber || '—'}"`);
+          }
+          if (hasDateChange) {
+            const oldDate = currentStep.sinarmOpenDate
+              ? new Date(currentStep.sinarmOpenDate).toLocaleDateString('pt-BR')
+              : '—';
+            const newDate = input.sinarmOpenDate
+              ? new Date(input.sinarmOpenDate).toLocaleDateString('pt-BR')
+              : '—';
+            if (oldDate !== newDate) {
+              parts.push(`Data abertura: "${oldDate}" → "${newDate}"`);
+            }
+          }
+
+          const autoComment = parts.join(' | ');
+          const comment = input.sinarmComment || autoComment;
+          const newStatus = input.sinarmStatus || currentStep.sinarmStatus || 'Novo';
+          const oldStatus = hasStatusChange ? (currentStep.sinarmStatus || 'Novo') : newStatus;
+
+          const commentData = {
+            workflowStepId: input.stepId,
+            oldStatus,
+            newStatus,
+            comment,
+            createdBy: ctx.user.id
+          };
+
+          if (tenantDb) {
+            await db.insertSinarmCommentToDb(tenantDb, commentData);
+          } else {
+            await db.insertSinarmComment(commentData);
           }
         }
 
