@@ -8,6 +8,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { eq } from "drizzle-orm";
 import { decryptSecret, encryptSecret } from "./crypto.util";
+import { ensureSchemaColumns } from "../db";
 
 // Tenant interface que espelha a tabela no banco
 export interface TenantConfig {
@@ -241,6 +242,9 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
 
     // Healthcheck rápida para validar credenciais/conectividade
     await client`SELECT 1`;
+
+    // Garantir que todas as colunas do schema existem na tabela
+    await ensureSchemaColumns(db, `tenant_${cacheKey}`);
 
     if (isSingleDbMode && tenant.id) {
       await client`SET LOCAL app.current_tenant_id = ${tenant.id.toString()}`;

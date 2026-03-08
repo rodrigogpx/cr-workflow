@@ -41,11 +41,11 @@ import bcrypt from "bcryptjs";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
-let _schemaChecked = false;
+const _schemaCheckedDbs = new Set<string>();
 
-async function ensureSchemaColumns(db: ReturnType<typeof drizzle>) {
-  if (_schemaChecked) return;
-  _schemaChecked = true;
+export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey: string = 'main') {
+  if (_schemaCheckedDbs.has(dbKey)) return;
+  _schemaCheckedDbs.add(dbKey);
   const alterations = [
     sql`ALTER TABLE "subTasks" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
     sql`ALTER TABLE "subTasks" ADD COLUMN IF NOT EXISTS "subTaskId" varchar(100)`,
@@ -59,6 +59,50 @@ async function ensureSchemaColumns(db: ReturnType<typeof drizzle>) {
     sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "sinarmOpenDate" timestamp`,
     sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "protocolNumber" varchar(100)`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
+    // Dados pessoais adicionais
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "identityNumber" varchar(50)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "identityIssueDate" varchar(10)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "identityIssuer" varchar(50)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "identityUf" varchar(2)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "birthDate" varchar(10)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "birthCountry" varchar(100)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "birthUf" varchar(2)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "birthPlace" varchar(255)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "gender" varchar(1)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "profession" varchar(255)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "otherProfession" varchar(255)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "registrationNumber" varchar(100)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "currentActivities" text`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "phone2" varchar(20)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "motherName" varchar(255)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "fatherName" varchar(255)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "maritalStatus" varchar(20)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "requestType" varchar(20)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "cacNumber" varchar(50)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "cacCategory" varchar(50)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "previousCrNumber" varchar(50)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "psychReportValidity" varchar(10)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "techReportValidity" varchar(10)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "residenceUf" varchar(2)`,
+    // Endereço
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "cep" varchar(10)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "address" varchar(255)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "addressNumber" varchar(20)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "neighborhood" varchar(100)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "city" varchar(100)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "complement" varchar(255)`,
+    // Geolocalização / Segundo Endereço do Acervo
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "latitude" varchar(50)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "longitude" varchar(50)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoCep" varchar(10)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoAddress" varchar(255)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoAddressNumber" varchar(20)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoNeighborhood" varchar(100)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoCity" varchar(100)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoUf" varchar(2)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoComplement" varchar(255)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoLatitude" varchar(50)`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoLongitude" varchar(50)`,
     sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
     sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "approved" boolean DEFAULT true`,
   ];
@@ -78,7 +122,7 @@ export async function getDb() {
     try {
       _client = postgres(process.env.DATABASE_URL);
       _db = drizzle(_client);
-      await ensureSchemaColumns(_db);
+      await ensureSchemaColumns(_db, 'main');
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
