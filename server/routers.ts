@@ -909,89 +909,103 @@ export const appRouter = router({
         }
 
         // Registrar comentário no histórico para qualquer alteração Sinarm
-        const hasStatusChange = input.sinarmStatus !== undefined;
-        const hasProtocolChange = input.protocolNumber !== undefined && input.protocolNumber !== (currentStep.protocolNumber || '');
-        const hasDateChange = input.sinarmOpenDate !== undefined;
+        try {
+          const hasStatusChange = input.sinarmStatus !== undefined && input.sinarmStatus !== (currentStep.sinarmStatus || '');
+          const oldProtocol = currentStep.protocolNumber || '';
+          const newProtocol = input.protocolNumber !== undefined ? (input.protocolNumber || '') : oldProtocol;
+          const hasProtocolChange = input.protocolNumber !== undefined && newProtocol !== oldProtocol;
 
-        if (hasStatusChange || hasProtocolChange || hasDateChange) {
-          const parts: string[] = [];
-          if (hasStatusChange) {
-            parts.push(`Status: "${currentStep.sinarmStatus || 'Novo'}" → "${input.sinarmStatus}"`);
-          }
-          if (hasProtocolChange) {
-            parts.push(`Protocolo: "${currentStep.protocolNumber || '—'}" → "${input.protocolNumber || '—'}"`);
-          }
-          if (hasDateChange) {
-            const oldDate = currentStep.sinarmOpenDate
-              ? new Date(currentStep.sinarmOpenDate).toLocaleDateString('pt-BR')
-              : '—';
-            const newDate = input.sinarmOpenDate
-              ? new Date(input.sinarmOpenDate).toLocaleDateString('pt-BR')
-              : '—';
-            if (oldDate !== newDate) {
-              parts.push(`Data abertura: "${oldDate}" → "${newDate}"`);
+          const oldDateRaw = currentStep.sinarmOpenDate ? new Date(currentStep.sinarmOpenDate) : null;
+          const newDateRaw = input.sinarmOpenDate !== undefined
+            ? (input.sinarmOpenDate ? new Date(input.sinarmOpenDate) : null)
+            : oldDateRaw;
+          const oldDateStr = oldDateRaw ? oldDateRaw.toISOString().split('T')[0] : '';
+          const newDateStr = newDateRaw ? newDateRaw.toISOString().split('T')[0] : '';
+          const hasDateChange = input.sinarmOpenDate !== undefined && oldDateStr !== newDateStr;
+
+          const hasUserComment = typeof input.sinarmComment === 'string' && input.sinarmComment.trim().length > 0;
+
+          if (hasStatusChange || hasProtocolChange || hasDateChange || hasUserComment) {
+            const parts: string[] = [];
+            if (hasStatusChange) {
+              parts.push(`Status: "${currentStep.sinarmStatus || 'Novo'}" → "${input.sinarmStatus}"`);
+            }
+            if (hasProtocolChange) {
+              parts.push(`Protocolo: "${oldProtocol || '—'}" → "${newProtocol || '—'}"`);
+            }
+            if (hasDateChange) {
+              const fmtOld = oldDateRaw ? oldDateRaw.toLocaleDateString('pt-BR') : '—';
+              const fmtNew = newDateRaw ? newDateRaw.toLocaleDateString('pt-BR') : '—';
+              parts.push(`Data abertura: "${fmtOld}" → "${fmtNew}"`);
+            }
+
+            const autoComment = parts.length > 0 ? parts.join(' | ') : 'Atualização registrada';
+            const comment = hasUserComment ? input.sinarmComment!.trim() : autoComment;
+            const newStatus = input.sinarmStatus || currentStep.sinarmStatus || 'Novo';
+            const oldStatus = hasStatusChange ? (currentStep.sinarmStatus || 'Novo') : newStatus;
+
+            const commentData = {
+              workflowStepId: input.stepId,
+              oldStatus,
+              newStatus,
+              comment,
+              createdBy: ctx.user.id
+            };
+
+            if (tenantDb) {
+              await db.insertSinarmCommentToDb(tenantDb, commentData);
+            } else {
+              await db.insertSinarmComment(commentData);
             }
           }
-
-          const autoComment = parts.join(' | ');
-          const comment = input.sinarmComment || autoComment;
-          const newStatus = input.sinarmStatus || currentStep.sinarmStatus || 'Novo';
-          const oldStatus = hasStatusChange ? (currentStep.sinarmStatus || 'Novo') : newStatus;
-
-          const commentData = {
-            workflowStepId: input.stepId,
-            oldStatus,
-            newStatus,
-            comment,
-            createdBy: ctx.user.id
-          };
-
-          if (tenantDb) {
-            await db.insertSinarmCommentToDb(tenantDb, commentData);
-          } else {
-            await db.insertSinarmComment(commentData);
-          }
+        } catch (commentError) {
+          console.error('[Workflow] Failed to insert sinarm comment:', commentError);
         }
 
         // Log de auditoria
-        const ipAddress = ctx.req?.headers?.['x-forwarded-for']?.toString().split(',')[0] || 
-                          ctx.req?.headers?.['x-real-ip']?.toString() || 
-                          ctx.req?.socket?.remoteAddress || 'unknown';
-        const auditDetails: Record<string, unknown> = {
-          clientId: currentStep.clientId,
-          stepId: input.stepId,
-          stepTitle: currentStep.stepTitle,
-        };
-        if (input.completed !== undefined) auditDetails.completed = input.completed;
-        if (input.sinarmStatus !== undefined) auditDetails.sinarmStatus = input.sinarmStatus;
-        if (input.sinarmOpenDate !== undefined) auditDetails.sinarmOpenDate = input.sinarmOpenDate;
-        if (input.protocolNumber !== undefined) auditDetails.protocolNumber = input.protocolNumber;
+        try {
+          const ipAddress = ctx.req?.headers?.['x-forwarded-for']?.toString().split(',')[0] || 
+                            ctx.req?.headers?.['x-real-ip']?.toString() || 
+                            ctx.req?.socket?.remoteAddress || 'unknown';
+          const auditDetails: Record<string, unknown> = {
+            clientId: currentStep.clientId,
+            stepId: input.stepId,
+            stepTitle: currentStep.stepTitle,
+          };
+          if (input.completed !== undefined) auditDetails.completed = input.completed;
+          if (input.sinarmStatus !== undefined) auditDetails.sinarmStatus = input.sinarmStatus;
+          if (input.sinarmOpenDate !== undefined) auditDetails.sinarmOpenDate = input.sinarmOpenDate;
+          if (input.protocolNumber !== undefined) auditDetails.protocolNumber = input.protocolNumber;
 
-        if (tenantDb) {
-          const auditTenantId = ctx.tenant?.id ?? ctx.user.tenantId;
-          if (auditTenantId) {
-            await db.logAuditToDb(tenantDb, {
-              tenantId: auditTenantId,
-              userId: ctx.user.id,
-              action: 'UPDATE',
-              entity: 'WORKFLOW',
-              entityId: input.stepId,
-              details: JSON.stringify(auditDetails),
-              ipAddress,
-            });
+          if (tenantDb) {
+            const auditTenantId = ctx.tenant?.id ?? ctx.user.tenantId;
+            if (auditTenantId) {
+              await db.logAuditToDb(tenantDb, {
+                tenantId: auditTenantId,
+                userId: ctx.user.id,
+                action: 'UPDATE',
+                entity: 'WORKFLOW',
+                entityId: input.stepId,
+                details: JSON.stringify(auditDetails),
+                ipAddress,
+              });
+            }
           } else {
-            console.error('[AUDIT] Skipping audit log: tenantId not available on ctx');
+            const auditTenantId = ctx.tenant?.id ?? ctx.user.tenantId;
+            if (auditTenantId) {
+              await db.logAudit({
+                tenantId: auditTenantId,
+                userId: ctx.user.id,
+                action: 'UPDATE',
+                entity: 'WORKFLOW',
+                entityId: input.stepId,
+                details: JSON.stringify(auditDetails),
+                ipAddress,
+              });
+            }
           }
-        } else {
-          await db.logAudit({
-            tenantId: ctx.tenant?.id ?? ctx.user.tenantId!,
-            userId: ctx.user.id,
-            action: 'UPDATE',
-            entity: 'WORKFLOW',
-            entityId: input.stepId,
-            details: JSON.stringify(auditDetails),
-            ipAddress,
-          });
+        } catch (auditError) {
+          console.error('[Workflow] Failed to log audit:', auditError);
         }
 
         // Trigger email automation
