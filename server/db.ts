@@ -410,21 +410,12 @@ export async function upsertUserToDb(
 }
 
 export async function createClientToDb(tenantDb: ReturnType<typeof drizzle>, client: InsertClient) {
-  const baseClientData = {
-    name: client.name,
-    cpf: client.cpf,
-    phone: client.phone,
-    email: client.email,
-    operatorId: client.operatorId,
-    tenantId: client.tenantId,
-  };
-
-  const [inserted] = await tenantDb
-    .insert(clients)
-    .values(baseClientData)
-    .returning({ id: clients.id });
-
-  return inserted.id;
+  const result = await tenantDb.execute(
+    sql`INSERT INTO "clients" ("name", "cpf", "phone", "email", "operatorId", "tenantId")
+        VALUES (${client.name}, ${client.cpf}, ${client.phone || null}, ${client.email || null}, ${client.operatorId}, ${client.tenantId || null})
+        RETURNING "id"`
+  );
+  return (result as any)[0].id;
 }
 
 export async function getUserById(id: number) {
@@ -455,24 +446,16 @@ export async function getUserByOpenId(openId: string) {
 // Client operations
 export async function createClient(client: InsertClient) {
   console.log("[createClient] CALLED with:", JSON.stringify(client, null, 2));
-  const baseClientData = {
-    name: client.name,
-    cpf: client.cpf,
-    phone: client.phone,
-    email: client.email,
-    operatorId: client.operatorId,
-    tenantId: client.tenantId,
-  };
   
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [inserted] = await db
-    .insert(clients)
-    .values(baseClientData)
-    .returning({ id: clients.id });
-
-  return inserted.id;
+  const result = await db.execute(
+    sql`INSERT INTO "clients" ("name", "cpf", "phone", "email", "operatorId", "tenantId")
+        VALUES (${client.name}, ${client.cpf}, ${client.phone || null}, ${client.email || null}, ${client.operatorId}, ${client.tenantId || null})
+        RETURNING "id"`
+  );
+  return (result as any)[0].id;
 }
 
 export async function getClientsByOperator(operatorId: number) {
