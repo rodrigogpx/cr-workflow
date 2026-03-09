@@ -362,11 +362,14 @@ export async function upsertWorkflowStepToDb(
     return step.id;
   }
 
-  const [inserted] = await tenantDb
-    .insert(workflowSteps)
-    .values(step)
-    .returning({ id: workflowSteps.id });
-  return inserted.id;
+  const result = await tenantDb.execute(
+    sql`INSERT INTO "workflowSteps" ("clientId", "stepId", "stepTitle", "completed")
+        VALUES (${step.clientId ?? null}, ${step.stepId ?? null}, ${step.stepTitle ?? null}, ${step.completed ?? false})
+        RETURNING "id"`
+  );
+  const rows = result as any;
+  if (!rows || rows.length === 0) throw new Error('workflowSteps INSERT returned no rows');
+  return rows[0].id as number;
 }
 
 export async function insertSinarmComment(data: InsertSinarmCommentHistory): Promise<number> {
@@ -810,13 +813,15 @@ export async function upsertWorkflowStep(step: InsertWorkflowStep & { id?: numbe
   if (step.id) {
     await db.update(workflowSteps).set(step).where(eq(workflowSteps.id, step.id));
     return step.id;
-  } else {
-    const [inserted] = await db
-      .insert(workflowSteps)
-      .values(step)
-      .returning({ id: workflowSteps.id });
-    return inserted.id;
   }
+  const result = await db.execute(
+    sql`INSERT INTO "workflowSteps" ("clientId", "stepId", "stepTitle", "completed")
+        VALUES (${step.clientId ?? null}, ${step.stepId ?? null}, ${step.stepTitle ?? null}, ${step.completed ?? false})
+        RETURNING "id"`
+  );
+  const rows = result as any;
+  if (!rows || rows.length === 0) throw new Error('workflowSteps INSERT returned no rows');
+  return rows[0].id as number;
 }
 
 export async function upsertSubTask(task: InsertSubTask & { id?: number }) {
@@ -826,13 +831,15 @@ export async function upsertSubTask(task: InsertSubTask & { id?: number }) {
   if (task.id) {
     await db.update(subTasks).set(task).where(eq(subTasks.id, task.id));
     return task.id;
-  } else {
-    const [inserted] = await db
-      .insert(subTasks)
-      .values(task)
-      .returning({ id: subTasks.id });
-    return inserted.id;
   }
+  const result = await db.execute(
+    sql`INSERT INTO "subTasks" ("workflowStepId", "subTaskId", "label", "completed")
+        VALUES (${task.workflowStepId ?? null}, ${task.subTaskId ?? null}, ${task.label ?? null}, ${task.completed ?? false})
+        RETURNING "id"`
+  );
+  const rows = result as any;
+  if (!rows || rows.length === 0) throw new Error('subTasks INSERT returned no rows');
+  return rows[0].id as number;
 }
 
 export async function upsertSubTaskToDb(
@@ -844,11 +851,14 @@ export async function upsertSubTaskToDb(
     return task.id;
   }
 
-  const [inserted] = await tenantDb
-    .insert(subTasks)
-    .values(task)
-    .returning({ id: subTasks.id });
-  return inserted.id;
+  const result = await tenantDb.execute(
+    sql`INSERT INTO "subTasks" ("workflowStepId", "subTaskId", "label", "completed")
+        VALUES (${task.workflowStepId ?? null}, ${task.subTaskId ?? null}, ${task.label ?? null}, ${task.completed ?? false})
+        RETURNING "id"`
+  );
+  const rows = result as any;
+  if (!rows || rows.length === 0) throw new Error('subTasks INSERT returned no rows');
+  return rows[0].id as number;
 }
 
 export async function updateSubTaskCompleted(subTaskId: number, completed: boolean) {
