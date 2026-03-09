@@ -47,6 +47,106 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
   if (_schemaCheckedDbs.has(dbKey)) return;
   _schemaCheckedDbs.add(dbKey);
   console.log(`[Schema] ensureSchemaColumns starting for dbKey=${dbKey}`);
+
+  // ── CREATE core tables if they don't exist ──
+  const createStatements = [
+    sql`CREATE TABLE IF NOT EXISTS "users" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "tenantId" integer,
+      "name" text,
+      "email" varchar(320) NOT NULL UNIQUE,
+      "hashedPassword" text NOT NULL,
+      "role" varchar(20),
+      "approved" boolean DEFAULT true,
+      "openId" varchar(255),
+      "loginMethod" varchar(50),
+      "perfil" varchar(50),
+      "createdAt" timestamp DEFAULT now() NOT NULL,
+      "updatedAt" timestamp DEFAULT now() NOT NULL,
+      "lastSignedIn" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "clients" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "tenantId" integer,
+      "name" varchar(255) NOT NULL,
+      "cpf" varchar(14) NOT NULL UNIQUE,
+      "phone" varchar(20) NOT NULL,
+      "email" varchar(320) NOT NULL,
+      "operatorId" integer NOT NULL,
+      "createdAt" timestamp DEFAULT now() NOT NULL,
+      "updatedAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "workflowSteps" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "stepId" varchar(100) NOT NULL,
+      "stepTitle" varchar(255) NOT NULL,
+      "completed" boolean DEFAULT false NOT NULL,
+      "completedAt" timestamp,
+      "scheduledDate" timestamp,
+      "examinerName" varchar(255),
+      "sinarmStatus" varchar(50),
+      "sinarmOpenDate" timestamp,
+      "protocolNumber" varchar(100),
+      "createdAt" timestamp DEFAULT now() NOT NULL,
+      "updatedAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "subTasks" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "tenantId" integer,
+      "workflowStepId" integer NOT NULL,
+      "subTaskId" varchar(100) NOT NULL,
+      "label" varchar(255) NOT NULL,
+      "completed" boolean DEFAULT false NOT NULL,
+      "completedAt" timestamp,
+      "createdAt" timestamp DEFAULT now() NOT NULL,
+      "updatedAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "documents" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "tenantId" integer,
+      "clientId" integer NOT NULL,
+      "workflowStepId" integer,
+      "subTaskId" integer,
+      "fileName" varchar(255) NOT NULL,
+      "fileKey" varchar(500) NOT NULL,
+      "fileUrl" text NOT NULL,
+      "mimeType" varchar(100),
+      "fileSize" integer,
+      "uploadedBy" integer NOT NULL,
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "sinarmCommentsHistory" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "workflowStepId" integer NOT NULL,
+      "oldStatus" varchar(50),
+      "newStatus" varchar(50) NOT NULL,
+      "comment" text NOT NULL,
+      "createdBy" integer NOT NULL,
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "auditLogs" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "tenantId" integer NOT NULL,
+      "userId" integer,
+      "action" varchar(50) NOT NULL,
+      "entity" varchar(50) NOT NULL,
+      "entityId" integer,
+      "details" text,
+      "ipAddress" varchar(45),
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+  ];
+  for (const stmt of createStatements) {
+    try {
+      await db.execute(stmt);
+    } catch (error: any) {
+      console.warn('[Schema] CREATE TABLE skipped:', error?.message || error);
+    }
+  }
+  console.log(`[Schema] Core tables ensured for dbKey=${dbKey}`);
+
+  // ── ADD missing columns to existing tables ──
   const alterations = [
     sql`ALTER TABLE "subTasks" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
     sql`ALTER TABLE "subTasks" ADD COLUMN IF NOT EXISTS "subTaskId" varchar(100)`,
