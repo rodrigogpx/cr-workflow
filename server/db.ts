@@ -410,9 +410,18 @@ export async function upsertUserToDb(
 }
 
 export async function createClientToDb(tenantDb: ReturnType<typeof drizzle>, client: InsertClient) {
+  const baseClientData = {
+    name: client.name,
+    cpf: client.cpf,
+    phone: client.phone,
+    email: client.email,
+    operatorId: client.operatorId,
+    tenantId: client.tenantId,
+  };
+
   const [inserted] = await tenantDb
     .insert(clients)
-    .values(client)
+    .values(baseClientData)
     .returning({ id: clients.id });
 
   return inserted.id;
@@ -446,13 +455,21 @@ export async function getUserByOpenId(openId: string) {
 // Client operations
 export async function createClient(client: InsertClient) {
   console.log("[createClient] CALLED with:", JSON.stringify(client, null, 2));
+  const baseClientData = {
+    name: client.name,
+    cpf: client.cpf,
+    phone: client.phone,
+    email: client.email,
+    operatorId: client.operatorId,
+    tenantId: client.tenantId,
+  };
   
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const [inserted] = await db
     .insert(clients)
-    .values(client)
+    .values(baseClientData)
     .returning({ id: clients.id });
 
   return inserted.id;
