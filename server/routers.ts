@@ -442,6 +442,16 @@ export const appRouter = router({
                 tenantId: ctx.tenant?.id,
               });
         } catch (error: any) {
+          console.error('[Clients.create] INSERT failed:', {
+            message: error?.message,
+            code: error?.code,
+            detail: error?.detail,
+            constraint: error?.constraint,
+            severity: error?.severity,
+            table: error?.table,
+            column: error?.column,
+            where: error?.where,
+          });
           // Check for duplicate CPF error (PostgreSQL code 23505 or MySQL 'Duplicate entry')
           if (
             error?.code === '23505' ||
@@ -452,7 +462,10 @@ export const appRouter = router({
               message: 'Este CPF já está cadastrado no sistema.',
             });
           }
-          throw error;
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: `Erro ao inserir cliente: ${error?.message || 'erro desconhecido'}`,
+          });
         }
         
         // Criar workflow inicial para o cliente - 6 etapas principais

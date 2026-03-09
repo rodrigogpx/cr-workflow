@@ -46,6 +46,7 @@ const _schemaCheckedDbs = new Set<string>();
 export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey: string = 'main') {
   if (_schemaCheckedDbs.has(dbKey)) return;
   _schemaCheckedDbs.add(dbKey);
+  console.log(`[Schema] ensureSchemaColumns starting for dbKey=${dbKey}`);
   const alterations = [
     sql`ALTER TABLE "subTasks" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
     sql`ALTER TABLE "subTasks" ADD COLUMN IF NOT EXISTS "subTaskId" varchar(100)`,
@@ -106,14 +107,17 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
     sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
     sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "approved" boolean DEFAULT true`,
   ];
+  let ok = 0, skipped = 0;
   for (const alter of alterations) {
     try {
       await db.execute(alter);
+      ok++;
     } catch (error: any) {
+      skipped++;
       console.warn('[Schema] column alter skipped:', error?.message || error);
     }
   }
-  console.log('[Schema] ensureSchemaColumns completed');
+  console.log(`[Schema] ensureSchemaColumns completed for dbKey=${dbKey}: ${ok} ok, ${skipped} skipped`);
 }
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
