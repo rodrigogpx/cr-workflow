@@ -509,13 +509,30 @@ export async function upsertUserToDb(
   return inserted.id;
 }
 
-export async function createClientToDb(tenantDb: ReturnType<typeof drizzle>, client: InsertClient) {
-  const result = await tenantDb.execute(
+async function insertClientRaw(db: ReturnType<typeof drizzle>, client: InsertClient) {
+  const result = await db.execute(
     sql`INSERT INTO "clients" ("name", "cpf", "phone", "email", "operatorId", "tenantId")
-        VALUES (${client.name}, ${client.cpf}, ${client.phone || null}, ${client.email || null}, ${client.operatorId}, ${client.tenantId || null})
+        VALUES (${client.name ?? null}, ${client.cpf ?? null}, ${client.phone ?? null}, ${client.email ?? null}, ${client.operatorId ?? null}, ${client.tenantId ?? null})
         RETURNING "id"`
   );
-  return (result as any)[0].id;
+  const rows = result as any;
+  if (!rows || rows.length === 0) throw new Error('INSERT returned no rows');
+  return rows[0].id as number;
+}
+
+export async function createClientToDb(tenantDb: ReturnType<typeof drizzle>, client: InsertClient) {
+  try {
+    return await insertClientRaw(tenantDb, client);
+  } catch (err: any) {
+    // 42P01 = relation does not exist, 42703 = column does not exist
+    if (err?.code === '42P01' || err?.code === '42703') {
+      console.warn('[createClientToDb] Schema missing, forcing ensureSchemaColumns and retrying:', err.message);
+      Array.from(_schemaCheckedDbs).filter(k => k.startsWith('tenant_')).forEach(k => _schemaCheckedDbs.delete(k));
+      await ensureSchemaColumns(tenantDb, `tenant_retry_${Date.now()}`);
+      return await insertClientRaw(tenantDb, client);
+    }
+    throw err;
+  }
 }
 
 export async function getUserById(id: number) {
@@ -550,12 +567,18 @@ export async function createClient(client: InsertClient) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.execute(
-    sql`INSERT INTO "clients" ("name", "cpf", "phone", "email", "operatorId", "tenantId")
-        VALUES (${client.name}, ${client.cpf}, ${client.phone || null}, ${client.email || null}, ${client.operatorId}, ${client.tenantId || null})
-        RETURNING "id"`
-  );
-  return (result as any)[0].id;
+  try {
+    return await insertClientRaw(db, client);
+  } catch (err: any) {
+    // 42P01 = relation does not exist, 42703 = column does not exist
+    if (err?.code === '42P01' || err?.code === '42703') {
+      console.warn('[createClient] Schema missing, forcing ensureSchemaColumns and retrying:', err.message);
+      _schemaCheckedDbs.delete('main');
+      await ensureSchemaColumns(db, `main_retry_${Date.now()}`);
+      return await insertClientRaw(db, client);
+    }
+    throw err;
+  }
 }
 
 export async function getClientsByOperator(operatorId: number) {
