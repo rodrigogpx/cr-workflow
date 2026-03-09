@@ -1140,8 +1140,8 @@ export async function getEmailSettings(): Promise<EmailSettings | null> {
     LIMIT 1
   `);
 
-  const rows = result[0] as any[];
-  if (!rows || rows.length === 0) {
+  const rows = extractRows(result);
+  if (rows.length === 0) {
     return null;
   }
 
@@ -1166,8 +1166,8 @@ export async function getEmailSettingsFromDb(tenantDb: ReturnType<typeof drizzle
     LIMIT 1
   `);
 
-  const rows = result[0] as any[];
-  if (!rows || rows.length === 0) {
+  const rows = extractRows(result);
+  if (rows.length === 0) {
     return null;
   }
 

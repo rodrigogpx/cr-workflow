@@ -347,15 +347,27 @@ export async function ensureMissingTables() {
         const hashedPassword = await hashPassword('admin123'); // Default password, they should change it
         
         for (const email of adminEmails) {
-          // Check if it already exists to avoid ON CONFLICT which might not be supported or erroring
-          const result = await db.execute(sql`SELECT id FROM "platformAdmins" WHERE email = ${email} LIMIT 1`);
+          // Check if it already exists - handle both array and { rows: [] } formats from drizzle-orm
+          const rawResult = await db.execute(sql`SELECT id FROM "platformAdmins" WHERE email = ${email} LIMIT 1`);
+          const rows = Array.isArray(rawResult) ? rawResult : (rawResult as any)?.rows ?? [];
           
-          if (result.length === 0) {
+          if (!rows || rows.length === 0) {
             await db.execute(sql`
               INSERT INTO "platformAdmins" ("email", "hashedPassword", "name", "isActive", "createdAt", "updatedAt")
               VALUES (${email}, ${hashedPassword}, 'Platform Admin', true, now(), now());
             `);
             console.log(`[Migration] Created platform admin: ${email}`);
+          }
+
+          // Also ensure admin exists in users table for tenant login
+          const userResult = await db.execute(sql`SELECT id FROM "users" WHERE email = ${email} LIMIT 1`);
+          const userRows = Array.isArray(userResult) ? userResult : (userResult as any)?.rows ?? [];
+          if (!userRows || userRows.length === 0) {
+            await db.execute(sql`
+              INSERT INTO "users" ("email", "hashedPassword", "name", "role", "perfil", "createdAt", "updatedAt")
+              VALUES (${email}, ${hashedPassword}, 'Administrador', 'admin', 'admin', now(), now());
+            `);
+            console.log(`[Migration] Created admin user in users table: ${email}`);
           }
         }
       }
