@@ -1,6 +1,7 @@
 import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { execSync } from "child_process";
 import fs from "node:fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -9,9 +10,17 @@ import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+let gitCommitHash = 'unknown';
+try {
+  gitCommitHash = execSync('git rev-parse --short HEAD').toString().trim();
+} catch (_) {}
+
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
 
 export default defineConfig({
+  define: {
+    __GIT_COMMIT__: JSON.stringify(gitCommitHash),
+  },
   plugins,
   resolve: {
     alias: {

@@ -478,60 +478,71 @@ export const appRouter = router({
           { stepId: 'acompanhamento-sinarm', stepTitle: 'Acompanhamento Sinarm-CAC' },
         ];
 
-        for (const step of initialSteps) {
-          const workflowStepId = tenantDb
-            ? await db.upsertWorkflowStepToDb(tenantDb, {
-                clientId,
-                stepId: step.stepId,
-                stepTitle: step.stepTitle,
-                completed: false,
-              })
-            : await db.upsertWorkflowStep({
-                clientId,
-                stepId: step.stepId,
-                stepTitle: step.stepTitle,
-                completed: false,
-              });
-
-          // Se for a etapa "Juntada de Documento", criar as 16 subtarefas (documentos)
-          if (step.stepId === 'juntada-documento') {
-            const documents = [
-              'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
-              'Certidão de Antecedente Criminal Justiça Federal',
-              'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
-              'Documento de Identificação Pessoal',
-              'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
-              'Comprovante de Residência Fixa',
-              'Comprovante de Ocupação Lícita',
-              'Comprovante de filiação a entidade de caça',
-              'Comprovante de Segundo Endereço',
-              'Certidão de Antecedente Criminal Justiça Estadual',
-              'Declaração de Segurança do Acervo',
-              'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
-              'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
-              'Comprovante de filiação a entidade de tiro desportivo',
-              'Certidão de Antecedente Criminal Justiça Militar',
-              'Certidão de Antecedente Criminal Justiça Eleitoral',
-            ];
-
-            for (let i = 0; i < documents.length; i++) {
-              if (tenantDb) {
-                await db.upsertSubTaskToDb(tenantDb, {
-                  workflowStepId,
-                  subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
-                  label: documents[i],
+        try {
+          for (const step of initialSteps) {
+            const workflowStepId = tenantDb
+              ? await db.upsertWorkflowStepToDb(tenantDb, {
+                  clientId,
+                  stepId: step.stepId,
+                  stepTitle: step.stepTitle,
+                  completed: false,
+                })
+              : await db.upsertWorkflowStep({
+                  clientId,
+                  stepId: step.stepId,
+                  stepTitle: step.stepTitle,
                   completed: false,
                 });
-              } else {
-                await db.upsertSubTask({
-                  workflowStepId,
-                  subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
-                  label: documents[i],
-                  completed: false,
-                });
+
+            // Se for a etapa "Juntada de Documento", criar as 16 subtarefas (documentos)
+            if (step.stepId === 'juntada-documento') {
+              const documents = [
+                'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
+                'Certidão de Antecedente Criminal Justiça Federal',
+                'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
+                'Documento de Identificação Pessoal',
+                'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
+                'Comprovante de Residência Fixa',
+                'Comprovante de Ocupação Lícita',
+                'Comprovante de filiação a entidade de caça',
+                'Comprovante de Segundo Endereço',
+                'Certidão de Antecedente Criminal Justiça Estadual',
+                'Declaração de Segurança do Acervo',
+                'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
+                'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
+                'Comprovante de filiação a entidade de tiro desportivo',
+                'Certidão de Antecedente Criminal Justiça Militar',
+                'Certidão de Antecedente Criminal Justiça Eleitoral',
+              ];
+
+              for (let i = 0; i < documents.length; i++) {
+                if (tenantDb) {
+                  await db.upsertSubTaskToDb(tenantDb, {
+                    workflowStepId,
+                    subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
+                    label: documents[i],
+                    completed: false,
+                  });
+                } else {
+                  await db.upsertSubTask({
+                    workflowStepId,
+                    subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
+                    label: documents[i],
+                    completed: false,
+                  });
+                }
               }
             }
           }
+        } catch (wfError: any) {
+          console.error('[Clients.create] Workflow/SubTask creation failed:', {
+            clientId,
+            message: wfError?.message,
+            code: wfError?.code,
+            detail: wfError?.detail,
+          });
+          // Cliente já foi criado — não falhar a mutação inteira
+          console.warn('[Clients.create] Client created but workflow setup incomplete, clientId:', clientId);
         }
 
         // Enviar email de boas-vindas automaticamente

@@ -43,6 +43,18 @@ let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
 const _schemaCheckedDbs = new Set<string>();
 
+/** Safely extract rows from db.execute() — handles both array and { rows: [] } formats */
+function extractRows(result: any): any[] {
+  if (Array.isArray(result)) return result;
+  if (result?.rows && Array.isArray(result.rows)) return result.rows;
+  // postgres.js RowList is array-like but not Array.isArray
+  if (result && typeof result.length === 'number' && result.length > 0 && result[0]) {
+    return Array.from(result);
+  }
+  console.warn('[extractRows] unexpected result shape:', typeof result, JSON.stringify(result)?.slice(0, 200));
+  return [];
+}
+
 export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey: string = 'main') {
   if (_schemaCheckedDbs.has(dbKey)) return;
   _schemaCheckedDbs.add(dbKey);
@@ -362,13 +374,15 @@ export async function upsertWorkflowStepToDb(
     return step.id;
   }
 
+  console.log('[upsertWorkflowStepToDb] Inserting step:', { clientId: step.clientId, stepId: step.stepId });
   const result = await tenantDb.execute(
     sql`INSERT INTO "workflowSteps" ("clientId", "stepId", "stepTitle", "completed")
         VALUES (${step.clientId ?? null}, ${step.stepId ?? null}, ${step.stepTitle ?? null}, ${step.completed ?? false})
         RETURNING "id"`
   );
-  const rows = result as any;
-  if (!rows || rows.length === 0) throw new Error('workflowSteps INSERT returned no rows');
+  const rows = extractRows(result);
+  if (rows.length === 0) throw new Error('workflowSteps INSERT returned no rows');
+  console.log('[upsertWorkflowStepToDb] Inserted step id:', rows[0].id);
   return rows[0].id as number;
 }
 
@@ -513,13 +527,15 @@ export async function upsertUserToDb(
 }
 
 async function insertClientRaw(db: ReturnType<typeof drizzle>, client: InsertClient) {
+  console.log('[insertClientRaw] Inserting client:', { name: client.name, cpf: client.cpf });
   const result = await db.execute(
     sql`INSERT INTO "clients" ("name", "cpf", "phone", "email", "operatorId", "tenantId")
         VALUES (${client.name ?? null}, ${client.cpf ?? null}, ${client.phone ?? null}, ${client.email ?? null}, ${client.operatorId ?? null}, ${client.tenantId ?? null})
         RETURNING "id"`
   );
-  const rows = result as any;
-  if (!rows || rows.length === 0) throw new Error('INSERT returned no rows');
+  const rows = extractRows(result);
+  if (rows.length === 0) throw new Error('clients INSERT returned no rows');
+  console.log('[insertClientRaw] Inserted client id:', rows[0].id);
   return rows[0].id as number;
 }
 
@@ -814,13 +830,15 @@ export async function upsertWorkflowStep(step: InsertWorkflowStep & { id?: numbe
     await db.update(workflowSteps).set(step).where(eq(workflowSteps.id, step.id));
     return step.id;
   }
+  console.log('[upsertWorkflowStep] Inserting step:', { clientId: step.clientId, stepId: step.stepId });
   const result = await db.execute(
     sql`INSERT INTO "workflowSteps" ("clientId", "stepId", "stepTitle", "completed")
         VALUES (${step.clientId ?? null}, ${step.stepId ?? null}, ${step.stepTitle ?? null}, ${step.completed ?? false})
         RETURNING "id"`
   );
-  const rows = result as any;
-  if (!rows || rows.length === 0) throw new Error('workflowSteps INSERT returned no rows');
+  const rows = extractRows(result);
+  if (rows.length === 0) throw new Error('workflowSteps INSERT returned no rows');
+  console.log('[upsertWorkflowStep] Inserted step id:', rows[0].id);
   return rows[0].id as number;
 }
 
@@ -837,8 +855,8 @@ export async function upsertSubTask(task: InsertSubTask & { id?: number }) {
         VALUES (${task.workflowStepId ?? null}, ${task.subTaskId ?? null}, ${task.label ?? null}, ${task.completed ?? false})
         RETURNING "id"`
   );
-  const rows = result as any;
-  if (!rows || rows.length === 0) throw new Error('subTasks INSERT returned no rows');
+  const rows = extractRows(result);
+  if (rows.length === 0) throw new Error('subTasks INSERT returned no rows');
   return rows[0].id as number;
 }
 
@@ -856,8 +874,8 @@ export async function upsertSubTaskToDb(
         VALUES (${task.workflowStepId ?? null}, ${task.subTaskId ?? null}, ${task.label ?? null}, ${task.completed ?? false})
         RETURNING "id"`
   );
-  const rows = result as any;
-  if (!rows || rows.length === 0) throw new Error('subTasks INSERT returned no rows');
+  const rows = extractRows(result);
+  if (rows.length === 0) throw new Error('subTasks INSERT returned no rows');
   return rows[0].id as number;
 }
 
