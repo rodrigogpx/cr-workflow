@@ -10,10 +10,12 @@ import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-let gitCommitHash = 'unknown';
-try {
-  gitCommitHash = execSync('git rev-parse --short HEAD').toString().trim();
-} catch (_) {}
+let gitCommitHash = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || 'unknown';
+if (gitCommitHash === 'unknown') {
+  try {
+    gitCommitHash = execSync('git rev-parse --short HEAD').toString().trim();
+  } catch (_) {}
+}
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
 
