@@ -23,7 +23,9 @@ export default function Footer() {
             <span className="font-semibold text-foreground">ACR Digital</span>
             <span>para CAC 360</span>
             <span>•</span>
-            <span className="text-xs font-mono font-medium text-primary">v{commitHash}</span>
+            <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-[10px] font-mono font-bold text-primary border border-primary/20">
+              🚀 v{commitHash}
+            </span>
           </div>
         </div>
       </div>
