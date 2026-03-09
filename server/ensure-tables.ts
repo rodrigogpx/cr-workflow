@@ -357,6 +357,9 @@ export async function ensureMissingTables() {
               VALUES (${email}, ${hashedPassword}, 'Platform Admin', true, now(), now());
             `);
             console.log(`[Migration] Created platform admin: ${email}`);
+          } else {
+            await db.execute(sql`UPDATE "platformAdmins" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`);
+            console.log(`[Migration] Synced platform admin password: ${email}`);
           }
 
           // Also ensure admin exists in users table for tenant login
@@ -368,6 +371,9 @@ export async function ensureMissingTables() {
               VALUES (${email}, ${hashedPassword}, 'Administrador', 'admin', 'admin', now(), now());
             `);
             console.log(`[Migration] Created admin user in users table: ${email}`);
+          } else {
+            await db.execute(sql`UPDATE "users" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`);
+            console.log(`[Migration] Synced admin user password: ${email}`);
           }
         }
       }
