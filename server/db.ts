@@ -523,20 +523,14 @@ export async function upsertUserToDb(
 
 async function insertClientRaw(dbInstance: ReturnType<typeof drizzle>, client: InsertClient) {
   try {
-    const [inserted] = await dbInstance
-      .insert(clients)
-      .values({
-        name: client.name,
-        cpf: client.cpf,
-        phone: client.phone,
-        email: client.email,
-        operatorId: client.operatorId,
-        tenantId: client.tenantId,
-      })
-      .returning({ id: clients.id });
-      
-    if (!inserted) throw new Error('clients INSERT returned no rows');
-    return inserted.id;
+    const result = await dbInstance.execute(
+      sql`INSERT INTO "clients" ("tenantId", "name", "cpf", "phone", "email", "operatorId")
+          VALUES (${client.tenantId ?? null}, ${client.name}, ${client.cpf}, ${client.phone}, ${client.email}, ${client.operatorId})
+          RETURNING "id"`
+    );
+    const rows = extractRows(result);
+    if (rows.length === 0) throw new Error('clients INSERT returned no rows');
+    return rows[0].id as number;
   } catch (err: any) {
     console.error('[insertClientRaw] Error during insertion:', err);
     throw err;
