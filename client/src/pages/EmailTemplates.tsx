@@ -133,6 +133,22 @@ export default function EmailTemplates() {
     },
   });
 
+  const seedTemplatesMutation = trpc.emails.seedTemplates.useMutation({
+    onSuccess: (data: any) => {
+      if (data.skipped) {
+        toast.info("Templates já existem", { description: "Os templates padrão não foram inseridos para evitar duplicatas." });
+      } else {
+        toast.success("Templates e triggers semeados com sucesso!", {
+          description: `Inseridos ${data.templates} templates e ${data.triggers} triggers.`
+        });
+        utils.emails.getAllTemplates.invalidate();
+      }
+    },
+    onError: (error) => {
+      toast.error(`Erro ao semear templates: ${error.message}`);
+    },
+  });
+
   const handleTemplateChange = (field: keyof TemplateState, value: any) => {
     setTemplates((prev) => ({
       ...prev,
@@ -219,6 +235,19 @@ export default function EmailTemplates() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  if (confirm("Deseja carregar os templates padrão? Isso não apagará seus templates atuais, mas pode criar duplicatas se os nomes forem iguais.")) {
+                    seedTemplatesMutation.mutate();
+                  }
+                }}
+                disabled={seedTemplatesMutation.isPending}
+                title="Carregar Templates Padrão"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {seedTemplatesMutation.isPending ? 'Semeando...' : 'Semear Padrão'}
+              </Button>
               <Button 
                 variant="destructive" 
                 onClick={handleDeleteTemplate} 

@@ -4,41 +4,65 @@ import { defaultEmailTemplates } from './defaultTemplates';
 import { defaultEmailTriggers } from './defaultTriggers';
 
 export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) {
-  // Check if templates already exist for this tenant
-  const existing = await tenantDb
-    .select({ id: emailTemplates.id })
-    .from(emailTemplates)
-    .where(eq(emailTemplates.tenantId, tenantId))
-    .limit(1);
-
-  if (existing.length > 0) {
-    return { skipped: true, reason: 'templates_exist' };
-  }
-
-  // 1. Insert Templates
+  // 1. Insert Templates (idempotent by key)
   const templateIdMap = new Map<string, number>();
+  let templatesInserted = 0;
+
   for (const t of defaultEmailTemplates) {
     try {
+      // Check if this specific template already exists for this tenant
+      const existingTemplate = await tenantDb
+        .select({ id: emailTemplates.id })
+        .from(emailTemplates)
+        .where(and(
+          eq(emailTemplates.tenantId, tenantId),
+          eq(emailTemplates.templateKey, t.templateKey)
+        ))
+        .limit(1);
+
+      if (existingTemplate.length > 0) {
+        templateIdMap.set(t.templateKey, existingTemplate[0].id);
+        continue;
+      }
+
       const [inserted] = await tenantDb
         .insert(emailTemplates)
         .values({ ...t, tenantId })
         .returning({ id: emailTemplates.id });
+      
       templateIdMap.set(t.templateKey, inserted.id);
+      templatesInserted++;
     } catch (err: any) {
-      console.warn(`[Seed] Template ${t.templateKey} insert failed (may already exist):`, err?.message);
+      console.warn(`[Seed] Template ${t.templateKey} insert failed:`, err?.message);
     }
   }
 
-  // 2. Insert Triggers and Map to Templates
+  // 2. Insert Triggers and Map to Templates (idempotent by name + event)
   let triggersInserted = 0;
   for (const trigger of defaultEmailTriggers) {
     try {
-      const [insertedTrigger] = await tenantDb
-        .insert(emailTriggers)
-        .values({ ...trigger, tenantId })
-        .returning({ id: emailTriggers.id });
+      // Check if this trigger already exists
+      const existingTrigger = await tenantDb
+        .select({ id: emailTriggers.id })
+        .from(emailTriggers)
+        .where(and(
+          eq(emailTriggers.tenantId, tenantId),
+          eq(emailTriggers.name, trigger.name),
+          eq(emailTriggers.triggerEvent, trigger.triggerEvent)
+        ))
+        .limit(1);
 
-      triggersInserted++;
+      let triggerId: number;
+      if (existingTrigger.length > 0) {
+        triggerId = existingTrigger[0].id;
+      } else {
+        const [insertedTrigger] = await tenantDb
+          .insert(emailTriggers)
+          .values({ ...trigger, tenantId })
+          .returning({ id: emailTriggers.id });
+        triggerId = insertedTrigger.id;
+        triggersInserted++;
+      }
 
       // Map trigger to template based on triggerEvent
       let templateKeyToMap: string | null = null;
@@ -55,17 +79,31 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
       else if (trigger.triggerEvent === 'STEP_COMPLETED:9') templateKeyToMap = 'sinarm_restituido';
 
       if (templateKeyToMap && templateIdMap.has(templateKeyToMap)) {
-        await tenantDb.insert(emailTriggerTemplates).values({
-          triggerId: insertedTrigger.id,
-          templateId: templateIdMap.get(templateKeyToMap)!,
-          sendOrder: 1,
-          isForReminder: trigger.sendBeforeHours ? true : false
-        });
+        const templateId = templateIdMap.get(templateKeyToMap)!;
+        
+        // Check if association already exists
+        const existingAssoc = await tenantDb
+          .select()
+          .from(emailTriggerTemplates)
+          .where(and(
+            eq(emailTriggerTemplates.triggerId, triggerId),
+            eq(emailTriggerTemplates.templateId, templateId)
+          ))
+          .limit(1);
+
+        if (existingAssoc.length === 0) {
+          await tenantDb.insert(emailTriggerTemplates).values({
+            triggerId,
+            templateId,
+            sendOrder: 1,
+            isForReminder: trigger.sendBeforeHours ? true : false
+          });
+        }
       }
     } catch (err: any) {
       console.warn(`[Seed] Trigger ${trigger.name} insert failed:`, err?.message);
     }
   }
 
-  return { skipped: false, templates: templateIdMap.size, triggers: triggersInserted };
+  return { skipped: templatesInserted === 0 && triggersInserted === 0, templates: templatesInserted, triggers: triggersInserted };
 }

@@ -442,22 +442,11 @@ export const appRouter = router({
                 tenantId: ctx.tenant?.id,
               });
         } catch (error: any) {
-          // Capture all error properties for diagnosis
-          const errProps: Record<string, any> = {};
-          for (const key of Object.getOwnPropertyNames(error || {})) {
-            try { errProps[key] = error[key]; } catch (_) { errProps[key] = '[unreadable]'; }
-          }
-          console.error('[Clients.create] INSERT failed:', JSON.stringify(errProps, null, 2));
-          console.error('[Clients.create] Error class:', error?.constructor?.name);
-          console.error('[Clients.create] Error cause:', error?.cause);
-          
-          // Check for duplicate CPF error (PostgreSQL code 23505 or MySQL 'Duplicate entry')
+          // Check for duplicate CPF error (PostgreSQL code 23505)
           const errMsg = error?.message || '';
           if (
             error?.code === '23505' ||
             errMsg.includes('duplicate key value violates unique constraint') ||
-            errMsg.includes('Duplicate entry') ||
-            errMsg.includes('unique constraint') ||
             errMsg.includes('clients_cpf_unique') ||
             errMsg.includes('clients_tenantId_cpf_unique')
           ) {
@@ -466,9 +455,11 @@ export const appRouter = router({
               message: 'Este CPF já está cadastrado no sistema.',
             });
           }
+          
+          console.error('[Clients.create] Error:', error);
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: `Erro ao inserir cliente: [${error?.constructor?.name || 'Unknown'}] [PG ${error?.code || error?.severity || '?'}] ${errMsg.substring(0, 200)} | keys: ${Object.getOwnPropertyNames(error || {}).join(',')}`,
+            message: `Erro ao cadastrar cliente: ${errMsg.substring(0, 100)}`,
           });
         }
         
@@ -1932,7 +1923,7 @@ export const appRouter = router({
       }),
 
     // Delete email template
-    deleteTemplate: protectedProcedure
+    deleteTemplate: adminProcedure
       .input(z.object({
         templateKey: z.string(),
         module: z.string().optional(),
@@ -1945,6 +1936,16 @@ export const appRouter = router({
           await db.deleteEmailTemplate(input.templateKey, input.module);
         }
         return { success: true };
+      }),
+
+    seedTemplates: adminProcedure
+      .mutation(async ({ ctx }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id;
+        if (!tenantDb || !tenantId) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado ou banco indisponível' });
+        }
+        return await seedTenantEmailTemplates(tenantDb, tenantId);
       }),
 
     // Get email log (check if email was sent and get details)
@@ -3239,6 +3240,39 @@ export const appRouter = router({
         return result;
       }),
 
+    // Create a new email trigger for a tenant (Super Admin)
+    createEmailTrigger: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        name: z.string().min(1),
+        triggerEvent: z.string().min(1),
+        recipientType: z.string().default('client'),
+        isActive: z.boolean().default(true),
+        sendImmediate: z.boolean().default(true),
+        sendBeforeHours: z.number().nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        let tenantDb: any = null;
+        const tenantConfig = await getTenantConfig(tenant.slug);
+        if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
+        if (!tenantDb) tenantDb = await db.getDb();
+        if (!tenantDb) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        }
+
+        const { tenantId: _tid, ...triggerData } = input;
+        const trigger = await db.createEmailTriggerToDb(tenantDb, {
+          ...triggerData,
+          tenantId: input.tenantId,
+        });
+        return trigger;
+      }),
+
     // Update an email trigger for a tenant (Super Admin)
     updateEmailTrigger: platformAdminProcedure
       .input(z.object({
@@ -3279,6 +3313,30 @@ export const appRouter = router({
         if (updateFields.sendBeforeHours !== undefined) updateData.sendBeforeHours = updateFields.sendBeforeHours;
 
         await db.updateEmailTriggerToDb(tenantDb, triggerId, updateData);
+        return { success: true };
+      }),
+
+    // Delete an email trigger for a tenant (Super Admin)
+    deleteEmailTrigger: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        triggerId: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+        }
+
+        let tenantDb: any = null;
+        const tenantConfig = await getTenantConfig(tenant.slug);
+        if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
+        if (!tenantDb) tenantDb = await db.getDb();
+        if (!tenantDb) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        }
+
+        await db.deleteEmailTriggerFromDb(tenantDb, input.triggerId);
         return { success: true };
       }),
 
@@ -3695,6 +3753,10 @@ export const appRouter = router({
         { value: 'STEP_COMPLETED:4', label: 'Etapa 4 - Avaliação Psicológica concluída', hasSchedule: false },
         { value: 'STEP_COMPLETED:5', label: 'Etapa 5 - Laudo Técnico concluído', hasSchedule: false },
         { value: 'STEP_COMPLETED:6', label: 'Etapa 6 - Acompanhamento Sinarm concluído', hasSchedule: false },
+        { value: 'STEP_COMPLETED:7', label: 'Etapa 7 - Montagem Sinarm', hasSchedule: false },
+        { value: 'STEP_COMPLETED:8', label: 'Etapa 8 - Protocolado', hasSchedule: false },
+        { value: 'STEP_COMPLETED:9', label: 'Etapa 9 - Concluído', hasSchedule: false },
+        { value: 'SCHEDULE_CREATED', label: 'Agendamento Criado (Geral)', hasSchedule: true },
         { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
         { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'Confirmação de Agendamento de Laudo Técnico', hasSchedule: true },
         { value: 'SCHEDULE_TECH_REMINDER', label: 'Lembrete de Agendamento de Laudo Técnico', hasSchedule: true },

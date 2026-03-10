@@ -536,27 +536,7 @@ async function insertClientRaw(dbInstance: ReturnType<typeof drizzle>, client: I
   } catch (err: any) {
     // Drizzle wraps postgres errors in DrizzleError with the real PG error in .cause
     const pgErr = err?.cause || err;
-    console.error('[insertClientRaw] Drizzle error class:', err?.constructor?.name);
-    console.error('[insertClientRaw] PG error class:', pgErr?.constructor?.name);
-    console.error('[insertClientRaw] PG error:', JSON.stringify({
-      message: pgErr?.message,
-      code: pgErr?.code,
-      detail: pgErr?.detail,
-      constraint: pgErr?.constraint,
-      severity: pgErr?.severity,
-      table: pgErr?.table,
-      column: pgErr?.column,
-      hint: pgErr?.hint,
-      routine: pgErr?.routine,
-    }));
-    console.error('[insertClientRaw] Input data:', JSON.stringify({
-      tenantId: client.tenantId,
-      name: client.name,
-      cpf: client.cpf,
-      phone: client.phone,
-      email: client.email,
-      operatorId: client.operatorId,
-    }));
+    console.error('[insertClientRaw] Database error:', pgErr?.message || err?.message);
     // Re-throw the actual PG error so callers can check .code
     throw pgErr;
   }

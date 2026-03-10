@@ -98,6 +98,22 @@ export default function AdminEmailTriggers() {
     });
   };
 
+  const seedTemplatesMutation = trpc.emails.seedTemplates.useMutation({
+    onSuccess: (data: any) => {
+      if (data.skipped) {
+        toast.info("Triggers e templates já existem", { description: "Os padrões não foram inseridos para evitar duplicatas." });
+      } else {
+        toast.success("Triggers e templates semeados com sucesso!", {
+          description: `Inseridos ${data.templates} templates e ${data.triggers} triggers.`
+        });
+        refetch();
+      }
+    },
+    onError: (error) => {
+      toast.error(`Erro ao semear triggers: ${error.message}`);
+    },
+  });
+
   const handleSubmit = () => {
     if (editingTrigger) {
       updateMutation.mutate({
@@ -139,7 +155,21 @@ export default function AdminEmailTriggers() {
               Configure triggers para envio automático de emails baseado em ações do sistema
             </p>
           </div>
-          <Dialog open={isCreateOpen || !!editingTrigger} onOpenChange={(open) => {
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => {
+                if (confirm("Deseja carregar as automações padrão? Isso não apagará suas automações atuais, mas pode criar duplicatas se os nomes forem iguais.")) {
+                  seedTemplatesMutation.mutate();
+                }
+              }}
+              disabled={seedTemplatesMutation.isPending}
+              title="Carregar Automações Padrão"
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              {seedTemplatesMutation.isPending ? 'Semeando...' : 'Semear Padrão'}
+            </Button>
+            <Dialog open={isCreateOpen || !!editingTrigger} onOpenChange={(open) => {
             if (!open) {
               setIsCreateOpen(false);
               setEditingTrigger(null);

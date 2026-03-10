@@ -15,7 +15,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Loader2, Save, Pencil, Mail } from "lucide-react";
+import { Loader2, Save, Pencil, Mail, Plus, Zap, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface EmailTriggersPanelProps {
@@ -36,6 +36,19 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   const [editSendBeforeHours, setEditSendBeforeHours] = useState<number | null>(null);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<number[]>([]);
   const [loadingTriggerTemplates, setLoadingTriggerTemplates] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const createMutation = trpc.tenants.createEmailTrigger.useMutation({
+    onSuccess: () => {
+      toast.success("Trigger criado com sucesso");
+      utils.tenants.getEmailTriggers.invalidate({ tenantId });
+      setSelectedTrigger(null);
+      setIsCreating(false);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao criar trigger: ${error.message}`);
+    },
+  });
 
   const updateMutation = trpc.tenants.updateEmailTrigger.useMutation({
     onError: (error: any) => {
@@ -46,6 +59,31 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   const updateTemplatesMutation = trpc.tenants.updateTriggerTemplates.useMutation({
     onError: (error: any) => {
       toast.error(`Erro ao atualizar templates: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.tenants.deleteEmailTrigger.useMutation({
+    onSuccess: () => {
+      toast.success("Trigger excluído com sucesso");
+      utils.tenants.getEmailTriggers.invalidate({ tenantId });
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir trigger: ${error.message}`);
+    },
+  });
+
+  const seedMutation = trpc.tenants.seedEmailTemplates.useMutation({
+    onSuccess: (result: any) => {
+      if (result.skipped) {
+        toast.info('Templates e triggers já existem para este tenant');
+      } else {
+        toast.success(`Seed concluído: ${result.templates} templates e ${result.triggers} triggers criados`);
+      }
+      utils.tenants.getEmailTemplates.invalidate({ tenantId });
+      utils.tenants.getEmailTriggers.invalidate({ tenantId });
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao executar seed: ${error.message}`);
     },
   });
 
@@ -79,6 +117,36 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   };
 
   const handleSave = async () => {
+    if (isCreating) {
+      try {
+        const newTrigger = await createMutation.mutateAsync({
+          tenantId,
+          name: editName,
+          triggerEvent: editEvent,
+          isActive: editActive,
+          recipientType: editRecipientType,
+          sendImmediate: editSendImmediate,
+          sendBeforeHours: editSendImmediate ? null : editSendBeforeHours,
+        });
+
+        if (selectedTemplateIds.length > 0) {
+          await updateTemplatesMutation.mutateAsync({
+            tenantId,
+            triggerId: newTrigger.id,
+            templateIds: selectedTemplateIds,
+          });
+        }
+
+        toast.success("Trigger criado com sucesso");
+        utils.tenants.getEmailTriggers.invalidate({ tenantId });
+        setSelectedTrigger(null);
+        setIsCreating(false);
+      } catch (e) {
+        // Handled by mutation onError
+      }
+      return;
+    }
+
     if (!selectedTrigger) return;
 
     try {
@@ -122,7 +190,41 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="font-medium">Automações de Email</h4>
-        <Badge variant="outline">{triggers.length} triggers</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{triggers.length} triggers</Badge>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="h-8"
+            onClick={() => {
+              if (confirm("Deseja carregar as automações padrão para este tenant? Isso não apagará as atuais, mas pode duplicar se os nomes forem iguais.")) {
+                seedMutation.mutate({ tenantId });
+              }
+            }}
+            disabled={seedMutation.isPending}
+          >
+            {seedMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Zap className="h-3 w-3 mr-1" />}
+            Semear Padrão
+          </Button>
+          <Button 
+            size="sm" 
+            className="h-8"
+            onClick={() => {
+              setIsCreating(true);
+              setSelectedTrigger({ id: 'new' });
+              setEditName("");
+              setEditEvent("");
+              setEditActive(true);
+              setEditRecipientType("client");
+              setEditSendImmediate(true);
+              setEditSendBeforeHours(null);
+              setSelectedTemplateIds([]);
+            }}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Novo Trigger
+          </Button>
+        </div>
       </div>
 
       {triggers.length > 0 ? (
@@ -157,6 +259,20 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Deseja excluir o trigger "${trigger.name}"?`)) {
+                          deleteMutation.mutate({ tenantId, triggerId: trigger.id });
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                     <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     {trigger.isActive ? (
                       <Badge className="bg-green-500">Ativo</Badge>
@@ -179,9 +295,9 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
       <Sheet open={!!selectedTrigger} onOpenChange={(open) => !open && setSelectedTrigger(null)}>
         <SheetContent side="right" className="sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Editar Trigger</SheetTitle>
+            <SheetTitle>{isCreating ? "Novo Trigger" : "Editar Trigger"}</SheetTitle>
             <SheetDescription>
-              Altere os dados da automação de email abaixo.
+              {isCreating ? "Configure um novo gatilho de automação." : "Altere os dados da automação de email abaixo."}
             </SheetDescription>
           </SheetHeader>
 
@@ -305,13 +421,13 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
           </div>
 
           <SheetFooter>
-            <Button className="w-full" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
+            <Button className="w-full" onClick={handleSave} disabled={isSaving || createMutation.isPending}>
+              {isSaving || createMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <Save className="h-4 w-4 mr-2" />
               )}
-              Salvar alterações
+              {isCreating ? "Criar Trigger" : "Salvar alterações"}
             </Button>
           </SheetFooter>
         </SheetContent>

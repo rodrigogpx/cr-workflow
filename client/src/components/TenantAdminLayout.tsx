@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, UserCheck, FileText, X, ChevronRight } from "lucide-react";
+import { Shield, Users, UserCheck, FileText, X, ChevronRight, Mail, Zap, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { useEffectiveTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
@@ -59,6 +59,36 @@ export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) 
       color: "from-amber-500 to-amber-700",
       iconBg: "bg-amber-500/10",
       iconColor: "text-amber-600",
+    },
+    {
+      id: "emails" as const,
+      label: "Templates de Email",
+      description: "Edite os templates de email enviados aos clientes",
+      icon: Mail,
+      path: "/admin/emails",
+      color: "from-purple-500 to-purple-700",
+      iconBg: "bg-purple-500/10",
+      iconColor: "text-purple-600",
+    },
+    {
+      id: "email-triggers" as const,
+      label: "Automação",
+      description: "Configure gatilhos para disparos automáticos",
+      icon: Zap,
+      path: "/admin/email-triggers",
+      color: "from-yellow-500 to-yellow-700",
+      iconBg: "bg-yellow-500/10",
+      iconColor: "text-yellow-600",
+    },
+    {
+      id: "settings" as const,
+      label: "Configurações",
+      description: "Ajustes do clube, logo e SMTP",
+      icon: Settings,
+      path: "/admin/settings",
+      color: "from-slate-500 to-slate-700",
+      iconBg: "bg-slate-500/10",
+      iconColor: "text-slate-600",
     },
   ];
 
