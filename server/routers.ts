@@ -14,7 +14,7 @@ import { saveClientDocumentFile, getTenantStorageUsage } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
-import { createClientSchema, updateClientSchema } from "@shared/validations";
+import { createClientSchema, updateClientSchema, createUserSchema, updateUserSchema } from "@shared/validations";
 import { seedTenantEmailTemplates } from "./defaults/seedTenant";
 import { iatRouter } from "./routers/iat";
 import { Buffer } from "node:buffer";
@@ -1051,7 +1051,6 @@ export const appRouter = router({
               'acompanhamento-sinarm-cac': '6',
             };
             const stepNumber = stepIdToNumber[currentStep.stepId] || currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
-            console.log(`[Workflow] Triggering STEP_COMPLETED:${stepNumber} for stepId=${currentStep.stepId}`);
             
             // Preparar extraData com informações de agendamento se disponíveis
             const stepExtraData: Record<string, any> = {};
@@ -1810,7 +1809,6 @@ export const appRouter = router({
 
           // IMPORTANTE: Converter a imagem para base64 e salvar diretamente no banco.
           // Isso garante que a imagem esteja sempre disponível, independente de URLs externas.
-          console.log("[ImportLogo] Fetching image to convert to base64...");
           
           const imageResponse = await fetch(input.logoUrl);
           if (!imageResponse.ok) {
@@ -1823,8 +1821,6 @@ export const appRouter = router({
           const imageBuffer = await imageResponse.arrayBuffer();
           const base64 = Buffer.from(imageBuffer).toString('base64');
           const finalLogoUrl = `data:${contentType};base64,${base64}`;
-          
-          console.log(`[ImportLogo] Image converted to base64, size: ${base64.length} chars`);
           
           // Salvar o base64 no banco de dados
           await db.updateTenantSmtpSettings(tenantId, {
@@ -1902,7 +1898,6 @@ export const appRouter = router({
           // For Super Admin (no tenant), return empty array since platform DB doesn't have emailTemplates
           // Super Admin should manage email templates through tenant impersonation or a separate interface
           if (ctx.platformAdmin) {
-            console.log('[emails.getAllTemplates] Super Admin accessed - returning empty array');
             return [];
           }
           
@@ -2020,7 +2015,6 @@ export const appRouter = router({
         const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
         
         const isBase64Logo = emailLogoUrl.startsWith('data:');
-        console.log(`[SendEmail] Logo from settings: ${emailLogoUrl ? (isBase64Logo ? 'BASE64 (' + emailLogoUrl.length + ' chars)' : 'URL') : 'EMPTY'}`);
 
         const replaceVariables = (text: string, clientData: any) => {
           let result = text;
@@ -2119,12 +2113,7 @@ export const appRouter = router({
     }),
 
     create: adminProcedure
-      .input(z.object({
-        name: z.string().min(1, "Nome é obrigatório"),
-        email: z.string().email("Email inválido"),
-        password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
-        role: z.enum(['operator', 'admin', 'despachante']),
-      }))
+      .input(createUserSchema)
       .mutation(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const existingUser = tenantDb
@@ -2170,13 +2159,7 @@ export const appRouter = router({
       }),
 
     update: adminProcedure
-      .input(z.object({
-        userId: z.number(),
-        name: z.string().min(1).optional(),
-        email: z.string().email().optional(),
-        role: z.enum(['operator', 'admin', 'despachante']).optional(),
-        password: z.string().min(6).optional(),
-      }))
+      .input(updateUserSchema)
       .mutation(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const user = tenantDb
@@ -2323,26 +2306,6 @@ export const appRouter = router({
           await db.updateUserRole(input.userId, input.role);
         }
 
-        console.log('[AUDIT] User role assigned', {
-          actorId: ctx.user.id,
-          targetUserId: input.userId,
-          newRole: input.role,
-        });
-
-        // Log audit entry for user role assignment
-        if (ctx.tenant?.id) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
-          await db.logAudit({
-            tenantId: ctx.tenant.id,
-            userId: ctx.user.id,
-            action: 'UPDATE',
-            entity: 'USER',
-            entityId: input.userId,
-            details: JSON.stringify({ roleAssignment: input.role }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
-          });
-        }
-
         return { success: true };
       }),
 
@@ -2379,11 +2342,6 @@ export const appRouter = router({
         } else {
           await db.deleteUser(input.userId);
         }
-
-        console.log('[AUDIT] User deleted', {
-          actorId: ctx.user.id,
-          targetUserId: input.userId,
-        });
 
         // Log audit entry for user deletion
         if (ctx.tenant?.id) {
@@ -2463,12 +2421,6 @@ export const appRouter = router({
           await db.updateClient(input.clientId, { operatorId: input.operatorId });
         }
 
-        console.log('[AUDIT] Client assigned to operator', {
-          actorId: ctx.user.id,
-          clientId: input.clientId,
-          operatorId: input.operatorId,
-        });
-
         return { success: true };
       }),
   }),
@@ -2482,11 +2434,6 @@ export const appRouter = router({
       try {
         const result = await db.clearMockTenants();
         invalidateTenantCache();
-
-        console.log("[AUDIT] Clear mock tenants executed", {
-          actorId: ctx.platformAdmin.id,
-          result,
-        });
 
         return { success: true, ...result };
       } catch (error: any) {
@@ -2507,11 +2454,6 @@ export const appRouter = router({
       try {
         const result = await db.seedMockTenants();
         invalidateTenantCache();
-
-        console.log("[AUDIT] Seed mock tenants executed", {
-          actorId: ctx.platformAdmin.id,
-          result,
-        });
 
         return { success: true, ...result };
       } catch (error: any) {
@@ -2661,7 +2603,6 @@ export const appRouter = router({
             const tenantDb = await getTenantDb(tenantConfig);
             if (tenantDb) {
               await seedTenantEmailTemplates(tenantDb, tenantId);
-              console.log(`[Tenant] Seeded email templates for tenant ${input.slug}`);
             } else {
               console.error(`[Tenant] Failed to connect to DB for seeding templates: ${input.slug}`);
             }
@@ -2681,13 +2622,7 @@ export const appRouter = router({
         });
         invalidateTenantCache(input.slug);
 
-        console.log('[AUDIT] Tenant created', {
-          actorId: ctx.platformAdmin.id,
-          tenantId,
-          slug: input.slug,
-        });
-
-        return { success: true, tenantId };
+        return { id: tenantId, success: true };
       }),
 
     // Atualizar tenant
@@ -2733,12 +2668,6 @@ export const appRouter = router({
           performedBy: ctx.user.id,
         });
 
-        console.log('[AUDIT] Tenant updated', {
-          actorId: ctx.user.id,
-          tenantId: id,
-          updates: Object.keys(updates),
-        });
-
         return { success: true };
       }),
 
@@ -2764,13 +2693,6 @@ export const appRouter = router({
           performedBy: ctx.platformAdmin.id,
         });
 
-        console.log('[AUDIT] Tenant status changed', {
-          actorId: ctx.platformAdmin.id,
-          tenantId: input.id,
-          oldStatus: tenant.subscriptionStatus,
-          newStatus: input.status,
-        });
-
         return { success: true };
       }),
 
@@ -2793,12 +2715,6 @@ export const appRouter = router({
           performedBy: ctx.platformAdmin.id,
         });
 
-        console.log('[AUDIT] Tenant deleted (soft)', {
-          actorId: ctx.platformAdmin.id,
-          tenantId: input.id,
-          slug: tenant.slug,
-        });
-
         return { success: true };
       }),
 
@@ -2817,12 +2733,6 @@ export const appRouter = router({
         // Não conseguimos logar atividade no tenant pois ele foi deletado
         // Mas podemos logar se tivermos um log global de plataforma (futuro)
         
-        console.log('[AUDIT] Tenant deleted (HARD)', {
-          actorId: ctx.platformAdmin.id,
-          tenantId: input.id,
-          slug: tenant.slug,
-        });
-
         return { success: true };
       }),
 
@@ -2870,15 +2780,12 @@ export const appRouter = router({
             if (tenantDb) {
               const sizeBytes = await db.getDatabaseSize(tenantDb);
               dbSizeMB = Number((sizeBytes / (1024 * 1024)).toFixed(2));
-              console.log(`[Stats] Tenant ${tenant.id} DB size: ${sizeBytes} bytes (${dbSizeMB} MB)`);
             } else {
               console.warn(`[Stats] getTenantDb returned null for tenant ${tenant.id} (${tenant.slug})`);
             }
           } catch (dbErr: any) {
             console.error(`[Stats] Error getting DB size for tenant ${tenant.id}:`, dbErr?.message);
           }
-
-          console.log(`[Stats] Tenant ${tenant.id}: users=${usersCount}, clients=${clientsCount}, storage=${storageUsedGB}GB, db=${dbSizeMB}MB`);
 
           return {
             usersCount,
@@ -3033,13 +2940,6 @@ export const appRouter = router({
           sameSite: "lax",
         });
 
-        console.log('[AUDIT] Platform Admin impersonating tenant', {
-          platformAdminId: ctx.platformAdmin.id,
-          tenantId: input.tenantId,
-          tenantSlug: tenant.slug,
-          impersonatedUserId: tenantAdmin.id,
-        });
-
         return {
           success: true,
           tenantSlug: tenant.slug,
@@ -3158,12 +3058,6 @@ export const appRouter = router({
           });
         }
         
-        console.log('[AUDIT] Tenant email config updated by super admin', {
-          platformAdminId: ctx.platformAdmin.id,
-          tenantId,
-          emailMethod: config.emailMethod,
-        });
-        
         return { success: true };
       }),
 
@@ -3196,13 +3090,6 @@ export const appRouter = router({
           useGateway: settings.emailMethod === "gateway",
           postmanGpxBaseUrl: (settings as any).postmanGpxBaseUrl,
           postmanGpxApiKey: (settings as any).postmanGpxApiKey,
-        });
-        
-        console.log('[AUDIT] Email test sent by super admin', {
-          platformAdminId: ctx.platformAdmin.id,
-          tenantId: input.tenantId,
-          testEmail: input.testEmail,
-          success: result.success,
         });
         
         return result;
@@ -3345,7 +3232,6 @@ export const appRouter = router({
         }
         
         const result = await seedTenantEmailTemplates(tenantDb, input.tenantId);
-        console.log(`[tenants.seedEmailTemplates] Tenant ${input.tenantId}:`, result);
         return result;
       }),
 
@@ -3491,8 +3377,6 @@ export const appRouter = router({
           if (input.entity) {
             params.entity = input.entity;
           }
-
-          console.log('[Audit] Fetching logs with params:', JSON.stringify(params));
 
           const result = tenantDb
             ? await db.getAuditLogsFromDb(tenantDb, params)

@@ -118,7 +118,6 @@ export default function PendingApproval() {
 
               <Button
                 onClick={() => {
-                  console.log("Executando limpeza forçada...");
                   localStorage.clear();
                   sessionStorage.clear();
                   // Limpar cookies manualmente

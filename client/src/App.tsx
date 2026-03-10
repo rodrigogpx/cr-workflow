@@ -63,7 +63,6 @@ function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
 function ApprovedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const tenantSlug = useTenantSlug();
-  console.log("[FRONT DEBUG] ApprovedRoute - User:", user, "Loading:", loading);
 
   if (loading) {
     return (

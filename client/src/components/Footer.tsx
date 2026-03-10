@@ -6,7 +6,6 @@ export default function Footer() {
   // Log para depuração no console do navegador
   if (typeof window !== 'undefined') {
     (window as any)._APP_VERSION = commitHash;
-    console.log(`[App] Version: ${commitHash}`);
   }
 
   return (

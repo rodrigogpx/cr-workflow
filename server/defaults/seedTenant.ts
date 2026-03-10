@@ -4,8 +4,6 @@ import { defaultEmailTemplates } from './defaultTemplates';
 import { defaultEmailTriggers } from './defaultTriggers';
 
 export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) {
-  console.log(`[Seed] Starting email templates seed for tenant ${tenantId}`);
-
   // Check if templates already exist for this tenant
   const existing = await tenantDb
     .select({ id: emailTemplates.id })
@@ -14,7 +12,6 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
     .limit(1);
 
   if (existing.length > 0) {
-    console.log(`[Seed] Tenant ${tenantId} already has ${existing.length}+ templates, skipping seed`);
     return { skipped: true, reason: 'templates_exist' };
   }
 
@@ -31,8 +28,6 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
       console.warn(`[Seed] Template ${t.templateKey} insert failed (may already exist):`, err?.message);
     }
   }
-
-  console.log(`[Seed] Inserted ${templateIdMap.size} templates for tenant ${tenantId}`);
 
   // 2. Insert Triggers and Map to Templates
   let triggersInserted = 0;
@@ -72,6 +67,5 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
     }
   }
 
-  console.log(`[Seed] Inserted ${triggersInserted} triggers for tenant ${tenantId}`);
   return { skipped: false, templates: templateIdMap.size, triggers: triggersInserted };
 }

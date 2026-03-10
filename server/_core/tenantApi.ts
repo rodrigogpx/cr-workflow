@@ -149,7 +149,6 @@ tenantApiRouter.post("/", async (req: express.Request, res: express.Response) =>
         const tenantDb = await getTenantDb(tenantConfig);
         if (tenantDb) {
           await seedTenantEmailTemplates(tenantDb, tenantId);
-          console.log(`[TenantApi] Seeded email templates for tenant ${data.slug}`);
         } else {
           console.error(`[TenantApi] Failed to connect to DB for seeding templates: ${data.slug}`);
         }

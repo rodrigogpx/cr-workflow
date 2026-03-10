@@ -9,8 +9,6 @@ export async function ensureMissingTables() {
     return;
   }
 
-  console.log("[Migration] Checking and creating missing tables...");
-
   try {
     // Tenants
     await db.execute(sql`
@@ -340,7 +338,7 @@ export async function ensureMissingTables() {
     // Ensure default platform admin exists
     try {
       const adminEmails = process.env.SUPER_ADMIN_EMAILS 
-        ? process.env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+        ? process.env.SUPER_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean)
         : ['admin@acrdigital.com.br', 'admin@acedigital.com.br'];
         
       if (adminEmails.length > 0) {
@@ -356,10 +354,8 @@ export async function ensureMissingTables() {
               INSERT INTO "platformAdmins" ("email", "hashedPassword", "name", "isActive", "createdAt", "updatedAt")
               VALUES (${email}, ${hashedPassword}, 'Platform Admin', true, now(), now());
             `);
-            console.log(`[Migration] Created platform admin: ${email}`);
           } else {
             await db.execute(sql`UPDATE "platformAdmins" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`);
-            console.log(`[Migration] Synced platform admin password: ${email}`);
           }
 
           // Also ensure admin exists in users table for tenant login
@@ -370,18 +366,14 @@ export async function ensureMissingTables() {
               INSERT INTO "users" ("email", "hashedPassword", "name", "role", "perfil", "createdAt", "updatedAt")
               VALUES (${email}, ${hashedPassword}, 'Administrador', 'admin', 'admin', now(), now());
             `);
-            console.log(`[Migration] Created admin user in users table: ${email}`);
           } else {
             await db.execute(sql`UPDATE "users" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`);
-            console.log(`[Migration] Synced admin user password: ${email}`);
           }
         }
       }
     } catch (adminErr) {
       console.error("[Migration] Error ensuring platform admins:", adminErr);
     }
-
-    console.log("[Migration] Missing tables created successfully.");
   } catch (error) {
     console.error("[Migration] Error creating tables:", error);
   }

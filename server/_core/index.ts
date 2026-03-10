@@ -70,8 +70,6 @@ async function startServer() {
 
   if (installWizardEnabled) {
     app.use("/api/install", installRouter);
-  } else {
-    console.log("[Install] INSTALL_WIZARD_ENABLED=false → rota /api/install desabilitada");
   }
 
   // Tenant Management API (REST)
@@ -100,7 +98,7 @@ async function startServer() {
   }
 
   server.listen(port, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${port}/`);
+    // Server running
   });
 }
 

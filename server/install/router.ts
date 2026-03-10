@@ -234,7 +234,6 @@ installRouter.post("/complete", async (req: Request, res: Response) => {
           const tenantDb = await getTenantDb(tenantConfig);
           if (tenantDb) {
             await seedTenantEmailTemplates(tenantDb, tenantId);
-            console.log(`[Install] Seeded email templates for tenant ${payload.tenant.slug}`);
           }
         }
       } catch (error) {

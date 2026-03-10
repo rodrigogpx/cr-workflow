@@ -58,7 +58,6 @@ function extractRows(result: any): any[] {
 export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey: string = 'main') {
   if (_schemaCheckedDbs.has(dbKey)) return;
   _schemaCheckedDbs.add(dbKey);
-  console.log(`[Schema] ensureSchemaColumns starting for dbKey=${dbKey}`);
 
   // ── CREATE core tables if they don't exist ──
   const createStatements = [
@@ -156,7 +155,6 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       console.warn('[Schema] CREATE TABLE skipped:', error?.message || error);
     }
   }
-  console.log(`[Schema] Core tables ensured for dbKey=${dbKey}`);
 
   // ── ADD missing columns to existing tables ──
   const alterations = [
@@ -229,7 +227,6 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       console.warn('[Schema] column alter skipped:', error?.message || error);
     }
   }
-  console.log(`[Schema] ensureSchemaColumns completed for dbKey=${dbKey}: ${ok} ok, ${skipped} skipped`);
 }
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
@@ -374,7 +371,6 @@ export async function upsertWorkflowStepToDb(
     return step.id;
   }
 
-  console.log('[upsertWorkflowStepToDb] Inserting step:', { clientId: step.clientId, stepId: step.stepId });
   const result = await tenantDb.execute(
     sql`INSERT INTO "workflowSteps" ("clientId", "stepId", "stepTitle", "completed")
         VALUES (${step.clientId ?? null}, ${step.stepId ?? null}, ${step.stepTitle ?? null}, ${step.completed ?? false})
@@ -382,7 +378,6 @@ export async function upsertWorkflowStepToDb(
   );
   const rows = extractRows(result);
   if (rows.length === 0) throw new Error('workflowSteps INSERT returned no rows');
-  console.log('[upsertWorkflowStepToDb] Inserted step id:', rows[0].id);
   return rows[0].id as number;
 }
 
@@ -526,17 +521,26 @@ export async function upsertUserToDb(
   return inserted.id;
 }
 
-async function insertClientRaw(db: ReturnType<typeof drizzle>, client: InsertClient) {
-  console.log('[insertClientRaw] Inserting client:', { name: client.name, cpf: client.cpf });
-  const result = await db.execute(
-    sql`INSERT INTO "clients" ("name", "cpf", "phone", "email", "operatorId", "tenantId")
-        VALUES (${client.name ?? null}, ${client.cpf ?? null}, ${client.phone ?? null}, ${client.email ?? null}, ${client.operatorId ?? null}, ${client.tenantId ?? null})
-        RETURNING "id"`
-  );
-  const rows = extractRows(result);
-  if (rows.length === 0) throw new Error('clients INSERT returned no rows');
-  console.log('[insertClientRaw] Inserted client id:', rows[0].id);
-  return rows[0].id as number;
+async function insertClientRaw(dbInstance: ReturnType<typeof drizzle>, client: InsertClient) {
+  try {
+    const [inserted] = await dbInstance
+      .insert(clients)
+      .values({
+        name: client.name,
+        cpf: client.cpf,
+        phone: client.phone,
+        email: client.email,
+        operatorId: client.operatorId,
+        tenantId: client.tenantId,
+      })
+      .returning({ id: clients.id });
+      
+    if (!inserted) throw new Error('clients INSERT returned no rows');
+    return inserted.id;
+  } catch (err: any) {
+    console.error('[insertClientRaw] Error during insertion:', err);
+    throw err;
+  }
 }
 
 export async function createClientToDb(tenantDb: ReturnType<typeof drizzle>, client: InsertClient) {
@@ -562,7 +566,6 @@ export async function getUserById(id: number) {
   }
 
   const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  console.log(`[DB DEBUG] getUserById(${id}) result:`, JSON.stringify(result[0], null, 2));
 
   return result.length > 0 ? result[0] : undefined;
 }
@@ -581,8 +584,6 @@ export async function getUserByOpenId(openId: string) {
 
 // Client operations
 export async function createClient(client: InsertClient) {
-  console.log("[createClient] CALLED with:", JSON.stringify(client, null, 2));
-  
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -830,7 +831,6 @@ export async function upsertWorkflowStep(step: InsertWorkflowStep & { id?: numbe
     await db.update(workflowSteps).set(step).where(eq(workflowSteps.id, step.id));
     return step.id;
   }
-  console.log('[upsertWorkflowStep] Inserting step:', { clientId: step.clientId, stepId: step.stepId });
   const result = await db.execute(
     sql`INSERT INTO "workflowSteps" ("clientId", "stepId", "stepTitle", "completed")
         VALUES (${step.clientId ?? null}, ${step.stepId ?? null}, ${step.stepTitle ?? null}, ${step.completed ?? false})
@@ -838,7 +838,6 @@ export async function upsertWorkflowStep(step: InsertWorkflowStep & { id?: numbe
   );
   const rows = extractRows(result);
   if (rows.length === 0) throw new Error('workflowSteps INSERT returned no rows');
-  console.log('[upsertWorkflowStep] Inserted step id:', rows[0].id);
   return rows[0].id as number;
 }
 

@@ -28,7 +28,10 @@ import {
   Circle
 } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { updateClientSchema, type UpdateClientInput, formatCPF, formatPhone, formatCEP, isValidCPF } from "@shared/validations";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { EmailPreview } from "@/components/EmailPreview";
 import { UploadModal } from "@/components/UploadModal";
@@ -47,53 +50,6 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
-
-const formatCPF = (value: string): string => {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
-  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
-  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
-};
-
-const isValidCPF = (cpf: string): boolean => {
-  const digits = cpf.replace(/\D/g, "");
-  if (digits.length !== 11) return false;
-  if (/^(\d)\1{10}$/.test(digits)) return false;
-  let sum = 0;
-  for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
-  let remainder = (sum * 10) % 11;
-  if (remainder === 10) remainder = 0;
-  if (remainder !== parseInt(digits[9])) return false;
-  sum = 0;
-  for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
-  remainder = (sum * 10) % 11;
-  if (remainder === 10) remainder = 0;
-  return remainder === parseInt(digits[10]);
-};
-
-const isValidEmail = (email: string): boolean => {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-};
-
-const isValidPhone = (phone: string): boolean => {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length >= 10 && digits.length <= 11;
-};
-
-const formatPhone = (value: string): string => {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
-};
-
-const formatCEP = (value: string): string => {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 5) return digits;
-  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-};
 
 function SinarmCommentsInline({ stepId }: { stepId: number }) {
   const { data: comments } = trpc.workflow.getSinarmCommentsHistory.useQuery(
@@ -145,7 +101,6 @@ export default function ClientWorkflow() {
   const { user, isAuthenticated } = useAuth();
   const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
   const [schedulingData, setSchedulingData] = useState<{[key: number]: {date: string, examiner: string}}>({});
-  const [clientFormData, setClientFormData] = useState<Record<string, string>>({});
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedSubTask, setSelectedSubTask] = useState<{id: number, label: string, stepId: number} | null>(null);
 
@@ -159,10 +114,16 @@ export default function ClientWorkflow() {
     protocolNumber?: string;
     sinarmOpenDate?: string;
   } | null>(null);
+
   const [sinarmComment, setSinarmComment] = useState("");
 
   const { data: client } = trpc.clients.getById.useQuery(
     { id: Number(clientId) },
+    { enabled: !!clientId && isAuthenticated }
+  );
+
+  const { data: documents } = trpc.documents.list.useQuery(
+    { clientId: Number(clientId) },
     { enabled: !!clientId && isAuthenticated }
   );
 
@@ -176,13 +137,122 @@ export default function ClientWorkflow() {
     { enabled: isAuthenticated }
   );
 
-  const { data: documents } = trpc.documents.list.useQuery(
-    { clientId: Number(clientId) },
-    { enabled: !!clientId && isAuthenticated }
-  );
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors, isDirty },
+  } = useForm<UpdateClientInput>({
+    resolver: zodResolver(updateClientSchema),
+    defaultValues: useMemo(() => {
+      if (!client) return {};
+      return {
+        id: Number(clientId),
+        name: client.name || '',
+        cpf: client.cpf || '',
+        phone: client.phone || '',
+        email: client.email || '',
+        identityNumber: client.identityNumber || '',
+        identityIssueDate: client.identityIssueDate || '',
+        identityIssuer: client.identityIssuer || '',
+        identityUf: client.identityUf || '',
+        birthDate: client.birthDate || '',
+        birthCountry: client.birthCountry || 'Brasil',
+        birthUf: client.birthUf || '',
+        birthPlace: client.birthPlace || '',
+        gender: client.gender || '',
+        profession: client.profession || '',
+        otherProfession: client.otherProfession || '',
+        registrationNumber: client.registrationNumber || '',
+        currentActivities: client.currentActivities || '',
+        phone2: client.phone2 || '',
+        motherName: client.motherName || '',
+        fatherName: client.fatherName || '',
+        maritalStatus: client.maritalStatus || '',
+        requestType: client.requestType || '',
+        cacNumber: client.cacNumber || '',
+        cacCategory: client.cacCategory || '',
+        previousCrNumber: client.previousCrNumber || '',
+        psychReportValidity: client.psychReportValidity || '',
+        techReportValidity: client.techReportValidity || '',
+        residenceUf: client.residenceUf || '',
+        cep: client.cep || '',
+        address: client.address || '',
+        addressNumber: client.addressNumber || '',
+        neighborhood: client.neighborhood || '',
+        city: client.city || '',
+        complement: client.complement || '',
+        latitude: client.latitude || '',
+        longitude: client.longitude || '',
+        acervoCep: client.acervoCep || '',
+        acervoAddress: client.acervoAddress || '',
+        acervoAddressNumber: client.acervoAddressNumber || '',
+        acervoNeighborhood: client.acervoNeighborhood || '',
+        acervoCity: client.acervoCity || '',
+        acervoUf: client.acervoUf || '',
+        acervoComplement: client.acervoComplement || '',
+        acervoLatitude: client.acervoLatitude || '',
+        acervoLongitude: client.acervoLongitude || '',
+      };
+    }, [client, clientId]),
+  });
+
+  useEffect(() => {
+    if (client) {
+      reset({
+        id: Number(clientId),
+        name: client.name || '',
+        cpf: client.cpf || '',
+        phone: client.phone || '',
+        email: client.email || '',
+        identityNumber: client.identityNumber || '',
+        identityIssueDate: client.identityIssueDate || '',
+        identityIssuer: client.identityIssuer || '',
+        identityUf: client.identityUf || '',
+        birthDate: client.birthDate || '',
+        birthCountry: client.birthCountry || 'Brasil',
+        birthUf: client.birthUf || '',
+        birthPlace: client.birthPlace || '',
+        gender: client.gender || '',
+        profession: client.profession || '',
+        otherProfession: client.otherProfession || '',
+        registrationNumber: client.registrationNumber || '',
+        currentActivities: client.currentActivities || '',
+        phone2: client.phone2 || '',
+        motherName: client.motherName || '',
+        fatherName: client.fatherName || '',
+        maritalStatus: client.maritalStatus || '',
+        requestType: client.requestType || '',
+        cacNumber: client.cacNumber || '',
+        cacCategory: client.cacCategory || '',
+        previousCrNumber: client.previousCrNumber || '',
+        psychReportValidity: client.psychReportValidity || '',
+        techReportValidity: client.techReportValidity || '',
+        residenceUf: client.residenceUf || '',
+        cep: client.cep || '',
+        address: client.address || '',
+        addressNumber: client.addressNumber || '',
+        neighborhood: client.neighborhood || '',
+        city: client.city || '',
+        complement: client.complement || '',
+        latitude: client.latitude || '',
+        longitude: client.longitude || '',
+        acervoCep: client.acervoCep || '',
+        acervoAddress: client.acervoAddress || '',
+        acervoAddressNumber: client.acervoAddressNumber || '',
+        acervoNeighborhood: client.acervoNeighborhood || '',
+        acervoCity: client.acervoCity || '',
+        acervoUf: client.acervoUf || '',
+        acervoComplement: client.acervoComplement || '',
+        acervoLatitude: client.acervoLatitude || '',
+        acervoLongitude: client.acervoLongitude || '',
+      });
+    }
+  }, [client, clientId, reset]);
 
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
-    onSuccess: (data, variables) => {
+    onSuccess: (data: any, variables: any) => {
       utils.workflow.getSinarmCommentsHistory.invalidate({ stepId: variables.stepId });
       refetch();
       toast.success("Etapa atualizada com sucesso!");
@@ -357,134 +427,9 @@ export default function ClientWorkflow() {
     });
   };
 
-  const handleClientDataUpdate = () => {
-    const name = clientFormData.name?.trim();
-    const cpfDigits = (clientFormData.cpf || "").replace(/\D/g, "");
-    const email = clientFormData.email?.trim();
-    const phoneDigits = (clientFormData.phone || "").replace(/\D/g, "");
-    const phone2Digits = (clientFormData.phone2 || "").replace(/\D/g, "");
-    const cepDigits = (clientFormData.cep || "").replace(/\D/g, "");
-    const acervoCepDigits = (clientFormData.acervoCep || "").replace(/\D/g, "");
-
-    // Validações obrigatórias
-    if (!name || name.length < 2) {
-      toast.error("Nome completo é obrigatório (mínimo 2 caracteres)");
-      return;
-    }
-
-    if (!cpfDigits || cpfDigits.length !== 11) {
-      toast.error("CPF é obrigatório e deve ter 11 dígitos");
-      return;
-    }
-
-    if (!isValidCPF(cpfDigits)) {
-      toast.error("CPF inválido. Verifique os dígitos.");
-      return;
-    }
-
-    if (!email) {
-      toast.error("Email é obrigatório");
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      toast.error("Email inválido");
-      return;
-    }
-
-    if (!phoneDigits) {
-      toast.error("Telefone 1 é obrigatório");
-      return;
-    }
-
-    if (!isValidPhone(phoneDigits)) {
-      toast.error("Telefone 1 inválido (deve ter 10 ou 11 dígitos)");
-      return;
-    }
-
-    // Validações opcionais (só valida se preenchido)
-    if (phone2Digits && !isValidPhone(phone2Digits)) {
-      toast.error("Telefone 2 inválido (deve ter 10 ou 11 dígitos)");
-      return;
-    }
-
-    if (cepDigits && cepDigits.length !== 8) {
-      toast.error("CEP deve ter 8 dígitos");
-      return;
-    }
-
-    if (acervoCepDigits && acervoCepDigits.length !== 8) {
-      toast.error("CEP do acervo deve ter 8 dígitos");
-      return;
-    }
-
-    updateClientMutation.mutate({
-      id: Number(clientId),
-      ...clientFormData,
-      name,
-      cpf: cpfDigits,
-      phone: phoneDigits,
-      phone2: phone2Digits || undefined,
-      cep: cepDigits || undefined,
-      acervoCep: acervoCepDigits || undefined,
-      email,
-    });
+  const handleClientDataUpdate = (data: UpdateClientInput) => {
+    updateClientMutation.mutate(data);
   };
-
-  // Inicializar formulário com dados do cliente
-  useEffect(() => {
-    if (client) {
-      setClientFormData({
-        name: client.name || '',
-        cpf: client.cpf ? formatCPF(client.cpf) : '',
-        phone: client.phone ? formatPhone(client.phone) : '',
-        email: client.email || '',
-        identityNumber: client.identityNumber || '',
-        identityIssueDate: client.identityIssueDate || '',
-        identityIssuer: client.identityIssuer || '',
-        identityUf: client.identityUf || '',
-        birthDate: client.birthDate || '',
-        birthCountry: client.birthCountry || 'Brasil',
-        birthUf: client.birthUf || '',
-        birthPlace: client.birthPlace || '',
-        gender: client.gender || '',
-        profession: client.profession || '',
-        otherProfession: client.otherProfession || '',
-        registrationNumber: client.registrationNumber || '',
-        currentActivities: client.currentActivities || '',
-        phone2: client.phone2 ? formatPhone(client.phone2) : '',
-        motherName: client.motherName || '',
-        fatherName: client.fatherName || '',
-        maritalStatus: client.maritalStatus || '',
-        requestType: client.requestType || '',
-        cacNumber: client.cacNumber || '',
-        cacCategory: client.cacCategory || '',
-        previousCrNumber: client.previousCrNumber || '',
-        psychReportValidity: client.psychReportValidity || '',
-        techReportValidity: client.techReportValidity || '',
-        residenceUf: client.residenceUf || '',
-        cep: client.cep ? formatCEP(client.cep) : '',
-        address: client.address || '',
-        addressNumber: client.addressNumber || '',
-        neighborhood: client.neighborhood || '',
-        city: client.city || '',
-        complement: client.complement || '',
-
-        latitude: client.latitude || '',
-        longitude: client.longitude || '',
-
-        acervoCep: client.acervoCep ? formatCEP(client.acervoCep) : '',
-        acervoAddress: client.acervoAddress || '',
-        acervoAddressNumber: client.acervoAddressNumber || '',
-        acervoNeighborhood: client.acervoNeighborhood || '',
-        acervoCity: client.acervoCity || '',
-        acervoUf: client.acervoUf || '',
-        acervoComplement: client.acervoComplement || '',
-        acervoLatitude: client.acervoLatitude || '',
-        acervoLongitude: client.acervoLongitude || '',
-      });
-    }
-  }, [client]);
 
   // Não expandir nenhuma etapa por padrão
   // useEffect removido - todas as atividades começam recolhidas
@@ -510,9 +455,9 @@ export default function ClientWorkflow() {
     { number: 5, stepId: 'acompanhamento-sinarm', label: 'Submissão ao SINARM-CAC' },
   ];
 
-  const calcularProgresso = (steps: typeof workflow) => {
+  const calcularProgresso = (steps: any[]) => {
     if (steps.length === 0) return 0;
-    const completed = steps.filter(s => s.completed).length;
+    const completed = steps.filter((s: any) => s.completed).length;
     return Math.round((completed / steps.length) * 100);
   };
 
@@ -649,9 +594,9 @@ export default function ClientWorkflow() {
 
         {/* Etapas do Workflow */}
         <div className="space-y-4">
-          {orderedWorkflow.map((step) => {
+          {orderedWorkflow.map((step: any) => {
             const isExpanded = isStepExpanded(step.id);
-            const completedSubTasks = step.subTasks?.filter(st => st.completed).length || 0;
+            const completedSubTasks = step.subTasks?.filter((st: any) => st.completed).length || 0;
             const totalSubTasks = step.subTasks?.length || 0;
             const subTaskProgress = totalSubTasks > 0 ? Math.round((completedSubTasks / totalSubTasks) * 100) : 0;
             const isPsychEvaluationForwardStep =
@@ -826,7 +771,7 @@ export default function ClientWorkflow() {
                         );
                       })}
                       {step.subTasks && step.subTasks.length > 0 && (() => {
-                        const allStepDocs = documents?.filter(doc => step.subTasks.some(st => st.id === doc.subTaskId)) || [];
+                        const allStepDocs = documents?.filter((doc: any) => step.subTasks.some((st: any) => st.id === doc.subTaskId)) || [];
                         const latestAllStepDocsMap = new Map<number, any>();
                         for (const doc of allStepDocs) {
                           if (!doc.subTaskId) continue;
@@ -864,7 +809,10 @@ export default function ClientWorkflow() {
 
                     {/* Formulário de Cadastro */}
                     {step.stepTitle === "Cadastro" && (
-                      <div className="mt-6 p-6 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <form 
+                        onSubmit={handleSubmit(handleClientDataUpdate)}
+                        className="mt-6 p-6 bg-yellow-50 rounded-lg border border-yellow-200"
+                      >
                         <div className="flex items-center gap-2 text-sm font-semibold text-yellow-900 mb-4">
                           <User className="h-4 w-4" />
                           1. Confira os dados do Solicitante
@@ -879,27 +827,33 @@ export default function ClientWorkflow() {
                                 <Label htmlFor="name" className="text-sm font-medium">Nome Completo</Label>
                                 <Input
                                   id="name"
-                                  value={clientFormData.name || ''}
-                                  onChange={(e) => setClientFormData(prev => ({ ...prev, name: e.target.value }))}
-                                  className="mt-1 font-semibold"
+                                  {...register("name")}
+                                  className={`mt-1 font-semibold ${errors.name ? 'border-red-500' : ''}`}
                                 />
+                                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
                               </div>
                               <div>
                                 <Label className="text-sm font-medium">Sexo</Label>
-                                <RadioGroup
-                                  value={clientFormData.gender || ''}
-                                  onValueChange={(value) => setClientFormData(prev => ({ ...prev, gender: value }))}
-                                  className="flex gap-4 mt-2"
-                                >
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="M" id="gender-m" />
-                                    <Label htmlFor="gender-m" className="cursor-pointer">M</Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="F" id="gender-f" />
-                                    <Label htmlFor="gender-f" className="cursor-pointer">F</Label>
-                                  </div>
-                                </RadioGroup>
+                                <Controller
+                                  name="gender"
+                                  control={control}
+                                  render={({ field }: { field: any }) => (
+                                    <RadioGroup
+                                      value={field.value || ''}
+                                      onValueChange={field.onChange}
+                                      className="flex gap-4 mt-2"
+                                    >
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="M" id="gender-m" />
+                                        <Label htmlFor="gender-m" className="cursor-pointer">M</Label>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="F" id="gender-f" />
+                                        <Label htmlFor="gender-f" className="cursor-pointer">F</Label>
+                                      </div>
+                                    </RadioGroup>
+                                  )}
+                                />
                               </div>
                             </div>
 
@@ -909,39 +863,44 @@ export default function ClientWorkflow() {
                               <Label htmlFor="cpf" className="text-sm font-medium text-teal-600">Número de Inscrição (CPF)</Label>
                               <Input
                                 id="cpf"
-                                value={clientFormData.cpf || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, cpf: e.target.value }))}
-                                className="mt-1"
+                                {...register("cpf")}
+                                onChange={(e: any) => {
+                                  const formatted = formatCPF(e.target.value);
+                                  e.target.value = formatted;
+                                  register("cpf").onChange(e);
+                                }}
+                                className={`mt-1 ${errors.cpf ? 'border-red-500' : ''}`}
                               />
+                              {errors.cpf && <p className="text-xs text-red-500 mt-1">{errors.cpf.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="identityNumber" className="text-sm font-medium text-teal-600">Nº Identidade</Label>
                               <Input
                                 id="identityNumber"
-                                value={clientFormData.identityNumber || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, identityNumber: e.target.value }))}
-                                className="mt-1"
+                                {...register("identityNumber")}
+                                className={`mt-1 ${errors.identityNumber ? 'border-red-500' : ''}`}
                               />
+                              {errors.identityNumber && <p className="text-xs text-red-500 mt-1">{errors.identityNumber.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="identityIssueDate" className="text-sm font-medium text-teal-600">Data de Expedição</Label>
                               <Input
                                 id="identityIssueDate"
                                 type="date"
-                                value={clientFormData.identityIssueDate || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, identityIssueDate: e.target.value }))}
-                                className="mt-1"
+                                {...register("identityIssueDate")}
+                                className={`mt-1 ${errors.identityIssueDate ? 'border-red-500' : ''}`}
                               />
+                              {errors.identityIssueDate && <p className="text-xs text-red-500 mt-1">{errors.identityIssueDate.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="identityIssuer" className="text-sm font-medium text-teal-600">Órgão Emissor</Label>
                               <Input
                                 id="identityIssuer"
                                 placeholder="ssp"
-                                value={clientFormData.identityIssuer || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, identityIssuer: e.target.value }))}
-                                className="mt-1"
+                                {...register("identityIssuer")}
+                                className={`mt-1 ${errors.identityIssuer ? 'border-red-500' : ''}`}
                               />
+                              {errors.identityIssuer && <p className="text-xs text-red-500 mt-1">{errors.identityIssuer.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="identityUf" className="text-sm font-medium text-teal-600">UF</Label>
@@ -949,32 +908,43 @@ export default function ClientWorkflow() {
                                 id="identityUf"
                                 placeholder="DF"
                                 maxLength={2}
-                                value={clientFormData.identityUf || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, identityUf: e.target.value.toUpperCase() }))}
-                                className="mt-1"
+                                {...register("identityUf")}
+                                onChange={(e: any) => {
+                                  e.target.value = e.target.value.toUpperCase();
+                                  register("identityUf").onChange(e);
+                                }}
+                                className={`mt-1 ${errors.identityUf ? 'border-red-500' : ''}`}
                               />
+                              {errors.identityUf && <p className="text-xs text-red-500 mt-1">{errors.identityUf.message}</p>}
                             </div>
                           </div>
 
                           {/* Linha: Estado Civil */}
                           <div>
                             <Label htmlFor="maritalStatus" className="text-sm font-medium text-teal-600">Estado Civil</Label>
-                            <Select
-                              value={clientFormData.maritalStatus || ''}
-                              onValueChange={(value) => setClientFormData(prev => ({ ...prev, maritalStatus: value }))}
-                            >
-                              <SelectTrigger id="maritalStatus" className="mt-1">
-                                <SelectValue placeholder="Selecione" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>
-                                <SelectItem value="Casado(a)">Casado(a)</SelectItem>
-                                <SelectItem value="União estável">União estável</SelectItem>
-                                <SelectItem value="Separado(a)">Separado(a)</SelectItem>
-                                <SelectItem value="Divorciado(a)">Divorciado(a)</SelectItem>
-                                <SelectItem value="Viúvo(a)">Viúvo(a)</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <Controller
+                              name="maritalStatus"
+                              control={control}
+                              render={({ field }: { field: any }) => (
+                                <Select
+                                  value={field.value || ''}
+                                  onValueChange={field.onChange}
+                                >
+                                  <SelectTrigger id="maritalStatus" className={`mt-1 ${errors.maritalStatus ? 'border-red-500' : ''}`}>
+                                    <SelectValue placeholder="Selecione" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>
+                                    <SelectItem value="Casado(a)">Casado(a)</SelectItem>
+                                    <SelectItem value="União estável">União estável</SelectItem>
+                                    <SelectItem value="Separado(a)">Separado(a)</SelectItem>
+                                    <SelectItem value="Divorciado(a)">Divorciado(a)</SelectItem>
+                                    <SelectItem value="Viúvo(a)">Viúvo(a)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                            {errors.maritalStatus && <p className="text-xs text-red-500 mt-1">{errors.maritalStatus.message}</p>}
                           </div>
 
                           {/* Linha: Data de Nascimento, País, UF, Local de Nascimento */}
@@ -984,56 +954,42 @@ export default function ClientWorkflow() {
                               <Input
                                 id="birthDate"
                                 type="date"
-                                value={clientFormData.birthDate || ''}
-                                onChange={(e) => {
-                                  const dateValue = e.target.value;
-                                  setClientFormData(prev => ({ ...prev, birthDate: dateValue }));
-                                  
-                                  if (dateValue) {
-                                    const birthDateObj = new Date(dateValue);
-                                    const today = new Date();
-                                    let age = today.getFullYear() - birthDateObj.getFullYear();
-                                    const m = today.getMonth() - birthDateObj.getMonth();
-                                    
-                                    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-                                      age--;
-                                    }
-                                    
-                                    if (age < 18) {
-                                      window.alert("ATENÇÃO: O cliente ainda não possui 18 anos completos.");
-                                    }
-                                  }
-                                }}
-                                className="mt-1"
+                                {...register("birthDate")}
+                                className={`mt-1 ${errors.birthDate ? 'border-red-500' : ''}`}
                               />
+                              {errors.birthDate && <p className="text-xs text-red-500 mt-1">{errors.birthDate.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="birthCountry" className="text-sm font-medium text-teal-600">País</Label>
                               <Input
                                 id="birthCountry"
-                                value={clientFormData.birthCountry || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, birthCountry: e.target.value }))}
-                                className="mt-1"
+                                {...register("birthCountry")}
+                                className={`mt-1 ${errors.birthCountry ? 'border-red-500' : ''}`}
                               />
+                              {errors.birthCountry && <p className="text-xs text-red-500 mt-1">{errors.birthCountry.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="birthUf" className="text-sm font-medium text-teal-600">UF</Label>
                               <Input
                                 id="birthUf"
                                 maxLength={2}
-                                value={clientFormData.birthUf || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, birthUf: e.target.value.toUpperCase() }))}
-                                className="mt-1"
+                                {...register("birthUf")}
+                                onChange={(e: any) => {
+                                  e.target.value = e.target.value.toUpperCase();
+                                  register("birthUf").onChange(e);
+                                }}
+                                className={`mt-1 ${errors.birthUf ? 'border-red-500' : ''}`}
                               />
+                              {errors.birthUf && <p className="text-xs text-red-500 mt-1">{errors.birthUf.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="birthPlace" className="text-sm font-medium text-teal-600">Local de Nascimento</Label>
                               <Input
                                 id="birthPlace"
-                                value={clientFormData.birthPlace || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, birthPlace: e.target.value }))}
-                                className="mt-1"
+                                {...register("birthPlace")}
+                                className={`mt-1 ${errors.birthPlace ? 'border-red-500' : ''}`}
                               />
+                              {errors.birthPlace && <p className="text-xs text-red-500 mt-1">{errors.birthPlace.message}</p>}
                             </div>
                           </div>
 
@@ -1043,19 +999,19 @@ export default function ClientWorkflow() {
                               <Label htmlFor="profession" className="text-sm font-medium text-teal-600">Profissão</Label>
                               <Input
                                 id="profession"
-                                value={clientFormData.profession || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, profession: e.target.value }))}
-                                className="mt-1"
+                                {...register("profession")}
+                                className={`mt-1 ${errors.profession ? 'border-red-500' : ''}`}
                               />
+                              {errors.profession && <p className="text-xs text-red-500 mt-1">{errors.profession.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="otherProfession" className="text-sm font-medium text-teal-600">Outra Profissão</Label>
                               <Input
                                 id="otherProfession"
-                                value={clientFormData.otherProfession || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, otherProfession: e.target.value }))}
-                                className="mt-1"
+                                {...register("otherProfession")}
+                                className={`mt-1 ${errors.otherProfession ? 'border-red-500' : ''}`}
                               />
+                              {errors.otherProfession && <p className="text-xs text-red-500 mt-1">{errors.otherProfession.message}</p>}
                             </div>
                           </div>
 
@@ -1065,19 +1021,19 @@ export default function ClientWorkflow() {
                               <Label htmlFor="registrationNumber" className="text-sm font-medium text-teal-600">Nº Registro</Label>
                               <Input
                                 id="registrationNumber"
-                                value={clientFormData.registrationNumber || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, registrationNumber: e.target.value }))}
-                                className="mt-1"
+                                {...register("registrationNumber")}
+                                className={`mt-1 ${errors.registrationNumber ? 'border-red-500' : ''}`}
                               />
+                              {errors.registrationNumber && <p className="text-xs text-red-500 mt-1">{errors.registrationNumber.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="currentActivities" className="text-sm font-medium text-teal-600">Atividade(s) Atual(is)</Label>
                               <Input
                                 id="currentActivities"
-                                value={clientFormData.currentActivities || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, currentActivities: e.target.value }))}
-                                className="mt-1"
+                                {...register("currentActivities")}
+                                className={`mt-1 ${errors.currentActivities ? 'border-red-500' : ''}`}
                               />
+                              {errors.currentActivities && <p className="text-xs text-red-500 mt-1">{errors.currentActivities.message}</p>}
                             </div>
                           </div>
 
@@ -1086,37 +1042,44 @@ export default function ClientWorkflow() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
                                 <Label htmlFor="requestType" className="text-sm font-medium text-teal-600">Tipo de Solicitação</Label>
-                                <Select
-                                  value={clientFormData.requestType || ""}
-                                  onValueChange={(value) => setClientFormData(prev => ({ ...prev, requestType: value }))}
-                                >
-                                  <SelectTrigger className="mt-1">
-                                    <SelectValue placeholder="Selecione" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Concessão">Concessão</SelectItem>
-                                    <SelectItem value="Renovação">Renovação</SelectItem>
-                                    <SelectItem value="2ª Via">2ª Via</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                <Controller
+                                  name="requestType"
+                                  control={control}
+                                  render={({ field }: { field: any }) => (
+                                    <Select
+                                      value={field.value || ""}
+                                      onValueChange={field.onChange}
+                                    >
+                                      <SelectTrigger className={`mt-1 ${errors.requestType ? 'border-red-500' : ''}`}>
+                                        <SelectValue placeholder="Selecione" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Concessão">Concessão</SelectItem>
+                                        <SelectItem value="Renovação">Renovação</SelectItem>
+                                        <SelectItem value="2ª Via">2ª Via</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                />
+                                {errors.requestType && <p className="text-xs text-red-500 mt-1">{errors.requestType.message}</p>}
                               </div>
                               <div>
                                 <Label htmlFor="cacNumber" className="text-sm font-medium text-teal-600">Nº CAC</Label>
                                 <Input
                                   id="cacNumber"
-                                  value={clientFormData.cacNumber || ''}
-                                  onChange={(e) => setClientFormData(prev => ({ ...prev, cacNumber: e.target.value }))}
-                                  className="mt-1"
+                                  {...register("cacNumber")}
+                                  className={`mt-1 ${errors.cacNumber ? 'border-red-500' : ''}`}
                                 />
+                                {errors.cacNumber && <p className="text-xs text-red-500 mt-1">{errors.cacNumber.message}</p>}
                               </div>
                               <div>
                                 <Label htmlFor="cacCategory" className="text-sm font-medium text-teal-600">Categoria CAC</Label>
                                 <Input
                                   id="cacCategory"
-                                  value={clientFormData.cacCategory || ''}
-                                  onChange={(e) => setClientFormData(prev => ({ ...prev, cacCategory: e.target.value }))}
-                                  className="mt-1"
+                                  {...register("cacCategory")}
+                                  className={`mt-1 ${errors.cacCategory ? 'border-red-500' : ''}`}
                                 />
+                                {errors.cacCategory && <p className="text-xs text-red-500 mt-1">{errors.cacCategory.message}</p>}
                               </div>
                             </div>
 
@@ -1125,30 +1088,30 @@ export default function ClientWorkflow() {
                                 <Label htmlFor="previousCrNumber" className="text-sm font-medium text-teal-600">Nº CR Anterior (se houver)</Label>
                                 <Input
                                   id="previousCrNumber"
-                                  value={clientFormData.previousCrNumber || ''}
-                                  onChange={(e) => setClientFormData(prev => ({ ...prev, previousCrNumber: e.target.value }))}
-                                  className="mt-1"
+                                  {...register("previousCrNumber")}
+                                  className={`mt-1 ${errors.previousCrNumber ? 'border-red-500' : ''}`}
                                 />
+                                {errors.previousCrNumber && <p className="text-xs text-red-500 mt-1">{errors.previousCrNumber.message}</p>}
                               </div>
                               <div>
                                 <Label htmlFor="psychReportValidity" className="text-sm font-medium text-teal-600">Validade Laudo Psicológico</Label>
                                 <Input
                                   id="psychReportValidity"
                                   type="date"
-                                  value={clientFormData.psychReportValidity || ''}
-                                  onChange={(e) => setClientFormData(prev => ({ ...prev, psychReportValidity: e.target.value }))}
-                                  className="mt-1"
+                                  {...register("psychReportValidity")}
+                                  className={`mt-1 ${errors.psychReportValidity ? 'border-red-500' : ''}`}
                                 />
+                                {errors.psychReportValidity && <p className="text-xs text-red-500 mt-1">{errors.psychReportValidity.message}</p>}
                               </div>
                               <div>
                                 <Label htmlFor="techReportValidity" className="text-sm font-medium text-teal-600">Validade Laudo Capacidade Técnica</Label>
                                 <Input
                                   id="techReportValidity"
                                   type="date"
-                                  value={clientFormData.techReportValidity || ''}
-                                  onChange={(e) => setClientFormData(prev => ({ ...prev, techReportValidity: e.target.value }))}
-                                  className="mt-1"
+                                  {...register("techReportValidity")}
+                                  className={`mt-1 ${errors.techReportValidity ? 'border-red-500' : ''}`}
                                 />
+                                {errors.techReportValidity && <p className="text-xs text-red-500 mt-1">{errors.techReportValidity.message}</p>}
                               </div>
                             </div>
                           </div>
@@ -1160,29 +1123,39 @@ export default function ClientWorkflow() {
                               <Label htmlFor="phone" className="text-sm font-medium text-teal-600">Telefone 1</Label>
                               <Input
                                 id="phone"
-                                value={clientFormData.phone || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, phone: formatPhone(e.target.value) }))}
-                                className="mt-1"
+                                {...register("phone")}
+                                onChange={(e: any) => {
+                                  const formatted = formatPhone(e.target.value);
+                                  e.target.value = formatted;
+                                  register("phone").onChange(e);
+                                }}
+                                className={`mt-1 ${errors.phone ? 'border-red-500' : ''}`}
                               />
+                              {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="phone2" className="text-sm font-medium text-teal-600">Telefone 2</Label>
                               <Input
                                 id="phone2"
-                                value={clientFormData.phone2 || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, phone2: formatPhone(e.target.value) }))}
-                                className="mt-1"
+                                {...register("phone2")}
+                                onChange={(e: any) => {
+                                  const formatted = formatPhone(e.target.value);
+                                  e.target.value = formatted;
+                                  register("phone2").onChange(e);
+                                }}
+                                className={`mt-1 ${errors.phone2 ? 'border-red-500' : ''}`}
                               />
+                              {errors.phone2 && <p className="text-xs text-red-500 mt-1">{errors.phone2.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="email" className="text-sm font-medium text-teal-600">Email</Label>
                               <Input
                                 id="email"
                                 type="email"
-                                value={clientFormData.email || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, email: e.target.value }))}
-                                className="mt-1"
+                                {...register("email")}
+                                className={`mt-1 ${errors.email ? 'border-red-500' : ''}`}
                               />
+                              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
                             </div>
                           </div>
 
@@ -1191,8 +1164,7 @@ export default function ClientWorkflow() {
                             <Label htmlFor="motherName" className="text-sm font-medium text-teal-600">Nome da Mãe</Label>
                             <Input
                               id="motherName"
-                              value={clientFormData.motherName || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, motherName: e.target.value }))}
+                              {...register("motherName")}
                               className="mt-1"
                             />
                           </div>
@@ -1202,8 +1174,7 @@ export default function ClientWorkflow() {
                             <Label htmlFor="fatherName" className="text-sm font-medium text-teal-600">Nome do Pai</Label>
                             <Input
                               id="fatherName"
-                              value={clientFormData.fatherName || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, fatherName: e.target.value }))}
+                              {...register("fatherName")}
                               className="mt-1"
                             />
                           </div>
@@ -1215,28 +1186,33 @@ export default function ClientWorkflow() {
                               <Label htmlFor="cep" className="text-sm font-medium text-teal-600">CEP</Label>
                               <Input
                                 id="cep"
-                                value={clientFormData.cep || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, cep: formatCEP(e.target.value) }))}
-                                className="mt-1"
+                                {...register("cep")}
+                                onChange={(e: any) => {
+                                  const formatted = formatCEP(e.target.value);
+                                  e.target.value = formatted;
+                                  register("cep").onChange(e);
+                                }}
+                                className={`mt-1 ${errors.cep ? 'border-red-500' : ''}`}
                               />
+                              {errors.cep && <p className="text-xs text-red-500 mt-1">{errors.cep.message}</p>}
                             </div>
                             <div className="md:col-span-2">
                               <Label htmlFor="address" className="text-sm font-medium text-teal-600">Endereço Residencial</Label>
                               <Input
                                 id="address"
-                                value={clientFormData.address || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, address: e.target.value }))}
-                                className="mt-1"
+                                {...register("address")}
+                                className={`mt-1 ${errors.address ? 'border-red-500' : ''}`}
                               />
+                              {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="addressNumber" className="text-sm font-medium text-teal-600">Nº</Label>
                               <Input
                                 id="addressNumber"
-                                value={clientFormData.addressNumber || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, addressNumber: e.target.value }))}
-                                className="mt-1"
+                                {...register("addressNumber")}
+                                className={`mt-1 ${errors.addressNumber ? 'border-red-500' : ''}`}
                               />
+                              {errors.addressNumber && <p className="text-xs text-red-500 mt-1">{errors.addressNumber.message}</p>}
                             </div>
                           </div>
 
@@ -1246,29 +1222,33 @@ export default function ClientWorkflow() {
                               <Label htmlFor="neighborhood" className="text-sm font-medium text-teal-600">Bairro</Label>
                               <Input
                                 id="neighborhood"
-                                value={clientFormData.neighborhood || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
-                                className="mt-1"
+                                {...register("neighborhood")}
+                                className={`mt-1 ${errors.neighborhood ? 'border-red-500' : ''}`}
                               />
+                              {errors.neighborhood && <p className="text-xs text-red-500 mt-1">{errors.neighborhood.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="city" className="text-sm font-medium text-teal-600">Cidade</Label>
                               <Input
                                 id="city"
-                                value={clientFormData.city || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, city: e.target.value }))}
-                                className="mt-1"
+                                {...register("city")}
+                                className={`mt-1 ${errors.city ? 'border-red-500' : ''}`}
                               />
+                              {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="residenceUf" className="text-sm font-medium text-teal-600">UF</Label>
                               <Input
                                 id="residenceUf"
                                 maxLength={2}
-                                value={clientFormData.residenceUf || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, residenceUf: e.target.value.toUpperCase() }))}
-                                className="mt-1"
+                                {...register("residenceUf")}
+                                onChange={(e: any) => {
+                                  e.target.value = e.target.value.toUpperCase();
+                                  register("residenceUf").onChange(e);
+                                }}
+                                className={`mt-1 ${errors.residenceUf ? 'border-red-500' : ''}`}
                               />
+                              {errors.residenceUf && <p className="text-xs text-red-500 mt-1">{errors.residenceUf.message}</p>}
                             </div>
                           </div>
 
@@ -1277,10 +1257,10 @@ export default function ClientWorkflow() {
                             <Label htmlFor="complement" className="text-sm font-medium text-teal-600">Complemento</Label>
                             <Input
                               id="complement"
-                              value={clientFormData.complement || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, complement: e.target.value }))}
-                              className="mt-1"
+                              {...register("complement")}
+                              className={`mt-1 ${errors.complement ? 'border-red-500' : ''}`}
                             />
+                            {errors.complement && <p className="text-xs text-red-500 mt-1">{errors.complement.message}</p>}
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1288,19 +1268,19 @@ export default function ClientWorkflow() {
                               <Label htmlFor="latitude" className="text-sm font-medium text-teal-600">Latitude</Label>
                               <Input
                                 id="latitude"
-                                value={clientFormData.latitude || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, latitude: e.target.value }))}
-                                className="mt-1"
+                                {...register("latitude")}
+                                className={`mt-1 ${errors.latitude ? 'border-red-500' : ''}`}
                               />
+                              {errors.latitude && <p className="text-xs text-red-500 mt-1">{errors.latitude.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="longitude" className="text-sm font-medium text-teal-600">Longitude</Label>
                               <Input
                                 id="longitude"
-                                value={clientFormData.longitude || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, longitude: e.target.value }))}
-                                className="mt-1"
+                                {...register("longitude")}
+                                className={`mt-1 ${errors.longitude ? 'border-red-500' : ''}`}
                               />
+                              {errors.longitude && <p className="text-xs text-red-500 mt-1">{errors.longitude.message}</p>}
                             </div>
                           </div>
 
@@ -1311,28 +1291,33 @@ export default function ClientWorkflow() {
                               <Label htmlFor="acervoCep" className="text-sm font-medium text-teal-600">CEP</Label>
                               <Input
                                 id="acervoCep"
-                                value={clientFormData.acervoCep || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, acervoCep: formatCEP(e.target.value) }))}
-                                className="mt-1"
+                                {...register("acervoCep")}
+                                onChange={(e: any) => {
+                                  const formatted = formatCEP(e.target.value);
+                                  e.target.value = formatted;
+                                  register("acervoCep").onChange(e);
+                                }}
+                                className={`mt-1 ${errors.acervoCep ? 'border-red-500' : ''}`}
                               />
+                              {errors.acervoCep && <p className="text-xs text-red-500 mt-1">{errors.acervoCep.message}</p>}
                             </div>
                             <div className="md:col-span-2">
                               <Label htmlFor="acervoAddress" className="text-sm font-medium text-teal-600">Endereço</Label>
                               <Input
                                 id="acervoAddress"
-                                value={clientFormData.acervoAddress || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, acervoAddress: e.target.value }))}
-                                className="mt-1"
+                                {...register("acervoAddress")}
+                                className={`mt-1 ${errors.acervoAddress ? 'border-red-500' : ''}`}
                               />
+                              {errors.acervoAddress && <p className="text-xs text-red-500 mt-1">{errors.acervoAddress.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="acervoAddressNumber" className="text-sm font-medium text-teal-600">Nº</Label>
                               <Input
                                 id="acervoAddressNumber"
-                                value={clientFormData.acervoAddressNumber || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, acervoAddressNumber: e.target.value }))}
-                                className="mt-1"
+                                {...register("acervoAddressNumber")}
+                                className={`mt-1 ${errors.acervoAddressNumber ? 'border-red-500' : ''}`}
                               />
+                              {errors.acervoAddressNumber && <p className="text-xs text-red-500 mt-1">{errors.acervoAddressNumber.message}</p>}
                             </div>
                           </div>
 
@@ -1341,29 +1326,33 @@ export default function ClientWorkflow() {
                               <Label htmlFor="acervoNeighborhood" className="text-sm font-medium text-teal-600">Bairro</Label>
                               <Input
                                 id="acervoNeighborhood"
-                                value={clientFormData.acervoNeighborhood || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, acervoNeighborhood: e.target.value }))}
-                                className="mt-1"
+                                {...register("acervoNeighborhood")}
+                                className={`mt-1 ${errors.acervoNeighborhood ? 'border-red-500' : ''}`}
                               />
+                              {errors.acervoNeighborhood && <p className="text-xs text-red-500 mt-1">{errors.acervoNeighborhood.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="acervoCity" className="text-sm font-medium text-teal-600">Cidade</Label>
                               <Input
                                 id="acervoCity"
-                                value={clientFormData.acervoCity || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, acervoCity: e.target.value }))}
-                                className="mt-1"
+                                {...register("acervoCity")}
+                                className={`mt-1 ${errors.acervoCity ? 'border-red-500' : ''}`}
                               />
+                              {errors.acervoCity && <p className="text-xs text-red-500 mt-1">{errors.acervoCity.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="acervoUf" className="text-sm font-medium text-teal-600">UF</Label>
                               <Input
                                 id="acervoUf"
                                 maxLength={2}
-                                value={clientFormData.acervoUf || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, acervoUf: e.target.value.toUpperCase() }))}
-                                className="mt-1"
+                                {...register("acervoUf")}
+                                onChange={(e: any) => {
+                                  e.target.value = e.target.value.toUpperCase();
+                                  register("acervoUf").onChange(e);
+                                }}
+                                className={`mt-1 ${errors.acervoUf ? 'border-red-500' : ''}`}
                               />
+                              {errors.acervoUf && <p className="text-xs text-red-500 mt-1">{errors.acervoUf.message}</p>}
                             </div>
                           </div>
 
@@ -1371,10 +1360,10 @@ export default function ClientWorkflow() {
                             <Label htmlFor="acervoComplement" className="text-sm font-medium text-teal-600">Complemento</Label>
                             <Input
                               id="acervoComplement"
-                              value={clientFormData.acervoComplement || ''}
-                              onChange={(e) => setClientFormData(prev => ({ ...prev, acervoComplement: e.target.value }))}
-                              className="mt-1"
+                              {...register("acervoComplement")}
+                              className={`mt-1 ${errors.acervoComplement ? 'border-red-500' : ''}`}
                             />
+                            {errors.acervoComplement && <p className="text-xs text-red-500 mt-1">{errors.acervoComplement.message}</p>}
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1382,26 +1371,26 @@ export default function ClientWorkflow() {
                               <Label htmlFor="acervoLatitude" className="text-sm font-medium text-teal-600">Latitude</Label>
                               <Input
                                 id="acervoLatitude"
-                                value={clientFormData.acervoLatitude || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, acervoLatitude: e.target.value }))}
-                                className="mt-1"
+                                {...register("acervoLatitude")}
+                                className={`mt-1 ${errors.acervoLatitude ? 'border-red-500' : ''}`}
                               />
+                              {errors.acervoLatitude && <p className="text-xs text-red-500 mt-1">{errors.acervoLatitude.message}</p>}
                             </div>
                             <div>
                               <Label htmlFor="acervoLongitude" className="text-sm font-medium text-teal-600">Longitude</Label>
                               <Input
                                 id="acervoLongitude"
-                                value={clientFormData.acervoLongitude || ''}
-                                onChange={(e) => setClientFormData(prev => ({ ...prev, acervoLongitude: e.target.value }))}
-                                className="mt-1"
+                                {...register("acervoLongitude")}
+                                className={`mt-1 ${errors.acervoLongitude ? 'border-red-500' : ''}`}
                               />
+                              {errors.acervoLongitude && <p className="text-xs text-red-500 mt-1">{errors.acervoLongitude.message}</p>}
                             </div>
                           </div>
 
                           {/* Botão Salvar */}
                           <Button
-                            onClick={handleClientDataUpdate}
-                            disabled={updateClientMutation.isPending}
+                            type="submit"
+                            disabled={updateClientMutation.isPending || !isDirty}
                             className="w-full bg-primary hover:bg-primary/90"
                           >
                             {updateClientMutation.isPending ? (
@@ -1414,7 +1403,7 @@ export default function ClientWorkflow() {
                             )}
                           </Button>
                         </div>
-                      </div>
+                      </form>
                     )}
 
                     {/* Agendamento de Laudo de Capacidade Técnica */}
@@ -1537,7 +1526,7 @@ export default function ClientWorkflow() {
                                 type="text"
                                 placeholder="Ex: 2025/12345"
                                 defaultValue={step.protocolNumber || ""}
-                                onBlur={(e) => {
+                                onBlur={(e: React.ChangeEvent<HTMLInputElement>) => {
                                   if (e.target.value !== (step.protocolNumber || "")) {
                                     updateStepMutation.mutate({
                                       stepId: step.id,
@@ -1555,7 +1544,7 @@ export default function ClientWorkflow() {
                                 id="sinarmOpenDate"
                                 type="date"
                                 defaultValue={step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : ""}
-                                onBlur={(e) => {
+                                onBlur={(e: React.ChangeEvent<HTMLInputElement>) => {
                                   const newVal = e.target.value;
                                   const currentVal = step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : "";
                                   if (newVal !== currentVal) {
@@ -1573,7 +1562,7 @@ export default function ClientWorkflow() {
                               <Label htmlFor="sinarmStatus" className="text-sm font-medium text-gray-700">Status do Processo</Label>
                               <Select
                                 value={step.sinarmStatus || ""}
-                                onValueChange={(value) => {
+                                onValueChange={(value: string) => {
                                   const protocolEl = document.getElementById("protocolNumber") as HTMLInputElement | null;
                                   const dateEl = document.getElementById("sinarmOpenDate") as HTMLInputElement | null;
                                   const hasProtocol = protocolEl?.value?.trim() || step.protocolNumber;

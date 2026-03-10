@@ -89,7 +89,6 @@ async function getTransporterWithConfig(tenantDb?: any, tenantId?: number): Prom
     });
 
     currentConfigKey = configKey;
-    console.log('[EmailService] SMTP transporter created/updated');
   }
 
   return { transporter, config };
@@ -195,7 +194,6 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
   const useGateway = emailMethod === 'gateway';
 
   if (useGateway) {
-    console.log('[EmailService] Using PostmanGPX for sendEmail (gateway mode)');
     const result = await sendEmailViaPostmanGpx({
       to: emailOptions.to,
       subject: emailOptions.subject,
@@ -233,7 +231,6 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
       attachments,
     });
 
-    console.log('[EmailService] Email sent successfully:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('[EmailService] Error sending email:', error);
@@ -270,9 +267,7 @@ async function sendEmailViaPostmanGpx(
 
     try {
       if (finalTenantId) {
-        console.log(`[EmailService] Looking up PostmanGPX settings for tenant ${finalTenantId}`);
         const tenantSettings = await getTenantSmtpSettings(finalTenantId);
-        console.log(`[EmailService] Tenant settings found:`, tenantSettings ? 'yes' : 'no');
         baseUrl = tenantSettings?.postmanGpxBaseUrl || baseUrl;
         apiKey = tenantSettings?.postmanGpxApiKey || apiKey;
         smtpFrom = tenantSettings?.smtpFrom || undefined;
@@ -290,9 +285,6 @@ async function sendEmailViaPostmanGpx(
     }
 
     const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
-
-    console.log('[EmailService] Sending email via PostmanGPX to:', options.to);
-    console.log('[EmailService] PostmanGPX Base URL:', normalizedBaseUrl);
 
     let gatewayAttachments: Array<{ filename: string; contentType: string; contentBase64: string; cid?: string; disposition?: 'inline' | 'attachment' }> | undefined;
     if (options.attachments?.length) {
@@ -330,11 +322,9 @@ async function sendEmailViaPostmanGpx(
 
     // postmangpx retorna { id, status, createdAt }
     if (data && (data as any).id) {
-      console.log('[EmailService] Email queued via PostmanGPX successfully:', (data as any).id);
       return { success: true };
     }
 
-    console.log('[EmailService] PostmanGPX response (non-standard but ok)');
     return { success: true };
   } catch (error: any) {
     console.error('[EmailService] PostmanGPX request failed:', error);
@@ -356,7 +346,6 @@ function safeJsonParse(text: string): unknown {
  */
 export async function fetchImageAsBase64(imageUrl: string): Promise<string | null> {
   try {
-    console.log('[EmailService] Fetching image for base64 conversion:', imageUrl);
     const response = await fetch(imageUrl);
     
     if (!response.ok) {
@@ -368,7 +357,6 @@ export async function fetchImageAsBase64(imageUrl: string): Promise<string | nul
     const arrayBuffer = await response.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString('base64');
     
-    console.log('[EmailService] Image converted to base64, size:', base64.length);
     return `data:${contentType};base64,${base64}`;
   } catch (error) {
     console.error('[EmailService] Error converting image to base64:', error);
@@ -414,8 +402,6 @@ export async function sendTestEmailWithSettings(settings: {
     : (process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true');
   
   if (shouldUseGateway) {
-    console.log('[EmailService] Using PostmanGPX (gateway mode)');
-
     if (!settings.postmanGpxBaseUrl || !settings.postmanGpxApiKey) {
       return {
         success: false,
@@ -455,16 +441,6 @@ export async function sendTestEmailWithSettings(settings: {
 
   // Fallback para SMTP direto (desenvolvimento local)
   try {
-    console.log('[EmailService] Using direct SMTP (development mode)');
-    console.log('[EmailService] Creating transporter with settings:', {
-      host: settings.host,
-      port: settings.port,
-      secure: settings.secure,
-      user: settings.user,
-      from: settings.from,
-      to: settings.toEmail,
-    });
-
     const useSecure = settings.port === 465;
     
     const transporter = nodemailer.createTransport({
@@ -484,7 +460,6 @@ export async function sendTestEmailWithSettings(settings: {
     });
 
     await transporter.verify();
-    console.log('[EmailService] SMTP connection verified');
 
     const info = await transporter.sendMail({
       from: settings.from,
@@ -493,10 +468,8 @@ export async function sendTestEmailWithSettings(settings: {
       html: htmlBody,
     });
 
-    console.log('[EmailService] Test email sent successfully:', info.messageId);
     return { success: true };
   } catch (error: any) {
-    console.error('[EmailService] Failed to send test email via SMTP:', error);
     return { success: false, error: error.message || 'Erro desconhecido ao enviar email' };
   }
 }
@@ -526,15 +499,12 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
   try {
     const { tenantDb, tenantId, client, users = [], scheduledDate, extraData } = context;
     
-    console.log(`[EmailTrigger] Processing event: ${event} for client ${client.id}`);
-    
     // Fetch tenant settings to get logo (already saved as base64 data URI)
     const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
     const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
     
     // Logo is already stored as base64 data URI in the database
     const isBase64Logo = emailLogoUrl.startsWith('data:');
-    console.log(`[EmailTrigger] Logo from settings: ${emailLogoUrl ? (isBase64Logo ? 'BASE64 (' + emailLogoUrl.length + ' chars)' : 'URL') : 'EMPTY'}`);
 
     const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
     
@@ -544,11 +514,8 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
       : await db.getActiveTriggersByEvent(event, tenantId);
     
     if (triggers.length === 0) {
-      console.log(`[EmailTrigger] No active triggers for event: ${event}`);
       return;
     }
-    
-    console.log(`[EmailTrigger] Found ${triggers.length} trigger(s) for event: ${event}`);
     
     for (const trigger of triggers) {
       // Get templates for this trigger
@@ -557,7 +524,6 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
         : await db.getTemplatesByTriggerId(trigger.id);
       
       if (templates.length === 0) {
-        console.log(`[EmailTrigger] No templates configured for trigger: ${trigger.name}`);
         continue;
       }
       
@@ -565,17 +531,13 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
       const recipients = await resolveRecipients(trigger, client, users, tenantDb);
       
       if (recipients.length === 0) {
-        console.log(`[EmailTrigger] No recipients for trigger: ${trigger.name}`);
         continue;
       }
-      
-      console.log(`[EmailTrigger] Recipients resolved: ${JSON.stringify(recipients.map(r => r.email))}`);
       
       // Process each template
       for (const templateLink of templates) {
         const template = templateLink.template;
         if (!template) {
-          console.log(`[EmailTrigger] Template link ${templateLink.id} has no template, skipping`);
           continue;
         }
         
@@ -609,18 +571,14 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
               tenantDb
                 ? await db.scheduleEmailToDb(tenantDb, scheduledData)
                 : await db.scheduleEmail(scheduledData);
-              
-              console.log(`[EmailTrigger] Scheduled reminder for ${recipient.email} at ${reminderDate.toISOString()}`);
             }
           }
         }
         
         // Send immediate email if configured
-        console.log(`[EmailTrigger] Trigger sendImmediate=${trigger.sendImmediate}, template isForReminder=${templateLink.isForReminder}`);
         if (trigger.sendImmediate && !templateLink.isForReminder) {
           for (const recipient of recipients) {
             if (!recipient.email || !recipient.email.trim()) {
-              console.log(`[EmailTrigger] Skipping recipient with invalid email`);
               continue;
             }
             try {
@@ -632,20 +590,18 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
                 tenantDb,
                 tenantId,
               });
-              console.log(`[EmailTrigger] Sent immediate email to ${recipient.email}`);
               
               // Registrar envio na Central de Mensagens
               try {
                 if (tenantDb) {
                   await db.logEmailSentToDb(tenantDb, {
                     clientId: client.id,
-                    templateKey: template.key || `trigger_${trigger.id}`,
+                    templateKey: template.templateKey,
                     recipientEmail: recipient.email,
                     subject: renderedSubject,
                     content: renderedContent,
                     sentBy: 0, // 0 = sistema automático
                   });
-                  console.log(`[EmailTrigger] Logged email to Central de Mensagens for client ${client.id}`);
                 }
               } catch (logError) {
                 console.error(`[EmailTrigger] Failed to log email:`, logError);
@@ -677,8 +633,6 @@ async function resolveRecipients(
   if (trigger.recipientType === 'client' || trigger.recipientType === 'both') {
     if (client.email && client.email.trim()) {
       recipients.push({ email: client.email, name: client.name });
-    } else {
-      console.log(`[EmailTrigger] Client ${client.id} has no valid email, skipping client recipient`);
     }
   }
   
@@ -760,8 +714,6 @@ export async function processScheduledEmails(tenantDb?: any): Promise<number> {
       ? await db.getPendingScheduledEmailsFromDb(tenantDb)
       : await db.getPendingScheduledEmails();
     
-    console.log(`[EmailTrigger] Processing ${pendingEmails.length} scheduled email(s)`);
-    
     let sent = 0;
     for (const scheduled of pendingEmails) {
       try {
@@ -783,7 +735,6 @@ export async function processScheduledEmails(tenantDb?: any): Promise<number> {
           : await db.markScheduledEmailSent(scheduled.id);
         
         sent++;
-        console.log(`[EmailTrigger] Sent scheduled email ${scheduled.id} to ${scheduled.recipientEmail}`);
       } catch (error: any) {
         console.error(`[EmailTrigger] Failed to send scheduled email ${scheduled.id}:`, error);
         tenantDb

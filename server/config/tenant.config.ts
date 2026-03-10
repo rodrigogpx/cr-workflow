@@ -71,9 +71,6 @@ setInterval(() => {
     if (now - conn.lastUsed > CONNECTION_IDLE_TIMEOUT) {
       void conn.client.end();
       tenantDbConnections.delete(key);
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[Tenant] Closed idle connection: ${key}`);
-      }
     }
   }
 }, CONNECTION_IDLE_TIMEOUT);
@@ -133,22 +130,18 @@ export async function getTenantConfig(slug: string): Promise<TenantConfig | null
     const db = drizzle(client);
 
     // Query direta para evitar dependência circular
-    const result = await client`
+    const rows = await client`
       SELECT * FROM tenants WHERE slug = ${slug} AND "isActive" = true LIMIT 1
     `;
 
     await client.end();
 
-    if (result.length === 0) {
+    if (rows.length === 0) {
       console.warn(`[Tenant] Tenant with slug "${slug}" not found or inactive`);
       return null;
     }
-    
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[Tenant] Found tenant: id=${result[0].id}, slug=${result[0].slug}`);
-    }
 
-    const tenant = result[0] as unknown as TenantConfig;
+    const tenant = rows[0] as unknown as TenantConfig;
 
     // Descriptografar segredos sensíveis
     if (tenant.dbPassword) {
@@ -197,9 +190,6 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
         // Ignorar erro de fechamento
       }
       tenantDbConnections.delete(key);
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[Tenant] Evicted connection due to pool limit: ${key}`);
-      }
     }
   }
 
@@ -210,9 +200,6 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
     // PRIORIDADE: Se estamos no Railway/Produção e temos DATABASE_URL, 
     // usamos ela para evitar erros de credenciais desatualizadas no banco de dados do tenant.
     if (platformDbUrl && (isSingleDbMode || process.env.NODE_ENV === 'production')) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[Tenant] Using system DATABASE_URL for tenant ${tenant.slug} (Priority Mode)`);
-      }
       connectionString = platformDbUrl;
     } else if (tenant.dbHost && tenant.dbName && tenant.dbUser) {
       // Modo Multi-DB explícito (apenas se tivermos todos os dados e não estivermos forçando single)
@@ -253,9 +240,6 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
     // Cachear conexão com metadata
     tenantDbConnections.set(cacheKey, { db, client, lastUsed: Date.now() });
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[Tenant] Connected to database for tenant: ${tenant.slug}`);
-    }
     return db;
   } catch (error) {
     console.error(`[Tenant] Error connecting to database for tenant ${tenant.slug}:`, error);
