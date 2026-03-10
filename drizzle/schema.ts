@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, varchar, timestamp, boolean, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 /**
@@ -32,7 +32,7 @@ export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"), // tenant isolation (nullable for migration)
   name: varchar("name", { length: 255 }).notNull(),
-  cpf: varchar("cpf", { length: 14 }).notNull().unique(),
+  cpf: varchar("cpf", { length: 14 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   operatorId: integer("operatorId").notNull(),
@@ -82,7 +82,9 @@ export const clients = pgTable("clients", {
   acervoLongitude: varchar("acervoLongitude", { length: 50 }),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
-});
+}, (table) => [
+  unique("clients_tenantId_cpf_unique").on(table.tenantId, table.cpf),
+]);
 
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = typeof clients.$inferInsert;

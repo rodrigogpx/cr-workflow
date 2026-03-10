@@ -458,7 +458,8 @@ export const appRouter = router({
             errMsg.includes('duplicate key value violates unique constraint') ||
             errMsg.includes('Duplicate entry') ||
             errMsg.includes('unique constraint') ||
-            errMsg.includes('clients_cpf_unique')
+            errMsg.includes('clients_cpf_unique') ||
+            errMsg.includes('clients_tenantId_cpf_unique')
           ) {
             throw new TRPCError({
               code: 'CONFLICT',

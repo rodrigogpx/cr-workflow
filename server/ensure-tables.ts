@@ -335,6 +335,22 @@ export async function ensureMissingTables() {
       ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "protocolNumber" varchar(100);
     `);
 
+    // Migrate CPF unique constraint: UNIQUE(cpf) -> UNIQUE(tenantId, cpf) for tenant isolation
+    try {
+      await db.execute(sql`ALTER TABLE "clients" DROP CONSTRAINT IF EXISTS "clients_cpf_unique";`);
+      await db.execute(sql`
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'clients_tenantId_cpf_unique'
+          ) THEN
+            ALTER TABLE "clients" ADD CONSTRAINT "clients_tenantId_cpf_unique" UNIQUE ("tenantId", "cpf");
+          END IF;
+        END $$;
+      `);
+    } catch (cpfErr) {
+      console.error("[Migration] Error migrating CPF constraint:", cpfErr);
+    }
+
     // Ensure default platform admin exists
     try {
       const adminEmails = process.env.SUPER_ADMIN_EMAILS 
