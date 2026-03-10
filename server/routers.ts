@@ -552,7 +552,7 @@ export const appRouter = router({
         // Enviar email de boas-vindas automaticamente
         try {
           const welcomeTemplate = tenantDb
-            ? await db.getEmailTemplateFromDb(tenantDb, 'boasvindas-filiado')
+            ? await db.getEmailTemplateFromDb(tenantDb, 'boasvindas-filiado', undefined, ctx.tenant?.id)
             : await db.getEmailTemplate('boasvindas-filiado');
           
           if (welcomeTemplate && input.email) {
@@ -1882,7 +1882,7 @@ export const appRouter = router({
       .query(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         if (tenantDb) {
-          return await db.getEmailTemplateFromDb(tenantDb, input.templateKey, input.module);
+          return await db.getEmailTemplateFromDb(tenantDb, input.templateKey, input.module, ctx.tenant?.id);
         }
         return await db.getEmailTemplate(input.templateKey, input.module);
       }),
@@ -1980,7 +1980,7 @@ export const appRouter = router({
         }
 
         const template = tenantDb
-          ? await db.getEmailTemplateFromDb(tenantDb, input.templateKey)
+          ? await db.getEmailTemplateFromDb(tenantDb, input.templateKey, undefined, ctx.tenant?.id)
           : await db.getEmailTemplate(input.templateKey);
         const attachments = template?.attachments ? JSON.parse(template.attachments) : [];
 
