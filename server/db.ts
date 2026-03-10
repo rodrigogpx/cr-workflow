@@ -532,7 +532,28 @@ async function insertClientRaw(dbInstance: ReturnType<typeof drizzle>, client: I
     if (rows.length === 0) throw new Error('clients INSERT returned no rows');
     return rows[0].id as number;
   } catch (err: any) {
-    console.error('[insertClientRaw] Error during insertion:', err);
+    console.error('[insertClientRaw] FULL ERROR:', JSON.stringify({
+      message: err?.message,
+      code: err?.code,
+      detail: err?.detail,
+      hint: err?.hint,
+      constraint: err?.constraint,
+      schema: err?.schema,
+      table: err?.table,
+      column: err?.column,
+      dataType: err?.dataType,
+      routine: err?.routine,
+      severity: err?.severity,
+      where: err?.where,
+    }));
+    console.error('[insertClientRaw] Input data:', JSON.stringify({
+      tenantId: client.tenantId,
+      name: client.name,
+      cpf: client.cpf,
+      phone: client.phone,
+      email: client.email,
+      operatorId: client.operatorId,
+    }));
     throw err;
   }
 }

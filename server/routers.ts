@@ -464,7 +464,7 @@ export const appRouter = router({
           }
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: `Erro ao inserir cliente: ${error?.message || 'erro desconhecido'}`,
+            message: `Erro ao inserir cliente: [PG ${error?.code || '?'}] ${error?.message || 'erro desconhecido'} | detail: ${error?.detail || 'none'} | constraint: ${error?.constraint || 'none'}`,
           });
         }
         
