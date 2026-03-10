@@ -442,20 +442,23 @@ export const appRouter = router({
                 tenantId: ctx.tenant?.id,
               });
         } catch (error: any) {
-          console.error('[Clients.create] INSERT failed:', {
-            message: error?.message,
-            code: error?.code,
-            detail: error?.detail,
-            constraint: error?.constraint,
-            severity: error?.severity,
-            table: error?.table,
-            column: error?.column,
-            where: error?.where,
-          });
+          // Capture all error properties for diagnosis
+          const errProps: Record<string, any> = {};
+          for (const key of Object.getOwnPropertyNames(error || {})) {
+            try { errProps[key] = error[key]; } catch (_) { errProps[key] = '[unreadable]'; }
+          }
+          console.error('[Clients.create] INSERT failed:', JSON.stringify(errProps, null, 2));
+          console.error('[Clients.create] Error class:', error?.constructor?.name);
+          console.error('[Clients.create] Error cause:', error?.cause);
+          
           // Check for duplicate CPF error (PostgreSQL code 23505 or MySQL 'Duplicate entry')
+          const errMsg = error?.message || '';
           if (
             error?.code === '23505' ||
-            (error?.message && (error.message.includes('duplicate key value violates unique constraint') || error.message.includes('Duplicate entry')))
+            errMsg.includes('duplicate key value violates unique constraint') ||
+            errMsg.includes('Duplicate entry') ||
+            errMsg.includes('unique constraint') ||
+            errMsg.includes('clients_cpf_unique')
           ) {
             throw new TRPCError({
               code: 'CONFLICT',
@@ -464,7 +467,7 @@ export const appRouter = router({
           }
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: `Erro ao inserir cliente: [PG ${error?.code || '?'}] ${error?.message || 'erro desconhecido'} | detail: ${error?.detail || 'none'} | constraint: ${error?.constraint || 'none'}`,
+            message: `Erro ao inserir cliente: [${error?.constructor?.name || 'Unknown'}] [PG ${error?.code || error?.severity || '?'}] ${errMsg.substring(0, 200)} | keys: ${Object.getOwnPropertyNames(error || {}).join(',')}`,
           });
         }
         

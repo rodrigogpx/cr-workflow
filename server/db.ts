@@ -532,19 +532,20 @@ async function insertClientRaw(dbInstance: ReturnType<typeof drizzle>, client: I
     if (rows.length === 0) throw new Error('clients INSERT returned no rows');
     return rows[0].id as number;
   } catch (err: any) {
-    console.error('[insertClientRaw] FULL ERROR:', JSON.stringify({
-      message: err?.message,
-      code: err?.code,
-      detail: err?.detail,
-      hint: err?.hint,
-      constraint: err?.constraint,
-      schema: err?.schema,
-      table: err?.table,
-      column: err?.column,
-      dataType: err?.dataType,
-      routine: err?.routine,
-      severity: err?.severity,
-      where: err?.where,
+    // Drizzle wraps postgres errors in DrizzleError with the real PG error in .cause
+    const pgErr = err?.cause || err;
+    console.error('[insertClientRaw] Drizzle error class:', err?.constructor?.name);
+    console.error('[insertClientRaw] PG error class:', pgErr?.constructor?.name);
+    console.error('[insertClientRaw] PG error:', JSON.stringify({
+      message: pgErr?.message,
+      code: pgErr?.code,
+      detail: pgErr?.detail,
+      constraint: pgErr?.constraint,
+      severity: pgErr?.severity,
+      table: pgErr?.table,
+      column: pgErr?.column,
+      hint: pgErr?.hint,
+      routine: pgErr?.routine,
     }));
     console.error('[insertClientRaw] Input data:', JSON.stringify({
       tenantId: client.tenantId,
@@ -554,7 +555,8 @@ async function insertClientRaw(dbInstance: ReturnType<typeof drizzle>, client: I
       email: client.email,
       operatorId: client.operatorId,
     }));
-    throw err;
+    // Re-throw the actual PG error so callers can check .code
+    throw pgErr;
   }
 }
 
