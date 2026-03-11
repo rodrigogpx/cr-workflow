@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, ChangeEvent } from "react";
 import { TenantAdminLayout } from "@/components/TenantAdminLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ export default function AdminEmailTriggers() {
       resetForm();
       refetch();
     },
-    onError: (err) => toast.error("Erro ao criar trigger", { description: err.message }),
+    onError: (err: any) => toast.error("Erro ao criar trigger", { description: err.message }),
   });
 
   const updateMutation = trpc.emailTriggers.update.useMutation({
@@ -48,7 +48,7 @@ export default function AdminEmailTriggers() {
       resetForm();
       refetch();
     },
-    onError: (err) => toast.error("Erro ao atualizar trigger", { description: err.message }),
+    onError: (err: any) => toast.error("Erro ao atualizar trigger", { description: err.message }),
   });
 
   const deleteMutation = trpc.emailTriggers.delete.useMutation({
@@ -56,7 +56,7 @@ export default function AdminEmailTriggers() {
       toast.success("Trigger excluído com sucesso");
       refetch();
     },
-    onError: (err) => toast.error("Erro ao excluir trigger", { description: err.message }),
+    onError: (err: any) => toast.error("Erro ao excluir trigger", { description: err.message }),
   });
 
   const addTemplateMutation = trpc.emailTriggers.addTemplate.useMutation({
@@ -109,7 +109,7 @@ export default function AdminEmailTriggers() {
         refetch();
       }
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Erro ao semear triggers: ${error.message}`);
     },
   });
@@ -137,10 +137,10 @@ export default function AdminEmailTriggers() {
   };
 
   const getEventLabel = (event: string) => {
-    return availableEvents?.find(e => e.value === event)?.label || event;
+    return availableEvents?.find((e: any) => e.value === event)?.label || event;
   };
 
-  const selectedEvent = availableEvents?.find(e => e.value === formData.triggerEvent);
+  const selectedEvent = availableEvents?.find((e: any) => e.value === formData.triggerEvent);
 
   return (
     <TenantAdminLayout active="email-triggers">
@@ -169,212 +169,213 @@ export default function AdminEmailTriggers() {
               <Zap className="h-4 w-4 mr-2" />
               {seedTemplatesMutation.isPending ? 'Semeando...' : 'Semear Padrão'}
             </Button>
-            <Dialog open={isCreateOpen || !!editingTrigger} onOpenChange={(open) => {
-            if (!open) {
-              setIsCreateOpen(false);
-              setEditingTrigger(null);
-              resetForm();
-            } else {
-              setIsCreateOpen(true);
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Trigger
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{editingTrigger ? "Editar Trigger" : "Novo Trigger de Email"}</DialogTitle>
-                <DialogDescription>
-                  Configure quando e para quem os emails serão enviados automaticamente
-                </DialogDescription>
-              </DialogHeader>
+            <Dialog open={isCreateOpen || !!editingTrigger} onOpenChange={(open: boolean) => {
+              if (!open) {
+                setIsCreateOpen(false);
+                setEditingTrigger(null);
+                resetForm();
+              } else {
+                setIsCreateOpen(true);
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Trigger
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingTrigger ? "Editar Trigger" : "Novo Trigger de Email"}</DialogTitle>
+                  <DialogDescription>
+                    Configure quando e para quem os emails serão enviados automaticamente
+                  </DialogDescription>
+                </DialogHeader>
 
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nome do Trigger</Label>
-                    <Input
-                      placeholder="Ex: Boas-vindas ao cliente"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    />
+                <div className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Nome do Trigger</Label>
+                      <Input
+                        placeholder="Ex: Boas-vindas ao cliente"
+                        value={formData.name}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Evento Disparador</Label>
+                      <Select
+                        value={formData.triggerEvent}
+                        onValueChange={(v: string) => setFormData({ ...formData, triggerEvent: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o evento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableEvents?.map((event: any) => (
+                            <SelectItem key={event.value} value={event.value}>
+                              {event.label}
+                              {event.hasSchedule && <Badge variant="outline" className="ml-2 text-xs">Agendável</Badge>}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <Label>Evento Disparador</Label>
+                    <Label>Destinatários</Label>
                     <Select
-                      value={formData.triggerEvent}
-                      onValueChange={(v) => setFormData({ ...formData, triggerEvent: v })}
+                      value={formData.recipientType}
+                      onValueChange={(v: any) => setFormData({ ...formData, recipientType: v })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione o evento" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableEvents?.map((event) => (
-                          <SelectItem key={event.value} value={event.value}>
-                            {event.label}
-                            {event.hasSchedule && <Badge variant="outline" className="ml-2 text-xs">Agendável</Badge>}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="client">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            Cliente (email do cliente)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="operator">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            Operador do cliente
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="users">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Usuários específicos
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="both">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Cliente + Usuários
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Destinatários</Label>
-                  <Select
-                    value={formData.recipientType}
-                    onValueChange={(v: any) => setFormData({ ...formData, recipientType: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="client">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          Cliente (email do cliente)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="operator">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          Operador do cliente
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="users">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Usuários específicos
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="both">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Cliente + Usuários
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {(formData.recipientType === "users" || formData.recipientType === "both") && (
-                  <div className="space-y-2">
-                    <Label>Selecionar Usuários</Label>
-                    <div className="border rounded-md p-3 max-h-32 overflow-y-auto space-y-2">
-                      {users?.map((user: any) => (
-                        <label key={user.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.recipientUserIds.includes(user.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData({ ...formData, recipientUserIds: [...formData.recipientUserIds, user.id] });
-                              } else {
-                                setFormData({ ...formData, recipientUserIds: formData.recipientUserIds.filter(id => id !== user.id) });
-                              }
-                            }}
-                            className="rounded"
-                          />
-                          {user.name || user.email} ({user.role})
-                        </label>
-                      ))}
+                  {(formData.recipientType === "users" || formData.recipientType === "both") && (
+                    <div className="space-y-2">
+                      <Label>Selecionar Usuários</Label>
+                      <div className="border rounded-md p-3 max-h-32 overflow-y-auto space-y-2">
+                        {users?.map((user: any) => (
+                          <label key={user.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.recipientUserIds.includes(user.id)}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                if (e.target.checked) {
+                                  setFormData({ ...formData, recipientUserIds: [...formData.recipientUserIds, user.id] });
+                                } else {
+                                  setFormData({ ...formData, recipientUserIds: formData.recipientUserIds.filter((id: number) => id !== user.id) });
+                                }
+                              }}
+                              className="rounded"
+                            />
+                            {user.name || user.email} ({user.role})
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="flex items-center gap-6 py-2">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={formData.sendImmediate}
-                      onCheckedChange={(v) => setFormData({ ...formData, sendImmediate: v })}
-                    />
-                    <Label className="cursor-pointer">Enviar imediatamente</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={formData.isActive}
-                      onCheckedChange={(v) => setFormData({ ...formData, isActive: v })}
-                    />
-                    <Label className="cursor-pointer">Trigger ativo</Label>
-                  </div>
-                </div>
-
-                {selectedEvent?.hasSchedule && (
-                  <div className="space-y-2 p-3 bg-muted/50 rounded-md">
-                    <Label className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      Lembrete antes do evento
-                    </Label>
+                  <div className="flex items-center gap-6 py-2">
                     <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        placeholder="24"
-                        className="w-24"
-                        value={formData.sendBeforeHours || ""}
-                        onChange={(e) => setFormData({ ...formData, sendBeforeHours: e.target.value ? Number(e.target.value) : undefined })}
+                      <Switch
+                        checked={formData.sendImmediate}
+                        onCheckedChange={(v: boolean) => setFormData({ ...formData, sendImmediate: v })}
                       />
-                      <span className="text-sm text-muted-foreground">horas antes</span>
+                      <Label className="cursor-pointer">Enviar imediatamente</Label>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Um email de lembrete será enviado X horas antes do evento agendado
-                    </p>
-                  </div>
-                )}
-
-                {!editingTrigger && (
-                  <div className="space-y-2">
-                    <Label>Templates de Email</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Selecione os templates que serão enviados quando este trigger for acionado
-                    </p>
-                    <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
-                      {templates?.map((template: any) => (
-                        <label key={template.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.templateIds.some(t => t.templateId === template.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData({
-                                  ...formData,
-                                  templateIds: [...formData.templateIds, { templateId: template.id, sendOrder: formData.templateIds.length + 1, isForReminder: false }]
-                                });
-                              } else {
-                                setFormData({
-                                  ...formData,
-                                  templateIds: formData.templateIds.filter(t => t.templateId !== template.id)
-                                });
-                              }
-                            }}
-                            className="rounded"
-                          />
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          {template.templateTitle || template.templateKey}
-                        </label>
-                      ))}
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={formData.isActive}
+                        onCheckedChange={(v: boolean) => setFormData({ ...formData, isActive: v })}
+                      />
+                      <Label className="cursor-pointer">Trigger ativo</Label>
                     </div>
                   </div>
-                )}
-              </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => {
-                  setIsCreateOpen(false);
-                  setEditingTrigger(null);
-                  resetForm();
-                }}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleSubmit} disabled={!formData.name || !formData.triggerEvent}>
-                  {editingTrigger ? "Salvar Alterações" : "Criar Trigger"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                  {selectedEvent?.hasSchedule && (
+                    <div className="space-y-2 p-3 bg-muted/50 rounded-md">
+                      <Label className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Lembrete antes do evento
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          placeholder="24"
+                          className="w-24"
+                          value={formData.sendBeforeHours || ""}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, sendBeforeHours: e.target.value ? Number(e.target.value) : undefined })}
+                        />
+                        <span className="text-sm text-muted-foreground">horas antes</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Um email de lembrete será enviado X horas antes do evento agendado
+                      </p>
+                    </div>
+                  )}
+
+                  {!editingTrigger && (
+                    <div className="space-y-2">
+                      <Label>Templates de Email</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Selecione os templates que serão enviados quando este trigger for acionado
+                      </p>
+                      <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                        {templates?.map((template: any) => (
+                          <label key={template.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.templateIds.some((t: any) => t.templateId === template.id)}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                if (e.target.checked) {
+                                  setFormData({
+                                    ...formData,
+                                    templateIds: [...formData.templateIds, { templateId: template.id, sendOrder: formData.templateIds.length + 1, isForReminder: false }]
+                                  });
+                                } else {
+                                  setFormData({
+                                    ...formData,
+                                    templateIds: formData.templateIds.filter((t: any) => t.templateId !== template.id)
+                                  });
+                                }
+                              }}
+                              className="rounded"
+                            />
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            {template.templateTitle || template.templateKey}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => {
+                    setIsCreateOpen(false);
+                    setEditingTrigger(null);
+                    resetForm();
+                  }}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSubmit} disabled={!formData.name || !formData.triggerEvent}>
+                    {editingTrigger ? "Salvar Alterações" : "Criar Trigger"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Triggers List */}
@@ -388,7 +389,6 @@ export default function AdminEmailTriggers() {
               </CardContent>
             </Card>
           )}
-
           {triggers?.map((trigger: any) => (
             <Card key={trigger.id} className={!trigger.isActive ? "opacity-60" : ""}>
               <CardHeader className="pb-2">
@@ -463,11 +463,10 @@ export default function AdminEmailTriggers() {
                   </div>
                 )}
 
-                {/* Add template to existing trigger */}
                 <div className="mt-3 pt-3 border-t">
                   <div className="flex items-center gap-2">
                     <Select
-                      onValueChange={(templateId) => {
+                      onValueChange={(templateId: string) => {
                         addTemplateMutation.mutate({
                           triggerId: trigger.id,
                           templateId: Number(templateId),

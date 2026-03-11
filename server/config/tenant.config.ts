@@ -31,6 +31,7 @@ export interface TenantConfig {
   featureApostilamento: boolean;
   featureRenovacao: boolean;
   featureInsumos: boolean;
+  featureIAT: boolean;
   // SMTP
   smtpHost: string | null;
   smtpPort: number;
@@ -304,6 +305,7 @@ export const defaultTenantConfig: Partial<TenantConfig> = {
   featureApostilamento: false,
   featureRenovacao: false,
   featureInsumos: false,
+  featureIAT: false,
   plan: 'starter',
   subscriptionStatus: 'trial',
   maxUsers: 5,

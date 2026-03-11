@@ -669,7 +669,7 @@ export const iatCourseClasses = pgTable("iat_course_classes", {
 export type IatCourseClass = typeof iatCourseClasses.$inferSelect;
 export type InsertIatCourseClass = typeof iatCourseClasses.$inferInsert;
 
-export const iatCourseClassesRelations = relations(iatCourseClasses, ({ one, many }) => ({
+export const iatCourseClassesRelations = relations(iatCourseClasses, ({ one, many }: { one: any; many: any }) => ({
   course: one(iatCourses, {
     fields: [iatCourseClasses.courseId],
     references: [iatCourses.id],

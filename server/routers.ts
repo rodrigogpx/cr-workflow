@@ -17,9 +17,10 @@ import { sdk } from "./_core/sdk";
 import { createClientSchema, updateClientSchema, createUserSchema, updateUserSchema } from "@shared/validations";
 import { seedTenantEmailTemplates } from "./defaults/seedTenant";
 import { iatRouter } from "./routers/iat";
+import type { TrpcContext } from "./_core/context";
 import { Buffer } from "node:buffer";
 
-async function getTenantDbOrNull(ctx: any) {
+async function getTenantDbOrNull(ctx: TrpcContext) {
   if (ctx?.tenantSlug && ctx?.tenant) {
     // No single-db mode, usar o platformDb diretamente (sem healthcheck que falha no Railway)
     const isSingleDbMode = process.env.TENANT_DB_MODE === 'single' || process.env.NODE_ENV === 'production';
@@ -44,30 +45,30 @@ export const appRouter = router({
   system: systemRouter,
   iat: iatRouter,
   auth: router({
-    me: publicProcedure.query((opts: any) => {
-      if (!opts.ctx.user) return null;
+    me: publicProcedure.query(({ ctx }: { ctx: TrpcContext }) => {
+      if (!ctx.user) return null;
       // Remover a senha (hashedPassword) do retorno do tRPC
-      const { hashedPassword, ...safeUser } = opts.ctx.user;
+      const { hashedPassword, ...safeUser } = ctx.user;
       
       // Injetar também as features do tenant no payload de usuário, se existir, para o front-end
-      const tenantFeatures = opts.ctx.tenant ? {
-        featureWorkflowCR: opts.ctx.tenant.featureWorkflowCR,
-        featureApostilamento: opts.ctx.tenant.featureApostilamento,
-        featureRenovacao: opts.ctx.tenant.featureRenovacao,
-        featureInsumos: opts.ctx.tenant.featureInsumos,
-        featureIAT: opts.ctx.tenant.featureIAT,
+      const tenantFeatures = ctx.tenant ? {
+        featureWorkflowCR: ctx.tenant.featureWorkflowCR,
+        featureApostilamento: ctx.tenant.featureApostilamento,
+        featureRenovacao: ctx.tenant.featureRenovacao,
+        featureInsumos: ctx.tenant.featureInsumos,
+        featureIAT: ctx.tenant.featureIAT,
       } : null;
 
       return {
         ...safeUser,
         tenantFeatures,
-        tenantSlug: opts.ctx.tenantSlug ?? null,
+        tenantSlug: ctx.tenantSlug ?? null,
       };
     }),
-    platformMe: publicProcedure.query((opts: any) => {
-      if (!opts.ctx.platformAdmin) return null;
+    platformMe: publicProcedure.query(({ ctx }: { ctx: TrpcContext }) => {
+      if (!ctx.platformAdmin) return null;
       // Remover a senha do platformAdmin também, por segurança
-      const { hashedPassword, ...safeAdmin } = opts.ctx.platformAdmin;
+      const { hashedPassword, ...safeAdmin } = ctx.platformAdmin;
       return safeAdmin;
     }),
     platformLogin: publicProcedure
@@ -2905,7 +2906,7 @@ export const appRouter = router({
         tenantId: z.number(),
         confirmPassword: z.string()
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         // Validar senha do platformAdmin
         const passwordMatch = await comparePassword(input.confirmPassword, ctx.platformAdmin.hashedPassword);
         if (!passwordMatch) {
