@@ -6,10 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2, Trash2 } from "lucide-react";
+import { Save, Mail, Upload, X, FileText, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
-import { PlatformAdminLayout } from "@/components/PlatformAdminLayout";
 // Editor simples usando Textarea
 
 interface Attachment {
@@ -53,24 +52,24 @@ export default function EmailTemplates() {
     if (emailLogoUrl) {
       return html.replace(/\{\{logo\}\}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
     }
-    return html.replace(/\{\{logo\}\}/g, '<span style="color: #999; font-style: italic;">[Logo nÃ£o configurada]</span>');
+    return html.replace(/\{\{logo\}\}/g, '<span style="color: #999; font-style: italic;">[Logo não configurada]</span>');
   };
 
   const getTemplateTitle = (key: string) => {
-    // TÃ­tulos amigÃ¡veis para templates conhecidos (opcional, apenas para exibiÃ§Ã£o)
+    // Títulos amigáveis para templates conhecidos (opcional, apenas para exibição)
     const titles: Record<string, string> = {
-      'boasvindas-filiado': "Boas Vindas (AutomÃ¡tico)",
+      'boasvindas-filiado': "Boas Vindas (Automático)",
       process_cr: "Processo CR",
-      psicotecnico: "Encaminhamento PsicotÃ©cnico",
-      laudo_tecnico: "Agendamento Laudo TÃ©cnico",
+      psicotecnico: "Encaminhamento Psicotécnico",
+      laudo_tecnico: "Agendamento Laudo Técnico",
       juntada_documentos: "Juntada de Documentos",
-      psicotecnico_concluido: "AvaliaÃ§Ã£o PsicolÃ³gica ConcluÃ­da",
-      laudo_tecnico_concluido: "Laudo TÃ©cnico ConcluÃ­do",
+      psicotecnico_concluido: "Avaliação Psicológica Concluída",
+      laudo_tecnico_concluido: "Laudo Técnico Concluído",
       sinarm_montagem_iniciada: "Status Sinarm: Montagem Iniciada",
       sinarm_protocolado: "Status Sinarm: Processo Protocolado",
       sinarm_aguardando_gru: "Status Sinarm: Aguardando Baixa GRU",
-      sinarm_em_analise: "Status Sinarm: Em AnÃ¡lise",
-      sinarm_restituido: "Status Sinarm: Processo RestituÃ­do",
+      sinarm_em_analise: "Status Sinarm: Em Análise",
+      sinarm_restituido: "Status Sinarm: Processo Restituído",
     };
     return titles[key] || key;
   };
@@ -109,9 +108,9 @@ export default function EmailTemplates() {
 
   const deleteTemplateMutation = trpc.emails.deleteTemplate.useMutation({
     onSuccess: () => {
-      toast.success("Template excluÃ­do com sucesso!");
+      toast.success("Template excluído com sucesso!");
       utils.emails.getAllTemplates.invalidate();
-      // Limpar a aba ativa para que o useEffect selecione o primeiro disponÃ­vel
+      // Limpar a aba ativa para que o useEffect selecione o primeiro disponível
       setActiveTab('');
     },
     onError: (error) => {
@@ -135,16 +134,12 @@ export default function EmailTemplates() {
 
   const seedTemplatesMutation = trpc.emails.seedTemplates.useMutation({
     onSuccess: (data: any) => {
-      if (data.skipped) {
-        toast.info("Templates já existem", { description: "Os templates padrão não foram inseridos para evitar duplicatas." });
-      } else {
-        toast.success("Templates e triggers semeados com sucesso!", {
-          description: `Inseridos ${data.templates} templates e ${data.triggers} triggers.`
-        });
-        utils.emails.getAllTemplates.invalidate();
-      }
+      toast.success("Templates e triggers atualizados com sucesso!", {
+        description: `Processados ${data.templates} templates e ${data.triggers} triggers.`
+      });
+      utils.emails.getAllTemplates.invalidate();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Erro ao semear templates: ${error.message}`);
     },
   });
@@ -172,7 +167,7 @@ export default function EmailTemplates() {
   };
 
   const handleDeleteTemplate = () => {
-    if (!confirm("Tem certeza que deseja excluir este template? Se for um template padrÃ£o, ele serÃ¡ resetado.")) {
+    if (!confirm("Tem certeza que deseja excluir este template? Se for um template padrão, ele será resetado.")) {
       return;
     }
     deleteTemplateMutation.mutate({
@@ -205,11 +200,11 @@ export default function EmailTemplates() {
   if (user && user.role !== 'admin') {
     const dashboardPath = buildTenantPath(tenantSlug, "/dashboard");
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center p-4">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle>Acesso Negado</CardTitle>
-            <CardDescription>Apenas administradores podem acessar esta pÃ¡gina.</CardDescription>
+            <CardDescription>Apenas administradores podem acessar esta página.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => setLocation(dashboardPath)}>Voltar ao Dashboard</Button>
@@ -220,25 +215,20 @@ export default function EmailTemplates() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="w-full max-w-[95%] mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => setLocation(buildTenantPath(tenantSlug, "/admin"))}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Templates de Email</h1>
-                <p className="text-sm text-gray-600">Edite os templates de email enviados aos clientes</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Gerenciar Templates
+            </CardTitle>
+            <div className="flex flex-wrap gap-2">
               <Button 
                 variant="outline"
+                size="sm"
                 onClick={() => {
-                  if (confirm("Deseja carregar os templates padrão? Isso não apagará seus templates atuais, mas pode criar duplicatas se os nomes forem iguais.")) {
+                  if (confirm("Deseja carregar/atualizar os templates padrão? Isso irá restaurar os templates originais e corrigir textos.")) {
                     seedTemplatesMutation.mutate();
                   }
                 }}
@@ -248,8 +238,12 @@ export default function EmailTemplates() {
                 <Upload className="h-4 w-4 mr-2" />
                 {seedTemplatesMutation.isPending ? 'Semeando...' : 'Semear Padrão'}
               </Button>
+              <Button onClick={() => setShowNewTemplateDialog(true)} variant="outline" size="sm">
+                + Criar Novo Template
+              </Button>
               <Button 
                 variant="destructive" 
+                size="sm"
                 onClick={handleDeleteTemplate} 
                 disabled={deleteTemplateMutation.isPending}
                 title="Excluir Template Atual"
@@ -257,28 +251,13 @@ export default function EmailTemplates() {
                 <Trash2 className="h-4 w-4 mr-2" />
                 Excluir
               </Button>
-              <Button onClick={handleSaveTemplate} disabled={saveTemplateMutation.isPending}>
+              <Button size="sm" onClick={handleSaveTemplate} disabled={saveTemplateMutation.isPending}>
                 <Save className="h-4 w-4 mr-2" />
                 {saveTemplateMutation.isPending ? 'Salvando...' : 'Salvar Template'}
               </Button>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="w-full max-w-[95%] mx-auto px-4 py-8">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Gerenciar Templates
-              </CardTitle>
-              <Button onClick={() => setShowNewTemplateDialog(true)} variant="outline" size="sm">
-                + Criar Novo Template
-              </Button>
-            </div>
-          </CardHeader>
+        </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="flex flex-wrap h-auto gap-1">
@@ -303,7 +282,7 @@ export default function EmailTemplates() {
                         />
                       </div>
                       <div>
-                        <Label>ConteÃºdo (HTML)</Label>
+                        <Label>Conteúdo (HTML)</Label>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-xs text-gray-500 mb-2">Editor HTML</p>
@@ -311,17 +290,17 @@ export default function EmailTemplates() {
                               value={templates[activeTab]?.content || ''}
                               onChange={(e) => handleTemplateChange('content', e.target.value)}
                               className="w-full min-h-[500px] p-3 border rounded-md font-mono text-sm"
-                              placeholder="Digite o conteÃºdo do email em HTML...\n\nExemplo:\n<p>OlÃ¡ <strong>{{nome}}</strong>,</p>\n<p>Seja bem-vindo!</p>"
+                              placeholder="Digite o conteúdo do email em HTML...\n\nExemplo:\n<p>Olá <strong>{{nome}}</strong>,</p>\n<p>Seja bem-vindo!</p>"
                             />
                             <div className="mt-2 text-xs text-gray-500 space-y-1">
                               <p>
-                                VariÃ¡veis disponÃ­veis no HTML: <span className="font-mono">{"{{nome}}"}</span>, <span className="font-mono">{"{{email}}"}</span>, <span className="font-mono">{"{{cpf}}"}</span>, <span className="font-mono">{"{{telefone}}"}</span>, <span className="font-mono">{"{{endereco}}"}</span>, <span className="font-mono">{"{{cidade}}"}</span>, <span className="font-mono">{"{{cep}}"}</span>, <span className="font-mono">{"{{data}}"}</span>, <span className="font-mono">{"{{logo}}"}</span>.
+                                Variáveis disponíveis no HTML: <span className="font-mono">{"{{nome}}"}</span>, <span className="font-mono">{"{{email}}"}</span>, <span className="font-mono">{"{{cpf}}"}</span>, <span className="font-mono">{"{{telefone}}"}</span>, <span className="font-mono">{"{{endereco}}"}</span>, <span className="font-mono">{"{{cidade}}"}</span>, <span className="font-mono">{"{{cep}}"}</span>, <span className="font-mono">{"{{data}}"}</span>, <span className="font-mono">{"{{logo}}"}</span>.
                               </p>
                               <p>
-                                VariÃ¡veis extras (dependem do evento): qualquer chave enviada pelo sistema. Exemplos: <span className="font-mono">{"{{sinarmStatus}}"}</span>, <span className="font-mono">{"{{protocolNumber}}"}</span>, <span className="font-mono">{"{{dataAgendamento}}"}</span>, <span className="font-mono">{"{{examinador}}"}</span>, <span className="font-mono">{"{{tipoAgendamento}}"}</span>.
+                                Variáveis extras (dependem do evento): qualquer chave enviada pelo sistema. Exemplos: <span className="font-mono">{"{{sinarmStatus}}"}</span>, <span className="font-mono">{"{{protocolNumber}}"}</span>, <span className="font-mono">{"{{dataAgendamento}}"}</span>, <span className="font-mono">{"{{examinador}}"}</span>, <span className="font-mono">{"{{tipoAgendamento}}"}</span>.
                               </p>
                               <p>
-                                Exemplo: <span className="font-mono">&lt;p&gt;OlÃ¡ {"{{nome}}"}, seu protocolo Ã© {"{{protocolNumber}}"}.&lt;/p&gt;</span>
+                                Exemplo: <span className="font-mono">&lt;p&gt;Olá {"{{nome}}"}, seu protocolo é {"{{protocolNumber}}"}.&lt;/p&gt;</span>
                               </p>
                             </div>
                           </div>
@@ -329,7 +308,7 @@ export default function EmailTemplates() {
                             <p className="text-xs text-gray-500 mb-2">Preview</p>
                             <div 
                               className="w-full min-h-[500px] p-3 border rounded-md bg-white overflow-auto"
-                              dangerouslySetInnerHTML={{ __html: replaceLogoVariable(templates[activeTab]?.content) || '<p className="text-gray-400">O preview aparecerÃ¡ aqui...</p>' }}
+                              dangerouslySetInnerHTML={{ __html: replaceLogoVariable(templates[activeTab]?.content) || '<p className="text-gray-400">O preview aparecerá aqui...</p>' }}
                             />
                           </div>
                         </div>
@@ -368,7 +347,6 @@ export default function EmailTemplates() {
             </Tabs>
           </CardContent>
         </Card>
-      </div>
 
       {/* Dialog para criar novo template */}
       {showNewTemplateDialog && (
@@ -387,10 +365,10 @@ export default function EmailTemplates() {
                   value={newTemplateKey}
                   onChange={(e) => setNewTemplateKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
                 />
-                <p className="text-xs text-gray-500 mt-1">Use apenas letras minÃºsculas, nÃºmeros e underscore</p>
+                <p className="text-xs text-gray-500 mt-1">Use apenas letras minúsculas, números e underscore</p>
               </div>
               <div>
-                <Label htmlFor="templateTitle">TÃ­tulo do Template</Label>
+                <Label htmlFor="templateTitle">Título do Template</Label>
                 <Input
                   id="templateTitle"
                   placeholder="ex: Boas Vindas Premium"
