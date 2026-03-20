@@ -241,20 +241,6 @@ export default function EmailTemplates() {
               <Button onClick={() => setShowNewTemplateDialog(true)} variant="outline" size="sm">
                 + Criar Novo Template
               </Button>
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={handleDeleteTemplate} 
-                disabled={deleteTemplateMutation.isPending}
-                title="Excluir Template Atual"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir
-              </Button>
-              <Button size="sm" onClick={handleSaveTemplate} disabled={saveTemplateMutation.isPending}>
-                <Save className="h-4 w-4 mr-2" />
-                {saveTemplateMutation.isPending ? 'Salvando...' : 'Salvar Template'}
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -339,6 +325,22 @@ export default function EmailTemplates() {
                             accept=".pdf"
                           />
                         </div>
+                      </div>
+
+                      {/* Ações do template */}
+                      <div className="flex items-center justify-between pt-4 border-t">
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleDeleteTemplate} 
+                          disabled={deleteTemplateMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {deleteTemplateMutation.isPending ? 'Excluindo...' : 'Excluir Template'}
+                        </Button>
+                        <Button onClick={handleSaveTemplate} disabled={saveTemplateMutation.isPending}>
+                          <Save className="h-4 w-4 mr-2" />
+                          {saveTemplateMutation.isPending ? 'Salvando...' : 'Salvar Template'}
+                        </Button>
                       </div>
                     </div>
                   )}
