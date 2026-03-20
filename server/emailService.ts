@@ -499,13 +499,12 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
   try {
     const { tenantDb, tenantId, client, users = [], scheduledDate, extraData } = context;
     
+    console.log(`[EmailTrigger] Processing event="${event}" client=${client.id} (${client.name}) tenant=${tenantId || 'none'}`);
+    
     // Fetch tenant settings to get logo (already saved as base64 data URI)
     const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
     const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
     
-    // Logo is already stored as base64 data URI in the database
-    const isBase64Logo = emailLogoUrl.startsWith('data:');
-
     const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
     
     // Get active triggers for this event
@@ -514,8 +513,11 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
       : await db.getActiveTriggersByEvent(event, tenantId);
     
     if (triggers.length === 0) {
+      console.log(`[EmailTrigger] No active triggers found for event="${event}" tenant=${tenantId}`);
       return;
     }
+    
+    console.log(`[EmailTrigger] Found ${triggers.length} trigger(s) for event="${event}"`);
     
     for (const trigger of triggers) {
       // Get templates for this trigger
@@ -524,6 +526,7 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
         : await db.getTemplatesByTriggerId(trigger.id);
       
       if (templates.length === 0) {
+        console.warn(`[EmailTrigger] Trigger "${trigger.name}" (id=${trigger.id}) has no linked templates — skipping`);
         continue;
       }
       
@@ -531,6 +534,7 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
       const recipients = await resolveRecipients(trigger, client, users, tenantDb);
       
       if (recipients.length === 0) {
+        console.warn(`[EmailTrigger] Trigger "${trigger.name}" — no recipients resolved (recipientType=${trigger.recipientType}, clientEmail=${client.email || 'none'})`);
         continue;
       }
       
@@ -582,6 +586,7 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
               continue;
             }
             try {
+              console.log(`[EmailTrigger] Sending email to ${recipient.email} — trigger="${trigger.name}" template="${template.templateKey}" subject="${renderedSubject}"`);
               await sendEmail({
                 to: recipient.email,
                 subject: renderedSubject,
@@ -590,6 +595,7 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
                 tenantDb,
                 tenantId,
               });
+              console.log(`[EmailTrigger] ✓ Email sent successfully to ${recipient.email}`);
               
               // Registrar envio na Central de Mensagens
               try {

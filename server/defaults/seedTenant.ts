@@ -12,11 +12,12 @@ const TRIGGER_TEMPLATE_MAP: Record<string, string> = {
   'Agendamento Laudo Técnico': 'laudo_tecnico',
   'Lembrete Agendamento Laudo Técnico': 'agendamento-laudo',
   'Laudo Técnico Concluído': 'laudo_tecnico_concluido',
-  'Montagem do Processo Iniciada': 'sinarm_montagem_iniciada',
-  'Processo Protocolado': 'sinarm_protocolado',
+  'Processo Solicitado no Sinarm': 'sinarm_montagem_iniciada',
+  'Processo Deferido': 'sinarm_protocolado',
   'Aguardando Baixa GRU': 'sinarm_aguardando_gru',
   'Processo em Análise': 'sinarm_em_analise',
   'Processo Restituído': 'sinarm_restituido',
+  'Processo Indeferido': 'sinarm_restituido',
 };
 
 export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) {

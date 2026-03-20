@@ -1,15 +1,19 @@
 import { InsertEmailTrigger } from '../../drizzle/schema';
 
-// Workflow step order (from getAvailableEvents):
-//   1 = Cadastro
-//   2 = Juntada de Documentos
-//   3 = Central de Mensagens
-//   4 = Avaliação Psicológica
-//   5 = Laudo Técnico
-//   6 = Acompanhamento Sinarm
-//   7 = Montagem Sinarm
-//   8 = Protocolado
-//   9 = Concluído
+// Workflow steps → stepIdToNumber mapping (routers.ts):
+//   1 = cadastro
+//   2 = juntada-documento
+//   3 = boas-vindas (Central de Mensagens)
+//   4 = agendamento-psicotecnico
+//   5 = agendamento-laudo
+//   6 = acompanhamento-sinarm
+//
+// Sinarm statuses (ClientWorkflow.tsx):
+//   Iniciado, Solicitado, Aguardando Baixa GRU, Em Análise,
+//   Restituído (→ event Correção Solicitada), Deferido, Indeferido
+//
+// Schedule events (routers.ts):
+//   SCHEDULE_PSYCH_CREATED, SCHEDULE_TECH_CONFIRMATION
 
 export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
   {
@@ -42,14 +46,14 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
   },
   {
     name: 'Agendamento Laudo Técnico',
-    triggerEvent: 'SCHEDULE_CREATED',
+    triggerEvent: 'SCHEDULE_TECH_CONFIRMATION',
     recipientType: 'client',
     sendImmediate: true,
     isActive: true
   },
   {
     name: 'Lembrete Agendamento Laudo Técnico',
-    triggerEvent: 'SCHEDULE_CREATED',
+    triggerEvent: 'SCHEDULE_TECH_CONFIRMATION',
     recipientType: 'client',
     sendImmediate: false,
     sendBeforeHours: 24,
@@ -63,15 +67,15 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
     isActive: true
   },
   {
-    name: 'Montagem do Processo Iniciada',
-    triggerEvent: 'STEP_COMPLETED:7',
+    name: 'Processo Solicitado no Sinarm',
+    triggerEvent: 'SINARM_STATUS:Solicitado',
     recipientType: 'client',
     sendImmediate: true,
     isActive: true
   },
   {
-    name: 'Processo Protocolado',
-    triggerEvent: 'STEP_COMPLETED:8',
+    name: 'Processo Deferido',
+    triggerEvent: 'SINARM_STATUS:Deferido',
     recipientType: 'client',
     sendImmediate: true,
     isActive: true
@@ -93,6 +97,13 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
   {
     name: 'Processo Restituído',
     triggerEvent: 'SINARM_STATUS:Correção Solicitada',
+    recipientType: 'client',
+    sendImmediate: true,
+    isActive: true
+  },
+  {
+    name: 'Processo Indeferido',
+    triggerEvent: 'SINARM_STATUS:Indeferido',
     recipientType: 'client',
     sendImmediate: true,
     isActive: true
