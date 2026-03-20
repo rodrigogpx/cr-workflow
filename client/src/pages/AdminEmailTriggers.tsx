@@ -9,12 +9,51 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Zap, Mail, Clock, Users, User } from "lucide-react";
+import { Plus, Pencil, Trash2, Zap, Mail, Clock, Users, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
+
+interface EmailTrigger {
+  id: number;
+  name: string;
+  triggerEvent: string;
+  recipientType: "client" | "users" | "both" | "operator";
+  recipientUserIds: string | null;
+  sendImmediate: boolean;
+  sendBeforeHours: number | null;
+  isActive: boolean;
+  templates?: Array<{
+    id: number;
+    templateId: number;
+    isForReminder: boolean;
+    template?: {
+      templateTitle: string | null;
+      templateKey: string;
+    };
+  }>;
+}
+
+interface AvailableEvent {
+  value: string;
+  label: string;
+  hasSchedule?: boolean;
+}
+
+interface Template {
+  id: number;
+  templateTitle: string | null;
+  templateKey: string;
+}
+
+interface User {
+  id: number;
+  name: string | null;
+  email: string;
+  role: string;
+}
 
 export default function AdminEmailTriggers() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingTrigger, setEditingTrigger] = useState<any>(null);
+  const [editingTrigger, setEditingTrigger] = useState<EmailTrigger | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     triggerEvent: "",
@@ -38,7 +77,7 @@ export default function AdminEmailTriggers() {
       resetForm();
       refetch();
     },
-    onError: (err: any) => toast.error("Erro ao criar trigger", { description: err.message }),
+    onError: (err: { message: string }) => toast.error("Erro ao criar trigger", { description: err.message }),
   });
 
   const updateMutation = trpc.emailTriggers.update.useMutation({
@@ -48,7 +87,7 @@ export default function AdminEmailTriggers() {
       resetForm();
       refetch();
     },
-    onError: (err: any) => toast.error("Erro ao atualizar trigger", { description: err.message }),
+    onError: (err: { message: string }) => toast.error("Erro ao atualizar trigger", { description: err.message }),
   });
 
   const deleteMutation = trpc.emailTriggers.delete.useMutation({
@@ -56,7 +95,7 @@ export default function AdminEmailTriggers() {
       toast.success("Trigger excluído com sucesso");
       refetch();
     },
-    onError: (err: any) => toast.error("Erro ao excluir trigger", { description: err.message }),
+    onError: (err: { message: string }) => toast.error("Erro ao excluir trigger", { description: err.message }),
   });
 
   const addTemplateMutation = trpc.emailTriggers.addTemplate.useMutation({
@@ -84,7 +123,7 @@ export default function AdminEmailTriggers() {
     });
   };
 
-  const handleEdit = (trigger: any) => {
+  const handleEdit = (trigger: EmailTrigger) => {
     setEditingTrigger(trigger);
     setFormData({
       name: trigger.name,
@@ -99,7 +138,7 @@ export default function AdminEmailTriggers() {
   };
 
   const seedTemplatesMutation = trpc.emails.seedTemplates.useMutation({
-    onSuccess: (data: any) => {
+    onSuccess: (data: { skipped: boolean; templates: number; triggers: number }) => {
       if (data.skipped) {
         toast.info("Triggers e templates já existem", { description: "Os padrões não foram inseridos para evitar duplicatas." });
       } else {
@@ -109,7 +148,7 @@ export default function AdminEmailTriggers() {
         refetch();
       }
     },
-    onError: (error: any) => {
+    onError: (error: { message: string }) => {
       toast.error(`Erro ao semear triggers: ${error.message}`);
     },
   });
@@ -137,10 +176,10 @@ export default function AdminEmailTriggers() {
   };
 
   const getEventLabel = (event: string) => {
-    return availableEvents?.find((e: any) => e.value === event)?.label || event;
+    return availableEvents?.find((e: AvailableEvent) => e.value === event)?.label || event;
   };
 
-  const selectedEvent = availableEvents?.find((e: any) => e.value === formData.triggerEvent);
+  const selectedEvent = availableEvents?.find((e: AvailableEvent) => e.value === formData.triggerEvent);
 
   return (
     <TenantAdminLayout active="email-triggers">
@@ -169,15 +208,18 @@ export default function AdminEmailTriggers() {
               <Zap className="h-4 w-4 mr-2" />
               {seedTemplatesMutation.isPending ? 'Semeando...' : 'Semear Padrão'}
             </Button>
-            <Dialog open={isCreateOpen || !!editingTrigger} onOpenChange={(open: boolean) => {
-              if (!open) {
-                setIsCreateOpen(false);
-                setEditingTrigger(null);
-                resetForm();
-              } else {
-                setIsCreateOpen(true);
-              }
-            }}>
+            <Dialog 
+              open={isCreateOpen || !!editingTrigger} 
+              onOpenChange={(open: boolean) => {
+                if (!open) {
+                  setIsCreateOpen(false);
+                  setEditingTrigger(null);
+                  resetForm();
+                } else {
+                  setIsCreateOpen(true);
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -212,7 +254,7 @@ export default function AdminEmailTriggers() {
                           <SelectValue placeholder="Selecione o evento" />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableEvents?.map((event: any) => (
+                          {availableEvents?.map((event: AvailableEvent) => (
                             <SelectItem key={event.value} value={event.value}>
                               {event.label}
                               {event.hasSchedule && <Badge variant="outline" className="ml-2 text-xs">Agendável</Badge>}
@@ -227,7 +269,7 @@ export default function AdminEmailTriggers() {
                     <Label>Destinatários</Label>
                     <Select
                       value={formData.recipientType}
-                      onValueChange={(v: any) => setFormData({ ...formData, recipientType: v })}
+                      onValueChange={(v: "client" | "users" | "both" | "operator") => setFormData({ ...formData, recipientType: v })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -235,13 +277,13 @@ export default function AdminEmailTriggers() {
                       <SelectContent>
                         <SelectItem value="client">
                           <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
+                            <UserIcon className="h-4 w-4" />
                             Cliente (email do cliente)
                           </div>
                         </SelectItem>
                         <SelectItem value="operator">
                           <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
+                            <UserIcon className="h-4 w-4" />
                             Operador do cliente
                           </div>
                         </SelectItem>
@@ -265,7 +307,7 @@ export default function AdminEmailTriggers() {
                     <div className="space-y-2">
                       <Label>Selecionar Usuários</Label>
                       <div className="border rounded-md p-3 max-h-32 overflow-y-auto space-y-2">
-                        {users?.map((user: any) => (
+                        {users?.map((user: User) => (
                           <label key={user.id} className="flex items-center gap-2 text-sm cursor-pointer">
                             <input
                               type="checkbox"
@@ -332,11 +374,11 @@ export default function AdminEmailTriggers() {
                         Selecione os templates que serão enviados quando este trigger for acionado
                       </p>
                       <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
-                        {templates?.map((template: any) => (
+                        {templates?.map((template: Template) => (
                           <label key={template.id} className="flex items-center gap-2 text-sm cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={formData.templateIds.some((t: any) => t.templateId === template.id)}
+                              checked={formData.templateIds.some((t: { templateId: number }) => t.templateId === template.id)}
                               onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                 if (e.target.checked) {
                                   setFormData({
@@ -346,7 +388,7 @@ export default function AdminEmailTriggers() {
                                 } else {
                                   setFormData({
                                     ...formData,
-                                    templateIds: formData.templateIds.filter((t: any) => t.templateId !== template.id)
+                                    templateIds: formData.templateIds.filter((t: { templateId: number }) => t.templateId !== template.id)
                                   });
                                 }
                               }}
@@ -362,11 +404,14 @@ export default function AdminEmailTriggers() {
                 </div>
 
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => {
-                    setIsCreateOpen(false);
-                    setEditingTrigger(null);
-                    resetForm();
-                  }}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsCreateOpen(false);
+                      setEditingTrigger(null);
+                      resetForm();
+                    }}
+                  >
                     Cancelar
                   </Button>
                   <Button onClick={handleSubmit} disabled={!formData.name || !formData.triggerEvent}>
@@ -378,7 +423,6 @@ export default function AdminEmailTriggers() {
           </div>
         </div>
 
-        {/* Triggers List */}
         <div className="grid gap-4">
           {triggers?.length === 0 && (
             <Card>
@@ -389,7 +433,7 @@ export default function AdminEmailTriggers() {
               </CardContent>
             </Card>
           )}
-          {triggers?.map((trigger: any) => (
+          {triggers?.map((trigger: EmailTrigger) => (
             <Card key={trigger.id} className={!trigger.isActive ? "opacity-60" : ""}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
@@ -425,7 +469,7 @@ export default function AdminEmailTriggers() {
               <CardContent>
                 <div className="flex flex-wrap gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
+                    <UserIcon className="h-4 w-4 text-muted-foreground" />
                     <span>{getRecipientLabel(trigger.recipientType)}</span>
                   </div>
                   {trigger.sendImmediate && (
@@ -446,7 +490,7 @@ export default function AdminEmailTriggers() {
                   <div className="mt-3 pt-3 border-t">
                     <p className="text-xs text-muted-foreground mb-2">Templates vinculados:</p>
                     <div className="flex flex-wrap gap-2">
-                      {trigger.templates.map((t: any) => (
+                      {trigger.templates.map((t: { id: number; templateId: number; isForReminder: boolean; template?: { templateTitle: string | null; templateKey: string } }) => (
                         <Badge key={t.id} variant="secondary" className="gap-1">
                           <Mail className="h-3 w-3" />
                           {t.template?.templateTitle || t.template?.templateKey || `Template #${t.templateId}`}
@@ -479,7 +523,7 @@ export default function AdminEmailTriggers() {
                         <SelectValue placeholder="Adicionar template..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {templates?.filter((t: any) => !trigger.templates?.some((tt: any) => tt.templateId === t.id)).map((template: any) => (
+                        {templates?.filter((t: Template) => !trigger.templates?.some((tt: { templateId: number }) => tt.templateId === t.id)).map((template: Template) => (
                           <SelectItem key={template.id} value={String(template.id)}>
                             {template.templateTitle || template.templateKey}
                           </SelectItem>

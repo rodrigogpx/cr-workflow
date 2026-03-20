@@ -82,7 +82,7 @@ export const clients = pgTable("clients", {
   acervoLongitude: varchar("acervoLongitude", { length: 50 }),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
-}, (table) => [
+}, (table: any) => [
   unique("clients_tenantId_cpf_unique").on(table.tenantId, table.cpf),
 ]);
 
@@ -153,12 +153,12 @@ export type Document = typeof documents.$inferSelect;
 export type InsertDocument = typeof documents.$inferInsert;
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many }: any) => ({
   clients: many(clients),
   documents: many(documents),
 }));
 
-export const clientsRelations = relations(clients, ({ one, many }) => ({
+export const clientsRelations = relations(clients, ({ one, many }: any) => ({
   operator: one(users, {
     fields: [clients.operatorId],
     references: [users.id],
@@ -167,7 +167,7 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
   documents: many(documents),
 }));
 
-export const workflowStepsRelations = relations(workflowSteps, ({ one, many }) => ({
+export const workflowStepsRelations = relations(workflowSteps, ({ one, many }: any) => ({
   client: one(clients, {
     fields: [workflowSteps.clientId],
     references: [clients.id],
@@ -191,7 +191,7 @@ export const sinarmCommentsHistory = pgTable("sinarmCommentsHistory", {
 export type SinarmCommentHistory = typeof sinarmCommentsHistory.$inferSelect;
 export type InsertSinarmCommentHistory = typeof sinarmCommentsHistory.$inferInsert;
 
-export const sinarmCommentsHistoryRelations = relations(sinarmCommentsHistory, ({ one }) => ({
+export const sinarmCommentsHistoryRelations = relations(sinarmCommentsHistory, ({ one }: any) => ({
   workflowStep: one(workflowSteps, {
     fields: [sinarmCommentsHistory.workflowStepId],
     references: [workflowSteps.id],
@@ -202,14 +202,14 @@ export const sinarmCommentsHistoryRelations = relations(sinarmCommentsHistory, (
   }),
 }));
 
-export const subTasksRelations = relations(subTasks, ({ one }) => ({
+export const subTasksRelations = relations(subTasks, ({ one }: any) => ({
   workflowStep: one(workflowSteps, {
     fields: [subTasks.workflowStepId],
     references: [workflowSteps.id],
   }),
 }));
 
-export const documentsRelations = relations(documents, ({ one }) => ({
+export const documentsRelations = relations(documents, ({ one }: any) => ({
   client: one(clients, {
     fields: [documents.clientId],
     references: [clients.id],
@@ -260,7 +260,7 @@ export const emailLogs = pgTable("emailLogs", {
 export type EmailLog = typeof emailLogs.$inferSelect;
 export type InsertEmailLog = typeof emailLogs.$inferInsert;
 
-export const emailLogsRelations = relations(emailLogs, ({ one }) => ({
+export const emailLogsRelations = relations(emailLogs, ({ one }: any) => ({
   client: one(clients, {
     fields: [emailLogs.clientId],
     references: [clients.id],
@@ -308,7 +308,7 @@ export const emailTriggerTemplates = pgTable("emailTriggerTemplates", {
 export type EmailTriggerTemplate = typeof emailTriggerTemplates.$inferSelect;
 export type InsertEmailTriggerTemplate = typeof emailTriggerTemplates.$inferInsert;
 
-export const emailTriggerTemplatesRelations = relations(emailTriggerTemplates, ({ one }) => ({
+export const emailTriggerTemplatesRelations = relations(emailTriggerTemplates, ({ one }: any) => ({
   trigger: one(emailTriggers, {
     fields: [emailTriggerTemplates.triggerId],
     references: [emailTriggers.id],
@@ -343,7 +343,7 @@ export const emailScheduled = pgTable("emailScheduled", {
 export type EmailScheduled = typeof emailScheduled.$inferSelect;
 export type InsertEmailScheduled = typeof emailScheduled.$inferInsert;
 
-export const emailScheduledRelations = relations(emailScheduled, ({ one }) => ({
+export const emailScheduledRelations = relations(emailScheduled, ({ one }: any) => ({
   client: one(clients, {
     fields: [emailScheduled.clientId],
     references: [clients.id],
@@ -497,7 +497,7 @@ export const auditLogs = pgTable("auditLogs", {
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 
-export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+export const auditLogsRelations = relations(auditLogs, ({ one }: any) => ({
   user: one(users, {
     fields: [auditLogs.userId],
     references: [users.id],
@@ -533,7 +533,7 @@ export const iatInstructors = pgTable("iat_instructors", {
 export type IatInstructor = typeof iatInstructors.$inferSelect;
 export type InsertIatInstructor = typeof iatInstructors.$inferInsert;
 
-export const iatInstructorsRelations = relations(iatInstructors, ({ one, many }) => ({
+export const iatInstructorsRelations = relations(iatInstructors, ({ one, many }: any) => ({
   user: one(users, {
     fields: [iatInstructors.userId],
     references: [users.id],
@@ -562,7 +562,7 @@ export const iatCourses = pgTable("iat_courses", {
 export type IatCourse = typeof iatCourses.$inferSelect;
 export type InsertIatCourse = typeof iatCourses.$inferInsert;
 
-export const iatCoursesRelations = relations(iatCourses, ({ many }) => ({
+export const iatCoursesRelations = relations(iatCourses, ({ many }: any) => ({
   exams: many(iatExams),
   schedules: many(iatSchedules),
   classes: many(iatCourseClasses),
@@ -591,7 +591,7 @@ export const iatSchedules = pgTable("iat_schedules", {
 export type IatSchedule = typeof iatSchedules.$inferSelect;
 export type InsertIatSchedule = typeof iatSchedules.$inferInsert;
 
-export const iatSchedulesRelations = relations(iatSchedules, ({ one }) => ({
+export const iatSchedulesRelations = relations(iatSchedules, ({ one }: any) => ({
   course: one(iatCourses, {
     fields: [iatSchedules.courseId],
     references: [iatCourses.id],
@@ -629,7 +629,7 @@ export const iatExams = pgTable("iat_exams", {
 export type IatExam = typeof iatExams.$inferSelect;
 export type InsertIatExam = typeof iatExams.$inferInsert;
 
-export const iatExamsRelations = relations(iatExams, ({ one }) => ({
+export const iatExamsRelations = relations(iatExams, ({ one }: any) => ({
   client: one(clients, {
     fields: [iatExams.clientId],
     references: [clients.id],
@@ -669,7 +669,7 @@ export const iatCourseClasses = pgTable("iat_course_classes", {
 export type IatCourseClass = typeof iatCourseClasses.$inferSelect;
 export type InsertIatCourseClass = typeof iatCourseClasses.$inferInsert;
 
-export const iatCourseClassesRelations = relations(iatCourseClasses, ({ one, many }: { one: any; many: any }) => ({
+export const iatCourseClassesRelations = relations(iatCourseClasses, ({ one, many }: any) => ({
   course: one(iatCourses, {
     fields: [iatCourseClasses.courseId],
     references: [iatCourses.id],
@@ -703,7 +703,7 @@ export const iatClassEnrollments = pgTable("iat_class_enrollments", {
 export type IatClassEnrollment = typeof iatClassEnrollments.$inferSelect;
 export type InsertIatClassEnrollment = typeof iatClassEnrollments.$inferInsert;
 
-export const iatClassEnrollmentsRelations = relations(iatClassEnrollments, ({ one }) => ({
+export const iatClassEnrollmentsRelations = relations(iatClassEnrollments, ({ one }: any) => ({
   courseClass: one(iatCourseClasses, {
     fields: [iatClassEnrollments.classId],
     references: [iatCourseClasses.id],

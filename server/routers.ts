@@ -73,7 +73,7 @@ export const appRouter = router({
     }),
     platformLogin: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const admin = await db.getPlatformAdminByEmail(input.email);
         
         if (!admin || !admin.isActive) {
@@ -112,7 +112,7 @@ export const appRouter = router({
       }),
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         let tenantSlug = ctx.tenantSlug;
 
         const user = tenantSlug && ctx.tenant
@@ -184,7 +184,7 @@ export const appRouter = router({
           },
         };
       }),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: publicProcedure.mutation(({ ctx }: { ctx: TrpcContext }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       // Garantir que os atributos de limpeza correspondam aos de criação
       ctx.res.clearCookie(COOKIE_NAME, { 
@@ -204,7 +204,7 @@ export const appRouter = router({
         email: z.string().email("Email inválido"),
         password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
       }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantSlug = ctx.tenantSlug;
 
         // Verificar se email já existe
@@ -270,7 +270,7 @@ export const appRouter = router({
 
   // Clients router
   clients: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
+    list: protectedProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       try {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
@@ -396,7 +396,7 @@ export const appRouter = router({
 
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ ctx, input }) => {
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.id)
@@ -415,7 +415,7 @@ export const appRouter = router({
 
     create: protectedProcedure
       .input(createClientSchema)
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         // Permissão:
         // - admin: pode cadastrar e atribuir a qualquer operador
         // - operator: pode cadastrar apenas para si
@@ -644,7 +644,7 @@ export const appRouter = router({
 
         update: protectedProcedure
           .input(updateClientSchema)
-          .mutation(async ({ ctx, input }) => {
+          .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
             const tenantDb = await getTenantDbOrNull(ctx);
             const client = tenantDb
               ? await db.getClientByIdFromDb(tenantDb, input.id)
@@ -689,7 +689,7 @@ export const appRouter = router({
 
     delegateOperator: tenantAdminProcedure
       .input(z.object({ id: z.number(), operatorId: z.number() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.id)
@@ -722,7 +722,7 @@ export const appRouter = router({
 
     delete: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.id)
@@ -760,7 +760,7 @@ export const appRouter = router({
   workflow: router({
     getByClient: protectedProcedure
       .input(z.object({ clientId: z.number() }))
-      .query(async ({ ctx, input }) => {
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         try {
           const tenantDb = await getTenantDbOrNull(ctx);
           const client = tenantDb
@@ -824,7 +824,7 @@ export const appRouter = router({
         protocolNumber: z.string().optional().nullable(),
         sinarmComment: z.string().optional()
       }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         // Buscar etapa atual
         const currentStep = tenantDb
@@ -1099,7 +1099,7 @@ export const appRouter = router({
 
     getSinarmCommentsHistory: protectedProcedure
       .input(z.object({ stepId: z.number() }))
-      .query(async ({ ctx, input }) => {
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
 
         const step = tenantDb
@@ -1140,7 +1140,7 @@ export const appRouter = router({
         subTaskId: z.number(),
         completed: z.boolean(),
       }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
@@ -1165,7 +1165,7 @@ export const appRouter = router({
 
     generateWelcomePDF: protectedProcedure
       .input(z.object({ clientId: z.number() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
@@ -1196,7 +1196,7 @@ export const appRouter = router({
         scheduledDate: z.string().optional(),
         examinerName: z.string().optional(),
       }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
@@ -1269,7 +1269,7 @@ export const appRouter = router({
   documents: router({
     list: protectedProcedure
       .input(z.object({ clientId: z.number() }))
-      .query(async ({ ctx, input }) => {
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         try {
           const tenantDb = await getTenantDbOrNull(ctx);
           const client = tenantDb
@@ -1303,7 +1303,7 @@ export const appRouter = router({
         fileData: z.string(), // base64
         mimeType: z.string(),
       }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
@@ -1410,7 +1410,7 @@ export const appRouter = router({
 
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const doc = tenantDb
           ? await db.getDocumentByIdFromDb(tenantDb, input.id)
@@ -1478,7 +1478,7 @@ export const appRouter = router({
 
     downloadEnxoval: protectedProcedure
       .input(z.object({ clientId: z.number() }))
-      .query(async ({ ctx, input }) => {
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
@@ -1521,7 +1521,7 @@ export const appRouter = router({
         fileData: z.string(), // base64
         mimeType: z.string(),
       }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         // Apenas admin pode fazer upload de anexos de template
         if (ctx.user.role !== 'admin') {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas administradores podem adicionar anexos a templates' });
@@ -1540,7 +1540,7 @@ export const appRouter = router({
   emails: router({
     // SMTP configuration - admin only (tenant-isolated)
     getSmtpConfig: adminProcedure
-      .query(async ({ ctx }) => {
+      .query(async ({ ctx }: { ctx: TrpcContext }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
         
         if (!tenantId) {
@@ -1611,7 +1611,7 @@ export const appRouter = router({
         postmanGpxApiKey: z.string().optional(),
         useSecure: z.boolean().optional(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
         
         if (!tenantId) {
@@ -1697,7 +1697,7 @@ export const appRouter = router({
         body: z.string().optional(),
         useMethod: z.enum(["smtp", "gateway"]).optional(),
       }).optional())
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
         
         if (!tenantId) {
@@ -1753,7 +1753,7 @@ export const appRouter = router({
       .input(z.object({
         logoUrl: z.string().url(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
         
         if (!tenantId) {
@@ -1841,7 +1841,7 @@ export const appRouter = router({
 
     // Remove email logo
     removeEmailLogo: adminProcedure
-      .mutation(async ({ ctx }) => {
+      .mutation(async ({ ctx }: { ctx: TrpcContext }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
         
         if (!tenantId) {
@@ -1915,7 +1915,7 @@ export const appRouter = router({
         content: z.string(),
         attachments: z.string().optional(), // JSON string of attachments
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const templateId = tenantDb
           ? await db.saveEmailTemplateToDb(tenantDb, input, ctx.tenant?.id)
@@ -1929,7 +1929,7 @@ export const appRouter = router({
         templateKey: z.string(),
         module: z.string().optional(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         if (tenantDb) {
           await db.deleteEmailTemplateFromDb(tenantDb, input.templateKey, input.module, ctx.tenant?.id);
@@ -1940,7 +1940,7 @@ export const appRouter = router({
       }),
 
     seedTemplates: adminProcedure
-      .mutation(async ({ ctx }) => {
+      .mutation(async ({ ctx }: { ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
         if (!tenantDb || !tenantId) {
@@ -1972,7 +1972,7 @@ export const appRouter = router({
         subject: z.string(),
         content: z.string(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
@@ -2112,7 +2112,7 @@ export const appRouter = router({
 
   // Users router (admin only)
   users: router({
-    list: adminProcedure.query(async ({ ctx }) => {
+    list: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       return tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
@@ -2120,7 +2120,7 @@ export const appRouter = router({
 
     create: adminProcedure
       .input(createUserSchema)
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const existingUser = tenantDb
           ? await db.getUserByEmailFromDb(tenantDb, input.email)
@@ -2166,7 +2166,7 @@ export const appRouter = router({
 
     update: adminProcedure
       .input(updateUserSchema)
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const user = tenantDb
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
@@ -2240,7 +2240,7 @@ export const appRouter = router({
         userId: z.number(),
         role: z.enum(['operator', 'admin', 'despachante']),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const user = tenantDb
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
@@ -2287,7 +2287,7 @@ export const appRouter = router({
         userId: z.number(),
         role: z.enum(['operator', 'admin', 'despachante']),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const user = tenantDb
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
@@ -2319,7 +2319,7 @@ export const appRouter = router({
       .input(z.object({
         userId: z.number(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         // Impedir exclusão do próprio usuário
         if (input.userId === ctx.user.id) {
@@ -2367,7 +2367,7 @@ export const appRouter = router({
       }),
 
     // Listar operadores com estatísticas de clientes
-    listOperatorsWithStats: adminProcedure.query(async ({ ctx }) => {
+    listOperatorsWithStats: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       const allUsers = tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
@@ -2387,7 +2387,7 @@ export const appRouter = router({
     }),
 
     // Listar clientes disponíveis para atribuição
-    listClientsForAssignment: adminProcedure.query(async ({ ctx }) => {
+    listClientsForAssignment: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
@@ -2405,7 +2405,7 @@ export const appRouter = router({
         clientId: z.number(),
         operatorId: z.number(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
@@ -2431,43 +2431,19 @@ export const appRouter = router({
       }),
   }),
 
-  // ===========================================
-  // TENANTS (Super Admin - Multi-Tenant)
-  // ===========================================
+  // Platform Admin / Tenants Management
   tenants: router({
-    // Limpar dados de mocks (tenants/users/clients @example.com)
-    clearMocks: platformAdminProcedure.mutation(async ({ ctx }) => {
-      try {
-        const result = await db.clearMockTenants();
-        invalidateTenantCache();
-
-        return { success: true, ...result };
-      } catch (error: any) {
-        console.error("[ERROR] Clear mock tenants failed", {
-          actorId: ctx.platformAdmin.id,
-          error: error?.message || String(error),
-        });
-
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: error?.message || "Falha ao limpar dados de tenants mock",
-        });
-      }
-    }),
-
     // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
-    seedMocks: platformAdminProcedure.mutation(async ({ ctx }) => {
+    seedMocks: platformAdminProcedure.mutation(async ({ ctx }: { ctx: TrpcContext }) => {
       try {
         const result = await db.seedMockTenants();
         invalidateTenantCache();
-
         return { success: true, ...result };
       } catch (error: any) {
         console.error("[ERROR] Seed mock tenants failed", {
           actorId: ctx.platformAdmin.id,
           error: error?.message || String(error),
         });
-
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error?.message || "Falha ao executar seed de tenants mock",
@@ -2476,7 +2452,7 @@ export const appRouter = router({
     }),
 
     // Listar todos os tenants
-    list: platformAdminProcedure.query(async () => {
+    list: platformAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantsList = await db.getAllTenants();
       return tenantsList;
     }),
@@ -2484,7 +2460,7 @@ export const appRouter = router({
     // Buscar tenant por ID
     getById: platformAdminProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
@@ -2495,7 +2471,7 @@ export const appRouter = router({
     // Buscar tenant por slug
     getBySlug: publicProcedure
       .input(z.object({ slug: z.string() }))
-      .query(async ({ input }) => {
+      .query(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantBySlug(input.slug);
         return tenant;
       }),
@@ -2528,7 +2504,7 @@ export const appRouter = router({
         maxClients: z.number().default(500),
         maxStorageGB: z.number().default(50),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         // Verificar se slug já existe
         const existing = await db.getTenantBySlug(input.slug);
         if (existing) {
@@ -2542,7 +2518,7 @@ export const appRouter = router({
         }
 
         // No modo single-db, usar valores do DATABASE_URL
-        const isSingleDbMode = process.env.TENANT_DB_MODE === 'single';
+        const isSingleDbMode = process.env.TENANT_DB_MODE === 'single' || process.env.NODE_ENV === 'production';
         let dbConfig = {
           dbHost: input.dbHost || 'localhost',
           dbPort: input.dbPort,
@@ -2552,7 +2528,6 @@ export const appRouter = router({
         };
 
         if (isSingleDbMode) {
-          // Extrair config do DATABASE_URL
           const rawUrl = process.env.DATABASE_URL;
           if (rawUrl) {
             try {
@@ -2599,25 +2574,16 @@ export const appRouter = router({
 
         // Seed default email templates
         try {
-          // Invalidate cache to ensure we fetch the fresh tenant record
           invalidateTenantCache(input.slug);
-          
-          // Fetch config using helper that handles password decryption
           const tenantConfig = await getTenantConfig(input.slug);
-          
           if (tenantConfig) {
             const tenantDb = await getTenantDb(tenantConfig);
             if (tenantDb) {
               await seedTenantEmailTemplates(tenantDb, tenantId);
-            } else {
-              console.error(`[Tenant] Failed to connect to DB for seeding templates: ${input.slug}`);
             }
-          } else {
-            console.error(`[Tenant] Failed to load tenant config for seeding: ${input.slug}`);
           }
         } catch (seedError) {
           console.error(`[Tenant] Error seeding email templates for ${input.slug}:`, seedError);
-          // Não falhar a criação do tenant se o seed falhar, apenas logar erro
         }
 
         await db.logTenantActivity({
@@ -2656,24 +2622,14 @@ export const appRouter = router({
         maxStorageGB: z.number().optional(),
         isActive: z.boolean().optional(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const { id, ...updates } = input;
-        
         const tenant = await db.getTenantById(id);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         await db.updateTenant(id, updates);
         invalidateTenantCache(tenant.slug);
-
-        await db.logTenantActivity({
-          tenantId: id,
-          action: 'updated',
-          details: JSON.stringify(Object.keys(updates)),
-          performedBy: ctx.user.id,
-        });
-
         return { success: true };
       }),
 
@@ -2683,133 +2639,89 @@ export const appRouter = router({
         id: z.number(),
         status: z.enum(['active', 'suspended', 'trial', 'cancelled']),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         await db.updateTenant(input.id, { subscriptionStatus: input.status });
         invalidateTenantCache(tenant.slug);
-
         await db.logTenantActivity({
           tenantId: input.id,
           action: 'status_changed',
           details: JSON.stringify({ from: tenant.subscriptionStatus, to: input.status }),
           performedBy: ctx.platformAdmin.id,
         });
-
         return { success: true };
       }),
 
     // Deletar tenant (soft delete)
     delete: platformAdminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         await db.updateTenant(input.id, { isActive: false, subscriptionStatus: 'cancelled' });
         invalidateTenantCache(tenant.slug);
-
         await db.logTenantActivity({
           tenantId: input.id,
           action: 'deleted',
           details: JSON.stringify({ slug: tenant.slug }),
           performedBy: ctx.platformAdmin.id,
         });
-
         return { success: true };
       }),
 
     // Deletar tenant DEFINITIVAMENTE (hard delete)
     hardDelete: platformAdminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         await db.hardDeleteTenant(input.id);
         invalidateTenantCache(tenant.slug);
-
-        // Não conseguimos logar atividade no tenant pois ele foi deletado
-        // Mas podemos logar se tivermos um log global de plataforma (futuro)
-        
         return { success: true };
       }),
 
     // Estatísticas do tenant
     getStats: platformAdminProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         try {
           const platformDb = await db.getDb();
           if (!platformDb) {
-            return {
-              usersCount: 0,
-              clientsCount: 0,
-              storageUsedGB: 0,
-              lastActivity: null,
-              error: 'Banco de dados não disponível',
-            };
+            return { usersCount: 0, clientsCount: 0, storageUsedGB: 0, lastActivity: null, error: 'DB não disponível' };
           }
-
-          // Count users for this tenant
           const usersRes = await platformDb.execute(sql`SELECT count(*) as count FROM "users" WHERE "tenantId" = ${input.id}`);
           const usersCount = Number(usersRes[0]?.count || 0);
-
-          // Count clients for this tenant
           const clientsRes = await platformDb.execute(sql`SELECT count(*) as count FROM "clients" WHERE "tenantId" = ${input.id}`);
           const clientsCount = Number(clientsRes[0]?.count || 0);
-
-          // Get last activity log for this tenant
           const activityRes = await platformDb.execute(sql`SELECT "createdAt" FROM "auditLogs" WHERE "tenantId" = ${input.id} ORDER BY "createdAt" DESC LIMIT 1`);
           const lastActivity = activityRes[0]?.createdAt || null;
-
-          // Calculate storage usage (filesystem)
           const storageBytes = await getTenantStorageUsage(input.id);
           const storageUsedGB = Number((storageBytes / (1024 * 1024 * 1024)).toFixed(3));
-
-          // Calculate DB size
           let dbSizeMB = 0;
           try {
             const tenantDb = await getTenantDb(tenant);
             if (tenantDb) {
               const sizeBytes = await db.getDatabaseSize(tenantDb);
               dbSizeMB = Number((sizeBytes / (1024 * 1024)).toFixed(2));
-            } else {
-              console.warn(`[Stats] getTenantDb returned null for tenant ${tenant.id} (${tenant.slug})`);
             }
           } catch (dbErr: any) {
             console.error(`[Stats] Error getting DB size for tenant ${tenant.id}:`, dbErr?.message);
           }
-
-          return {
-            usersCount,
-            clientsCount,
-            storageUsedGB,
-            dbSizeMB,
-            lastActivity,
-          };
+          return { usersCount, clientsCount, storageUsedGB, dbSizeMB, lastActivity };
         } catch (error: any) {
           console.error(`Error fetching stats for tenant ${tenant.id}:`, error);
-          return {
-            usersCount: 0,
-            clientsCount: 0,
-            storageUsedGB: 0,
-            dbSizeMB: 0,
-            lastActivity: null,
-            error: error.message || 'Erro desconhecido',
-          };
+          return { usersCount: 0, clientsCount: 0, storageUsedGB: 0, dbSizeMB: 0, lastActivity: null, error: error.message || 'Erro desconhecido' };
         }
       }),
 
@@ -2820,22 +2732,15 @@ export const appRouter = router({
         if (!platformDb) {
           throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
         }
-
         try {
-          // Contagens globais
           const [tenantsRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "tenants"`);
           const [usersRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "users"`);
           const [clientsRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "clients"`);
-          
-          // Tamanho do banco da plataforma
           const platformDbSizeBytes = await db.getDatabaseSize(platformDb as any);
           const platformDbSizeMB = Number((platformDbSizeBytes / (1024 * 1024)).toFixed(2));
-
-          // Armazenamento Global de Arquivos
           const { getGlobalStorageUsage } = await import('./fileStorage');
           const globalStorageBytes = await getGlobalStorageUsage();
           const globalStorageGB = Number((globalStorageBytes / (1024 * 1024 * 1024)).toFixed(3));
-
           return {
             totalTenants: Number(tenantsRes?.count || 0),
             totalUsers: Number(usersRes?.count || 0),
@@ -2855,31 +2760,18 @@ export const appRouter = router({
     // Health check do tenant (verifica conexão com banco)
     healthCheck: adminProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input }: { input: any }) => {
         const startTime = Date.now();
         const tenant = await db.getTenantById(input.id);
-        
         if (!tenant) {
-          return {
-            status: 'error' as const,
-            message: 'Tenant não encontrado',
-            latencyMs: Date.now() - startTime,
-          };
+          return { status: 'error' as const, message: 'Tenant não encontrado', latencyMs: Date.now() - startTime };
         }
-
         try {
           const tenantDb = await getTenantDb(tenant);
           if (!tenantDb) {
-            return {
-              status: 'error' as const,
-              message: 'Não foi possível conectar ao banco do tenant',
-              latencyMs: Date.now() - startTime,
-            };
+            return { status: 'error' as const, message: 'Não foi possível conectar ao banco do tenant', latencyMs: Date.now() - startTime };
           }
-
-          // Testar query simples
           await tenantDb.execute(sql`SELECT 1`);
-          
           return {
             status: 'healthy' as const,
             message: 'Conexão OK',
@@ -2892,11 +2784,7 @@ export const appRouter = router({
             },
           };
         } catch (error: any) {
-          return {
-            status: 'error' as const,
-            message: error?.message || 'Erro desconhecido',
-            latencyMs: Date.now() - startTime,
-          };
+          return { status: 'error' as const, message: error?.message || 'Erro desconhecido', latencyMs: Date.now() - startTime };
         }
       }),
 
@@ -2907,29 +2795,23 @@ export const appRouter = router({
         confirmPassword: z.string()
       }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
-        // Validar senha do platformAdmin
         const passwordMatch = await comparePassword(input.confirmPassword, ctx.platformAdmin.hashedPassword);
         if (!passwordMatch) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Senha incorreta' });
         }
-
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         const tenantAdmin = await db.getTenantAdmin(input.tenantId);
         if (!tenantAdmin) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Admin do tenant não encontrado' });
         }
-
-        // Criar sessão temporária (1 hora)
         const impersonationToken = await sdk.createSessionToken(tenantAdmin.id.toString(), {
           name: tenantAdmin.name || "",
           tenantSlug: tenant.slug,
-          expiresInMs: 60 * 60 * 1000, // 1 hora
+          expiresInMs: 60 * 60 * 1000,
         });
-
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, impersonationToken, { 
           ...cookieOptions, 
@@ -2938,30 +2820,22 @@ export const appRouter = router({
           httpOnly: true,
           sameSite: "lax",
         });
-
-        // Setar flag de impersonation para o frontend
         ctx.res.cookie('is_impersonating', 'true', {
           maxAge: 60 * 60 * 1000,
           path: "/",
           sameSite: "lax",
         });
-
-        return {
-          success: true,
-          tenantSlug: tenant.slug,
-        };
+        return { success: true, tenantSlug: tenant.slug };
       }),
 
     // ===========================================
     // EMAIL CONFIGURATION (Super Admin)
     // ===========================================
     
-    // Obter configurações de email de um tenant
     getEmailConfig: platformAdminProcedure
       .input(z.object({ tenantId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input }: { input: any }) => {
         const settings = await db.getTenantSmtpSettings(input.tenantId);
-        
         if (!settings) {
           return {
             emailMethod: "gateway" as const,
@@ -2975,7 +2849,6 @@ export const appRouter = router({
             emailLogoUrl: null,
           };
         }
-        
         return {
           emailMethod: settings.emailMethod || "gateway",
           smtpHost: settings.smtpHost || "",
@@ -2989,7 +2862,6 @@ export const appRouter = router({
         };
       }),
 
-    // Atualizar configurações de email de um tenant
     updateEmailConfig: platformAdminProcedure
       .input(z.object({
         tenantId: z.number(),
@@ -3003,31 +2875,19 @@ export const appRouter = router({
         postmanGpxApiKey: z.string().optional(),
         emailLogoUrl: z.string().optional(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const { tenantId, ...config } = input;
-        
-        // Validações
         if (config.emailMethod === "smtp") {
           if (!config.smtpHost || !config.smtpUser) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "SMTP requer host e usuário",
-            });
+            throw new TRPCError({ code: "BAD_REQUEST", message: "SMTP requer host e usuário" });
           }
-          
-          // Se senha não foi fornecida, manter a existente
           const existing = await db.getTenantSmtpSettings(tenantId);
           const smtpPassword = config.smtpPassword !== undefined && config.smtpPassword !== ""
             ? config.smtpPassword
             : existing?.smtpPassword || "";
-          
           if (!smtpPassword) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Informe a senha SMTP",
-            });
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Informe a senha SMTP" });
           }
-          
           await db.updateTenantSmtpSettings(tenantId, {
             emailMethod: "smtp",
             smtpHost: config.smtpHost,
@@ -3038,24 +2898,15 @@ export const appRouter = router({
           });
         } else if (config.emailMethod === "gateway") {
           if (!config.postmanGpxBaseUrl) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Gateway requer URL base",
-            });
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Gateway requer URL base" });
           }
-          
           const existing = await db.getTenantSmtpSettings(tenantId);
           const postmanGpxApiKey = config.postmanGpxApiKey !== undefined && config.postmanGpxApiKey !== ""
             ? config.postmanGpxApiKey
             : (existing as any)?.postmanGpxApiKey || "";
-          
           if (!postmanGpxApiKey) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Informe a API Key do gateway",
-            });
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Informe a API Key do gateway" });
           }
-          
           await db.updateTenantSmtpSettings(tenantId, {
             emailMethod: "gateway",
             smtpFrom: config.smtpFrom,
@@ -3063,26 +2914,20 @@ export const appRouter = router({
             postmanGpxApiKey,
           });
         }
-        
         return { success: true };
       }),
 
-    // Testar configuração de email de um tenant
     testEmailConfig: platformAdminProcedure
       .input(z.object({
         tenantId: z.number(),
         testEmail: z.string().email(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const settings = await db.getTenantSmtpSettings(input.tenantId);
-        
         if (!settings) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Configuração não encontrada' });
         }
-        
         const tenant = await db.getTenantById(input.tenantId);
-        
-        // Enviar email de teste
         const result = await sendTestEmailWithSettings({
           host: settings.smtpHost || "",
           port: settings.smtpPort || 587,
@@ -3097,86 +2942,58 @@ export const appRouter = router({
           postmanGpxBaseUrl: (settings as any).postmanGpxBaseUrl,
           postmanGpxApiKey: (settings as any).postmanGpxApiKey,
         });
-        
         return result;
       }),
 
-    // Obter templates de email de um tenant
     getEmailTemplates: platformAdminProcedure
       .input(z.object({ 
         tenantId: z.number(),
         module: z.string().optional(),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input }: { input: any }) => {
         try {
           const tenant = await db.getTenantById(input.tenantId);
           if (!tenant) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
           }
-
-          // Tentar getTenantDb; se falhar, usar getDb() direto (mesmo padrão do getTenantDbOrNull para Railway)
           let tenantDb: any = null;
           const tenantConfig = await getTenantConfig(tenant.slug);
-          if (tenantConfig) {
-            tenantDb = await getTenantDb(tenantConfig);
-          }
-          if (!tenantDb) {
-            console.warn(`[tenants.getEmailTemplates] getTenantDb falhou, usando getDb() como fallback`);
-            tenantDb = await db.getDb();
-          }
-          if (!tenantDb) {
-            console.warn(`[tenants.getEmailTemplates] DB indisponível para tenant ${input.tenantId}`);
-            return [];
-          }
-
+          if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
+          if (!tenantDb) tenantDb = await db.getDb();
+          if (!tenantDb) return [];
           return await db.getAllEmailTemplatesFromDb(tenantDb, input.module, input.tenantId);
         } catch (error: any) {
-          console.error(`[tenants.getEmailTemplates] Error for tenant ${input.tenantId}:`, error?.message);
-          if (error instanceof TRPCError) throw error;
+          console.error(`[tenants.getEmailTemplates] Error:`, error?.message);
           return [];
         }
       }),
 
-    // Obter triggers de email de um tenant
     getEmailTriggers: platformAdminProcedure
       .input(z.object({ tenantId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input }: { input: any }) => {
         try {
           const tenant = await db.getTenantById(input.tenantId);
           if (!tenant) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
           }
-
           let tenantDb: any = null;
           const tenantConfig = await getTenantConfig(tenant.slug);
-          if (tenantConfig) {
-            tenantDb = await getTenantDb(tenantConfig);
-          }
-          if (!tenantDb) {
-            console.warn(`[tenants.getEmailTriggers] getTenantDb falhou, usando getDb() como fallback`);
-            tenantDb = await db.getDb();
-          }
-          if (!tenantDb) {
-            console.warn(`[tenants.getEmailTriggers] DB indisponível para tenant ${input.tenantId}`);
-            return [];
-          }
-
+          if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
+          if (!tenantDb) tenantDb = await db.getDb();
+          if (!tenantDb) return [];
           const triggers = await db.getEmailTriggersFromDb(tenantDb, input.tenantId);
-
           return await Promise.all(
-            triggers.map(async (trigger) => {
+            triggers.map(async (trigger: any) => {
               const templates = await db.getTemplatesByTriggerIdFromDb(tenantDb, trigger.id);
               return { ...trigger, templates };
             })
           );
         } catch (error: any) {
-          console.error(`[tenants.getEmailTriggers] Error for tenant ${input.tenantId}:`, error?.message);
-          if (error instanceof TRPCError) throw error;
+          console.error(`[tenants.getEmailTriggers] Error:`, error?.message);
           return [];
         }
       }),
 
-    // Save/update a single email template for a tenant (Super Admin)
     saveEmailTemplate: platformAdminProcedure
       .input(z.object({
         tenantId: z.number(),
@@ -3186,24 +3003,16 @@ export const appRouter = router({
         subject: z.string(),
         content: z.string(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
-        if (tenantConfig) {
-          tenantDb = await getTenantDb(tenantConfig);
-        }
-        if (!tenantDb) {
-          tenantDb = await db.getDb();
-        }
-        if (!tenantDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
-        }
-
+        if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
+        if (!tenantDb) tenantDb = await db.getDb();
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         const templateId = await db.saveEmailTemplateToDb(tenantDb, {
           templateKey: input.templateKey,
           module: input.module,
@@ -3211,37 +3020,24 @@ export const appRouter = router({
           subject: input.subject,
           content: input.content,
         }, input.tenantId);
-
         return { success: true, templateId };
       }),
 
-    // Seed email templates for an existing tenant
     seedEmailTemplates: platformAdminProcedure
       .input(z.object({ tenantId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
-        if (tenantConfig) {
-          tenantDb = await getTenantDb(tenantConfig);
-        }
-        if (!tenantDb) {
-          console.warn(`[tenants.seedEmailTemplates] getTenantDb falhou, usando getDb() como fallback`);
-          tenantDb = await db.getDb();
-        }
-        if (!tenantDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
-        }
-        
-        const result = await seedTenantEmailTemplates(tenantDb, input.tenantId);
-        return result;
+        if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
+        if (!tenantDb) tenantDb = await db.getDb();
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        return await seedTenantEmailTemplates(tenantDb, input.tenantId);
       }),
 
-    // Create a new email trigger for a tenant (Super Admin)
     createEmailTrigger: platformAdminProcedure
       .input(z.object({
         tenantId: z.number(),
@@ -3252,20 +3048,16 @@ export const appRouter = router({
         sendImmediate: z.boolean().default(true),
         sendBeforeHours: z.number().nullable().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
-        }
-
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         const { tenantId: _tid, ...triggerData } = input;
         const trigger = await db.createEmailTriggerToDb(tenantDb, {
           ...triggerData,
@@ -3274,7 +3066,6 @@ export const appRouter = router({
         return trigger;
       }),
 
-    // Update an email trigger for a tenant (Super Admin)
     updateEmailTrigger: platformAdminProcedure
       .input(z.object({
         tenantId: z.number(),
@@ -3286,24 +3077,16 @@ export const appRouter = router({
         sendImmediate: z.boolean().optional(),
         sendBeforeHours: z.number().nullable().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
-        if (tenantConfig) {
-          tenantDb = await getTenantDb(tenantConfig);
-        }
-        if (!tenantDb) {
-          tenantDb = await db.getDb();
-        }
-        if (!tenantDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
-        }
-
+        if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
+        if (!tenantDb) tenantDb = await db.getDb();
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         const { tenantId: _tid, triggerId, ...updateFields } = input;
         const updateData: any = {};
         if (updateFields.name !== undefined) updateData.name = updateFields.name;
@@ -3312,78 +3095,61 @@ export const appRouter = router({
         if (updateFields.recipientType !== undefined) updateData.recipientType = updateFields.recipientType;
         if (updateFields.sendImmediate !== undefined) updateData.sendImmediate = updateFields.sendImmediate;
         if (updateFields.sendBeforeHours !== undefined) updateData.sendBeforeHours = updateFields.sendBeforeHours;
-
         await db.updateEmailTriggerToDb(tenantDb, triggerId, updateData);
         return { success: true };
       }),
 
-    // Delete an email trigger for a tenant (Super Admin)
     deleteEmailTrigger: platformAdminProcedure
       .input(z.object({
         tenantId: z.number(),
         triggerId: z.number(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
-        }
-
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         await db.deleteEmailTriggerFromDb(tenantDb, input.triggerId);
         return { success: true };
       }),
 
-    // Get templates linked to a specific trigger (Super Admin)
     getTriggerTemplates: platformAdminProcedure
       .input(z.object({ tenantId: z.number(), triggerId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) return [];
-
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
         if (!tenantDb) return [];
-
         return await db.getTemplatesByTriggerIdFromDb(tenantDb, input.triggerId);
       }),
 
-    // Update templates linked to a trigger (Super Admin)
     updateTriggerTemplates: platformAdminProcedure
       .input(z.object({
         tenantId: z.number(),
         triggerId: z.number(),
         templateIds: z.array(z.number()),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
-
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
-        }
-
-        // Remove all existing associations
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         const { emailTriggerTemplates } = await import('../drizzle/schema');
         const { eq } = await import('drizzle-orm');
         await tenantDb.delete(emailTriggerTemplates).where(eq(emailTriggerTemplates.triggerId, input.triggerId));
-
-        // Insert new associations
         for (let i = 0; i < input.templateIds.length; i++) {
           await db.addTemplateToTriggerToDb(tenantDb, {
             triggerId: input.triggerId,
@@ -3392,7 +3158,6 @@ export const appRouter = router({
             isForReminder: false,
           });
         }
-
         return { success: true };
       }),
   }),
@@ -3411,7 +3176,7 @@ export const appRouter = router({
         limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
       }))
-      .query(async ({ input, ctx }) => {
+      .query(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         try {
           const tenantDb = await getTenantDbOrNull(ctx);
           const tenantId = ctx.tenant?.id || ctx.user?.tenantId;
@@ -3509,7 +3274,7 @@ export const appRouter = router({
         action: z.enum(['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'DOWNLOAD', 'UPLOAD', 'EXPORT']).optional(),
         entity: z.enum(['CLIENT', 'DOCUMENT', 'USER', 'WORKFLOW', 'SETTINGS', 'AUTH']).optional(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id || ctx.user?.tenantId;
           if (!tenantId) {
@@ -3584,7 +3349,7 @@ export const appRouter = router({
 
   // Email Triggers Router - Automação de emails
   emailTriggers: router({
-    list: adminProcedure.query(async ({ ctx }) => {
+    list: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       try {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
@@ -3594,7 +3359,7 @@ export const appRouter = router({
         
         // Load templates for each trigger
         const triggersWithTemplates = await Promise.all(
-          triggers.map(async (trigger) => {
+          triggers.map(async (trigger: any) => {
             const templates = tenantDb
               ? await db.getTemplatesByTriggerIdFromDb(tenantDb, trigger.id)
               : await db.getTemplatesByTriggerId(trigger.id);
@@ -3612,7 +3377,7 @@ export const appRouter = router({
 
     getById: adminProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ ctx, input }) => {
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const trigger = tenantDb
           ? await db.getEmailTriggerByIdFromDb(tenantDb, input.id)
@@ -3644,7 +3409,7 @@ export const appRouter = router({
           isForReminder: z.boolean().default(false),
         })).optional(),
       }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
         
@@ -3692,7 +3457,7 @@ export const appRouter = router({
         sendBeforeHours: z.number().nullable().optional(),
         isActive: z.boolean().optional(),
       }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const { id, ...data } = input;
         
@@ -3710,7 +3475,7 @@ export const appRouter = router({
 
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         tenantDb
           ? await db.deleteEmailTriggerFromDb(tenantDb, input.id)
@@ -3726,7 +3491,7 @@ export const appRouter = router({
         sendOrder: z.number().default(1),
         isForReminder: z.boolean().default(false),
       }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const result = tenantDb
           ? await db.addTemplateToTriggerToDb(tenantDb, input)
@@ -3736,7 +3501,7 @@ export const appRouter = router({
 
     removeTemplate: adminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         tenantDb
           ? await db.removeTemplateFromTriggerToDb(tenantDb, input.id)
@@ -3775,7 +3540,7 @@ export const appRouter = router({
     // Scheduled emails management
     getScheduledByClient: adminProcedure
       .input(z.object({ clientId: z.number() }))
-      .query(async ({ ctx, input }) => {
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         return tenantDb
           ? await db.getScheduledEmailsByClientFromDb(tenantDb, input.clientId)
@@ -3784,7 +3549,7 @@ export const appRouter = router({
 
     cancelScheduledByClient: adminProcedure
       .input(z.object({ clientId: z.number() }))
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         tenantDb
           ? await db.cancelScheduledEmailsByClientToDb(tenantDb, input.clientId)
