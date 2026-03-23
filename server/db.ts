@@ -1351,19 +1351,21 @@ export async function deleteEmailTemplate(templateKey: string, module?: string) 
 }
 
 export async function deleteEmailTemplateFromDb(
-  tenantDb: ReturnType<typeof drizzle>, 
-  templateKey: string, 
+  tenantDb: ReturnType<typeof drizzle>,
+  templateKey: string,
   module?: string,
   tenantId?: number
 ) {
   const moduleValue = module || 'workflow-cr';
+  const { isNull, or } = await import('drizzle-orm');
 
-  let conditions = [
+  let conditions: any[] = [
     eq(emailTemplates.templateKey, templateKey),
     eq(emailTemplates.module, moduleValue)
   ];
   if (tenantId) {
-    conditions.push(eq(emailTemplates.tenantId, tenantId));
+    // Usar mesma condição do select: deleta tanto templates do tenant quanto globais (tenantId IS NULL)
+    conditions.push(or(eq(emailTemplates.tenantId, tenantId), isNull(emailTemplates.tenantId))!);
   }
 
   await tenantDb.delete(emailTemplates)
