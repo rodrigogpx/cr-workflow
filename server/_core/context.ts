@@ -44,17 +44,6 @@ export async function createContext(
     user = null;
   }
 
-  // Fallback de desenvolvimento: se não houver sessão válida, usar o admin
-  if (!user && !ENV.isProduction) {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (adminEmail) {
-      const admin = await db.getUserByEmail(adminEmail);
-      if (admin) {
-        user = admin as User;
-      }
-    }
-  }
-
   // ==========================
   // Resolver tenant (URI primeiro, hostname como fallback)
   // ==========================
@@ -68,11 +57,20 @@ export async function createContext(
     tenantSlug = sessionTenantSlug;
   }
 
-  // 1) Tentar obter o slug a partir do header enviado pelo frontend
+  // 1) Tentar obter o slug a partir do header enviado pelo frontend.
+  // SEGURANÇA: só aceita o header se o usuário autenticado NÃO possui um tenant na sessão.
+  // Isso impede que um usuário logado em um tenant consiga trocar de tenant via header.
   if (!tenantSlug) {
     const headerSlug = opts.req.headers["x-tenant-slug"];
     if (typeof headerSlug === "string" && headerSlug.trim() !== "") {
-      tenantSlug = headerSlug.trim();
+      // Se há um usuário autenticado com tenantId, o header deve corresponder ao seu tenant.
+      // Só permite o header para usuários sem tenant (platform admins) ou sem sessão ativa.
+      const userTenantId = (user as any)?.tenantId;
+      if (!userTenantId) {
+        tenantSlug = headerSlug.trim();
+      }
+      // Se há usuário com tenant mas o header não foi usado, tenantSlug ficará null
+      // e será resolvido pelo hostname abaixo (fallback seguro).
     }
   }
 

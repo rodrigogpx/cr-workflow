@@ -108,7 +108,7 @@ COPY --from=backend-builder /app/dist ./dist
 
 # Copiar configurações necessárias
 COPY drizzle ./drizzle
-COPY drizzle.config.ts ./drizzle.config.ts
+# drizzle.config.ts é ferramenta de dev — não incluir na imagem de produção
 COPY email-templates ./email-templates
 
 # Criar diretório para logs
@@ -122,6 +122,8 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/health', (r) => { if (r.statusCode !== 200) throw new Error(r.statusCode) })" || exit 1
 
 # Comando de inicialização
+# IMPORTANTE: migrações de banco (db:push) NÃO devem rodar automaticamente no startup de produção.
+# Execute manualmente antes de cada deploy: docker exec <container> pnpm db:push
 # O comando de inicialização é gerenciado pelo railway.json/toml em produção.
 # Este CMD serve como fallback para execução local via Docker.
-CMD ["sh", "-c", "echo '[Startup] Running database migrations (drizzle-kit push)...' && pnpm db:push && echo '[Startup] Starting server...' && pnpm start"]
+CMD ["sh", "-c", "echo '[Startup] Starting server...' && pnpm start"]

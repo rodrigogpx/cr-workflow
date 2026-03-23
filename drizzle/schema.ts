@@ -9,18 +9,24 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"), // null = platform user, populated = tenant user
   name: text("name"),
-  email: varchar("email", { length: 320 }).notNull().unique(),
+  // email sem unique global: a constraint é por (tenantId, email) definida abaixo.
+  // Isso permite que o mesmo email exista em tenants diferentes (ex: operador em dois clubes).
+  // Platform users (tenantId = null) ainda têm email único globalmente entre si pela lógica de negócio.
+  email: varchar("email", { length: 320 }).notNull(),
   hashedPassword: text("hashedPassword").notNull(),
   // role pode ser null para usuários pendentes
   role: varchar("role", { length: 20 }).$type<"operator" | "admin" | "despachante">(),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
   // Campos opcionais para compatibilidade com OAuth legado
   openId: varchar("openId", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 50 }),
   perfil: varchar("perfil", { length: 50 }),
-});
+}, (table: any) => [
+  // Unique por (tenantId, email): mesmo email pode existir em tenants distintos
+  unique("users_tenantId_email_unique").on(table.tenantId, table.email),
+]);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -80,8 +86,8 @@ export const clients = pgTable("clients", {
   acervoComplement: varchar("acervoComplement", { length: 255 }),
   acervoLatitude: varchar("acervoLatitude", { length: 50 }),
   acervoLongitude: varchar("acervoLongitude", { length: 50 }),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (table: any) => [
   unique("clients_tenantId_cpf_unique").on(table.tenantId, table.cpf),
 ]);
@@ -98,16 +104,16 @@ export const workflowSteps = pgTable("workflowSteps", {
   stepId: varchar("stepId", { length: 100 }).notNull(),
   stepTitle: varchar("stepTitle", { length: 255 }).notNull(),
   completed: boolean("completed").default(false).notNull(),
-  completedAt: timestamp("completedAt", { withTimezone: false }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
   // Campos para agendamento de laudo
-  scheduledDate: timestamp("scheduledDate", { withTimezone: false }),
+  scheduledDate: timestamp("scheduledDate", { withTimezone: true }),
   examinerName: varchar("examinerName", { length: 255 }),
   // Campos para Acompanhamento Sinarm-CAC
   sinarmStatus: varchar("sinarmStatus", { length: 50 }),
   sinarmOpenDate: timestamp("sinarmOpenDate"),
   protocolNumber: varchar("protocolNumber", { length: 100 }),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type WorkflowStep = typeof workflowSteps.$inferSelect;
@@ -123,9 +129,9 @@ export const subTasks = pgTable("subTasks", {
   subTaskId: varchar("subTaskId", { length: 100 }).notNull(),
   label: varchar("label", { length: 255 }).notNull(),
   completed: boolean("completed").default(false).notNull(),
-  completedAt: timestamp("completedAt", { withTimezone: false }),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type SubTask = typeof subTasks.$inferSelect;
@@ -146,7 +152,7 @@ export const documents = pgTable("documents", {
   mimeType: varchar("mimeType", { length: 100 }),
   fileSize: integer("fileSize"),
   uploadedBy: integer("uploadedBy").notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type Document = typeof documents.$inferSelect;
@@ -185,7 +191,7 @@ export const sinarmCommentsHistory = pgTable("sinarmCommentsHistory", {
   newStatus: varchar("newStatus", { length: 50 }).notNull(),
   comment: text("comment").notNull(),
   createdBy: integer("createdBy").notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type SinarmCommentHistory = typeof sinarmCommentsHistory.$inferSelect;
@@ -236,8 +242,8 @@ export const emailTemplates = pgTable("emailTemplates", {
   subject: varchar("subject", { length: 255 }).notNull(),
   content: text("content").notNull(), // HTML content from rich editor
   attachments: text("attachments"), // JSON array of attachment file keys [{fileName, fileKey, fileUrl}]
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
@@ -253,7 +259,7 @@ export const emailLogs = pgTable("emailLogs", {
   recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
   subject: varchar("subject", { length: 255 }).notNull(),
   content: text("content").notNull(),
-  sentAt: timestamp("sentAt", { withTimezone: false }).defaultNow().notNull(),
+  sentAt: timestamp("sentAt", { withTimezone: true }).defaultNow().notNull(),
   sentBy: integer("sentBy").notNull(),
 });
 
@@ -287,8 +293,8 @@ export const emailTriggers = pgTable("emailTriggers", {
   sendBeforeHours: integer("sendBeforeHours"), // Horas antes do evento (ex: 24)
   // Status
   isActive: boolean("isActive").default(true).notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type EmailTrigger = typeof emailTriggers.$inferSelect;
@@ -332,12 +338,12 @@ export const emailScheduled = pgTable("emailScheduled", {
   recipientName: varchar("recipientName", { length: 255 }),
   subject: varchar("subject", { length: 255 }).notNull(),
   content: text("content").notNull(),
-  scheduledFor: timestamp("scheduledFor", { withTimezone: false }).notNull(),
-  referenceDate: timestamp("referenceDate", { withTimezone: false }),
+  scheduledFor: timestamp("scheduledFor", { withTimezone: true }).notNull(),
+  referenceDate: timestamp("referenceDate", { withTimezone: true }),
   status: varchar("status", { length: 20 }).default('pending').notNull(), // 'pending', 'sent', 'cancelled', 'failed'
-  sentAt: timestamp("sentAt", { withTimezone: false }),
+  sentAt: timestamp("sentAt", { withTimezone: true }),
   errorMessage: text("errorMessage"),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type EmailScheduled = typeof emailScheduled.$inferSelect;
@@ -406,11 +412,11 @@ export const tenants = pgTable("tenants", {
   // Subscription
   plan: varchar("plan", { length: 20 }).default("starter").$type<"starter" | "professional" | "enterprise">(),
   subscriptionStatus: varchar("subscriptionStatus", { length: 20 }).default("trial").$type<"active" | "suspended" | "trial" | "cancelled">(),
-  subscriptionExpiresAt: timestamp("subscriptionExpiresAt", { withTimezone: false }),
+  subscriptionExpiresAt: timestamp("subscriptionExpiresAt", { withTimezone: true }),
   // Metadata
   isActive: boolean("isActive").default(true).notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type Tenant = typeof tenants.$inferSelect;
@@ -423,8 +429,8 @@ export const platformSettings = pgTable("platformSettings", {
   id: serial("id").primaryKey(),
   key: varchar("key", { length: 120 }).notNull().unique(),
   value: text("value").notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type PlatformSetting = typeof platformSettings.$inferSelect;
@@ -440,9 +446,9 @@ export const platformAdmins = pgTable("platformAdmins", {
   name: varchar("name", { length: 255 }),
   role: varchar("role", { length: 20 }).default("admin").$type<"superadmin" | "admin" | "support">(),
   isActive: boolean("isActive").default(true).notNull(),
-  lastSignedIn: timestamp("lastSignedIn", { withTimezone: false }),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type PlatformAdmin = typeof platformAdmins.$inferSelect;
@@ -458,7 +464,7 @@ export const platformAdminAuditLogs = pgTable("platformAdminAuditLogs", {
   targetTenantId: integer("targetTenantId"),
   details: text("details"), // JSON with action details
   ipAddress: varchar("ipAddress", { length: 45 }), // IPv4 or IPv6
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type PlatformAdminAuditLog = typeof platformAdminAuditLogs.$inferSelect;
@@ -473,7 +479,7 @@ export const tenantActivityLogs = pgTable("tenantActivityLogs", {
   action: varchar("action", { length: 100 }).notNull(), // created, updated, suspended, backup, etc.
   details: text("details"), // JSON with action details
   performedBy: integer("performedBy"), // platformAdminId
-  performedAt: timestamp("performedAt", { withTimezone: false }).defaultNow().notNull(),
+  performedAt: timestamp("performedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type TenantActivityLog = typeof tenantActivityLogs.$inferSelect;
@@ -491,7 +497,7 @@ export const auditLogs = pgTable("auditLogs", {
   entityId: integer("entityId"), // ID of the affected entity
   details: text("details"), // JSON string or text description
   ipAddress: varchar("ipAddress", { length: 45 }), // IPv4 or IPv6
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type AuditLog = typeof auditLogs.$inferSelect;
@@ -526,8 +532,8 @@ export const iatInstructors = pgTable("iat_instructors", {
   pfAccreditationNumber: varchar("pf_accreditation_number", { length: 100 }),
   signatureImage: text("signature_image"), // URL to uploaded signature
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type IatInstructor = typeof iatInstructors.$inferSelect;
@@ -553,10 +559,10 @@ export const iatCourses = pgTable("iat_courses", {
   workloadHours: integer("workload_hours").default(0),
   courseType: varchar("course_type", { length: 100 }).notNull(), // Tiro Básico, Especialização, etc
   institutionName: varchar("institution_name", { length: 255 }), // Nome da instituição
-  completionDate: timestamp("completion_date", { withTimezone: false }), // Data de conclusão
+  completionDate: timestamp("completion_date", { withTimezone: true }), // Data de conclusão
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type IatCourse = typeof iatCourses.$inferSelect;
@@ -578,14 +584,14 @@ export const iatSchedules = pgTable("iat_schedules", {
   courseId: integer("courseId"),
   examId: integer("examId"),
   instructorId: integer("instructorId"),
-  scheduledDate: timestamp("scheduledDate", { withTimezone: false }).notNull(),
+  scheduledDate: timestamp("scheduledDate", { withTimezone: true }).notNull(),
   scheduledTime: varchar("scheduledTime", { length: 10 }),
   location: varchar("location", { length: 255 }),
   title: varchar("title", { length: 255 }).notNull(),
   notes: text("notes"),
   status: varchar("status", { length: 50 }).default('agendado').notNull(), // agendado, realizado, cancelado
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type IatSchedule = typeof iatSchedules.$inferSelect;
@@ -615,15 +621,15 @@ export const iatExams = pgTable("iat_exams", {
   clientId: integer("clientId").notNull(),
   instructorId: integer("instructorId").notNull(),
   courseId: integer("courseId"),
-  scheduledDate: timestamp("scheduled_date", { withTimezone: false }),
+  scheduledDate: timestamp("scheduled_date", { withTimezone: true }),
   examType: varchar("exam_type", { length: 100 }).notNull(), // Laudo PF, Laudo Exército, Curso de Tiro
   status: varchar("status", { length: 50 }).default('agendado').notNull(), // agendado, realizado, aprovado, reprovado, cancelado
   weaponType: varchar("weapon_type", { length: 100 }), // Espécie de arma avaliada
   score: varchar("score", { length: 50 }),
   observations: text("observations"),
   laudoPdfUrl: text("laudo_pdf_url"),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type IatExam = typeof iatExams.$inferSelect;
@@ -656,14 +662,14 @@ export const iatCourseClasses = pgTable("iat_course_classes", {
   instructorId: integer("instructorId"),
   classNumber: varchar("classNumber", { length: 50 }), // Ex: "01/2026"
   title: varchar("title", { length: 255 }),
-  scheduledDate: timestamp("scheduledDate", { withTimezone: false }),
+  scheduledDate: timestamp("scheduledDate", { withTimezone: true }),
   scheduledTime: varchar("scheduledTime", { length: 10 }),
   location: varchar("location", { length: 255 }),
   maxStudents: integer("maxStudents"),
   status: varchar("status", { length: 30 }).default('agendada').notNull(), // agendada, em_andamento, concluida, cancelada
   notes: text("notes"),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type IatCourseClass = typeof iatCourseClasses.$inferSelect;
@@ -692,12 +698,12 @@ export const iatClassEnrollments = pgTable("iat_class_enrollments", {
   classId: integer("classId").notNull(),
   clientId: integer("clientId").notNull(),
   status: varchar("status", { length: 30 }).default('inscrito').notNull(), // inscrito, confirmado, concluido, cancelado
-  enrolledAt: timestamp("enrolledAt", { withTimezone: false }).defaultNow().notNull(),
-  completedAt: timestamp("completedAt", { withTimezone: false }),
+  enrolledAt: timestamp("enrolledAt", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
   certificateUrl: text("certificateUrl"),
-  certificateIssuedAt: timestamp("certificateIssuedAt", { withTimezone: false }),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+  certificateIssuedAt: timestamp("certificateIssuedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type IatClassEnrollment = typeof iatClassEnrollments.$inferSelect;
