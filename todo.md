@@ -1,713 +1,213 @@
-# CAC 360 Workflow - TODO
+# CAC 360 — Estado Real do Projeto
+> Última atualização: 17/03/2026 — verificado por leitura direta de cada arquivo de código (3 rodadas de análise)
 
-## Funcionalidades Principais
+---
 
-- [x] Layout principal com header e footer
-- [x] Página inicial com workflow completo
-- [x] Sistema de cards expansíveis para cada etapa do processo
-- [x] Card: Processo de Venda
-- [x] Card: Cadastro
-- [x] Card: Boas Vindas (com subtarefas)
-- [x] Card: Agendamento Psicotécnico (com subtarefas)
-- [x] Card: Juntada de Documento (com subtarefas)
-- [x] Card: Laudo Arma de Fogo
-- [x] Card: Despachante
-- [x] Card: Fim
-- [x] Sistema de checklist interativo para cada card
-- [x] Indicadores visuais de progresso
-- [x] Persistência de dados no localStorage
-- [x] Design responsivo
-- [x] Identidade visual CAC 360 (vermelho, preto, branco)
+## 🏗️ Infraestrutura e Arquitetura
+
+- [x] Stack fullstack: React 19 + TypeScript + Vite + TailwindCSS 4 + shadcn/ui
+- [x] Backend: Express + tRPC + Drizzle ORM
+- [x] Banco de dados: PostgreSQL (produção) / SQLite (dev) / MySQL (suporte)
+- [x] Multi-tenancy com isolamento real por tenantId no banco
+- [x] Feature flags por tenant (featureWorkflowCR, featureIAT, featureApostilamento, etc.)
+- [x] Docker: Dockerfile + docker-compose (dev, prod, nginx, swarm, traefik, multi-tenant)
+- [x] Deploy Railway: railway.json + railway.toml configurados
+- [x] Deploy GCP documentado (GCP-DOCKER-DEPLOY.md)
+- [x] Prettier configurado
+- [x] Vitest configurado (118 testes passando)
 
 
-## Novas Funcionalidades - Sistema de Login e Gestão de Clientes
+---
 
-- [x] Sistema de autenticação (login/logout)
-- [x] Contexto de autenticação global
-- [x] Página de login
-- [x] Dashboard de clientes
-- [x] Lista de clientes com busca e filtros
-- [x] Adicionar novo cliente
-- [ ] Editar informações do cliente (próxima versão)
-- [ ] Excluir cliente (próxima versão)
-- [x] Workflow individual por cliente
-- [x] Navegação entre clientes
-- [x] Persistência de dados de múltiplos clientes
+## 🔐 Autenticação e Controle de Acesso
+
+- [x] Login com email/senha (bcrypt)
+- [x] OAuth (login legado)
+- [x] Sessão via JWT/cookie (1 ano de expiração)
+- [x] Sistema de aprovação: novos usuários ficam com role NULL até admin aprovar
+- [x] Página "Aguardando Aprovação" para usuários pendentes
 - [x] Proteção de rotas (autenticação obrigatória)
+- [x] Perfis: operator, admin, despachante, platformAdmin
+- [x] Isolamento de acesso: operador vê apenas seus próprios clientes
+- [x] Admin vê e edita todos os cadastros
+- [x] Audit log: LOGIN, CREATE, UPDATE rastreados com timestamp
 
 
-## Sistema Multi-Usuário e Administração
+---
 
-- [x] Upgrade para web-db-user (backend + banco de dados)
-- [x] Schema do banco de dados (usuários, clientes, documentos)
-- [x] Sistema de autenticação real com OAuth
-- [x] Perfis de usuário (operador e administrador)
-- [x] Controle de acesso por perfil
-- [x] Operador vê apenas seus clientes
-- [x] Área administrativa completa
-- [x] Delegação de clientes entre operadores
-- [x] Administrador edita todos os cadastros
-- [ ] Upload de documentos por etapa
-- [ ] Armazenamento de arquivos no S3
-- [ ] Listagem de documentos por cliente
+## 👥 Gestão de Clientes
+
+- [x] Criar novo cliente
+- [x] Editar informações do cliente (formulário completo na etapa Cadastro)
+- [x] Excluir cliente com cascade (workflow + documentos)
+- [x] Listar clientes com busca
+- [x] Delegação de clientes entre operadores (admin)
+- [x] Mascaramento de CPF, telefone e email (toggle Eye/EyeOff)
+- [x] Filtro por operador no dashboard (todos / não atribuídos / operador específico)
+- [x] Agrupamento por fase do workflow (cadastro, agendamento, juntada, etc.)
+- [x] Filtragem por perfil: despachante vê apenas clientes com juntada-documento concluída
+- [ ] Importação em massa via CSV
+
+
+---
+
+## ⚙️ Workflow (Processo CR)
+
+- [x] 6 etapas implementadas no banco e na interface:
+  1. Central de Mensagens
+  2. Cadastro / On-Boarding
+  3. Encaminhamento Avaliação Psicológica
+  4. Agendamento de Laudo de Capacidade Técnica (com data, hora e examinador)
+  5. Juntada de Documentos (com 16 subtarefas/documentos)
+  6. Acompanhamento Sinarm-CAC (com status dropdown + número de protocolo)
+- [x] Separação visual em 3 fases (Cadastro | Documentação/Laudos | Juntada-Sinarm-CAC)
+- [x] Barra de progresso segmentada por fases
+- [x] Cards de clientes com percentual de conclusão correto
+- [x] Status Sinarm: Solicitado, Aguardando Baixa GRU, Em Análise, Correção Solicitada, Deferido, Indeferido
+- [x] Histórico de comentários no Sinarm (tabela sinarmCommentsHistory)
+- [ ] Visualização Kanban (arrastar clientes entre etapas)
+- [ ] Timeline visual de atividades por cliente
+- [ ] Alertas de prazos (documentos próximos do vencimento)
+
+
+---
+
+## 📄 Documentos e Enxoval
+
+- [x] Upload de documentos por etapa e por subtarefa
+- [x] Listagem de documentos por cliente
 - [x] Download individual de documentos
-- [ ] Download do enxoval completo (ZIP)
-- [x] Gerenciamento de usuários (alteração de perfil)
-
-
-## Implementação dos Routers tRPC
-
-- [x] Router de clientes (list, create, update, delete)
-- [x] Router de workflows (get, update steps, update subtasks)
-- [x] Router de documentos (upload, list, delete)
-- [x] Router de usuários (admin only - list, update role)
-- [x] Controle de acesso por perfil nos routers
-- [x] Endpoint de upload de arquivos
-- [x] Endpoint de download de enxoval completo
-
-
-## Upload de Documentos e Enxoval
-
-- [x] Componente de upload de arquivos por etapa do workflow
-- [x] Listagem de documentos anexados por cliente
-- [ ] Preview de documentos (imagens, PDFs)
+- [x] Download do enxoval completo (ZIP)
 - [x] Exclusão de documentos
-- [x] Download individual de documentos
-- [x] Botão de download do enxoval completo (ZIP)
-- [ ] Indicador visual de documentos anexados em cada etapa
+- [x] Validação de tipos de arquivo (PDF, JPG, DOC, DOCX)
+- [x] Armazenamento: **Railway Volume** (`DOCUMENTS_STORAGE_DIR=/data`) com fallback `./documents` em dev
+- [x] Estrutura multi-tenant: `tenants/<tenantId>/clients/<clientId>/<timestamp>-<filename>`
+- [x] Servido via endpoint Express `/files/` (static middleware)
+- [ ] Migração para S3/cloud storage (hoje usa filesystem no Railway Volume — funcional, mas sem redundância)
+- [ ] Preview de documentos (imagens e PDFs) no navegador
+- [ ] Indicador visual de "tem documentos" em cada subtarefa do workflow
 
-## Melhorias de UX
 
-- [x] Cálculo correto de progresso (em andamento/concluídos)
+---
+
+## ✉️ Sistema de Emails
+
+- [x] Envio via SMTP (Nodemailer) por tenant
+- [x] Envio via HTTP Gateway PostmanGPX (opcional — ativo apenas se `USE_EMAIL_GATEWAY=true`)
+- [x] 3 templates padrão: Boas-Vindas, Processo CR, Atualização de Status
+- [x] Editor rico de templates (TipTap — React 19 compatível)
+- [x] Preview HTML renderizado ao lado do editor
+- [x] Variáveis dinâmicas: {{nome}}, {{cpf}}, {{email}}, {{data}}, {{status}}, etc.
+- [x] Suporte a anexos PDF nos templates
+- [x] Criar / editar / excluir templates personalizados
+- [x] Página de administração de templates (/admin/email-templates)
+- [x] Triggers de email automáticos por evento (CLIENT_CREATED, STEP_COMPLETED, etc.)
+- [x] Painel de gerenciamento de triggers no Super Admin
+- [x] Emails agendados / com delay (emailScheduled)
+- [x] Log de envios (emailLogs)
+- [x] Configuração SMTP por tenant (host, port, user, pass, from)
+- [x] Teste de conexão SMTP no painel admin
+- [x] Email com dados do agendamento de laudo (data + hora)
+- [ ] Email incluir nome do examinador no agendamento de laudo
+- [ ] Testes automatizados de envio real de email
+
+
+---
+
+## 📊 Dashboard e Admin
+
+- [x] Dashboard com cards de clientes e progresso
+- [x] Cards superiores: total, em andamento, concluídos
+- [x] Área Admin: usuários, operadores, templates, triggers, auditoria
+- [x] Aprovação de novos usuários pelo admin
+- [x] Exclusão de usuários (com proteção: não pode excluir a si mesmo)
+- [x] Estatísticas globais (operadores com stats)
+- [x] Logs de auditoria (/admin/audit)
+- [x] Super Admin: gerenciamento de tenants, feature flags, SMTP por tenant
+- [x] Plataforma Admin: login separado, gestão de usuários e templates globais
 - [ ] Badges de notificação para etapas pendentes
-- [ ] Filtros no dashboard (todos/em andamento/concluídos)
-- [ ] Confirmação antes de ações destrutivas
+- [ ] Gráficos / métricas visuais no dashboard (Recharts já instalado)
+- [ ] Filtro por período (data de criação / última atualização)
+
+
+---
+
+## 🎨 UI / UX
+
+- [x] Identidade visual CAC 360 (vermelho #C41E3A, preto, branco)
+- [x] Tema claro global
+- [x] Header escuro (#1c1c1c) com textos claros
+- [x] Design responsivo
 - [x] Loading states em todas as mutações
-- [ ] Mensagens de erro mais descritivas
-
-
-## Correção do Workflow e Documentos
-
-- [x] Atualizar etapas do workflow conforme processo real
-- [x] Implementar lista de 16 documentos oficiais do enxoval
-- [x] Cada documento deve ter área de upload individual
-- [x] Reorganizar estrutura do workflow na página do cliente
-- [x] Validar que todos os documentos estão corretos
-
-
-## Reorganização do Workflow
-
-- [x] Criar 8 etapas principais do processo
-- [x] Adicionar 16 documentos como subtarefas da etapa "Juntada de Documento"
-- [x] Migrar dados dos clientes existentes para nova estrutura
-- [x] Ajustar interface para mostrar subtarefas com upload de documentos
-- [x] Manter upload individual por documento dentro das subtarefas
-
-
-## Melhorias do Workflow
-
-- [x] Remover etapa "Processo de Venda"
-- [x] Remover etapa "Fim"
-- [x] Remover upload de arquivos das etapas sem documentos
-- [x] Adicionar botão de geração de PDF personalizado em "Boas Vindas"
-- [x] Transformar "Laudo Arma de Fogo" em "Agendamento de Laudo"
-- [x] Adicionar campos: data do agendamento e nome do examinador
-- [x] Mover botão "Baixar Enxoval" para dentro da etapa "Despachante"
-- [x] Organizar cards em 3 colunas
-- [x] Criar separação visual por fases do processo
-- [x] Migrar clientes existentes para nova estrutura
-
-
-## Bugs a Corrigir
-
-- [x] Corrigir erro ao visualizar workflow dos clientes
-- [x] Investigar problema na página ClientWorkflow
-
-
-## Redesign UI/UX Moderno
-
-- [x] Analisar identidade visual do CAC 360
-- [x] Atualizar paleta de cores no design system
-- [x] Aplicar tipografia oficial (usando sans-serif padrão)
-- [x] Redesenhar Dashboard com layout moderno
-- [x] Melhorar cards de clientes com hover effects
-- [ ] Redesenhar página de Workflow
-- [ ] Adicionar micro-interações e animações
-- [ ] Melhorar hierarquia visual e espaçamentos
-- [ ] Aplicar glassmorphism e sombras modernas
-
-
-## Melhorias Finais
-
-- [x] Investigar bug de tarefas concluídas sumindo (não há filtro, todas são renderizadas)
-- [x] Redesenhar página de Workflow com identidade CAC 360
-- [x] Reorganizar workflow em coluna única
-- [x] Adicionar barra de progresso segmentada por fases
-- [x] Adicionar indicadores de progresso nos cards de clientes
-- [x] Redesenhar página de Login personalizada
-- [x] Aplicar identidade visual completa em todas as páginas
-
-
-## Implementações Finais
-
-- [x] Implementar cálculo real de progresso nos cards de clientes
-- [x] Melhorar barra de progresso do workflow (única, mais larga, animada, 3 fases)
-- [x] Criar página Admin funcional com lista de usuários
-- [x] Implementar alteração de perfis de usuários (operator/admin)
-- [x] Implementar delegação de clientes entre operadores
-- [x] Adicionar estatísticas globais na página Admin
-
-
-## Correções e Funcionalidades Pendentes
-
-- [x] Corrigir bug de etapas sumindo quando marcadas como concluídas (texto invisível por text-muted-foreground)
-- [x] Implementar upload de documentos funcional com S3
-- [x] Implementar download do enxoval completo (ZIP real)
-- [ ] Adicionar preview de documentos (imagens, PDFs)
-- [ ] Adicionar indicador visual de documentos anexados em cada etapa
-- [ ] Implementar badges de notificação para etapas pendentes
-- [ ] Adicionar filtros no dashboard (todos/em andamento/concluídos)
-- [ ] Adicionar confirmação antes de ações destrutivas
-- [ ] Melhorar mensagens de erro
-- [ ] Implementar edição de informações do cliente
-- [ ] Implementar exclusão de cliente com confirmação
-- [ ] Corrigir cálculo de progresso nos cards (sem violar regras de hooks)
-
-
-## Novas Funcionalidades - Sistema de Aprovação e Exclusão
-
-- [x] Modificar schema do banco de dados para permitir role NULL (usuários sem perfil)
-- [x] Atualizar função upsertUser para não atribuir role automaticamente
-- [x] Criar endpoint tRPC para admin atribuir perfil a usuários (assignRole)
-- [x] Criar endpoint tRPC para admin deletar clientes (deleteClient)
-- [x] Criar página "Aguardando Aprovação" para usuários sem perfil
-- [x] Atualizar proteção de rotas para redirecionar usuários sem perfil
-- [x] Adicionar seção no painel Admin para aprovar novos usuários
-- [x] Adicionar botão de exclusão de clientes no dashboard (apenas admin)
-- [x] Corrigir bug de redirecionamento infinito na rota raiz
-- [x] Testar fluxo completo de aprovação de usuário
-- [x] Testar exclusão de clientes com seus workflows e documentos
-
-
-## Redesign da Página de Workflow - Tema Claro
-
-- [x] Mudar tema global de dark para light
-- [x] Atualizar paleta de cores para tema claro
-- [x] Reconstruir página ClientWorkflow com novo layout
-- [x] Melhorar visualização de etapas do workflow
-- [x] Melhorar visualização de sub-tarefas
-- [x] Melhorar seção de upload de documentos
-- [x] Adicionar indicadores visuais de progresso mais claros
-- [x] Melhorar responsividade mobile
-- [x] Testar nova página de workflow
-
-
-## Ajuste de Estilo - Cards de Clientes
-
-- [x] Ajustar background dos cards de clientes para opacity 0.95
-- [x] Ajustar cor do texto dos cards para preto
-
-
-## Ajuste de Background - Cards de Clientes
-
-- [x] Mudar background dos cards de branco/95 para cinza claro
-
-
-## Inversão de Cores - Dashboard
-
-- [x] Mudar background da página para cinza claro
-- [x] Retornar cards para branco com opacidade 0.95
-
-
-## Ajuste de Nomenclatura - ClientWorkflow
-
-- [x] Alterar texto da Fase 2 de "Documentação" para "Documentação/Laudos"
-
-
-## Ajustes Visuais e Nomenclatura - ClientWorkflow
-
-- [x] Mudar header para fundo escuro (#1c1c1c)
-- [x] Ajustar cores dos textos do header para tons claros
-- [x] Renomear "Cadastro" para "Cadastro/On-Boarding"
-- [x] Renomear "Finalização" para "Dispachante/PF"
-- [x] Renomear "Agendamento Psicotécnico" para "Avaliação Psicológica para Porte/Posse de Armas"
-- [x] Renomear "Agendamento de Laudo" para "Exame de Capacidade Técnica"
-- [x] Remover seção "Progresso Total" do header
-- [x] Remover botão "Baixar Enxoval" do header
-
-
-## Ajustes Visuais - Dashboard
-
-- [x] Ajustar cor do botão Administração para cinza claro (#c2c1c1)
-- [x] Ajustar cores dos números nas estatísticas para tons escuros
-- [x] Centralizar alinhamento dos números nas estatísticas
-- [x] Ajustar background do botão Excluir Cliente para vermelho claro (#feecec)
-- [x] Ajustar margens do botão Excluir Cliente
-
-
-## Formulário de Dados do Cliente - Etapa Cadastro
-
-- [x] Adicionar novos campos ao schema de clientes no banco de dados
-- [x] Criar endpoint tRPC para atualizar dados completos do cliente
-- [x] Implementar formulário completo na etapa Cadastro do ClientWorkflow
-- [x] Adicionar validação de campos obrigatórios
-- [x] Testar salvamento e edição dos dados do cliente
-
-
-## Bugs a Corrigir
-
-- [x] Operador não consegue ver formulário de cadastro - etapa Cadastro agora expande automaticamente
-- [x] Título de atividade desaparece ao marcar/desmarcar - corrigido endpoint updateStep para preservar stepTitle
-
-
-## Bug - Títulos Vazios
-
-- [x] Restaurar títulos vazios no banco de dados
-- [x] Adicionar fallback no frontend para exibir título baseado em stepId
-
-
-## Ajuste - Primeira Atividade
-
-- [x] Verificar nome da primeira atividade no banco de dados - já está "Cadastro"
-- [x] Garantir que o nome seja "Cadastro" - correto no código
-- [x] Verificar se formulário de cadastro está presente e funcional - implementado e expande automaticamente
-
-
-## Bug - Primeira Etapa sem Título
-
-- [x] Investigar stepId da primeira etapa no banco de dados - encontradas 2 etapas vazias
-- [x] Corrigir stepId e stepTitle para 'cadastro' e 'Cadastro' - atualizado no banco
-
-
-## Sistema de Emails - Boas Vindas
-
-- [x] Criar schema de emailTemplates no banco de dados
-- [x] Criar schema de emailLogs para rastrear envios
-- [x] Criar endpoint tRPC para salvar template de email
-- [x] Criar endpoint tRPC para enviar email
-- [x] Implementar editor de email no frontend (3 emails)
-- [x] Adicionar botão de envio individual para cada email
-- [x] Adicionar indicador de email já enviado
-- [x] Testar envio de emails
-
-
-## Correção - Erro ao Cadastrar Cliente
-
-- [x] Investigar campos do schema de clientes que estão como notNull mas deveriam aceitar NULL
-- [x] Atualizar schema para permitir NULL em campos opcionais de cadastro (já estava correto)
-- [x] Executar migração do banco de dados (pnpm db:push) - não necessário, schema já estava correto
-- [x] Testar cadastro de novo cliente com apenas campos básicos
-- [x] Criar checkpoint com correção
-
-
-## Correção Persistente - Erro ao Cadastrar Cliente (Drizzle inserindo "default")
-
-- [x] Verificar se o código da correção foi carregado no servidor
-- [x] Investigar por que o Drizzle ainda está gerando SQL com "default"
-- [x] Implementar solução alternativa - construção manual do objeto de inserção
-- [x] Testar cadastro de cliente - pronto para teste pelo usuário
-- [x] Criar checkpoint com correção definitiva
-
-
-## Correção Final - Usar SQL Bruto
-
-- [x] Reescrever createClient usando SQL bruto (execute) ao invés do query builder
-- [x] Testar cadastro de cliente - pronto para teste
-- [x] Criar checkpoint
-
-
-## Tratamento de Erro - CPF Duplicado
-
-- [x] Adicionar try-catch no router create de clientes
-- [x] Detectar erro de unique constraint (CPF duplicado)
-- [x] Retornar mensagem amigável ao usuário
-- [x] Testar e criar checkpoint
-
-
-## Correção - Editores de Email Não Aparecem em Boas Vindas
-
-- [x] Investigar por que os EmailEditors não estão sendo renderizados
-- [x] Verificar condição de renderização no ClientWorkflow
-- [x] Corrigir e testar
-- [x] Criar checkpoint
-
-
-## Correção - Nome do Clube (CAC 360 → CAC 360)
-
-- [x] Buscar todas as ocorrências de "CAC 360" no código
-- [x] Substituir por "CAC 360" em todos os arquivos
-- [x] Verificar se não há ocorrências perdidas
-- [x] Criar checkpoint
-
-
-## Refatoração - Templates de Email
-
-- [ ] Criar página de administração de templates (/admin/email-templates)
-- [ ] Adicionar rota no App.tsx
-- [ ] Criar componente de edição de templates para admin
-- [ ] Atualizar ClientWorkflow para mostrar apenas preview e botão de envio
-- [ ] Testar fluxo completo
-- [ ] Criar checkpoint
-
-
-## Ajuste de Ordem das Etapas
-
-- [x] Corrigir EmailPreview no ClientWorkflow (remover props defaultSubject e defaultContent)
-- [x] Atualizar ordem das etapas no router:
-  1. Cadastro
-  2. Boas Vindas
-  3. Agendamento Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo
-  4. Agendamento de Laudo de Capacidade Técnica para a Obtenção do CR
-  5. Juntada de Documentos
-  6. Acompanhamento Sinarm-CAC
-- [x] Testar e criar checkpoint
-
-
-## Link para Templates de Email no Dashboard
-
-- [x] Adicionar botão/link para /admin/email-templates no menu de administração
-- [x] Testar navegação
-- [x] Criar checkpoint
-
-
-## Mover Link de Templates para Página Admin
-
-- [x] Remover botão "Templates de Email" do Dashboard
-- [x] Adicionar card/link para Templates de Email na página /admin
-- [x] Testar navegação
-- [x] Criar checkpoint
-
-
-## Correções e Melhorias no Workflow
-
-- [x] Corrigir cálculo de percentual de conclusão no card do Dashboard
-- [x] Reorganizar etapas em 4 fases (já está correto):
-  1. Cadastro
-  2. Boas Vindas
-  3. Documentação/Laudos (Avaliação Psicológica + Laudo Capacidade Técnica)
-  4. Finalização (Juntada Documentos + Acompanhamento Sinarm-CAC)
-- [x] Adicionar campo "Status" na etapa Acompanhamento Sinarm-CAC (dropdown: Solicitado, Aguardando Baixa GRU, Em Análise, Correção Solicitada, Deferido, Indeferido)
-- [x] Adicionar campo "Número de Protocolo" na etapa Acompanhamento Sinarm-CAC
-- [x] Expandir todas as atividades por padrão ao abrir página
-- [x] Testar e criar checkpoint
-
-
-## Correção - Remover Expansão Automática
-
-- [x] Remover expansão automática de todas as etapas
-- [x] Deixar todas as atividades recolhidas por padrão
-- [x] Criar checkpoint
-
-
-## Ajustes no Workflow e Dashboard
-
-- [x] Verificar se progresso geral está sendo exibido corretamente no card do cliente no Dashboard (já está correto)
-- [x] Corrigir contagem de etapas nos cards superiores (Cadastro/On-Boarding, Documentação/Laudos, Juntada-Sinarm-CAC)
-- [x] Renomear "Dispachante/PF" para "Juntada-Sinarm-CAC"
-- [x] Testar e criar checkpoint
-
-
-## Correção - Percentual no Dashboard
-
-- [x] Investigar por que o percentual não está sendo exibido no Dashboard
-- [x] Verificar se a query está retornando o campo progress
-- [x] Corrigir campo isCompleted para completed
-- [x] Testar
-- [x] Criar checkpoint
-
-
-## Push para GitHub
-
-- [x] Configurar credenciais Git
-- [x] Adicionar remote do GitHub
-- [x] Fazer commit de todas as mudanças
-- [x] Push para repositório remoto
-- [x] Verificar no GitHub
-
-
-## Documentação do Sistema
-
-- [x] Criar README.md com descrição completa do sistema
-- [x] Criar DEPLOYMENT.md com manual de implantação
-- [x] Commit e push para GitHub
-
-
-## Atualizar Créditos - ACR Digital
-
-- [x] Atualizar README.md com créditos da ACR Digital
-- [x] Atualizar DEPLOYMENT.md com créditos da ACR Digital
-- [x] Atualizar rodapé das páginas do sistema
-- [x] Commit e push para GitHub
-
-
-## Configuração Docker
-
-- [x] Criar Dockerfile para a aplicação
-- [x] Criar docker-compose.yml com app e MySQL
-- [x] Criar arquivo .dockerignore
-- [x] Criar guia DOCKER.md com instruções completas
-- [x] Commit e push para GitHub
-
-
-## Upload de Documentos - Juntada de Documentos
-
-- [x] Criar tabela de documentos no schema (já existe com todos os campos necessários)
-- [x] Criar endpoints tRPC para upload e listagem de documentos (já existem)
-- [x] Implementar componente de upload no ClientWorkflow (já implementado)
-- [x] Adicionar validação de tipos de arquivo (PDF, JPG, DOC, DOCX) (já implementado)
-- [x] Testar upload e download (sistema pronto para teste pelo usuário)
-- [x] Criar checkpoint
-
-
-## Upload Individual por Atividade
-
-- [x] Criar componente UploadModal para seleção de arquivo
-- [x] Adicionar botão de upload em cada subtarefa do workflow
-- [x] Atualizar schema para associar documento à subtarefa específica- [x] Atualizar endpoints tRPC para suportar anexosId
-- [x] Mostrar documentos anexados em cada subtarefa
-- [ ] Testar upload por atividade
-- [ ] Criar checkpoint
-
-
-## Sistema de Envio Real de Emails
-
-- [x] Instalar Nodemailer e tipos
-- [x] Criar serviço de email (server/emailService.ts)
-- [ ] Solicitar secrets SMTP via webdev_request_secrets
-- [x] Atualizar endpoint sendEmail para enviar email real
-- [ ] Testar envio de email real
-- [ ] Criar checkpoint
-
-## Editor Rico de Templates de Email
-
-- [x] Instalar editor rico (React Quill)- [x] Atualizar schema do banco para suportar anexos nos templates
-- [x] Atualizar página EmailTemplates com editor rico
-- [x] Adicionar barra de ferramentas (negrito, itálico, cores, fontes, etc.)
-- [x] Adicionar suporte para inserir imagens
-- [ ] Testar edição de templates
-- [ ] Criar checkpoint
-
-## Sistema de Anexos PDF nos Templates
-
-- [ ] Atualizar schema do banco para adicionar campo attachments nos templates
-- [x] Criar componente de upload de PDF na página EmailTemplates
-- [x] Atualizar endpoint saveTemplate para salvar anexos
-- [x] Atualizar endpoint sendEmail para enviar anexos
-- [x] Mostrar lista de anexos no preview de email
-- [ ] Testar envio de email com anexos
-- [ ] Criar checkpoint
-
-
-## Correção - React Quill incompatível com React 19
-
-- [x] Desinstalar React Quill
-- [x] Substituir por editor HTML simples
-- [x] Atualizar EmailTemplates para usar textarea HTML
-- [x] Testar editor HTML
-- [ ] Criar checkpoint
-
-
-## Criação de Templates de Email Profissionais
-
-- [x] Criar 3 templates HTML com design CAC 360
-- [x] Adicionar logo e identidade visual (vermelho, preto, branco)
-- [x] Incluir variáveis dinâmicas ({{nome}}, {{data}}, {{status}})
-- [x] Atualizar templates no banco de dados
-- [ ] Testar e criar checkpoint
-
-
-## Preview Visual de Templates de Email
-
-- [x] Adicionar preview HTML renderizado ao lado do editor
-- [ ] Testar e criar checkpoint
-
-
-## Teste de Envio Real de Emails
-
-- [x] Verificar credenciais SMTP configuradas
-- [x] Criar script de teste de envio
-- [x] Executar teste e validar recebimento
-- [ ] Criar checkpoint com teste concluído
-
-
-## Correção da Logo nos Templates de Email
-
-- [x] Verificar logo atual do CAC 360
-- [x] Atualizar templates com URL absoluta da logo
-- [x] Testar envio com logo corrigida
-- [ ] Criar checkpoint final
-
-
-## Correção Logo Quebrada - Base64
-
-- [ ] Converter logo para Base64
-- [ ] Atualizar templates com logo Base64
-- [ ] Testar envio com logo Base64
-- [ ] Criar checkpoint final
-
-
-## Remover Imagem da Logo - Apenas Texto
-
-- [x] Atualizar templates removendo tag img
-- [x] Adicionar texto "CAC 360" estilizado
-- [x] Testar envio
-- [x] Criar checkpoint final
-
-
-## Configurar Credenciais SMTP no Sistema
-
-- [x] Solicitar credenciais SMTP via webdev_request_secrets
-- [x] Validar credenciais com teste vitest
-- [ ] Criar checkpoint final
-
-
-## Corrigir Substituição de Variáveis em Emails
-
-- [x] Corrigir endpoint sendEmail para substituir {{nome}}, {{data}}, {{status}}
-- [x] Testar envio com variáveis substituídas corretamente
-- [x] Criar checkpoint final
-
-## Correções Solicitadas - Rodada 2
-
-- [x] Workflow concluído não está sendo contabilizado no card do dashboard
-- [x] Email de status deve conter status total de conclusão e Sinarm-CAC
-- [x] Modal de upload está estrapolando limites com nomes grandes
-- [x] Renomear etapa para "Encaminhamento de Avaliação Psicológica..."
-- [x] Renomear atividade "Boas Vindas" para "Central de Comunicações"
-- [x] Emails "Processo CR" e "Atualização de Status" não carregam template correto
-- [x] Renomear task para "Comprovante de Segundo Endereço"
-- [x] Aumentar tamanho do modal de preview HTML do email
-
-## Adicionar Anexos aos Templates de Email
-
-- [x] Verificar schema do banco de dados (campo attachments já existe)
-- [x] Implementar interface de upload de anexos na página EmailTemplates
-- [x] Adicionar botão de upload de PDF
-- [x] Listar anexos adicionados com opção de remover
-- [x] Testar envio de email com anexos
-- [x] Criar checkpoint final
-
-## Corrigir Erro ao Adicionar Anexo em Template
-
-- [x] Criar endpoint específico para upload de anexos de template (sem clientId)
-- [x] Atualizar EmailTemplates.tsx para usar novo endpoint
-- [x] Testar upload de anexo PDF em template
-- [x] Criar checkpoint final
-
-## Reordenar Fases e Adicionar Data/Hora no Agendamento
-
-- [x] Renomear "Boas Vindas" para "Central de Mensagens"
-- [x] Mover "Central de Mensagens" para primeira posição (antes de Cadastro)
-- [x] Renomear "Agendamento Avaliação Psicológica" para "Encaminhamento Avaliação Psicológica"
-- [x] Adicionar campo de data e hora no "Agendamento de Laudo"
-- [x] Atualizar interface para exibir data/hora do agendamento
-- [x] Testar alterações
-- [x] Criar checkpoint final
-
-## Criar Novo Texto para Email Processo CR
-
-- [x] Criar texto explicativo profissional mencionando anexos
-- [x] Incluir informações sobre documentação necessária
-- [x] Mencionar arquivos anexos com informações complementares
-- [x] Documentar novo template
-- [x] Criar checkpoint final
-
-## Adicionar Todas Opções de Email na Central de Mensagens
-
-- [x] Analisar estrutura atual de envio de emails no ClientWorkflow
-- [x] Implementar seletor de tipo de email (Boas Vindas, Processo CR, Atualização)
-- [x] Permitir envio de qualquer template na etapa Central de Mensagens
-- [x] Testar envio de todos os tipos de email
-- [x] Criar checkpoint final
-
-## Criar Novos Templates e Corrigir Cards do Dashboard
-
-- [x] Corrigir cálculo de cards "Em Andamento" no Dashboard
-- [x] Corrigir cálculo de cards "Concluídos" no Dashboard
-- [x] Implementar botão "Criar Novo Template" na página de templates
-- [x] Adicionar formulário para criar template personalizado
-- [x] Salvar novo template no banco de dados
-- [x] Atualizar Central de Mensagens para listar templates dinamicamente
-- [x] Testar criação e exibição de novos templates
-- [x] Criar checkpoint final
-
-## Corrigir Central de Mensagens - Opções de Envio Não Aparecem
-
-- [x] Investigar por que templates não aparecem na Central de Mensagens
-- [x] Verificar se templates existem no banco de dados
-- [x] Corrigir problema de exibição
-- [x] Testar visualização de templates
-- [x] Criar checkpoint final
-
-## Debug: Central de Mensagens Ainda Vazia
-
-- [x] Verificar console do navegador para erros
-- [x] Adicionar logs de debug na query getAllTemplates
-- [x] Verificar se query está retornando dados
-- [x] Corrigir problema de renderização
-- [x] Testar visualização de templates
-- [x] Criar checkpoint final
-
-## Implementar Gerenciamento de Usuários do Sistema
-
-- [x] Criar endpoints de listagem e exclusão de usuários
-- [x] Criar página de gerenciamento de usuários
-- [x] Adicionar botão "Excluir Usuário" com confirmação
-- [x] Impedir exclusão do próprio usuário logado
-- [x] Testar exclusão de usuários
-- [x] Criar checkpoint final
-
-### Sistema de Email para Agendamento de Laudo
-- [x] Criar template de email de agendamento de laudo
-- [x] Adicionar botão de envio na etapa de Agendamento de Laudo
-- [x] Adicionar botão de envio na Central de Mensagens
-- [x] Implementar validação: desabilitar botão se não houver data agendada
-- [x] Testar funcionalidade completa deve incluir data e hora do agendamento
-- [ ] Email deve incluir nome do examinador (se preenchido)
-- [ ] Testar envio de email com dados do agendamento
-- [ ] Criar checkpoint
-
-
-## Correção - Formulário de Agendamento de Laudo
-- [ ] Investigar por que formulário de data/examinador não aparece
-- [ ] Corrigir renderização do formulário na etapa de Agendamento de Laudo
-- [ ] Testar cadastro de data e examinador
-- [ ] Verificar se botão de email é habilitado após agendamento
-- [ ] Criar checkpoint
-
-
-## Correção URGENTE - Formulário de Agendamento Não Aparece
-- [x] Desmarcar etapas de agendamento que estão marcadas incorretamente como concluídas
-- [x] Testar se formulário aparece após desmarcar
-- [x] Adicionar stepId na condição de renderização
-- [x] Criar testes automatizados (9 testes passando)
-- [x] Criar guia de uso para o usuário
-- [x] Criar checkpoint
-
-
-## Correção - Etapa de Agendamento Não Expande
-- [x] Adicionar stepId agendamento-laudo na condição de expansão (isExpanded)
-- [x] Testar expansão da etapa
-- [x] Identificar problema de marcação automática
-- [x] Criar checkpoint
-
-
-## Correção - CardContent Não Renderiza Etapas de Agendamento
-- [x] Adicionar step.stepId === "agendamento-laudo" na condição de renderização do CardContent
-- [x] Adicionar step.stepId === "agendamento-psicotecnico" na condição de renderização do CardContent
-- [x] Simplificar condições usando apenas stepId (consistência)
-- [x] Testar expansão da etapa Agendamento de Laudo
-- [x] Testar expansão da etapa Agendamento Psicotécnico
-- [x] Verificar se formulário aparece corretamente
-- [x] Criar 24 testes automatizados (todos passando)
-- [x] Validar que todos os 118 testes do sistema passam
-- [x] Criar checkpoint
-
-
-## Correção - Central de Mensagens Não Expande
-- [x] Investigar por que Central de Mensagens não está expandindo
-- [x] Verificar stepId no banco de dados (encontrado: boas-vindas)
-- [x] Corrigir stepId no código (central-mensagens → boas-vindas)
-- [x] Atualizar testes para refletir stepId correto
-- [x] Validar que todos os 118 testes passam
-- [x] Criar checkpoint
+- [x] Toasts com Sonner
+- [x] shadcn/ui com 30+ componentes
+- [x] Ícones Lucide React
+- [x] Framer Motion instalado
+- [ ] Micro-interações e animações de transição entre etapas
+- [~] Skeleton loaders — `DashboardLayoutSkeleton` existe mas maioria das telas usa spinner `Loader2`; substituir spinners restantes
+- [ ] Wizard multi-step no formulário de cadastro
+- [x] Confirmação antes de excluir cliente (`window.confirm()` no Dashboard)
+- [x] Confirmação antes de excluir usuário (`AlertDialog` completo em Users.tsx)
+- [x] Confirmação antes de excluir documento (`confirm()` em DocumentUpload)
+- [x] Mensagens de erro descritivas: CPF duplicado, email duplicado, campos inválidos com mensagem específica (`getFriendlyErrorMessage()`)
+- [ ] Glassmorphism e sombras modernas
+- [~] Dark/Light mode — ThemeContext e next-themes implementados, mas `switchable=false` por padrão e sem botão de alternância na UI
+
+
+---
+
+## 🧪 Qualidade e Testes
+
+- [x] 118 testes automatizados passando (Vitest)
+- [x] Testes para: agendamento, emails, workflow, correções, autenticação
+- [ ] Testes de integração end-to-end
+- [ ] Testes de carga multi-tenant
+
+
+---
+
+## 🚀 Funcionalidades Futuras (Backlog)
+
+- [x] Módulo IAT (Instrução de Armamento e Tiro) — **totalmente implementado** (~700 linhas):
+  - [x] CRUD de instrutores (credenciamento PF)
+  - [x] Catálogo de cursos (tipo, carga horária, instituição)
+  - [x] Agendamento de exames (tipo, status, pontuação)
+  - [x] Gestão de turmas (matrícula, frequência)
+  - [x] Router tRPC `iat.*` com endpoints completos
+- [ ] Módulo Apostilamento (feature flag existe, implementação pendente)
+- [ ] Módulo Renovação (feature flag existe, implementação pendente)
+- [ ] Módulo Insumos (feature flag existe, implementação pendente)
+- [ ] Notificações push / PWA
+- [ ] Busca global (Cmd+K)
+- [x] Geração de PDF: Welcome PDF + Client Data PDF (PDFKit), acessível via botões na UI
+- [x] Exportação de lista de clientes em PDF no Dashboard (`exportPDF()`)
+- [ ] PDF completo e detalhado por cliente (versão expandida com histórico do workflow)
+- [ ] Integração com calendário para agendamentos
+- [ ] Alertas de documentos próximos do vencimento
+- [x] Campos do schema presentes **no banco E no formulário de cadastro**:
+  - [x] Estado civil (maritalStatus) — Select com opções na UI
+  - [x] Tipo de solicitação (requestType) — Select com opções na UI
+  - [x] Número CAC (cacNumber) — Input na UI
+  - [x] Categoria CAC (cacCategory) — Input na UI
+  - [x] CR anterior (previousCrNumber) — Input na UI
+  - [x] Validade do Laudo Psicológico (psychReportValidity) — Input na UI
+  - [x] Validade do Laudo Técnico (techReportValidity) — Input na UI
+  - [x] UF de residência (residenceUf) — Input na UI
+  - [ ] Nacionalidade (nationality) — campo NÃO tem input na UI (só birthCountry existe)
+
+
+---
+
+## ⚠️ Código legado Manus (não afeta Railway)
+
+O projeto foi originalmente criado na plataforma Manus. Os seguintes arquivos contêm referências ao Manus, mas são **opcionais** e **não impedem** o funcionamento no Railway:
+
+- `server/storage.ts` — proxy de storage Manus (só ativa se `DOCUMENTS_STORAGE_DIR` NÃO estiver definido)
+- `server/_core/imageGeneration.ts` — geração de imagem via Forge API (não usado no workflow)
+- `server/_core/voiceTranscription.ts` — transcrição de voz (não usado no workflow)
+- `server/_core/map.ts` — proxy Google Maps (não usado no workflow)
+- `server/_core/llm.ts` — endpoint LLM (não usado no workflow)
+- `client/src/components/ManusDialog.tsx` — login via Manus OAuth (ignorado, login padrão funciona)
+- `vite-plugin-manus-runtime` — dependência dev-only, não afeta build de produção
+
+**Nenhuma variável de ambiente Manus é obrigatória.** O app funciona 100% no Railway com: `DATABASE_URL`, `SMTP_*`, `DOCUMENTS_STORAGE_DIR`, `PORT`.
