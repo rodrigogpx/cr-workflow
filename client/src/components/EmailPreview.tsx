@@ -188,7 +188,7 @@ export function EmailPreview({
 
         {!template && (
           <p className="text-xs text-red-600">
-            ⚠️ Template não configurado. Solicite ao administrador para configurar em /platform-admin/email-templates
+            ⚠️ Template não configurado. Solicite ao administrador para configurar em Administração → Templates de Email
           </p>
         )}
         

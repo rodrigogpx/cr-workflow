@@ -2,14 +2,13 @@ import { ReactNode } from "react";
 import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
 import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Shield, Users, Mail, Settings, ChevronRight, UserCog } from "lucide-react";
+import { Shield, Building2, Settings, ChevronRight, UserCog, LayoutDashboard } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 interface PlatformAdminLayoutProps {
   children: ReactNode;
-  active: "users" | "emails" | "settings" | "admins";
+  active: "dashboard" | "tenants" | "settings" | "admins";
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -31,11 +30,20 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
 
   const items = [
     {
-      id: "users" as const,
-      label: "Usuários da Plataforma",
-      description: "Perfis de acesso (admin e operadores)",
-      icon: Users,
-      path: "/platform-admin/users",
+      id: "dashboard" as const,
+      label: "Dashboard",
+      description: "Visão geral da plataforma",
+      icon: LayoutDashboard,
+      path: "/platform-admin",
+      enabled: true,
+      visible: true,
+    },
+    {
+      id: "tenants" as const,
+      label: "Tenants (Clubes)",
+      description: "Gestão de clubes e planos",
+      icon: Building2,
+      path: "/platform-admin/tenants",
       enabled: true,
       visible: true,
     },
@@ -47,15 +55,6 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
       path: "/platform-admin/admins",
       enabled: true,
       visible: isSuperAdmin,
-    },
-    {
-      id: "emails" as const,
-      label: "Templates de Email",
-      description: "Conteúdo de comunicação com clientes",
-      icon: Mail,
-      path: "/platform-admin/email-templates",
-      enabled: true,
-      visible: true,
     },
     {
       id: "settings" as const,

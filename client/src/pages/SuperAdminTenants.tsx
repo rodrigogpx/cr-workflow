@@ -384,7 +384,7 @@ export default function SuperAdminTenants() {
             <div className="flex items-center gap-4">
               <img src={APP_LOGO} alt="CAC 360" className="h-10 w-auto" />
               <div>
-                <h1 className="text-xl font-bold">CAC 360 - Super Admin</h1>
+                <h1 className="text-xl font-bold">CAC 360 — Platform Admin</h1>
                 <p className="text-sm text-purple-200">Gerenciamento de Tenants</p>
               </div>
             </div>
@@ -396,7 +396,7 @@ export default function SuperAdminTenants() {
               <Button 
                 variant="outline" 
                 className="text-white border-white/50 hover:bg-white/10"
-                onClick={() => setLocation("/platform-admin/users")}
+                onClick={() => setLocation("/platform-admin")}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Voltar

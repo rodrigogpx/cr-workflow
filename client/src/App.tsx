@@ -17,6 +17,7 @@ const MainDashboard = lazy(() => import("./pages/MainDashboard"));
 const ClientWorkflow = lazy(() => import("./pages/ClientWorkflow"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const SuperAdminTenants = lazy(() => import("./pages/SuperAdminTenants"));
+const PlatformAdminDashboard = lazy(() => import("./pages/PlatformAdminDashboard"));
 // Tenant Admin pages (unified)
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
@@ -30,8 +31,6 @@ const IATModule = lazy(() => import("./pages/IATModule"));
 // Platform Admin pages
 const PlatformAdminBootstrap = lazy(() => import("./pages/PlatformAdminBootstrap"));
 const PlatformAdminAdmins = lazy(() => import("./pages/PlatformAdminAdmins"));
-const PlatformAdminUsers = lazy(() => import("./pages/PlatformAdminUsers"));
-const PlatformAdminEmailTemplates = lazy(() => import("./pages/PlatformAdminEmailTemplates"));
 const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings"));
 
 function getBackgroundForPath(path: string) {
@@ -150,19 +149,21 @@ function Router() {
         <Route path={"/platform-admin/login"} component={PlatformAdminLogin} />
         {/* Bootstrap: rota pública, só funciona quando não há admins cadastrados */}
         <Route path={"/platform-admin/setup"} component={PlatformAdminBootstrap} />
+        <Route path={"/platform-admin"}>{
+          () => (
+            <PlatformAdminRoute>
+              <PlatformAdminDashboard />
+            </PlatformAdminRoute>
+          )
+        }</Route>
+        <Route path={"/platform-admin/tenants"}>
+          <PlatformAdminRoute>
+            <SuperAdminTenants />
+          </PlatformAdminRoute>
+        </Route>
         <Route path={"/platform-admin/admins"}>
           <PlatformAdminRoute>
             <PlatformAdminAdmins />
-          </PlatformAdminRoute>
-        </Route>
-        <Route path={"/platform-admin/users"}>
-          <PlatformAdminRoute>
-            <PlatformAdminUsers />
-          </PlatformAdminRoute>
-        </Route>
-        <Route path={"/platform-admin/email-templates"}>
-          <PlatformAdminRoute>
-            <PlatformAdminEmailTemplates />
           </PlatformAdminRoute>
         </Route>
         <Route path={"/platform-admin/settings"}>
@@ -171,11 +172,9 @@ function Router() {
           </PlatformAdminRoute>
         </Route>
 
-        {/* Super Admin Routes */}
+        {/* Legacy redirect: /super-admin/tenants → /platform-admin/tenants */}
         <Route path={"/super-admin/tenants"}>
-          <PlatformAdminRoute>
-            <SuperAdminTenants />
-          </PlatformAdminRoute>
+          <Redirect to="/platform-admin/tenants" />
         </Route>
         
         {/* Global Auth Routes (no tenant) */}

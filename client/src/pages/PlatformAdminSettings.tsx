@@ -101,7 +101,7 @@ export default function PlatformAdminSettings() {
               Gestão de Tenants
             </CardTitle>
             <CardDescription>
-              Para gerenciar tenants (clubes), acesse a área de Super Admin em <strong>/super-admin/tenants</strong>.
+              Para gerenciar tenants (clubes), acesse <strong>Platform Admin → Tenants</strong>.
             </CardDescription>
           </CardHeader>
         </Card>
