@@ -1906,7 +1906,7 @@ export const appRouter = router({
       }),
 
     // Save email template
-    saveTemplate: protectedProcedure
+    saveTemplate: adminProcedure
       .input(z.object({
         templateKey: z.string(),
         module: z.string().optional(),
@@ -1973,6 +1973,11 @@ export const appRouter = router({
         content: z.string(),
       }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
+        // Despachante não pode enviar emails manualmente
+        if (ctx.user?.role === 'despachante') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode enviar emails manualmente' });
+        }
+
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
@@ -2758,7 +2763,7 @@ export const appRouter = router({
       }),
 
     // Health check do tenant (verifica conexão com banco)
-    healthCheck: adminProcedure
+    healthCheck: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }: { input: any }) => {
         const startTime = Date.now();
@@ -3349,7 +3354,7 @@ export const appRouter = router({
 
   // Email Triggers Router - Automação de emails
   emailTriggers: router({
-    list: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
+    list: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       try {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
@@ -3375,7 +3380,7 @@ export const appRouter = router({
       }
     }),
 
-    getById: adminProcedure
+    getById: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -3394,7 +3399,7 @@ export const appRouter = router({
         return { ...trigger, templates };
       }),
 
-    create: adminProcedure
+    create: tenantAdminProcedure
       .input(z.object({
         name: z.string().min(1),
         triggerEvent: z.string().min(1),
@@ -3446,7 +3451,7 @@ export const appRouter = router({
         return trigger;
       }),
 
-    update: adminProcedure
+    update: tenantAdminProcedure
       .input(z.object({
         id: z.number(),
         name: z.string().min(1).optional(),
@@ -3473,7 +3478,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    delete: adminProcedure
+    delete: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -3484,7 +3489,7 @@ export const appRouter = router({
       }),
 
     // Template management
-    addTemplate: adminProcedure
+    addTemplate: tenantAdminProcedure
       .input(z.object({
         triggerId: z.number(),
         templateId: z.number(),
@@ -3499,7 +3504,7 @@ export const appRouter = router({
         return result;
       }),
 
-    removeTemplate: adminProcedure
+    removeTemplate: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -3510,7 +3515,7 @@ export const appRouter = router({
       }),
 
     // Get available trigger events
-    getAvailableEvents: adminProcedure.query(() => {
+    getAvailableEvents: tenantAdminProcedure.query(() => {
       return [
         { value: 'CLIENT_CREATED', label: 'Cliente cadastrado', hasSchedule: false },
         { value: 'STEP_COMPLETED:1', label: 'Etapa 1 - Cadastro concluído', hasSchedule: false },
@@ -3519,10 +3524,6 @@ export const appRouter = router({
         { value: 'STEP_COMPLETED:4', label: 'Etapa 4 - Avaliação Psicológica concluída', hasSchedule: false },
         { value: 'STEP_COMPLETED:5', label: 'Etapa 5 - Laudo Técnico concluído', hasSchedule: false },
         { value: 'STEP_COMPLETED:6', label: 'Etapa 6 - Acompanhamento Sinarm concluído', hasSchedule: false },
-        { value: 'STEP_COMPLETED:7', label: 'Etapa 7 - Montagem Sinarm', hasSchedule: false },
-        { value: 'STEP_COMPLETED:8', label: 'Etapa 8 - Protocolado', hasSchedule: false },
-        { value: 'STEP_COMPLETED:9', label: 'Etapa 9 - Concluído', hasSchedule: false },
-        { value: 'SCHEDULE_CREATED', label: 'Agendamento Criado (Geral)', hasSchedule: true },
         { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
         { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'Confirmação de Agendamento de Laudo Técnico', hasSchedule: true },
         { value: 'SCHEDULE_TECH_REMINDER', label: 'Lembrete de Agendamento de Laudo Técnico', hasSchedule: true },
@@ -3538,7 +3539,7 @@ export const appRouter = router({
     }),
 
     // Scheduled emails management
-    getScheduledByClient: adminProcedure
+    getScheduledByClient: tenantAdminProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -3547,7 +3548,7 @@ export const appRouter = router({
           : await db.getScheduledEmailsByClient(input.clientId);
       }),
 
-    cancelScheduledByClient: adminProcedure
+    cancelScheduledByClient: tenantAdminProcedure
       .input(z.object({ clientId: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
