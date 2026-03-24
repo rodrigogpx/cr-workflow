@@ -380,89 +380,91 @@ export default function PlatformAdminDashboard() {
 
       {/* Settings Sheet */}
       <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-lg bg-gray-950 border-white/10 overflow-y-auto">
-          <SheetHeader className="border-b border-white/10 pb-4">
+        <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl flex flex-col bg-background border-l-2 border-dashed border-white/20 overflow-y-auto">
+          <SheetHeader className="border-b-2 border-dashed border-white/20 pb-4 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="bg-slate-500/10 rounded-lg p-2">
-                <Cog className="h-5 w-5 text-slate-400" />
+              <div className="bg-card rounded-md p-2">
+                <Cog className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
-                <SheetTitle className="text-white">Configurações</SheetTitle>
-                <SheetDescription className="text-white/50">
+                <SheetTitle className="text-foreground text-lg font-bold uppercase">Configurações</SheetTitle>
+                <SheetDescription>
                   Perfil e parâmetros da plataforma
                 </SheetDescription>
               </div>
             </div>
           </SheetHeader>
 
-          <div className="space-y-6 px-4 pb-6">
+          <div className="space-y-6 px-4 pb-6 flex-1">
             {/* Meu Perfil */}
             <div>
-              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
+              <h3 className="text-muted-foreground text-xs font-bold uppercase tracking-wide mb-3 flex items-center gap-2">
                 <Users className="h-3.5 w-3.5" />
                 Meu Perfil
               </h3>
-              <div className="bg-white/95 backdrop-blur-sm rounded-xl border border-white/40 p-5 space-y-4">
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Nome</p>
-                    <p className="font-semibold text-gray-900 text-sm">{(admin as any)?.name || "—"}</p>
+              <Card className="border-2 border-dashed border-white/20 bg-card">
+                <CardContent className="pt-6 space-y-4">
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Nome</p>
+                      <p className="font-semibold text-foreground text-sm">{(admin as any)?.name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">E-mail</p>
+                      <p className="font-semibold text-foreground text-sm">{(admin as any)?.email || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Role</p>
+                      <span className={`text-[0.7rem] font-semibold px-2 py-1 rounded border ${roleClass}`}>
+                        {roleLabel}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">E-mail</p>
-                    <p className="font-semibold text-gray-900 text-sm">{(admin as any)?.email || "—"}</p>
+                  <div className="flex gap-2 pt-2 border-t-2 border-dashed border-white/10">
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white font-bold uppercase" onClick={() => setEditProfileOpen(true)}>
+                      Editar perfil
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-2 border-dashed border-white/20" onClick={() => setChangePasswordOpen(true)}>
+                      <KeyRound className="h-3.5 w-3.5 mr-1.5" />
+                      Trocar senha
+                    </Button>
                   </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Role</p>
-                    <span className={`text-[0.7rem] font-semibold px-2 py-1 rounded border ${roleClass}`}>
-                      {roleLabel}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-2 border-t border-gray-100">
-                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white" onClick={() => setEditProfileOpen(true)}>
-                    Editar perfil
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setChangePasswordOpen(true)}>
-                    <KeyRound className="h-3.5 w-3.5 mr-1.5" />
-                    Trocar senha
-                  </Button>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Informações */}
             <div>
-              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
+              <h3 className="text-muted-foreground text-xs font-bold uppercase tracking-wide mb-3 flex items-center gap-2">
                 <Settings className="h-3.5 w-3.5" />
                 Informações
               </h3>
-              <div className="space-y-3">
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 p-4">
+              <Card className="border-2 border-dashed border-white/20 bg-card">
+                <CardContent className="pt-6">
                   <div className="flex items-start gap-3">
-                    <div className="bg-blue-500/10 rounded-lg p-2 shrink-0">
-                      <Mail className="h-4 w-4 text-blue-400" />
+                    <div className="bg-primary/10 rounded-md p-2 shrink-0">
+                      <Mail className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-white text-sm">Configuração de Emails (SMTP)</h4>
-                      <p className="text-xs text-white/50 mt-1 leading-relaxed">
+                      <h4 className="font-semibold text-foreground text-sm">Configuração de Emails (SMTP)</h4>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                         As configurações SMTP são isoladas por tenant. Cada clube configura seu servidor
-                        em <span className="text-white/70 font-medium">Administração → Configurações</span>.
+                        em <span className="text-foreground font-medium">Administração → Configurações</span>.
                       </p>
                     </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Configurações Globais (Em breve) */}
             <div>
-              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
+              <h3 className="text-muted-foreground text-xs font-bold uppercase tracking-wide mb-3 flex items-center gap-2">
                 <Cog className="h-3.5 w-3.5" />
                 Configurações Globais
-                <Badge variant="outline" className="text-[0.55rem] border-amber-500/40 text-amber-300 ml-1">
+                <span className="text-[0.6rem] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/40 uppercase font-semibold tracking-wide ml-1">
                   Em breve
-                </Badge>
+                </span>
               </h3>
               <div className="grid grid-cols-1 gap-3">
                 {[
@@ -470,15 +472,17 @@ export default function PlatformAdminDashboard() {
                   { label: "Integrações", desc: "Sistemas externos e APIs", icon: "🔗" },
                   { label: "Backup", desc: "Política de backup e retenção", icon: "💾" },
                 ].map((item) => (
-                  <div key={item.label} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 border-dashed p-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl opacity-30">{item.icon}</span>
-                      <div>
-                        <p className="text-sm font-medium text-white/30">{item.label}</p>
-                        <p className="text-xs text-white/20">{item.desc}</p>
+                  <Card key={item.label} className="border-2 border-dashed border-white/10 bg-card/50">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl opacity-30">{item.icon}</span>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+                          <p className="text-xs text-muted-foreground/60">{item.desc}</p>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </div>
