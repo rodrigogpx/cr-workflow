@@ -2115,15 +2115,15 @@ export const appRouter = router({
       }),
   }),
 
-  // Users router (admin only)
+  // Users router (tenant admin only — tenant obrigatório para isolamento)
   users: router({
-    list: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
+    list: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       return tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
     }),
 
-    create: adminProcedure
+    create: tenantAdminProcedure
       .input(createUserSchema)
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -2169,7 +2169,7 @@ export const appRouter = router({
         return { success: true, userId };
       }),
 
-    update: adminProcedure
+    update: tenantAdminProcedure
       .input(updateUserSchema)
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -2240,7 +2240,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    updateRole: adminProcedure
+    updateRole: tenantAdminProcedure
       .input(z.object({
         userId: z.number(),
         role: z.enum(['operator', 'admin', 'despachante']),
@@ -2287,7 +2287,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    assignRole: adminProcedure
+    assignRole: tenantAdminProcedure
       .input(z.object({
         userId: z.number(),
         role: z.enum(['operator', 'admin', 'despachante']),
@@ -2320,7 +2320,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    deleteUser: adminProcedure
+    deleteUser: tenantAdminProcedure
       .input(z.object({
         userId: z.number(),
       }))
@@ -2372,7 +2372,7 @@ export const appRouter = router({
       }),
 
     // Listar operadores com estatísticas de clientes
-    listOperatorsWithStats: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
+    listOperatorsWithStats: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       const allUsers = tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
@@ -2392,7 +2392,7 @@ export const appRouter = router({
     }),
 
     // Listar clientes disponíveis para atribuição
-    listClientsForAssignment: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
+    listClientsForAssignment: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
@@ -2405,7 +2405,7 @@ export const appRouter = router({
     }),
 
     // Atribuir cliente a operador
-    assignClientToOperator: adminProcedure
+    assignClientToOperator: tenantAdminProcedure
       .input(z.object({
         clientId: z.number(),
         operatorId: z.number(),
@@ -3171,7 +3171,7 @@ export const appRouter = router({
   // AUDIT LOGS ROUTER
   // ===========================================
   audit: router({
-    getLogs: adminProcedure
+    getLogs: tenantAdminProcedure
       .input(z.object({
         startDate: z.string().optional(),
         endDate: z.string().optional(),
@@ -3271,7 +3271,7 @@ export const appRouter = router({
         }
       }),
 
-    exportCsv: adminProcedure
+    exportCsv: tenantAdminProcedure
       .input(z.object({
         startDate: z.string().optional(),
         endDate: z.string().optional(),
@@ -3526,7 +3526,7 @@ export const appRouter = router({
         { value: 'STEP_COMPLETED:6', label: 'Etapa 6 - Acompanhamento Sinarm concluído', hasSchedule: false },
         { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
         { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'Confirmação de Agendamento de Laudo Técnico', hasSchedule: true },
-        { value: 'SCHEDULE_TECH_REMINDER', label: 'Lembrete de Agendamento de Laudo Técnico', hasSchedule: true },
+        // SCHEDULE_TECH_REMINDER e WORKFLOW_COMPLETE removidos: eventos não disparados no backend
         { value: 'SINARM_STATUS:Iniciado', label: 'Sinarm - Iniciado', hasSchedule: false },
         { value: 'SINARM_STATUS:Solicitado', label: 'Sinarm - Solicitado', hasSchedule: false },
         { value: 'SINARM_STATUS:Aguardando Baixa GRU', label: 'Sinarm - Aguardando Baixa GRU', hasSchedule: false },
@@ -3534,7 +3534,6 @@ export const appRouter = router({
         { value: 'SINARM_STATUS:Correção Solicitada', label: 'Sinarm - Correção Solicitada', hasSchedule: false },
         { value: 'SINARM_STATUS:Deferido', label: 'Sinarm - Deferido', hasSchedule: false },
         { value: 'SINARM_STATUS:Indeferido', label: 'Sinarm - Indeferido', hasSchedule: false },
-        { value: 'WORKFLOW_COMPLETE', label: 'Processo concluído (todas etapas)', hasSchedule: false },
       ];
     }),
 
