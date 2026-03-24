@@ -97,6 +97,46 @@ const requirePlatformAdmin = t.middleware(async opts => {
   });
 });
 
+// Exige role superadmin — CRUD de platform admins, delete de tenants
+const requireSuperAdmin = t.middleware(async opts => {
+  const { ctx, next } = opts;
+
+  if (!ctx.platformAdmin) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Acesso restrito à administração da plataforma" });
+  }
+
+  if (ctx.platformAdmin.role !== 'superadmin') {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Esta operação requer role superadmin" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      platformAdmin: ctx.platformAdmin,
+    },
+  });
+});
+
+// Exige role superadmin ou admin — criação/edição de tenants, configs de email
+const requireAdminOrSuper = t.middleware(async opts => {
+  const { ctx, next } = opts;
+
+  if (!ctx.platformAdmin) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Acesso restrito à administração da plataforma" });
+  }
+
+  if (ctx.platformAdmin.role !== 'superadmin' && ctx.platformAdmin.role !== 'admin') {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Esta operação requer role admin ou superadmin" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      platformAdmin: ctx.platformAdmin,
+    },
+  });
+});
+
 // Middleware OBRIGATÓRIO de tenant: bloqueia se tenant não estiver presente e ativo
 const requireTenant = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -190,8 +230,17 @@ export const tenantAdminProcedure = t.procedure
   .use(requireTenant)
   .use(requireAdmin);
 
+// Qualquer platform admin autenticado (superadmin, admin, support) — leitura e stats
 export const platformAdminProcedure = t.procedure
   .use(requirePlatformAdmin);
+
+// Apenas superadmin — CRUD de platform admins, delete/hardDelete de tenants
+export const platformSuperAdminProcedure = t.procedure
+  .use(requireSuperAdmin);
+
+// superadmin ou admin — criação/edição de tenants, impersonar, configs de email
+export const platformAdminOrSuperProcedure = t.procedure
+  .use(requireAdminOrSuper);
 
 // Procedure RIGOROSO que exige tenant válido E injeta tenantDb
 export const strictTenantProcedure = t.procedure

@@ -27,6 +27,12 @@ const AdminSettings = lazy(() => import("./pages/TenantSettings"));
 const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const IATModule = lazy(() => import("./pages/IATModule"));
+// Platform Admin pages
+const PlatformAdminBootstrap = lazy(() => import("./pages/PlatformAdminBootstrap"));
+const PlatformAdminAdmins = lazy(() => import("./pages/PlatformAdminAdmins"));
+const PlatformAdminUsers = lazy(() => import("./pages/PlatformAdminUsers"));
+const PlatformAdminEmailTemplates = lazy(() => import("./pages/PlatformAdminEmailTemplates"));
+const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings"));
 
 function getBackgroundForPath(path: string) {
   // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
@@ -142,7 +148,29 @@ function Router() {
       <Switch>
         {/* Platform Admin Routes */}
         <Route path={"/platform-admin/login"} component={PlatformAdminLogin} />
-        
+        {/* Bootstrap: rota pública, só funciona quando não há admins cadastrados */}
+        <Route path={"/platform-admin/setup"} component={PlatformAdminBootstrap} />
+        <Route path={"/platform-admin/admins"}>
+          <PlatformAdminRoute>
+            <PlatformAdminAdmins />
+          </PlatformAdminRoute>
+        </Route>
+        <Route path={"/platform-admin/users"}>
+          <PlatformAdminRoute>
+            <PlatformAdminUsers />
+          </PlatformAdminRoute>
+        </Route>
+        <Route path={"/platform-admin/email-templates"}>
+          <PlatformAdminRoute>
+            <PlatformAdminEmailTemplates />
+          </PlatformAdminRoute>
+        </Route>
+        <Route path={"/platform-admin/settings"}>
+          <PlatformAdminRoute>
+            <PlatformAdminSettings />
+          </PlatformAdminRoute>
+        </Route>
+
         {/* Super Admin Routes */}
         <Route path={"/super-admin/tenants"}>
           <PlatformAdminRoute>

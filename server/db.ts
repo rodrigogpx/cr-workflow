@@ -1459,6 +1459,115 @@ export async function getPlatformAdminByEmail(email: string) {
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getAllPlatformAdmins() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: platformAdmins.id,
+      email: platformAdmins.email,
+      name: platformAdmins.name,
+      role: platformAdmins.role,
+      isActive: platformAdmins.isActive,
+      lastSignedIn: platformAdmins.lastSignedIn,
+      createdAt: platformAdmins.createdAt,
+    })
+    .from(platformAdmins)
+    .orderBy(platformAdmins.createdAt);
+}
+
+export async function countActivePlatformAdmins() {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(platformAdmins)
+    .where(and(eq(platformAdmins.isActive, true), eq(platformAdmins.role, 'superadmin')));
+  return result[0]?.count ?? 0;
+}
+
+export async function createPlatformAdmin(data: {
+  email: string;
+  password: string;
+  name?: string;
+  role?: 'superadmin' | 'admin' | 'support';
+}) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const hashedPassword = bcrypt.hashSync(data.password, 12);
+  const [inserted] = await db
+    .insert(platformAdmins)
+    .values({
+      email: data.email,
+      hashedPassword,
+      name: data.name ?? null,
+      role: data.role ?? 'admin',
+      isActive: true,
+    })
+    .returning({
+      id: platformAdmins.id,
+      email: platformAdmins.email,
+      name: platformAdmins.name,
+      role: platformAdmins.role,
+      isActive: platformAdmins.isActive,
+    });
+  return inserted;
+}
+
+export async function updatePlatformAdmin(id: number, data: {
+  email?: string;
+  name?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const [updated] = await db
+    .update(platformAdmins)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(platformAdmins.id, id))
+    .returning({
+      id: platformAdmins.id,
+      email: platformAdmins.email,
+      name: platformAdmins.name,
+      role: platformAdmins.role,
+      isActive: platformAdmins.isActive,
+    });
+  return updated ?? null;
+}
+
+export async function updatePlatformAdminPassword(id: number, newPassword: string) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const hashedPassword = bcrypt.hashSync(newPassword, 12);
+  await db
+    .update(platformAdmins)
+    .set({ hashedPassword, updatedAt: new Date() })
+    .where(eq(platformAdmins.id, id));
+}
+
+export async function setPlatformAdminStatus(id: number, isActive: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db
+    .update(platformAdmins)
+    .set({ isActive, updatedAt: new Date() })
+    .where(eq(platformAdmins.id, id));
+}
+
+export async function setPlatformAdminRole(id: number, role: 'superadmin' | 'admin' | 'support') {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db
+    .update(platformAdmins)
+    .set({ role, updatedAt: new Date() })
+    .where(eq(platformAdmins.id, id));
+}
+
+export async function deletePlatformAdmin(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db.delete(platformAdmins).where(eq(platformAdmins.id, id));
+}
+
 export async function getAllTenants() {
   const db = await getDb();
   if (!db) return [];

@@ -2,6 +2,8 @@ import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 
+export type PlatformAdminRole = 'superadmin' | 'admin' | 'support';
+
 type UsePlatformAuthOptions = {
   redirectOnUnauthenticated?: boolean;
   redirectPath?: string;
@@ -39,11 +41,16 @@ export function usePlatformAuth(options?: UsePlatformAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
+    const admin = meQuery.data ?? null;
+    const role = (admin as any)?.role as PlatformAdminRole | null ?? null;
     return {
-      admin: meQuery.data ?? null,
+      admin,
+      role,
+      isSuperAdmin: role === 'superadmin',
+      isAdminOrSuper: role === 'superadmin' || role === 'admin',
       loading: meQuery.isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
-      isAuthenticated: Boolean(meQuery.data),
+      isAuthenticated: Boolean(admin),
     };
   }, [
     meQuery.data,

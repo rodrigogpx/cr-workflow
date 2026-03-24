@@ -1,19 +1,32 @@
 import { ReactNode } from "react";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
 import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, Mail, Settings, ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Shield, Users, Mail, Settings, ChevronRight, UserCog } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 interface PlatformAdminLayoutProps {
   children: ReactNode;
-  active: "users" | "emails" | "settings";
+  active: "users" | "emails" | "settings" | "admins";
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  superadmin: 'Super Admin',
+  admin: 'Admin',
+  support: 'Suporte',
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  superadmin: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+  admin: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+  support: 'bg-slate-500/20 text-slate-300 border-slate-500/40',
+};
+
 export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutProps) {
-  const { user } = useAuth();
-  const [location, setLocation] = useLocation();
+  const { admin, role, isSuperAdmin } = usePlatformAuth();
+  const [, setLocation] = useLocation();
   const tenantSlug = useTenantSlug();
 
   const items = [
@@ -24,6 +37,16 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
       icon: Users,
       path: "/platform-admin/users",
       enabled: true,
+      visible: true,
+    },
+    {
+      id: "admins" as const,
+      label: "Administradores",
+      description: "Gestão de platform admins",
+      icon: UserCog,
+      path: "/platform-admin/admins",
+      enabled: true,
+      visible: isSuperAdmin,
     },
     {
       id: "emails" as const,
@@ -32,6 +55,7 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
       icon: Mail,
       path: "/platform-admin/email-templates",
       enabled: true,
+      visible: true,
     },
     {
       id: "settings" as const,
@@ -40,8 +64,12 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
       icon: Settings,
       path: "/platform-admin/settings",
       enabled: true,
+      visible: true,
     },
-  ];
+  ].filter(item => item.visible);
+
+  const roleLabel = role ? ROLE_LABELS[role] ?? role : 'Administrador';
+  const roleClass = role ? ROLE_COLORS[role] ?? ROLE_COLORS['support'] : ROLE_COLORS['support'];
 
   return (
     <div className="min-h-screen flex">
@@ -60,6 +88,9 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
         <div className="px-4 py-3 border-b border-white/10 text-[0.7rem] flex items-center gap-2">
           <Shield className="h-3 w-3 text-emerald-400" />
           <span className="uppercase tracking-wide">Administrador</span>
+          <span className={`ml-auto text-[0.6rem] font-semibold px-1.5 py-0.5 rounded border ${roleClass}`}>
+            {roleLabel}
+          </span>
         </div>
 
         <nav className="flex-1 px-2 py-4 space-y-1 text-xs">
@@ -93,8 +124,8 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
         </nav>
 
         <div className="px-4 py-3 border-t border-white/10 text-[0.65rem] text-white/60 flex flex-col gap-1">
-          <span className="truncate">{user?.name || user?.email}</span>
-          <span className="uppercase tracking-[0.2em] text-white/40">Admin da Plataforma</span>
+          <span className="truncate">{(admin as any)?.name || (admin as any)?.email}</span>
+          <span className="uppercase tracking-[0.2em] text-white/40">{roleLabel}</span>
         </div>
       </aside>
 

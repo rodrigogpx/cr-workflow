@@ -2,7 +2,7 @@
 import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure, platformSuperAdminProcedure, platformAdminOrSuperProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64, buildInlineLogoAttachment } from "./emailService";
@@ -71,6 +71,37 @@ export const appRouter = router({
       const { hashedPassword, ...safeAdmin } = ctx.platformAdmin;
       return safeAdmin;
     }),
+    // Cria o primeiro superadmin quando a tabela platformAdmins está vazia.
+    // Retorna 403 se já existir qualquer admin (proteção contra bootstrap repetido).
+    bootstrapSuperAdmin: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().min(2),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const existing = await db.getAllPlatformAdmins();
+        if (existing.length > 0) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Bootstrap não permitido: já existem administradores cadastrados.' });
+        }
+        const admin = await db.createPlatformAdmin({ ...input, role: 'superadmin' });
+        // Fazer login automático após bootstrap
+        const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
+          name: admin.name || "",
+          expiresInMs: ONE_YEAR_MS,
+          isPlatformAdmin: true,
+        });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: ONE_YEAR_MS,
+          path: '/',
+          httpOnly: true,
+          sameSite: 'lax',
+        });
+        return { success: true, admin };
+      }),
+
     platformLogin: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
@@ -2439,7 +2470,7 @@ export const appRouter = router({
   // Platform Admin / Tenants Management
   tenants: router({
     // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
-    seedMocks: platformAdminProcedure.mutation(async ({ ctx }: { ctx: TrpcContext }) => {
+    seedMocks: platformSuperAdminProcedure.mutation(async ({ ctx }: { ctx: TrpcContext }) => {
       try {
         const result = await db.seedMockTenants();
         invalidateTenantCache();
@@ -2482,7 +2513,7 @@ export const appRouter = router({
       }),
 
     // Criar novo tenant
-    create: platformAdminProcedure
+    create: platformAdminOrSuperProcedure
       .input(z.object({
         slug: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/),
         name: z.string().min(2).max(255),
@@ -2603,7 +2634,7 @@ export const appRouter = router({
       }),
 
     // Atualizar tenant
-    update: platformAdminProcedure
+    update: platformAdminOrSuperProcedure
       .input(z.object({
         id: z.number(),
         name: z.string().optional(),
@@ -2639,7 +2670,7 @@ export const appRouter = router({
       }),
 
     // Suspender/Ativar tenant
-    setStatus: platformAdminProcedure
+    setStatus: platformAdminOrSuperProcedure
       .input(z.object({
         id: z.number(),
         status: z.enum(['active', 'suspended', 'trial', 'cancelled']),
@@ -2661,7 +2692,7 @@ export const appRouter = router({
       }),
 
     // Deletar tenant (soft delete)
-    delete: platformAdminProcedure
+    delete: platformSuperAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2680,7 +2711,7 @@ export const appRouter = router({
       }),
 
     // Deletar tenant DEFINITIVAMENTE (hard delete)
-    hardDelete: platformAdminProcedure
+    hardDelete: platformSuperAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2794,7 +2825,7 @@ export const appRouter = router({
       }),
 
     // Impersonate: entrar como admin de um tenant específico
-    impersonate: platformAdminProcedure
+    impersonate: platformAdminOrSuperProcedure
       .input(z.object({ 
         tenantId: z.number(),
         confirmPassword: z.string()
@@ -2867,7 +2898,7 @@ export const appRouter = router({
         };
       }),
 
-    updateEmailConfig: platformAdminProcedure
+    updateEmailConfig: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         emailMethod: z.enum(["smtp", "gateway"]),
@@ -2922,7 +2953,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    testEmailConfig: platformAdminProcedure
+    testEmailConfig: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         testEmail: z.string().email(),
@@ -2999,7 +3030,7 @@ export const appRouter = router({
         }
       }),
 
-    saveEmailTemplate: platformAdminProcedure
+    saveEmailTemplate: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         templateKey: z.string(),
@@ -3028,7 +3059,7 @@ export const appRouter = router({
         return { success: true, templateId };
       }),
 
-    seedEmailTemplates: platformAdminProcedure
+    seedEmailTemplates: platformAdminOrSuperProcedure
       .input(z.object({ tenantId: z.number() }))
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
@@ -3043,7 +3074,7 @@ export const appRouter = router({
         return await seedTenantEmailTemplates(tenantDb, input.tenantId);
       }),
 
-    createEmailTrigger: platformAdminProcedure
+    createEmailTrigger: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         name: z.string().min(1),
@@ -3071,7 +3102,7 @@ export const appRouter = router({
         return trigger;
       }),
 
-    updateEmailTrigger: platformAdminProcedure
+    updateEmailTrigger: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         triggerId: z.number(),
@@ -3104,7 +3135,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    deleteEmailTrigger: platformAdminProcedure
+    deleteEmailTrigger: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         triggerId: z.number(),
@@ -3136,7 +3167,7 @@ export const appRouter = router({
         return await db.getTemplatesByTriggerIdFromDb(tenantDb, input.triggerId);
       }),
 
-    updateTriggerTemplates: platformAdminProcedure
+    updateTriggerTemplates: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         triggerId: z.number(),
@@ -3554,6 +3585,137 @@ export const appRouter = router({
         tenantDb
           ? await db.cancelScheduledEmailsByClientToDb(tenantDb, input.clientId)
           : await db.cancelScheduledEmailsByClient(input.clientId);
+        return { success: true };
+      }),
+  }),
+
+  // ===========================================
+  // PLATFORM ADMINS ROUTER (RBAC)
+  // ===========================================
+  platformAdmins: router({
+    // Lista todos os platform admins — apenas superadmin
+    list: platformSuperAdminProcedure.query(async () => {
+      return db.getAllPlatformAdmins();
+    }),
+
+    // Cria novo platform admin — apenas superadmin
+    create: platformSuperAdminProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().min(2),
+        role: z.enum(['superadmin', 'admin', 'support']).default('admin'),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        const existing = await db.getPlatformAdminByEmail(input.email);
+        if (existing) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'Já existe um administrador com esse e-mail.' });
+        }
+        return db.createPlatformAdmin(input);
+      }),
+
+    // Edita perfil — superadmin edita qualquer um; outros só editam o próprio
+    update: platformAdminProcedure
+      .input(z.object({
+        id: z.number(),
+        email: z.string().email().optional(),
+        name: z.string().min(2).optional(),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const isSelf = ctx.platformAdmin!.id === input.id;
+        if (!isSelf && ctx.platformAdmin!.role !== 'superadmin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para editar outro administrador.' });
+        }
+        if (input.email) {
+          const existing = await db.getPlatformAdminByEmail(input.email);
+          if (existing && existing.id !== input.id) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'E-mail já em uso por outro administrador.' });
+          }
+        }
+        const { id, ...data } = input;
+        return db.updatePlatformAdmin(id, data);
+      }),
+
+    // Troca senha — superadmin troca de qualquer um sem senha atual; outros só a própria (com senha atual)
+    changePassword: platformAdminProcedure
+      .input(z.object({
+        id: z.number(),
+        currentPassword: z.string().optional(),
+        newPassword: z.string().min(8),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const isSelf = ctx.platformAdmin!.id === input.id;
+        const isSuperAdmin = ctx.platformAdmin!.role === 'superadmin';
+
+        if (!isSelf && !isSuperAdmin) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para alterar a senha de outro administrador.' });
+        }
+        if (isSelf) {
+          if (!input.currentPassword) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Informe a senha atual.' });
+          }
+          const admin = await db.getPlatformAdminById(input.id);
+          if (!admin) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador não encontrado.' });
+          const match = await comparePassword(input.currentPassword, admin.hashedPassword);
+          if (!match) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Senha atual incorreta.' });
+        }
+        await db.updatePlatformAdminPassword(input.id, input.newPassword);
+        return { success: true };
+      }),
+
+    // Ativa/desativa — apenas superadmin; bloqueia se for o último superadmin ativo
+    setStatus: platformSuperAdminProcedure
+      .input(z.object({ id: z.number(), isActive: z.boolean() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        if (!input.isActive) {
+          const target = await db.getPlatformAdminById(input.id);
+          if (target?.role === 'superadmin') {
+            const count = await db.countActivePlatformAdmins();
+            if (count <= 1) {
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível desativar o único superadmin ativo.' });
+            }
+          }
+        }
+        await db.setPlatformAdminStatus(input.id, input.isActive);
+        return { success: true };
+      }),
+
+    // Altera role — apenas superadmin; bloqueia rebaixamento do último superadmin
+    setRole: platformSuperAdminProcedure
+      .input(z.object({ id: z.number(), role: z.enum(['superadmin', 'admin', 'support']) }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        if (ctx.platformAdmin!.id === input.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode alterar o próprio role.' });
+        }
+        if (input.role !== 'superadmin') {
+          const target = await db.getPlatformAdminById(input.id);
+          if (target?.role === 'superadmin') {
+            const count = await db.countActivePlatformAdmins();
+            if (count <= 1) {
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível rebaixar o único superadmin ativo.' });
+            }
+          }
+        }
+        await db.setPlatformAdminRole(input.id, input.role);
+        return { success: true };
+      }),
+
+    // Deleta — apenas superadmin; bloqueia deleção do último superadmin
+    delete: platformSuperAdminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        if (ctx.platformAdmin!.id === input.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode deletar a própria conta.' });
+        }
+        const target = await db.getPlatformAdminById(input.id);
+        if (!target) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador não encontrado.' });
+        if (target.role === 'superadmin') {
+          const count = await db.countActivePlatformAdmins();
+          if (count <= 1) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível deletar o único superadmin ativo.' });
+          }
+        }
+        await db.deletePlatformAdmin(input.id);
         return { success: true };
       }),
   }),
