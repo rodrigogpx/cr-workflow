@@ -3,7 +3,7 @@ import UsersPage from "./Users";
 
 export default function PlatformAdminUsers() {
   return (
-    <PlatformAdminLayout active="users">
+    <PlatformAdminLayout active="dashboard">
       <UsersPage />
     </PlatformAdminLayout>
   );

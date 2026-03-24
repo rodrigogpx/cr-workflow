@@ -31,7 +31,7 @@ export default function PlatformAdminSettings() {
   const roleClass = role ? ROLE_COLORS[role] ?? ROLE_COLORS['support'] : ROLE_COLORS['support'];
 
   return (
-    <PlatformAdminLayout active="settings">
+    <PlatformAdminLayout active="dashboard">
       <div className="space-y-8">
         {/* Page Header */}
         <div>

@@ -1,10 +1,12 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
 import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Shield, Building2, Settings, ChevronRight, UserCog, LayoutDashboard } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
+import SuperAdminTenantsPage from "@/pages/SuperAdminTenants";
 
 interface PlatformAdminLayoutProps {
   children: ReactNode;
@@ -27,6 +29,7 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
   const { admin, role, isSuperAdmin } = usePlatformAuth();
   const [, setLocation] = useLocation();
   const tenantSlug = useTenantSlug();
+  const [tenantsOpen, setTenantsOpen] = useState(false);
 
   const items = [
     {
@@ -35,6 +38,7 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
       description: "Visão geral da plataforma",
       icon: LayoutDashboard,
       path: "/platform-admin",
+      action: undefined as (() => void) | undefined,
       enabled: true,
       visible: true,
     },
@@ -43,7 +47,8 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
       label: "Tenants (Clubes)",
       description: "Gestão de clubes e planos",
       icon: Building2,
-      path: "/platform-admin/tenants",
+      path: "",
+      action: () => setTenantsOpen(true),
       enabled: true,
       visible: true,
     },
@@ -53,6 +58,7 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
       description: "Gestão de platform admins",
       icon: UserCog,
       path: "/platform-admin/admins",
+      action: undefined as (() => void) | undefined,
       enabled: true,
       visible: isSuperAdmin,
     },
@@ -91,7 +97,7 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
               <button
                 key={item.id}
                 disabled={!item.enabled}
-                onClick={() => item.enabled && setLocation(buildTenantPath(tenantSlug, item.path))}
+                onClick={() => item.enabled && (item.action ? item.action() : setLocation(buildTenantPath(tenantSlug, item.path)))}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-3 transition-all border border-transparent ${
                   isActive
                     ? "bg-white text-black border-white/60 shadow"
@@ -139,6 +145,16 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
           {children}
         </div>
       </main>
+
+      {/* Tenants Sheet — 70% da tela */}
+      <Sheet open={tenantsOpen} onOpenChange={setTenantsOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-purple-900/80 [&>button]:rounded-md [&>button]:p-1"
+        >
+          <SuperAdminTenantsPage />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

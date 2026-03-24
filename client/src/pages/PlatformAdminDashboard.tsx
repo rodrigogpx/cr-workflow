@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import SuperAdminTenantsPage from "./SuperAdminTenants";
 import { AdminForm } from "@/components/platform-admin/AdminForm";
 import { ChangePasswordDialog } from "@/components/platform-admin/ChangePasswordDialog";
 import {
@@ -56,6 +57,7 @@ export default function PlatformAdminDashboard() {
   const [, setLocation] = useLocation();
   const { admin, role, isSuperAdmin, logout } = usePlatformAuth();
 
+  const [tenantsOpen, setTenantsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -80,7 +82,8 @@ export default function PlatformAdminDashboard() {
       label: "Tenants (Clubes)",
       description: "Gerencie clubes, planos, features e configurações de email",
       icon: Building2,
-      path: "/platform-admin/tenants",
+      path: "",
+      action: () => setTenantsOpen(true),
       color: "from-purple-500 to-purple-700",
       iconBg: "bg-purple-500/10",
       iconColor: "text-purple-400",
@@ -378,9 +381,19 @@ export default function PlatformAdminDashboard() {
         </main>
       </div>
 
+      {/* Tenants Sheet — 70% da tela */}
+      <Sheet open={tenantsOpen} onOpenChange={setTenantsOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-purple-900/80 [&>button]:rounded-md [&>button]:p-1"
+        >
+          <SuperAdminTenantsPage />
+        </SheetContent>
+      </Sheet>
+
       {/* Settings Sheet */}
       <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl flex flex-col bg-background border-l-2 border-dashed border-white/20 overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:w-[60vw] sm:max-w-none flex flex-col bg-background border-l-2 border-dashed border-white/20 overflow-y-auto">
           <SheetHeader className="border-b-2 border-dashed border-white/20 pb-4 shrink-0">
             <div className="flex items-center gap-3">
               <div className="bg-card rounded-md p-2">

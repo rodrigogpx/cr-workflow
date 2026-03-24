@@ -16,7 +16,6 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MainDashboard = lazy(() => import("./pages/MainDashboard"));
 const ClientWorkflow = lazy(() => import("./pages/ClientWorkflow"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
-const SuperAdminTenants = lazy(() => import("./pages/SuperAdminTenants"));
 const PlatformAdminDashboard = lazy(() => import("./pages/PlatformAdminDashboard"));
 // Tenant Admin pages (unified)
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -155,20 +154,18 @@ function Router() {
             </PlatformAdminRoute>
           )
         }</Route>
-        <Route path={"/platform-admin/tenants"}>
-          <PlatformAdminRoute>
-            <SuperAdminTenants />
-          </PlatformAdminRoute>
-        </Route>
         <Route path={"/platform-admin/admins"}>
           <PlatformAdminRoute>
             <PlatformAdminAdmins />
           </PlatformAdminRoute>
         </Route>
 
-        {/* Legacy redirect: /super-admin/tenants → /platform-admin/tenants */}
+        {/* Legacy redirects */}
         <Route path={"/super-admin/tenants"}>
-          <Redirect to="/platform-admin/tenants" />
+          <Redirect to="/platform-admin" />
+        </Route>
+        <Route path={"/platform-admin/tenants"}>
+          <Redirect to="/platform-admin" />
         </Route>
         
         {/* Global Auth Routes (no tenant) */}
