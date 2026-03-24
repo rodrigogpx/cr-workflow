@@ -8,7 +8,7 @@ import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
 interface PlatformAdminLayoutProps {
   children: ReactNode;
-  active: "dashboard" | "tenants" | "settings" | "admins";
+  active: "dashboard" | "tenants" | "admins";
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -55,15 +55,6 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
       path: "/platform-admin/admins",
       enabled: true,
       visible: isSuperAdmin,
-    },
-    {
-      id: "settings" as const,
-      label: "Configurações",
-      description: "Parâmetros globais e compliance",
-      icon: Settings,
-      path: "/platform-admin/settings",
-      enabled: true,
-      visible: true,
     },
   ].filter(item => item.visible);
 

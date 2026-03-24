@@ -5,13 +5,16 @@
  * Exibe estatísticas globais, métricas financeiras (placeholder) e navegação para sub-seções.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { AdminForm } from "@/components/platform-admin/AdminForm";
+import { ChangePasswordDialog } from "@/components/platform-admin/ChangePasswordDialog";
 import {
   Building2,
   CheckCircle2,
@@ -30,6 +33,9 @@ import {
   LogOut,
   LayoutDashboard,
   Loader2,
+  KeyRound,
+  Mail,
+  Cog,
 } from "lucide-react";
 
 const APP_LOGO = "/logo.png";
@@ -49,6 +55,10 @@ const ROLE_COLORS: Record<string, string> = {
 export default function PlatformAdminDashboard() {
   const [, setLocation] = useLocation();
   const { admin, role, isSuperAdmin, logout } = usePlatformAuth();
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const { data: tenants = [], isLoading: isLoadingTenants } = trpc.tenants.list.useQuery();
   const { data: globalStats, isLoading: isLoadingStats } = trpc.tenants.getGlobalStats.useQuery();
@@ -92,7 +102,8 @@ export default function PlatformAdminDashboard() {
       label: "Configurações",
       description: "Perfil, parâmetros globais e integrações",
       icon: Settings,
-      path: "/platform-admin/settings",
+      path: "",
+      action: () => setSettingsOpen(true),
       color: "from-slate-500 to-slate-700",
       iconBg: "bg-slate-500/10",
       iconColor: "text-slate-400",
@@ -341,7 +352,7 @@ export default function PlatformAdminDashboard() {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setLocation(item.path)}
+                    onClick={() => item.action ? item.action() : setLocation(item.path)}
                     className="group relative bg-white/95 backdrop-blur-sm rounded-xl border border-white/40 p-6 text-left transition-all duration-200 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <div className="flex items-start justify-between">
@@ -366,6 +377,126 @@ export default function PlatformAdminDashboard() {
           </div>
         </main>
       </div>
+
+      {/* Settings Sheet */}
+      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-lg bg-gray-950 border-white/10 overflow-y-auto">
+          <SheetHeader className="border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-slate-500/10 rounded-lg p-2">
+                <Cog className="h-5 w-5 text-slate-400" />
+              </div>
+              <div>
+                <SheetTitle className="text-white">Configurações</SheetTitle>
+                <SheetDescription className="text-white/50">
+                  Perfil e parâmetros da plataforma
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="space-y-6 px-4 pb-6">
+            {/* Meu Perfil */}
+            <div>
+              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
+                <Users className="h-3.5 w-3.5" />
+                Meu Perfil
+              </h3>
+              <div className="bg-white/95 backdrop-blur-sm rounded-xl border border-white/40 p-5 space-y-4">
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Nome</p>
+                    <p className="font-semibold text-gray-900 text-sm">{(admin as any)?.name || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">E-mail</p>
+                    <p className="font-semibold text-gray-900 text-sm">{(admin as any)?.email || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Role</p>
+                    <span className={`text-[0.7rem] font-semibold px-2 py-1 rounded border ${roleClass}`}>
+                      {roleLabel}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2 border-t border-gray-100">
+                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white" onClick={() => setEditProfileOpen(true)}>
+                    Editar perfil
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setChangePasswordOpen(true)}>
+                    <KeyRound className="h-3.5 w-3.5 mr-1.5" />
+                    Trocar senha
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Informações */}
+            <div>
+              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
+                <Settings className="h-3.5 w-3.5" />
+                Informações
+              </h3>
+              <div className="space-y-3">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-blue-500/10 rounded-lg p-2 shrink-0">
+                      <Mail className="h-4 w-4 text-blue-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white text-sm">Configuração de Emails (SMTP)</h4>
+                      <p className="text-xs text-white/50 mt-1 leading-relaxed">
+                        As configurações SMTP são isoladas por tenant. Cada clube configura seu servidor
+                        em <span className="text-white/70 font-medium">Administração → Configurações</span>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Configurações Globais (Em breve) */}
+            <div>
+              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
+                <Cog className="h-3.5 w-3.5" />
+                Configurações Globais
+                <Badge variant="outline" className="text-[0.55rem] border-amber-500/40 text-amber-300 ml-1">
+                  Em breve
+                </Badge>
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { label: "Compliance", desc: "Prazos e regras globais", icon: "📋" },
+                  { label: "Integrações", desc: "Sistemas externos e APIs", icon: "🔗" },
+                  { label: "Backup", desc: "Política de backup e retenção", icon: "💾" },
+                ].map((item) => (
+                  <div key={item.label} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 border-dashed p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl opacity-30">{item.icon}</span>
+                      <div>
+                        <p className="text-sm font-medium text-white/30">{item.label}</p>
+                        <p className="text-xs text-white/20">{item.desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Dialogs */}
+      <AdminForm
+        open={editProfileOpen}
+        onClose={() => setEditProfileOpen(false)}
+        editTarget={admin}
+      />
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+        target={admin}
+      />
     </div>
   );
 }

@@ -31,7 +31,6 @@ const IATModule = lazy(() => import("./pages/IATModule"));
 // Platform Admin pages
 const PlatformAdminBootstrap = lazy(() => import("./pages/PlatformAdminBootstrap"));
 const PlatformAdminAdmins = lazy(() => import("./pages/PlatformAdminAdmins"));
-const PlatformAdminSettings = lazy(() => import("./pages/PlatformAdminSettings"));
 
 function getBackgroundForPath(path: string) {
   // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
@@ -164,11 +163,6 @@ function Router() {
         <Route path={"/platform-admin/admins"}>
           <PlatformAdminRoute>
             <PlatformAdminAdmins />
-          </PlatformAdminRoute>
-        </Route>
-        <Route path={"/platform-admin/settings"}>
-          <PlatformAdminRoute>
-            <PlatformAdminSettings />
           </PlatformAdminRoute>
         </Route>
 
