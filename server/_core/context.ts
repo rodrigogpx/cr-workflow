@@ -45,7 +45,8 @@ export async function createContext(
   }
 
   // Fallback de desenvolvimento: se não houver sessão válida, usar o admin
-  if (!user && !ENV.isProduction) {
+  // SECURITY: Requires BOTH !isProduction AND explicit opt-in via DEV_AUTO_LOGIN=true
+  if (!user && !ENV.isProduction && process.env.DEV_AUTO_LOGIN === 'true') {
     const adminEmail = process.env.ADMIN_EMAIL;
     if (adminEmail) {
       const admin = await db.getUserByEmail(adminEmail);
@@ -69,7 +70,9 @@ export async function createContext(
   }
 
   // 1) Tentar obter o slug a partir do header enviado pelo frontend
-  if (!tenantSlug) {
+  // SECURITY: Only accept x-tenant-slug if there's NO authenticated session with a tenantSlug.
+  // This prevents an attacker from injecting a different tenant via header manipulation.
+  if (!tenantSlug && !sessionTenantSlug) {
     const headerSlug = opts.req.headers["x-tenant-slug"];
     if (typeof headerSlug === "string" && headerSlug.trim() !== "") {
       tenantSlug = headerSlug.trim();

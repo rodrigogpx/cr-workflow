@@ -166,14 +166,10 @@ export const appRouter = router({
             tenantSlug = userTenant.slug;
           }
         } else if (!user.tenantId) {
-          // Fallback para usuários legados: associar ao primeiro tenant existente
-          const allTenants = await db.getAllTenants();
-          if (allTenants && allTenants.length > 0) {
-            const firstTenant = allTenants[0];
-            await db.updateUser(user.id, { tenantId: firstTenant.id });
-            tenantSlug = firstTenant.slug;
-            user.tenantId = firstTenant.id;
-          }
+          // SECURITY: Do NOT auto-associate users without tenant to the first tenant.
+          // Legacy users without tenantId must be manually assigned by an admin.
+          console.warn(`[Auth] User ${user.id} (${user.email}) has no tenantId — login blocked until admin assigns a tenant`);
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Usuário sem tenant associado. Contate o administrador.' });
         }
 
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
@@ -217,14 +213,10 @@ export const appRouter = router({
       }),
     logout: publicProcedure.mutation(({ ctx }: { ctx: TrpcContext }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      // Garantir que os atributos de limpeza correspondam aos de criação
-      ctx.res.clearCookie(COOKIE_NAME, { 
-        ...cookieOptions, 
-        maxAge: -1,
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-      });
+      const clearOpts = { ...cookieOptions, maxAge: -1, path: "/", httpOnly: true, sameSite: "lax" as const };
+      // SECURITY: Clear BOTH session cookies to fully invalidate tenant and platform admin sessions
+      ctx.res.clearCookie(COOKIE_NAME, clearOpts);
+      ctx.res.clearCookie(PLATFORM_COOKIE_NAME, clearOpts);
       return {
         success: true,
       } as const;

@@ -490,8 +490,10 @@ export async function getEmailTemplateFromDb(
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getUserByIdFromDb(tenantDb: ReturnType<typeof drizzle>, id: number) {
-  const result = await tenantDb.select().from(users).where(eq(users.id, id)).limit(1);
+export async function getUserByIdFromDb(tenantDb: ReturnType<typeof drizzle>, id: number, tenantId?: number) {
+  const conditions = [eq(users.id, id)];
+  if (tenantId) conditions.push(eq(users.tenantId, tenantId));
+  const result = await tenantDb.select().from(users).where(and(...conditions)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -644,8 +646,10 @@ export async function getClientById(clientId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getClientByIdFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
-  const result = await tenantDb.select().from(clients).where(eq(clients.id, clientId)).limit(1);
+export async function getClientByIdFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number, tenantId?: number) {
+  const conditions = [eq(clients.id, clientId)];
+  if (tenantId) conditions.push(eq(clients.tenantId, tenantId));
+  const result = await tenantDb.select().from(clients).where(and(...conditions)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -659,9 +663,12 @@ export async function updateClient(clientId: number, data: Partial<InsertClient>
 export async function updateClientToDb(
   tenantDb: ReturnType<typeof drizzle>,
   clientId: number,
-  data: Partial<InsertClient>
+  data: Partial<InsertClient>,
+  tenantId?: number
 ) {
-  await tenantDb.update(clients).set(data).where(eq(clients.id, clientId));
+  const conditions = [eq(clients.id, clientId)];
+  if (tenantId) conditions.push(eq(clients.tenantId, tenantId));
+  await tenantDb.update(clients).set(data).where(and(...conditions));
 }
 
 export async function deleteClient(clientId: number) {
@@ -677,7 +684,12 @@ export async function deleteClient(clientId: number) {
   await db.delete(clients).where(eq(clients.id, clientId));
 }
 
-export async function deleteClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
+export async function deleteClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number, tenantId?: number) {
+  // SECURITY: Verify client belongs to tenant before cascading deletes
+  if (tenantId) {
+    const client = await getClientByIdFromDb(tenantDb, clientId, tenantId);
+    if (!client) throw new Error('Client not found or does not belong to this tenant');
+  }
   await tenantDb.delete(documents).where(eq(documents.clientId, clientId));
   const clientWorkflowSteps = await tenantDb
     .select()
@@ -813,13 +825,20 @@ export async function getWorkflowStepById(stepId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getWorkflowStepByIdFromDb(tenantDb: ReturnType<typeof drizzle>, stepId: number) {
+export async function getWorkflowStepByIdFromDb(tenantDb: ReturnType<typeof drizzle>, stepId: number, tenantId?: number) {
+  // Note: workflowSteps doesn't have tenantId directly — verify via client ownership
   const result = await tenantDb
     .select()
     .from(workflowSteps)
     .where(eq(workflowSteps.id, stepId))
     .limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  if (result.length === 0) return undefined;
+  // SECURITY: If tenantId provided, verify the parent client belongs to this tenant
+  if (tenantId && result[0].clientId) {
+    const client = await getClientByIdFromDb(tenantDb, result[0].clientId, tenantId);
+    if (!client) return undefined;
+  }
+  return result[0];
 }
 
 export async function upsertWorkflowStep(step: InsertWorkflowStep & { id?: number }) {
@@ -946,11 +965,13 @@ export async function getDocumentById(documentId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getDocumentByIdFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number) {
+export async function getDocumentByIdFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number, tenantId?: number) {
+  const conditions = [eq(documents.id, documentId)];
+  if (tenantId) conditions.push(eq(documents.tenantId, tenantId));
   const result = await tenantDb
     .select()
     .from(documents)
-    .where(eq(documents.id, documentId))
+    .where(and(...conditions))
     .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -962,8 +983,10 @@ export async function deleteDocument(documentId: number) {
   await db.delete(documents).where(eq(documents.id, documentId));
 }
 
-export async function deleteDocumentFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number) {
-  await tenantDb.delete(documents).where(eq(documents.id, documentId));
+export async function deleteDocumentFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number, tenantId?: number) {
+  const conditions = [eq(documents.id, documentId)];
+  if (tenantId) conditions.push(eq(documents.tenantId, tenantId));
+  await tenantDb.delete(documents).where(and(...conditions));
 }
 
 // User management
@@ -1002,9 +1025,12 @@ export async function updateUser(userId: number, data: Partial<InsertUser>) {
 export async function updateUserToDb(
   tenantDb: ReturnType<typeof drizzle>,
   userId: number,
-  data: Partial<InsertUser>
+  data: Partial<InsertUser>,
+  tenantId?: number
 ) {
-  await tenantDb.update(users).set(data).where(eq(users.id, userId));
+  const conditions = [eq(users.id, userId)];
+  if (tenantId) conditions.push(eq(users.tenantId, tenantId));
+  await tenantDb.update(users).set(data).where(and(...conditions));
 }
 
 export async function updateUserRole(userId: number, role: "operator" | "admin") {
@@ -1017,9 +1043,12 @@ export async function updateUserRole(userId: number, role: "operator" | "admin")
 export async function updateUserRoleToDb(
   tenantDb: ReturnType<typeof drizzle>,
   userId: number,
-  role: "operator" | "admin"
+  role: "operator" | "admin",
+  tenantId?: number
 ) {
-  await tenantDb.update(users).set({ role }).where(eq(users.id, userId));
+  const conditions = [eq(users.id, userId)];
+  if (tenantId) conditions.push(eq(users.tenantId, tenantId));
+  await tenantDb.update(users).set({ role }).where(and(...conditions));
 }
 
 export async function deleteUser(userId: number) {
@@ -1029,8 +1058,10 @@ export async function deleteUser(userId: number) {
   await db.delete(users).where(eq(users.id, userId));
 }
 
-export async function deleteUserFromDb(tenantDb: ReturnType<typeof drizzle>, userId: number) {
-  await tenantDb.delete(users).where(eq(users.id, userId));
+export async function deleteUserFromDb(tenantDb: ReturnType<typeof drizzle>, userId: number, tenantId?: number) {
+  const conditions = [eq(users.id, userId)];
+  if (tenantId) conditions.push(eq(users.tenantId, tenantId));
+  await tenantDb.delete(users).where(and(...conditions));
 }
 
 // Tenant SMTP settings - stored directly in tenants table

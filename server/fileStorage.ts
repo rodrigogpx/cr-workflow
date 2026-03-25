@@ -34,6 +34,14 @@ export async function saveClientDocumentFile(params: {
 }): Promise<{ key: string; fullPath: string; publicPath: string; size: number }> {
   const safeName = sanitizeFileName(params.fileName);
 
+  // SECURITY: Validate that clientId and tenantId are positive integers to prevent path traversal
+  if (!Number.isInteger(params.clientId) || params.clientId <= 0) {
+    throw new Error("[FileStorage] Invalid clientId");
+  }
+  if (params.tenantId !== undefined && (!Number.isInteger(params.tenantId) || params.tenantId <= 0)) {
+    throw new Error("[FileStorage] Invalid tenantId");
+  }
+
   // Estrutura: 
   // Multi-tenant: tenants/<tenantId>/clients/<clientId>/<timestamp>-<fileName>
   // Legado/Sem tenant: clients/<clientId>/<timestamp>-<fileName>
@@ -46,7 +54,13 @@ export async function saveClientDocumentFile(params: {
   }
 
   const relKey = path.join(relDir, `${Date.now()}-${safeName}`);
-  const fullPath = path.join(DOCUMENTS_BASE_DIR, relKey);
+  const fullPath = path.resolve(DOCUMENTS_BASE_DIR, relKey);
+
+  // SECURITY: Ensure resolved path is within DOCUMENTS_BASE_DIR (prevent path traversal)
+  const normalizedBase = path.resolve(DOCUMENTS_BASE_DIR);
+  if (!fullPath.startsWith(normalizedBase + path.sep)) {
+    throw new Error("[FileStorage] Path traversal detected — file rejected");
+  }
 
   await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
   await fs.promises.writeFile(fullPath, params.buffer);

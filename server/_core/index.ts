@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { getDocumentsBaseDir } from "../fileStorage";
+import { authenticatedFileServing } from "./fileAuth";
 import { installRouter } from "../install/router";
 import { ensureMissingTables } from "../ensure-tables";
 import { tenantApiRouter } from "./tenantApi";
@@ -41,12 +42,31 @@ async function startServer() {
   const installWizardEnabled =
     (process.env.INSTALL_WIZARD_ENABLED ?? "true").toLowerCase() !== "false";
 
+  // SECURITY: Restrict CORS origin in production to configured domain(s)
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(",").map(o => o.trim())
+    : (process.env.DOMAIN ? [`https://${process.env.DOMAIN}`, `https://hml.${process.env.DOMAIN}`] : []);
+
   app.use(
     cors({
-      origin: process.env.NODE_ENV === 'development' ? 'http://localhost:5173' : true,
+      origin: process.env.NODE_ENV === 'development'
+        ? 'http://localhost:5173'
+        : (allowedOrigins.length > 0 ? allowedOrigins : true),
       credentials: true,
     })
   );
+
+  // SECURITY: Basic security headers (equivalent to helmet basics)
+  app.use((_req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    if (process.env.NODE_ENV === "production") {
+      res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    }
+    next();
+  });
 
   // Health check endpoint para Railway/Docker/Swarm
   app.get('/health', (_req, res) => {
@@ -61,13 +81,16 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // Serve client document files from Volume (when DOCUMENTS_STORAGE_DIR is set)
+  // SECURITY: Files are served through authenticated middleware — not express.static
   if (process.env.DOCUMENTS_STORAGE_DIR) {
-    app.use("/files", express.static(getDocumentsBaseDir()));
+    app.use("/files", authenticatedFileServing());
   }
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
 
+  // SECURITY: Install wizard is gated by env var AND checks isPlatformInstalled() internally.
+  // Once installed, the /complete endpoint rejects with 409.
   if (installWizardEnabled) {
     app.use("/api/install", installRouter);
   }
