@@ -16,7 +16,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import SuperAdminTenantsPage from "./SuperAdminTenants";
 import { AdminForm } from "@/components/platform-admin/AdminForm";
 import { ChangePasswordDialog } from "@/components/platform-admin/ChangePasswordDialog";
-import { PlansManagementPanel } from "@/components/super-admin/PlansManagementPanel";
 import { BillingOverviewPanel } from "@/components/super-admin/BillingOverviewPanel";
 import {
   Building2,
@@ -40,7 +39,6 @@ import {
   Mail,
   Cog,
   Receipt,
-  Layers,
 } from "lucide-react";
 
 const APP_LOGO = "/logo.png";
@@ -63,7 +61,6 @@ export default function PlatformAdminDashboard() {
 
   const [tenantsOpen, setTenantsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [plansOpen, setPlansOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -97,21 +94,9 @@ export default function PlatformAdminDashboard() {
       visible: true,
     },
     {
-      id: "plans",
-      label: "Planos",
-      description: "Gerencie planos de assinatura, preços e limites",
-      icon: Layers,
-      path: "",
-      action: () => setPlansOpen(true),
-      color: "from-indigo-500 to-indigo-700",
-      iconBg: "bg-indigo-500/10",
-      iconColor: "text-indigo-400",
-      visible: isSuperAdmin,
-    },
-    {
       id: "billing",
       label: "Financeiro",
-      description: "Faturas, pagamentos e visão financeira global",
+      description: "Faturas, planos, pagamentos e relatórios financeiros",
       icon: Receipt,
       path: "",
       action: () => setBillingOpen(true),
@@ -430,16 +415,6 @@ export default function PlatformAdminDashboard() {
           className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-purple-900/80 [&>button]:rounded-md [&>button]:p-1"
         >
           <SuperAdminTenantsPage />
-        </SheetContent>
-      </Sheet>
-
-      {/* Plans Sheet */}
-      <Sheet open={plansOpen} onOpenChange={setPlansOpen}>
-        <SheetContent
-          side="right"
-          className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-indigo-900/80 [&>button]:rounded-md [&>button]:p-1"
-        >
-          <PlansManagementPanel />
         </SheetContent>
       </Sheet>
 
