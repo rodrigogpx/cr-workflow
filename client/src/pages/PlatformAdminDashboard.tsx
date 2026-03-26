@@ -2,7 +2,7 @@
  * Platform Admin - Dashboard
  * 
  * Página inicial da administração da plataforma CAC 360.
- * Exibe estatísticas globais, métricas financeiras (placeholder) e navegação para sub-seções.
+ * Exibe estatísticas globais, métricas financeiras e navegação para sub-seções.
  */
 
 import { useMemo, useState } from "react";
@@ -16,6 +16,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import SuperAdminTenantsPage from "./SuperAdminTenants";
 import { AdminForm } from "@/components/platform-admin/AdminForm";
 import { ChangePasswordDialog } from "@/components/platform-admin/ChangePasswordDialog";
+import { PlansManagementPanel } from "@/components/super-admin/PlansManagementPanel";
+import { BillingOverviewPanel } from "@/components/super-admin/BillingOverviewPanel";
 import {
   Building2,
   CheckCircle2,
@@ -37,6 +39,8 @@ import {
   KeyRound,
   Mail,
   Cog,
+  Receipt,
+  Layers,
 } from "lucide-react";
 
 const APP_LOGO = "/logo.png";
@@ -59,11 +63,14 @@ export default function PlatformAdminDashboard() {
 
   const [tenantsOpen, setTenantsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const { data: tenants = [], isLoading: isLoadingTenants } = trpc.tenants.list.useQuery();
   const { data: globalStats, isLoading: isLoadingStats } = trpc.tenants.getGlobalStats.useQuery();
+  const { data: billingMetrics } = trpc.billing.metrics.useQuery();
 
   const tenantStats = useMemo(() => {
     const active = tenants.filter((t) => t.subscriptionStatus === "active").length;
@@ -87,6 +94,30 @@ export default function PlatformAdminDashboard() {
       color: "from-purple-500 to-purple-700",
       iconBg: "bg-purple-500/10",
       iconColor: "text-purple-400",
+      visible: true,
+    },
+    {
+      id: "plans",
+      label: "Planos",
+      description: "Gerencie planos de assinatura, preços e limites",
+      icon: Layers,
+      path: "",
+      action: () => setPlansOpen(true),
+      color: "from-indigo-500 to-indigo-700",
+      iconBg: "bg-indigo-500/10",
+      iconColor: "text-indigo-400",
+      visible: isSuperAdmin,
+    },
+    {
+      id: "billing",
+      label: "Financeiro",
+      description: "Faturas, pagamentos e visão financeira global",
+      icon: Receipt,
+      path: "",
+      action: () => setBillingOpen(true),
+      color: "from-green-500 to-green-700",
+      iconBg: "bg-green-500/10",
+      iconColor: "text-green-400",
       visible: true,
     },
     {
@@ -283,65 +314,76 @@ export default function PlatformAdminDashboard() {
             </div>
           )}
 
-          {/* Financial Metrics (Placeholder) */}
+          {/* Financial Metrics */}
           <div>
             <h2 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-4 flex items-center gap-2">
               <DollarSign className="h-3.5 w-3.5" />
               Métricas Financeiras
-              <Badge variant="outline" className="text-[0.6rem] border-amber-500/40 text-amber-300 ml-2">
-                Em breve
-              </Badge>
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-white/5 backdrop-blur-sm border-white/10 border-dashed shadow-lg">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-white/40">MRR</p>
-                      <p className="text-2xl font-bold text-white/30">R$ —</p>
-                      <p className="text-xs text-white/20 mt-1">Receita Recorrente Mensal</p>
-                    </div>
-                    <TrendingUp className="h-8 w-8 text-green-500/30" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="bg-white/5 backdrop-blur-sm border-white/10 border-dashed shadow-lg">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-white/40">Receita Mensal</p>
-                      <p className="text-2xl font-bold text-white/30">R$ —</p>
-                      <p className="text-xs text-white/20 mt-1">Faturamento do mês</p>
-                    </div>
-                    <CreditCard className="h-8 w-8 text-blue-500/30" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="bg-white/5 backdrop-blur-sm border-white/10 border-dashed shadow-lg">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-white/40">Churn Rate</p>
-                      <p className="text-2xl font-bold text-white/30">— %</p>
-                      <p className="text-xs text-white/20 mt-1">Taxa de cancelamento</p>
-                    </div>
-                    <TrendingDown className="h-8 w-8 text-red-500/30" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="bg-white/5 backdrop-blur-sm border-white/10 border-dashed shadow-lg">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-white/40">Ticket Médio</p>
-                      <p className="text-2xl font-bold text-white/30">R$ —</p>
-                      <p className="text-xs text-white/20 mt-1">Valor médio por tenant</p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-amber-500/30" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            {(() => {
+              const mrrValue = billingMetrics?.mrrBRL ?? 0;
+              const mrrFormatted = billingMetrics?.mrrFormatted ?? 'R$ 0,00';
+              const planCounts = billingMetrics?.tenantsByPlan ?? {};
+              const totalActive = (Object.values(planCounts) as number[]).reduce((a, b) => a + b, 0);
+              const ticketMedio = totalActive > 0 ? Math.round(mrrValue / totalActive) : 0;
+              const ticketFormatted = `R$ ${(ticketMedio / 100).toFixed(2).replace('.', ',')}`;
+              const cancelledCount = tenantStats.cancelled;
+              const totalTenants = tenantStats.total;
+              const churnRate = totalTenants > 0 ? ((cancelledCount / totalTenants) * 100).toFixed(1) : '0.0';
+              const arrFormatted = `R$ ${((mrrValue * 12) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card className="bg-white/10 backdrop-blur-sm border-white/10 shadow-lg">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-white/60">MRR</p>
+                          <p className="text-2xl font-bold text-white">{mrrFormatted}</p>
+                          <p className="text-xs text-white/40 mt-1">Receita Recorrente Mensal</p>
+                        </div>
+                        <TrendingUp className="h-8 w-8 text-green-400 opacity-60" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-white/10 backdrop-blur-sm border-white/10 shadow-lg">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-white/60">ARR</p>
+                          <p className="text-2xl font-bold text-white">{arrFormatted}</p>
+                          <p className="text-xs text-white/40 mt-1">Receita Recorrente Anual</p>
+                        </div>
+                        <CreditCard className="h-8 w-8 text-blue-400 opacity-60" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-white/10 backdrop-blur-sm border-white/10 shadow-lg">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-white/60">Churn Rate</p>
+                          <p className="text-2xl font-bold text-white">{churnRate}%</p>
+                          <p className="text-xs text-white/40 mt-1">Taxa de cancelamento</p>
+                        </div>
+                        <TrendingDown className="h-8 w-8 text-red-400 opacity-60" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-white/10 backdrop-blur-sm border-white/10 shadow-lg">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-white/60">Ticket Médio</p>
+                          <p className="text-2xl font-bold text-white">{ticketFormatted}</p>
+                          <p className="text-xs text-white/40 mt-1">Valor médio por tenant</p>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-amber-400 opacity-60" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Navigation Cards */}
@@ -388,6 +430,26 @@ export default function PlatformAdminDashboard() {
           className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-purple-900/80 [&>button]:rounded-md [&>button]:p-1"
         >
           <SuperAdminTenantsPage />
+        </SheetContent>
+      </Sheet>
+
+      {/* Plans Sheet */}
+      <Sheet open={plansOpen} onOpenChange={setPlansOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-indigo-900/80 [&>button]:rounded-md [&>button]:p-1"
+        >
+          <PlansManagementPanel />
+        </SheetContent>
+      </Sheet>
+
+      {/* Billing Sheet */}
+      <Sheet open={billingOpen} onOpenChange={setBillingOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-green-900/80 [&>button]:rounded-md [&>button]:p-1"
+        >
+          <BillingOverviewPanel />
         </SheetContent>
       </Sheet>
 
