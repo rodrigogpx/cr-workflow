@@ -5,6 +5,7 @@ import { sdk } from "./sdk";
 import { COOKIE_NAME, PLATFORM_COOKIE_NAME } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
 import { getDocumentsBaseDir } from "../fileStorage";
+import { getTenantConfig } from "../config/tenant.config";
 
 /**
  * Middleware de autenticação para servir arquivos.
@@ -49,20 +50,24 @@ export function authenticatedFileServing() {
     const tenantMatch = requestedPath.match(/^\/tenants\/(\d+)\//);
 
     if (tenantMatch) {
-      const fileTenantId = tenantMatch[1];
+      const fileTenantId = parseInt(tenantMatch[1], 10);
 
-      // Resolve the user's tenantId from session
-      // The session contains tenantSlug, not tenantId directly.
-      // For now, we allow access if the user has a valid session.
-      // The tenantSlug in the JWT ensures they belong to a tenant.
-      // A more strict check would resolve slug → id, but that adds a DB call per file request.
-      // Since file paths use tenantId (numeric), and the user's session has tenantSlug,
-      // we do a lightweight check: the user must have a valid session with a tenantSlug.
       if (!userSession.tenantSlug) {
         return res.status(403).json({ error: "Acesso negado: sessão sem contexto de tenant" });
       }
 
-      // Serve the file
+      // SECURITY: Resolve tenantSlug → tenantId and verify it matches the file path.
+      // getTenantConfig is cached (5 min TTL), so this adds minimal overhead.
+      try {
+        const tenantConfig = await getTenantConfig(userSession.tenantSlug);
+        if (!tenantConfig || tenantConfig.id !== fileTenantId) {
+          console.warn(`[FileAuth] Tenant mismatch: session=${tenantConfig?.id} file=${fileTenantId}`);
+          return res.status(403).json({ error: "Acesso negado: arquivo não pertence ao seu tenant" });
+        }
+      } catch {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
+
       return serveFileSecurely(req, res, baseDir);
     }
 

@@ -370,13 +370,7 @@ export default function SuperAdminTenants() {
   };
 
   return (
-    <div className="min-h-screen relative bg-gray-950">
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/background-super-admin.png')" }}
-      />
-      <div className="absolute inset-0 bg-slate-950/70" />
-      <div className="relative z-10 min-h-screen">
+    <div className="min-h-screen bg-[#f0f0f0]">
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900/95 to-purple-700/95 text-white sticky top-0 z-10 backdrop-blur-sm border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
@@ -410,7 +404,7 @@ export default function SuperAdminTenants() {
       <main className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+          <Card className="bg-white shadow-sm border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -421,7 +415,7 @@ export default function SuperAdminTenants() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+          <Card className="bg-white shadow-sm border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -434,7 +428,7 @@ export default function SuperAdminTenants() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+          <Card className="bg-white shadow-sm border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -447,7 +441,7 @@ export default function SuperAdminTenants() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+          <Card className="bg-white shadow-sm border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -483,7 +477,7 @@ export default function SuperAdminTenants() {
                 clearMocks.mutate();
               }}
               disabled={clearMocks.isLoading || seedMocks.isLoading}
-              className="flex items-center gap-2 border-red-500/70 bg-red-500/12 text-red-100 hover:bg-red-500/20 hover:text-red-50"
+              className="flex items-center gap-2 border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"
             >
               {clearMocks.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -496,7 +490,7 @@ export default function SuperAdminTenants() {
               variant="outline"
               onClick={() => seedMocks.mutate()}
               disabled={seedMocks.isLoading}
-              className="flex items-center gap-2 border-slate-500/70 bg-slate-500/12 text-slate-100 hover:bg-slate-500/20 hover:text-white"
+              className="flex items-center gap-2 border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
             >
               {seedMocks.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -524,7 +518,7 @@ export default function SuperAdminTenants() {
             </Card>
           ) : filteredTenants.length > 0 ? (
             filteredTenants.map((tenant) => (
-              <Card key={tenant.id} className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl hover:shadow-2xl transition-shadow">
+              <Card key={tenant.id} className="bg-white shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -619,7 +613,7 @@ export default function SuperAdminTenants() {
               </Card>
             ))
           ) : (
-            <Card className="text-center py-12 bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+            <Card className="text-center py-12 bg-white shadow-sm border border-gray-200">
               <CardContent>
                 <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-4" />
                 <p className="text-gray-500">Nenhum tenant encontrado</p>
@@ -628,7 +622,6 @@ export default function SuperAdminTenants() {
           )}
         </div>
       </main>
-      </div>
 
       {/* Create Tenant Modal */}
       {showCreateModal && (
@@ -665,7 +658,7 @@ export default function SuperAdminTenants() {
               </div>
 
               {/* Admin Credentials */}
-              <div className="border rounded-lg p-4 space-y-4">
+              <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-white">
                 <h4 className="font-medium flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   Administrador do Tenant
@@ -707,7 +700,7 @@ export default function SuperAdminTenants() {
               </div>
 
               {/* Plan & Limits */}
-              <div className="border rounded-lg p-4 space-y-4">
+              <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-white">
                 <h4 className="font-medium">Plano e Limites</h4>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -745,7 +738,7 @@ export default function SuperAdminTenants() {
               </div>
 
               {/* Features */}
-              <div className="border rounded-lg p-4 space-y-4">
+              <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-white">
                 <h4 className="font-medium">Módulos Habilitados</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center justify-between">
@@ -836,7 +829,7 @@ export default function SuperAdminTenants() {
             </div>
 
             {/* Panel Content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto bg-[#f5f5f5]">
               <div className="p-6 space-y-6">
               {/* Tabs Navigation */}
               <div className="flex gap-2 border-b">
@@ -948,7 +941,7 @@ export default function SuperAdminTenants() {
                 </div>
               </div>
 
-              <div className="border rounded-lg p-4 space-y-4">
+              <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-white">
                 <h4 className="font-medium">Módulos Habilitados</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center justify-between">

@@ -820,7 +820,7 @@ export const appRouter = router({
           const stepsWithSubTasks = await Promise.all(
             filteredSteps.map(async (step) => {
               const subTasksList = tenantDb
-                ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, step.id)
+                ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, step.id, ctx.tenant?.id ?? undefined)
                 : await db.getSubTasksByWorkflowStep(step.id);
               return {
                 ...step,
@@ -915,7 +915,7 @@ export const appRouter = router({
 
           if (isJuntadaStep) {
             const subTasksList = tenantDb
-              ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, currentStep.id)
+              ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, currentStep.id, ctx.tenant?.id ?? undefined)
               : await db.getSubTasksByWorkflowStep(currentStep.id);
 
             const docs = tenantDb
@@ -1153,7 +1153,7 @@ export const appRouter = router({
         }
 
         return tenantDb
-          ? await db.getSinarmCommentsByWorkflowStepIdFromDb(tenantDb, input.stepId)
+          ? await db.getSinarmCommentsByWorkflowStepIdFromDb(tenantDb, input.stepId, ctx.tenant?.id ?? undefined)
           : await db.getSinarmCommentsByWorkflowStepId(input.stepId);
       }),
 

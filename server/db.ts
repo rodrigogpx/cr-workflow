@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray, like } from "drizzle-orm";
+import { eq, and, or, isNull, desc, sql, inArray, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { 
@@ -431,8 +431,18 @@ export async function getSinarmCommentsByWorkflowStepId(workflowStepId: number) 
 
 export async function getSinarmCommentsByWorkflowStepIdFromDb(
   tenantDb: ReturnType<typeof drizzle>,
-  workflowStepId: number
+  workflowStepId: number,
+  tenantId?: number
 ) {
+  // SECURITY: When tenantId is provided, restrict to records belonging to that tenant.
+  // Allow NULL tenantId records to pass through (legacy rows not yet backfilled).
+  const tenantFilter = tenantId
+    ? or(isNull(sinarmCommentsHistory.tenantId), eq(sinarmCommentsHistory.tenantId, tenantId))!
+    : undefined;
+  const where = tenantFilter
+    ? and(eq(sinarmCommentsHistory.workflowStepId, workflowStepId), tenantFilter)
+    : eq(sinarmCommentsHistory.workflowStepId, workflowStepId);
+
   const result = await tenantDb
     .select({
       id: sinarmCommentsHistory.id,
@@ -447,7 +457,7 @@ export async function getSinarmCommentsByWorkflowStepIdFromDb(
     })
     .from(sinarmCommentsHistory)
     .leftJoin(users, eq(users.id, sinarmCommentsHistory.createdBy))
-    .where(eq(sinarmCommentsHistory.workflowStepId, workflowStepId))
+    .where(where)
     .orderBy(desc(sinarmCommentsHistory.createdAt));
 
   return result;
@@ -809,12 +819,18 @@ export async function getSubTasksByWorkflowStep(workflowStepId: number) {
 
 export async function getSubTasksByWorkflowStepFromDb(
   tenantDb: ReturnType<typeof drizzle>,
-  workflowStepId: number
+  workflowStepId: number,
+  tenantId?: number
 ) {
-  return await tenantDb
-    .select()
-    .from(subTasks)
-    .where(eq(subTasks.workflowStepId, workflowStepId));
+  // SECURITY: When tenantId is provided, restrict to records belonging to that tenant.
+  // Allow NULL tenantId records to pass through (legacy rows not yet backfilled).
+  const tenantFilter = tenantId
+    ? or(isNull(subTasks.tenantId), eq(subTasks.tenantId, tenantId))!
+    : undefined;
+  const where = tenantFilter
+    ? and(eq(subTasks.workflowStepId, workflowStepId), tenantFilter)
+    : eq(subTasks.workflowStepId, workflowStepId);
+  return await tenantDb.select().from(subTasks).where(where);
 }
 
 export async function getWorkflowStepById(stepId: number) {

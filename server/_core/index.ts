@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { createServer } from "http";
 import net from "net";
@@ -13,6 +13,40 @@ import { authenticatedFileServing } from "./fileAuth";
 import { installRouter } from "../install/router";
 import { ensureMissingTables } from "../ensure-tables";
 import { tenantApiRouter } from "./tenantApi";
+
+// SECURITY: Simple in-memory rate limiter for auth endpoints (no external deps)
+const _rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 min
+const RATE_LIMIT_MAX = 20; // 20 attempts per window
+
+// Cleanup stale entries every 30 minutes to prevent memory growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of _rateLimitStore) {
+    if (val.resetAt <= now) _rateLimitStore.delete(key);
+  }
+}, 30 * 60 * 1000).unref();
+
+function authRateLimiter(req: Request, res: Response, next: NextFunction) {
+  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+    ?? req.socket.remoteAddress
+    ?? "unknown";
+  const now = Date.now();
+  const entry = _rateLimitStore.get(ip);
+
+  if (!entry || entry.resetAt <= now) {
+    _rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return next();
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+    res.setHeader("Retry-After", retryAfter.toString());
+    return res.status(429).json({ error: "Muitas tentativas. Tente novamente mais tarde." });
+  }
+  return next();
+}
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -85,6 +119,12 @@ async function startServer() {
   if (process.env.DOCUMENTS_STORAGE_DIR) {
     app.use("/files", authenticatedFileServing());
   }
+
+  // SECURITY: Rate limit auth endpoints — 20 attempts per 15 min per IP
+  app.use("/api/oauth", authRateLimiter);
+  app.use("/api/trpc/auth.login", authRateLimiter);
+  app.use("/api/trpc/auth.platformLogin", authRateLimiter);
+  app.use("/api/trpc/auth.register", authRateLimiter);
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);

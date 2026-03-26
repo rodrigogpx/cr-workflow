@@ -193,7 +193,7 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto bg-[#f5f5f5]">
               <div className="p-6 space-y-5">
                 {/* Editable fields */}
                 <div className="grid grid-cols-2 gap-4">
