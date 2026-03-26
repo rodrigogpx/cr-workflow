@@ -252,3 +252,52 @@ export const strictTenantAdminProcedure = t.procedure
   .use(requireUser)
   .use(requireStrictTenant)
   .use(requireAdmin);
+
+// ============================================
+// Feature-gated procedures
+// ============================================
+type TenantFeatureKey = "featureWorkflowCR" | "featureApostilamento" | "featureRenovacao" | "featureInsumos" | "featureIAT";
+
+const FEATURE_LABELS: Record<TenantFeatureKey, string> = {
+  featureWorkflowCR: "Workflow CR",
+  featureApostilamento: "Apostilamento",
+  featureRenovacao: "Renovação",
+  featureInsumos: "Munições & Insumos",
+  featureIAT: "Módulo IAT",
+};
+
+function requireFeature(featureName: TenantFeatureKey) {
+  return t.middleware(async ({ ctx, next }) => {
+    if (!ctx.tenant) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Operação requer contexto de tenant válido" });
+    }
+    if (!ctx.tenant[featureName]) {
+      const label = FEATURE_LABELS[featureName] || featureName;
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `O módulo "${label}" não está habilitado no seu plano atual. Entre em contato com o administrador para upgrade.`,
+      });
+    }
+    return next({ ctx });
+  });
+}
+
+export const iatProcedure = t.procedure
+  .use(requireUser)
+  .use(requireStrictTenant)
+  .use(requireFeature("featureIAT"));
+
+export const apostilamentoProcedure = t.procedure
+  .use(requireUser)
+  .use(requireStrictTenant)
+  .use(requireFeature("featureApostilamento"));
+
+export const renovacaoProcedure = t.procedure
+  .use(requireUser)
+  .use(requireStrictTenant)
+  .use(requireFeature("featureRenovacao"));
+
+export const insumosProcedure = t.procedure
+  .use(requireUser)
+  .use(requireStrictTenant)
+  .use(requireFeature("featureInsumos"));

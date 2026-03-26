@@ -245,6 +245,22 @@ export const appRouter = router({
           throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
         }
 
+        // Verificar limite de usuários do tenant
+        if (tenantSlug && ctx.tenant) {
+          const tenantDb = await getTenantDb(ctx.tenant);
+          if (tenantDb) {
+            const { checkUserLimit, getEffectiveLimits } = await import("./config/tenant.limits");
+            const limits = getEffectiveLimits(ctx.tenant);
+            const check = await checkUserLimit(tenantDb, ctx.tenant.id, limits.maxUsers);
+            if (!check.allowed) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: `Limite de usuários atingido (${check.current}/${check.max}). Entre em contato com o administrador para upgrade do plano.`,
+              });
+            }
+          }
+        }
+
         // Hash da senha
         const hashedPassword = await hashPassword(input.password);
 
@@ -451,7 +467,20 @@ export const appRouter = router({
 
         const tenantDb = await getTenantDbOrNull(ctx);
         const operatorId = ctx.user.role === 'admin' ? (input.operatorId || ctx.user.id) : ctx.user.id;
-        
+
+        // Verificar limite de clientes do tenant
+        if (ctx.tenant?.id && tenantDb) {
+          const { checkClientLimit, getEffectiveLimits } = await import("./config/tenant.limits");
+          const limits = getEffectiveLimits(ctx.tenant);
+          const check = await checkClientLimit(tenantDb, ctx.tenant.id, limits.maxClients);
+          if (!check.allowed) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: `Limite de clientes atingido (${check.current}/${check.max}). Entre em contato com o administrador para upgrade do plano.`,
+            });
+          }
+        }
+
         let clientId: number;
         try {
           clientId = tenantDb
@@ -1344,7 +1373,20 @@ export const appRouter = router({
         if (ctx.user.role === 'despachante') {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode fazer upload de documentos' });
         }
-        
+
+        // Verificar limite de armazenamento do tenant
+        if (ctx.tenant?.id) {
+          const { checkStorageLimit, getEffectiveLimits } = await import("./config/tenant.limits");
+          const limits = getEffectiveLimits(ctx.tenant);
+          const check = await checkStorageLimit(ctx.tenant.id, limits.maxStorageGB);
+          if (!check.allowed) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: `Limite de armazenamento atingido (${check.currentGB.toFixed(1)} GB / ${check.maxGB} GB). Entre em contato com o administrador para upgrade do plano.`,
+            });
+          }
+        }
+
         const buffer = Buffer.from(input.fileData, "base64");
 
         let fileKey: string;
@@ -3709,6 +3751,192 @@ export const appRouter = router({
         }
         await db.deletePlatformAdmin(input.id);
         return { success: true };
+      }),
+  }),
+
+  // ============================================
+  // Plans & Billing Router (Platform Admin)
+  // ============================================
+  plans: router({
+    list: platformAdminProcedure.query(async () => {
+      return await db.getAllPlanDefinitions();
+    }),
+    listPublic: publicProcedure.query(async () => {
+      return await db.getActivePlanDefinitions();
+    }),
+    getById: platformAdminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }: { input: any }) => {
+        const plan = await db.getPlanDefinitionById(input.id);
+        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano não encontrado' });
+        return plan;
+      }),
+    create: platformAdminProcedure
+      .input(z.object({
+        slug: z.string().min(2).max(30).regex(/^[a-z0-9-]+$/),
+        name: z.string().min(2).max(100),
+        description: z.string().optional(),
+        maxUsers: z.number().int().min(1).default(5),
+        maxClients: z.number().int().min(1).default(100),
+        maxStorageGB: z.number().int().min(1).default(10),
+        featureWorkflowCR: z.boolean().default(true),
+        featureApostilamento: z.boolean().default(false),
+        featureRenovacao: z.boolean().default(false),
+        featureInsumos: z.boolean().default(false),
+        featureIAT: z.boolean().default(false),
+        priceMonthlyBRL: z.number().int().min(0).default(0),
+        priceYearlyBRL: z.number().int().min(0).default(0),
+        setupFeeBRL: z.number().int().min(0).default(0),
+        trialDays: z.number().int().min(0).default(14),
+        displayOrder: z.number().int().default(0),
+        isPublic: z.boolean().default(true),
+        highlightLabel: z.string().max(50).optional(),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        const existing = await db.getPlanDefinitionBySlug(input.slug);
+        if (existing) throw new TRPCError({ code: 'CONFLICT', message: 'Já existe um plano com este slug' });
+        return await db.createPlanDefinition(input);
+      }),
+    update: platformAdminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(2).max(100).optional(),
+        description: z.string().optional(),
+        maxUsers: z.number().int().min(1).optional(),
+        maxClients: z.number().int().min(1).optional(),
+        maxStorageGB: z.number().int().min(1).optional(),
+        featureWorkflowCR: z.boolean().optional(),
+        featureApostilamento: z.boolean().optional(),
+        featureRenovacao: z.boolean().optional(),
+        featureInsumos: z.boolean().optional(),
+        featureIAT: z.boolean().optional(),
+        priceMonthlyBRL: z.number().int().min(0).optional(),
+        priceYearlyBRL: z.number().int().min(0).optional(),
+        setupFeeBRL: z.number().int().min(0).optional(),
+        trialDays: z.number().int().min(0).optional(),
+        displayOrder: z.number().int().optional(),
+        isPublic: z.boolean().optional(),
+        highlightLabel: z.string().max(50).nullable().optional(),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        const { id, ...updates } = input;
+        await db.updatePlanDefinition(id, updates);
+        return { success: true };
+      }),
+    delete: platformAdminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }: { input: any }) => {
+        await db.deletePlanDefinition(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============================================
+  // Subscriptions Router (Platform Admin)
+  // ============================================
+  subscriptions: router({
+    listByTenant: platformAdminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }: { input: any }) => {
+        return await db.getSubscriptionsByTenant(input.tenantId);
+      }),
+    getActive: platformAdminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }: { input: any }) => {
+        return await db.getActiveSubscription(input.tenantId);
+      }),
+    create: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        planId: z.number(),
+        billingCycle: z.enum(["monthly", "yearly", "lifetime"]).default("monthly"),
+        priceBRL: z.number().int().min(0),
+        discountBRL: z.number().int().min(0).default(0),
+        status: z.enum(["active", "trialing"]).default("active"),
+        overrideMaxUsers: z.number().int().min(1).optional(),
+        overrideMaxClients: z.number().int().min(1).optional(),
+        overrideMaxStorageGB: z.number().int().min(1).optional(),
+        paymentGateway: z.string().max(30).optional(),
+        endDate: z.string().datetime().optional(),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const plan = await db.getPlanDefinitionById(input.planId);
+        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano não encontrado' });
+        const activeSub = await db.getActiveSubscription(input.tenantId);
+        if (activeSub) {
+          await db.updateSubscription(activeSub.id, { status: "cancelled", cancelledAt: new Date(), cancelReason: "Substituída por nova assinatura" });
+        }
+        const sub = await db.createSubscription({
+          tenantId: input.tenantId, planId: input.planId, startDate: new Date(),
+          endDate: input.endDate ? new Date(input.endDate) : null,
+          billingCycle: input.billingCycle, priceBRL: input.priceBRL, discountBRL: input.discountBRL,
+          status: input.status,
+          overrideMaxUsers: input.overrideMaxUsers ?? null,
+          overrideMaxClients: input.overrideMaxClients ?? null,
+          overrideMaxStorageGB: input.overrideMaxStorageGB ?? null,
+          paymentGateway: input.paymentGateway ?? null,
+          createdBy: ctx.platformAdmin?.id ?? null,
+        });
+        await db.syncTenantFromSubscription(input.tenantId);
+        return sub;
+      }),
+    cancel: platformAdminProcedure
+      .input(z.object({ id: z.number(), tenantId: z.number(), reason: z.string().optional() }))
+      .mutation(async ({ input }: { input: any }) => {
+        await db.updateSubscription(input.id, { status: "cancelled", cancelledAt: new Date(), cancelReason: input.reason ?? "Cancelada pelo administrador" });
+        await db.syncTenantFromSubscription(input.tenantId);
+        return { success: true };
+      }),
+  }),
+
+  // ============================================
+  // Billing Router (Platform Admin)
+  // ============================================
+  billing: router({
+    invoicesByTenant: platformAdminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }: { input: any }) => {
+        return await db.getInvoicesByTenant(input.tenantId);
+      }),
+    allInvoices: platformAdminProcedure
+      .input(z.object({ status: z.string().optional() }).optional())
+      .query(async ({ input }: { input: any }) => {
+        return await db.getAllInvoices(input?.status);
+      }),
+    createInvoice: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        subscriptionId: z.number().optional(),
+        periodStart: z.string().datetime(),
+        periodEnd: z.string().datetime(),
+        subtotalBRL: z.number().int().min(0),
+        discountBRL: z.number().int().min(0).default(0),
+        totalBRL: z.number().int().min(0),
+        dueDate: z.string().datetime(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        return await db.createInvoice({
+          tenantId: input.tenantId, subscriptionId: input.subscriptionId ?? null,
+          periodStart: new Date(input.periodStart), periodEnd: new Date(input.periodEnd),
+          subtotalBRL: input.subtotalBRL, discountBRL: input.discountBRL, totalBRL: input.totalBRL,
+          dueDate: new Date(input.dueDate), notes: input.notes ?? null,
+        });
+      }),
+    markPaid: platformAdminProcedure
+      .input(z.object({ invoiceId: z.number(), paymentMethod: z.string().max(30), paymentReference: z.string().max(255).optional() }))
+      .mutation(async ({ input }: { input: any }) => {
+        await db.markInvoicePaid(input.invoiceId, input.paymentMethod, input.paymentReference);
+        return { success: true };
+      }),
+    metrics: platformAdminProcedure.query(async () => {
+      const [mrr, tenantsByPlan] = await Promise.all([db.calculateMRR(), db.getTenantCountByPlan()]);
+      return { mrrBRL: mrr, mrrFormatted: `R$ ${(mrr / 100).toFixed(2).replace('.', ',')}`, tenantsByPlan };
+    }),
+    usageHistory: platformAdminProcedure
+      .input(z.object({ tenantId: z.number(), limit: z.number().int().min(1).max(365).default(30) }))
+      .query(async ({ input }: { input: any }) => {
+        return await db.getUsageSnapshotsByTenant(input.tenantId, input.limit);
       }),
   }),
 });

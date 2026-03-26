@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, varchar, timestamp, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, varchar, timestamp, boolean, unique, numeric } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 /**
@@ -415,6 +415,117 @@ export const tenants = pgTable("tenants", {
 
 export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = typeof tenants.$inferInsert;
+
+/**
+ * ============================================
+ * Plan Definitions - Catálogo formal de planos
+ * ============================================
+ */
+export const planDefinitions = pgTable("planDefinitions", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 30 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  maxUsers: integer("maxUsers").notNull().default(5),
+  maxClients: integer("maxClients").notNull().default(100),
+  maxStorageGB: integer("maxStorageGB").notNull().default(10),
+  featureWorkflowCR: boolean("featureWorkflowCR").notNull().default(true),
+  featureApostilamento: boolean("featureApostilamento").notNull().default(false),
+  featureRenovacao: boolean("featureRenovacao").notNull().default(false),
+  featureInsumos: boolean("featureInsumos").notNull().default(false),
+  featureIAT: boolean("featureIAT").notNull().default(false),
+  priceMonthlyBRL: integer("priceMonthlyBRL").notNull().default(0),
+  priceYearlyBRL: integer("priceYearlyBRL").notNull().default(0),
+  setupFeeBRL: integer("setupFeeBRL").notNull().default(0),
+  trialDays: integer("trialDays").notNull().default(14),
+  displayOrder: integer("displayOrder").notNull().default(0),
+  isPublic: boolean("isPublic").notNull().default(true),
+  isActive: boolean("isActive").notNull().default(true),
+  highlightLabel: varchar("highlightLabel", { length: 50 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type PlanDefinition = typeof planDefinitions.$inferSelect;
+export type InsertPlanDefinition = typeof planDefinitions.$inferInsert;
+
+/**
+ * ============================================
+ * Subscriptions - Histórico de assinaturas por tenant
+ * ============================================
+ */
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  planId: integer("planId").notNull(),
+  startDate: timestamp("startDate", { withTimezone: true }).notNull(),
+  endDate: timestamp("endDate", { withTimezone: true }),
+  billingCycle: varchar("billingCycle", { length: 20 }).notNull().default("monthly"),
+  priceBRL: integer("priceBRL").notNull(),
+  discountBRL: integer("discountBRL").notNull().default(0),
+  overrideMaxUsers: integer("overrideMaxUsers"),
+  overrideMaxClients: integer("overrideMaxClients"),
+  overrideMaxStorageGB: integer("overrideMaxStorageGB"),
+  status: varchar("status", { length: 20 }).notNull().default("active").$type<"active" | "past_due" | "cancelled" | "expired" | "trialing">(),
+  cancelledAt: timestamp("cancelledAt", { withTimezone: true }),
+  cancelReason: text("cancelReason"),
+  paymentGateway: varchar("paymentGateway", { length: 30 }),
+  externalId: varchar("externalId", { length: 255 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  createdBy: integer("createdBy"),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+/**
+ * ============================================
+ * Invoices - Faturas geradas para tenants
+ * ============================================
+ */
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  subscriptionId: integer("subscriptionId"),
+  periodStart: timestamp("periodStart", { withTimezone: true }).notNull(),
+  periodEnd: timestamp("periodEnd", { withTimezone: true }).notNull(),
+  subtotalBRL: integer("subtotalBRL").notNull(),
+  discountBRL: integer("discountBRL").notNull().default(0),
+  totalBRL: integer("totalBRL").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending").$type<"pending" | "paid" | "overdue" | "cancelled" | "refunded">(),
+  dueDate: timestamp("dueDate", { withTimezone: true }).notNull(),
+  paidAt: timestamp("paidAt", { withTimezone: true }),
+  paymentMethod: varchar("paymentMethod", { length: 30 }),
+  paymentReference: varchar("paymentReference", { length: 255 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoice = typeof invoices.$inferInsert;
+
+/**
+ * ============================================
+ * Usage Snapshots - Foto diária de uso por tenant
+ * ============================================
+ */
+export const usageSnapshots = pgTable("usageSnapshots", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  snapshotDate: timestamp("snapshotDate", { withTimezone: true }).notNull(),
+  usersCount: integer("usersCount").notNull().default(0),
+  clientsCount: integer("clientsCount").notNull().default(0),
+  storageUsedGB: numeric("storageUsedGB", { precision: 10, scale: 3 }).notNull().default("0"),
+  dbSizeMB: numeric("dbSizeMB", { precision: 10, scale: 1 }).notNull().default("0"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (table: any) => [
+  unique("usageSnapshots_tenantId_snapshotDate_unique").on(table.tenantId, table.snapshotDate),
+]);
+
+export type UsageSnapshot = typeof usageSnapshots.$inferSelect;
+export type InsertUsageSnapshot = typeof usageSnapshots.$inferInsert;
 
 /**
  * Platform Settings - key/value storage for install wizard configuration

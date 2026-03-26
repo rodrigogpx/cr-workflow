@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { EmailConfigPanel } from "@/components/super-admin/EmailConfigPanel";
 import { EmailTemplatesPanel } from "@/components/super-admin/EmailTemplatesPanel";
 import { EmailTriggersPanel } from "@/components/super-admin/EmailTriggersPanel";
+import { TenantBillingPanel } from "@/components/super-admin/TenantBillingPanel";
 
 // Logo
 const APP_LOGO = "/logo.png";
@@ -874,6 +875,16 @@ export default function SuperAdminTenants() {
                 >
                   Automações
                 </button>
+                <button
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "billing"
+                      ? "border-b-2 border-purple-600 text-purple-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  onClick={() => setActiveTab("billing")}
+                >
+                  Financeiro
+                </button>
               </div>
 
               {/* Tab Content - General */}
@@ -1012,6 +1023,11 @@ export default function SuperAdminTenants() {
               {/* Tab Content - Triggers */}
               {activeTab === "triggers" && (
                 <EmailTriggersPanel tenantId={editingTenant.id} />
+              )}
+
+              {/* Tab Content - Billing */}
+              {activeTab === "billing" && (
+                <TenantBillingPanel tenantId={editingTenant.id} tenantName={editingTenant.name} />
               )}
               </div>
             </div>

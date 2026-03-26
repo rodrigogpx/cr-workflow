@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, tenantProcedure, adminProcedure } from "../_core/trpc";
+import { router, adminProcedure, iatProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getTenantDb } from "../config/tenant.config";
 import { getDb } from "../db";
@@ -24,7 +24,7 @@ function getTenantId(ctx: any): number {
 // ─── Instructors ─────────────────────────────────────────────────────────────
 
 const instructorRouter = router({
-  list: tenantProcedure.query(async ({ ctx }) => {
+  list: iatProcedure.query(async ({ ctx }) => {
     const db = await getIatDb(ctx);
     const tenantId = getTenantId(ctx);
     return db
@@ -34,7 +34,7 @@ const instructorRouter = router({
       .orderBy(iatInstructors.name);
   }),
 
-  get: tenantProcedure
+  get: iatProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
@@ -124,7 +124,7 @@ const instructorRouter = router({
 // ─── Courses ─────────────────────────────────────────────────────────────────
 
 const courseRouter = router({
-  list: tenantProcedure.query(async ({ ctx }) => {
+  list: iatProcedure.query(async ({ ctx }) => {
     const db = await getIatDb(ctx);
     const tenantId = getTenantId(ctx);
     return db
@@ -134,7 +134,7 @@ const courseRouter = router({
       .orderBy(iatCourses.title);
   }),
 
-  get: tenantProcedure
+  get: iatProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
@@ -222,7 +222,7 @@ const courseRouter = router({
 // ─── Exams ───────────────────────────────────────────────────────────────────
 
 const examRouter = router({
-  list: tenantProcedure
+  list: iatProcedure
     .input(z.object({ clientId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
@@ -236,7 +236,7 @@ const examRouter = router({
         .orderBy(desc(iatExams.createdAt));
     }),
 
-  get: tenantProcedure
+  get: iatProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
@@ -328,7 +328,7 @@ const examRouter = router({
 // ─── Schedules ────────────────────────────────────────────────────────────────
 
 const scheduleRouter = router({
-  list: tenantProcedure.query(async ({ ctx }) => {
+  list: iatProcedure.query(async ({ ctx }) => {
     const db = await getIatDb(ctx);
     const tenantId = getTenantId(ctx);
     return db
@@ -420,7 +420,7 @@ const scheduleRouter = router({
 // ─── Classes (Turmas) ────────────────────────────────────────────────────────
 
 const classRouter = router({
-  list: tenantProcedure
+  list: iatProcedure
     .input(z.object({ courseId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
@@ -449,7 +449,7 @@ const classRouter = router({
       return result;
     }),
 
-  get: tenantProcedure
+  get: iatProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
@@ -543,7 +543,7 @@ const classRouter = router({
 // ─── Enrollments (Matrículas) ────────────────────────────────────────────────
 
 const enrollmentRouter = router({
-  list: tenantProcedure
+  list: iatProcedure
     .input(z.object({ classId: z.number().optional(), clientId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);

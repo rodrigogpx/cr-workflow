@@ -34,6 +34,14 @@ import {
   platformAdmins,
   sinarmCommentsHistory,
   InsertSinarmCommentHistory,
+  planDefinitions,
+  InsertPlanDefinition,
+  subscriptions,
+  InsertSubscription,
+  invoices,
+  InsertInvoice,
+  usageSnapshots,
+  InsertUsageSnapshot,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
@@ -154,6 +162,94 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
     } catch (error: any) {
       console.warn('[Schema] CREATE TABLE skipped:', error?.message || error);
     }
+  }
+
+  // ── CREATE billing/licensing tables (only in main/platform DB) ──
+  if (dbKey === 'main') {
+    const billingStatements = [
+      sql`CREATE TABLE IF NOT EXISTS "planDefinitions" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "slug" varchar(30) NOT NULL UNIQUE,
+        "name" varchar(100) NOT NULL,
+        "description" text,
+        "maxUsers" integer NOT NULL DEFAULT 5,
+        "maxClients" integer NOT NULL DEFAULT 100,
+        "maxStorageGB" integer NOT NULL DEFAULT 10,
+        "featureWorkflowCR" boolean NOT NULL DEFAULT true,
+        "featureApostilamento" boolean NOT NULL DEFAULT false,
+        "featureRenovacao" boolean NOT NULL DEFAULT false,
+        "featureInsumos" boolean NOT NULL DEFAULT false,
+        "featureIAT" boolean NOT NULL DEFAULT false,
+        "priceMonthlyBRL" integer NOT NULL DEFAULT 0,
+        "priceYearlyBRL" integer NOT NULL DEFAULT 0,
+        "setupFeeBRL" integer NOT NULL DEFAULT 0,
+        "trialDays" integer NOT NULL DEFAULT 14,
+        "displayOrder" integer NOT NULL DEFAULT 0,
+        "isPublic" boolean NOT NULL DEFAULT true,
+        "isActive" boolean NOT NULL DEFAULT true,
+        "highlightLabel" varchar(50),
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS "subscriptions" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "planId" integer NOT NULL,
+        "startDate" timestamp with time zone NOT NULL,
+        "endDate" timestamp with time zone,
+        "billingCycle" varchar(20) NOT NULL DEFAULT 'monthly',
+        "priceBRL" integer NOT NULL,
+        "discountBRL" integer NOT NULL DEFAULT 0,
+        "overrideMaxUsers" integer,
+        "overrideMaxClients" integer,
+        "overrideMaxStorageGB" integer,
+        "status" varchar(20) NOT NULL DEFAULT 'active',
+        "cancelledAt" timestamp with time zone,
+        "cancelReason" text,
+        "paymentGateway" varchar(30),
+        "externalId" varchar(255),
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "createdBy" integer
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS "invoices" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "subscriptionId" integer,
+        "periodStart" timestamp with time zone NOT NULL,
+        "periodEnd" timestamp with time zone NOT NULL,
+        "subtotalBRL" integer NOT NULL,
+        "discountBRL" integer NOT NULL DEFAULT 0,
+        "totalBRL" integer NOT NULL,
+        "status" varchar(20) NOT NULL DEFAULT 'pending',
+        "dueDate" timestamp with time zone NOT NULL,
+        "paidAt" timestamp with time zone,
+        "paymentMethod" varchar(30),
+        "paymentReference" varchar(255),
+        "notes" text,
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS "usageSnapshots" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "snapshotDate" timestamp with time zone NOT NULL,
+        "usersCount" integer NOT NULL DEFAULT 0,
+        "clientsCount" integer NOT NULL DEFAULT 0,
+        "storageUsedGB" numeric(10,3) NOT NULL DEFAULT 0,
+        "dbSizeMB" numeric(10,1) NOT NULL DEFAULT 0,
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        UNIQUE("tenantId", "snapshotDate")
+      )`,
+    ];
+    for (const stmt of billingStatements) {
+      try {
+        await db.execute(stmt);
+      } catch (error: any) {
+        console.warn('[Schema] Billing CREATE TABLE skipped:', error?.message || error);
+      }
+    }
+    await seedDefaultPlans(db);
   }
 
   // ── ADD missing columns to existing tables ──
@@ -2302,4 +2398,242 @@ export async function getScheduledEmailsByClient(clientId: number) {
 
 export async function getScheduledEmailsByClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
   return await tenantDb.select().from(emailScheduled).where(eq(emailScheduled.clientId, clientId)).orderBy(desc(emailScheduled.scheduledFor));
+}
+
+// ============================================
+// Plan Definitions — CRUD & Seed
+// ============================================
+
+async function seedDefaultPlans(db: ReturnType<typeof drizzle>) {
+  try {
+    const existing = await db.select({ id: planDefinitions.id }).from(planDefinitions).limit(1);
+    if (existing.length > 0) return;
+    await db.insert(planDefinitions).values([
+      {
+        slug: "starter", name: "Plano Starter",
+        description: "Ideal para despachantes individuais ou pequenos clubes de tiro.",
+        maxUsers: 5, maxClients: 100, maxStorageGB: 10,
+        featureWorkflowCR: true, featureApostilamento: false, featureRenovacao: false, featureInsumos: false, featureIAT: false,
+        priceMonthlyBRL: 14900, priceYearlyBRL: 149900, setupFeeBRL: 0, trialDays: 14, displayOrder: 1,
+        isPublic: true, isActive: true,
+      },
+      {
+        slug: "professional", name: "Plano Professional",
+        description: "Para clubes e despachantes em crescimento com múltiplos módulos.",
+        maxUsers: 20, maxClients: 1000, maxStorageGB: 100,
+        featureWorkflowCR: true, featureApostilamento: true, featureRenovacao: true, featureInsumos: false, featureIAT: false,
+        priceMonthlyBRL: 29900, priceYearlyBRL: 299900, setupFeeBRL: 0, trialDays: 14, displayOrder: 2,
+        isPublic: true, isActive: true, highlightLabel: "Mais Popular",
+      },
+      {
+        slug: "enterprise", name: "Plano Enterprise",
+        description: "Para grandes operações com todos os módulos e suporte dedicado.",
+        maxUsers: 100, maxClients: 5000, maxStorageGB: 500,
+        featureWorkflowCR: true, featureApostilamento: true, featureRenovacao: true, featureInsumos: true, featureIAT: true,
+        priceMonthlyBRL: 59900, priceYearlyBRL: 599900, setupFeeBRL: 0, trialDays: 30, displayOrder: 3,
+        isPublic: true, isActive: true,
+      },
+    ]);
+    console.log('[Seed] Default plan definitions created (starter, professional, enterprise)');
+  } catch (error: any) {
+    if (!error?.message?.includes('duplicate') && !error?.message?.includes('already exists')) {
+      console.warn('[Seed] Error creating default plans:', error?.message);
+    }
+  }
+}
+
+export async function getAllPlanDefinitions() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(planDefinitions).orderBy(planDefinitions.displayOrder);
+}
+
+export async function getActivePlanDefinitions() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(planDefinitions)
+    .where(and(eq(planDefinitions.isActive, true), eq(planDefinitions.isPublic, true)))
+    .orderBy(planDefinitions.displayOrder);
+}
+
+export async function getPlanDefinitionById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [plan] = await db.select().from(planDefinitions).where(eq(planDefinitions.id, id)).limit(1);
+  return plan || null;
+}
+
+export async function getPlanDefinitionBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const [plan] = await db.select().from(planDefinitions).where(eq(planDefinitions.slug, slug)).limit(1);
+  return plan || null;
+}
+
+export async function createPlanDefinition(plan: InsertPlanDefinition) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [created] = await db.insert(planDefinitions).values(plan).returning();
+  return created;
+}
+
+export async function updatePlanDefinition(id: number, updates: Partial<InsertPlanDefinition>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(planDefinitions).set({ ...updates, updatedAt: new Date() }).where(eq(planDefinitions.id, id));
+}
+
+export async function deletePlanDefinition(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(planDefinitions).set({ isActive: false, updatedAt: new Date() }).where(eq(planDefinitions.id, id));
+}
+
+// ============================================
+// Subscriptions — CRUD
+// ============================================
+
+export async function getActiveSubscription(tenantId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [sub] = await db.select().from(subscriptions)
+    .where(and(eq(subscriptions.tenantId, tenantId), eq(subscriptions.status, "active")))
+    .orderBy(desc(subscriptions.startDate)).limit(1);
+  return sub || null;
+}
+
+export async function getSubscriptionsByTenant(tenantId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(subscriptions).where(eq(subscriptions.tenantId, tenantId)).orderBy(desc(subscriptions.startDate));
+}
+
+export async function createSubscription(sub: InsertSubscription) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [created] = await db.insert(subscriptions).values(sub).returning();
+  return created;
+}
+
+export async function updateSubscription(id: number, updates: Partial<InsertSubscription>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(subscriptions).set({ ...updates, updatedAt: new Date() }).where(eq(subscriptions.id, id));
+}
+
+export async function syncTenantFromSubscription(tenantId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [activeSub] = await db.select().from(subscriptions)
+    .where(and(eq(subscriptions.tenantId, tenantId), inArray(subscriptions.status, ["active", "trialing"])))
+    .orderBy(desc(subscriptions.startDate)).limit(1);
+  if (!activeSub) {
+    await db.update(tenants).set({ subscriptionStatus: "suspended", updatedAt: new Date() }).where(eq(tenants.id, tenantId));
+    return;
+  }
+  const [plan] = await db.select().from(planDefinitions).where(eq(planDefinitions.id, activeSub.planId)).limit(1);
+  if (!plan) { console.warn(`[syncTenant] Plan ID ${activeSub.planId} not found for tenant ${tenantId}`); return; }
+  const statusMap: Record<string, "active" | "suspended" | "trial" | "cancelled"> = {
+    active: "active", trialing: "trial", past_due: "active", cancelled: "cancelled", expired: "suspended",
+  };
+  await db.update(tenants).set({
+    plan: plan.slug as "starter" | "professional" | "enterprise",
+    subscriptionStatus: statusMap[activeSub.status] ?? "suspended",
+    subscriptionExpiresAt: activeSub.endDate,
+    maxUsers: activeSub.overrideMaxUsers ?? plan.maxUsers,
+    maxClients: activeSub.overrideMaxClients ?? plan.maxClients,
+    maxStorageGB: activeSub.overrideMaxStorageGB ?? plan.maxStorageGB,
+    featureWorkflowCR: plan.featureWorkflowCR,
+    featureApostilamento: plan.featureApostilamento,
+    featureRenovacao: plan.featureRenovacao,
+    featureInsumos: plan.featureInsumos,
+    featureIAT: plan.featureIAT,
+    updatedAt: new Date(),
+  }).where(eq(tenants.id, tenantId));
+}
+
+// ============================================
+// Invoices — CRUD
+// ============================================
+
+export async function getInvoicesByTenant(tenantId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(invoices).where(eq(invoices.tenantId, tenantId)).orderBy(desc(invoices.createdAt));
+}
+
+export async function getAllInvoices(status?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (status) return await db.select().from(invoices).where(eq(invoices.status, status as any)).orderBy(desc(invoices.createdAt));
+  return await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+}
+
+export async function createInvoice(invoice: InsertInvoice) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [created] = await db.insert(invoices).values(invoice).returning();
+  return created;
+}
+
+export async function updateInvoice(id: number, updates: Partial<InsertInvoice>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(invoices).set({ ...updates, updatedAt: new Date() }).where(eq(invoices.id, id));
+}
+
+export async function markInvoicePaid(id: number, paymentMethod: string, paymentReference?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(invoices).set({
+    status: "paid", paidAt: new Date(), paymentMethod,
+    paymentReference: paymentReference ?? null, updatedAt: new Date(),
+  }).where(eq(invoices.id, id));
+}
+
+// ============================================
+// Usage Snapshots
+// ============================================
+
+export async function createUsageSnapshot(snapshot: InsertUsageSnapshot) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [created] = await db.insert(usageSnapshots).values(snapshot).returning();
+  return created;
+}
+
+export async function getUsageSnapshotsByTenant(tenantId: number, limit = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(usageSnapshots).where(eq(usageSnapshots.tenantId, tenantId))
+    .orderBy(desc(usageSnapshots.snapshotDate)).limit(limit);
+}
+
+// ============================================
+// Financial Metrics
+// ============================================
+
+export async function calculateMRR(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const activeSubs = await db.select({
+    priceBRL: subscriptions.priceBRL,
+    discountBRL: subscriptions.discountBRL,
+    billingCycle: subscriptions.billingCycle,
+  }).from(subscriptions).where(inArray(subscriptions.status, ["active", "trialing"]));
+  let mrr = 0;
+  for (const sub of activeSubs) {
+    const net = sub.priceBRL - sub.discountBRL;
+    mrr += sub.billingCycle === "monthly" ? net : sub.billingCycle === "yearly" ? Math.round(net / 12) : 0;
+  }
+  return mrr;
+}
+
+export async function getTenantCountByPlan(): Promise<Record<string, number>> {
+  const db = await getDb();
+  if (!db) return {};
+  const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.isActive, true));
+  const counts: Record<string, number> = {};
+  for (const row of rows) { const p = row.plan ?? "starter"; counts[p] = (counts[p] || 0) + 1; }
+  return counts;
 }
