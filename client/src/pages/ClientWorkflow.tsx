@@ -101,94 +101,124 @@ function SinarmCommentsInline({ stepId }: { stepId: number }) {
 }
 
 // ─── Informações sobre cada tipo de documento exigido na Juntada ─────────────
+// Fonte: "Lista Completa de Certidões para Obtenção do CR CAC - Pessoa Física" (Out/2025)
+// Sistema de solicitação: SisGCorp — https://sisgcorp.eb.mil.br/#/solicitar-servico
 const DOCUMENT_INFO: Record<string, {
   description: string;
   issuer: string;
+  obs?: string;
   link?: string;
   linkLabel?: string;
+  cost?: string;
 }> = {
-  'Comprovante de Capacidade Técnica': {
-    description: 'Certificado emitido por instrutor credenciado ou clube de tiro registrado no Exército Brasileiro, atestando aptidão técnica para manusear arma de fogo com segurança.',
-    issuer: 'Instrutor credenciado / Clube de Tiro registrado no Exército',
+  // ── Identificação ───────────────────────────────────────────────────────────
+  'Documento de Identificação Pessoal': {
+    description: 'RG, CNH ou outro documento oficial com foto, em original e cópia. Deve estar dentro do prazo de validade.',
+    issuer: 'SSP (RG) · DETRAN (CNH) · Polícia Federal (Passaporte)',
   },
+
+  // ── Certidões criminais ──────────────────────────────────────────────────────
   'Certidão de Antecedente Criminal Justiça Federal': {
-    description: 'Certidão que atesta a inexistência de antecedentes na Justiça Federal em todo território nacional. Emitida gratuitamente online pelo Conselho da Justiça Federal.',
+    description: 'Comprova ausência de antecedentes criminais na Justiça Federal. Certidão unificada válida para todas as regiões do país. Gratuita e emitida online.',
     issuer: 'Conselho da Justiça Federal (CJF)',
-    link: 'https://www.cjf.jus.br/cjf/certidoes',
-    linkLabel: 'Emitir Certidão Federal (CJF)',
+    obs: 'Validade: 90 dias a partir da emissão.',
+    link: 'https://certidao-unificada.cjf.jus.br/',
+    linkLabel: 'Emitir Certidão Federal Unificada (CJF)',
   },
   'Certidão de Antecedente Criminal Justiça Estadual': {
-    description: 'Certidão de antecedentes criminais da Justiça Estadual. Cada estado possui seu próprio Tribunal de Justiça. Acesse o portal do CNJ para localizar o TJ do seu estado.',
+    description: 'Comprova ausência de antecedentes criminais na Justiça Estadual, incluindo Juizados Especiais Criminais. Deve conter distribuição e execução criminal.',
     issuer: 'Tribunal de Justiça do Estado (TJ)',
+    obs: 'O site varia por estado. Validade: 90 dias. Consulte o TJ do seu estado.',
     link: 'https://www.cnj.jus.br/certidao-negativa/',
-    linkLabel: 'Portal CNJ – Certidões Estaduais',
-  },
-  'Certidão de Antecedente Criminal Justiça Militar': {
-    description: 'Certidão negativa de crimes militares emitida pelo Superior Tribunal Militar (STM), cobrindo toda a Justiça Militar Federal do Brasil.',
-    issuer: 'Superior Tribunal Militar (STM)',
-    link: 'https://certidao.stm.jus.br/certidao/faces/index.xhtml',
-    linkLabel: 'Emitir Certidão Militar (STM)',
+    linkLabel: 'Portal CNJ – Localize seu Tribunal Estadual',
   },
   'Certidão de Antecedente Criminal Justiça Eleitoral': {
-    description: 'Certidão negativa de crimes eleitorais emitida pelo Tribunal Superior Eleitoral (TSE), atestando a inexistência de condenações na Justiça Eleitoral.',
+    description: 'Certidão de crimes eleitorais emitida pelo TSE. Válida para todos os estados. ATENÇÃO: não confundir com a certidão de quitação eleitoral — são documentos diferentes.',
     issuer: 'Tribunal Superior Eleitoral (TSE)',
-    link: 'https://www.tse.jus.br/servicos-tse/certidao-de-crimes-eleitorais',
+    obs: 'Validade: 90 dias. Gratuita e emitida online.',
+    link: 'https://www.tse.jus.br/eleitor/certidoes/certidao-de-crimes-eleitorais',
     linkLabel: 'Emitir Certidão Eleitoral (TSE)',
   },
+  'Certidão de Antecedente Criminal Justiça Militar': {
+    description: 'Comprova ausência de antecedentes na Justiça Militar Federal. Emitida pelo Superior Tribunal Militar (STM). Válida para todos os estados.',
+    issuer: 'Superior Tribunal Militar (STM)',
+    obs: 'Validade: 90 dias. Gratuita e emitida online.',
+    link: 'https://www.stm.jus.br/servicos-stm/certidao-negativa',
+    linkLabel: 'Emitir Certidão Militar (STM)',
+  },
+
+  // ── Declarações (geradas no SisGCorp) ───────────────────────────────────────
   'Declaração de não estar respondendo': {
-    description: 'Declaração pessoal assinada pelo requerente, sob as penas da lei, afirmando não responder a inquérito policial ou processo criminal em curso. Não é necessário reconhecimento de firma.',
-    issuer: 'Declaração pessoal do requerente (assinada)',
+    description: 'Declaração formal assinada pelo requerente afirmando que não responde a inquérito policial ou processo criminal em curso.',
+    issuer: 'Gerada automaticamente pelo sistema SisGCorp durante o cadastro',
+    link: 'https://sisgcorp.eb.mil.br/#/solicitar-servico',
+    linkLabel: 'Acessar SisGCorp (Exército Brasileiro)',
   },
-  'Documento de Identificação Pessoal': {
-    description: 'Documento oficial com foto: RG (Carteira de Identidade Nacional), CNH (Carteira Nacional de Habilitação) ou Passaporte válido. Deve estar dentro da validade.',
-    issuer: 'SSP (RG) / DETRAN (CNH) / Polícia Federal (Passaporte)',
+  'Declaração de Segurança do Acervo': {
+    description: 'Declaração sobre as condições de segurança do local onde as armas serão guardadas (cofre, armário reforçado etc.), conforme normas do Exército Brasileiro.',
+    issuer: 'Gerada automaticamente pelo sistema SisGCorp durante o cadastro',
+    link: 'https://sisgcorp.eb.mil.br/#/solicitar-servico',
+    linkLabel: 'Acessar SisGCorp (Exército Brasileiro)',
   },
-  'Laudo de Aptidão Psicológica': {
-    description: 'Laudo emitido por psicólogo credenciado pelo CFP, atestando aptidão psicológica para posse ou porte de arma de fogo. Exigido pela Portaria SFPC nº 7/2023 e R-105.',
-    issuer: 'Psicólogo credenciado pelo Conselho Federal de Psicologia (CFP)',
+  'Declaração com compromisso de comprovar a habitualidade': {
+    description: 'Exigida de atiradores desportivos: compromisso de comprovar habitualidade de prática de tiro (participação mínima em competições), conforme R-105 e normas do Exército.',
+    issuer: 'Declaração pessoal / Clube de tiro registrado',
+    obs: 'Dispensado para colecionadores.',
   },
+
+  // ── Comprovantes ────────────────────────────────────────────────────────────
   'Comprovante de Residência Fixa': {
-    description: 'Documento comprovando residência fixa: conta de água, luz, gás, telefone ou extrato bancário em nome do requerente. Validade máxima de 3 meses.',
-    issuer: 'Concessionárias de serviços públicos / Instituição bancária',
+    description: 'Conta de luz, água, telefone, contrato de aluguel ou similar, em nome do requerente, com no máximo 90 dias de emissão.',
+    issuer: 'Concessionárias de serviços públicos / Cartório (contrato de aluguel)',
   },
   'Comprovante de Ocupação Lícita': {
-    description: 'Comprova atividade profissional legal: CTPS com registro, contrato de trabalho, pró-labore, DECORE (profissionais liberais) ou declaração de autônomo com CNPJ ativo.',
-    issuer: 'Empregador / Contador / Receita Federal',
+    description: 'Comprova atividade profissional legal: carteira de trabalho assinada, contracheque, declaração de autônomo, pró-labore ou contrato de prestação de serviços.',
+    issuer: 'Empregador / Contador / Órgão competente',
+  },
+  'Comprovante de Capacidade Técnica': {
+    description: 'Certificado de aprovação em teste prático de tiro (laudo de tiro), emitido por instrutor de armamento credenciado pela Polícia Federal. Custo estimado: R$ 170,00 a R$ 450,00.',
+    issuer: 'Instrutor credenciado pela Polícia Federal / Clube de tiro',
+    obs: 'Apenas instrutores credenciados pela PF podem emitir este documento.',
+    link: 'https://www.gov.br/pf/pt-br/assuntos/armas',
+    linkLabel: 'PF – Consultar instrutores credenciados',
+  },
+  'Laudo de Aptidão Psicológica': {
+    description: 'Avaliação psicológica realizada por psicólogo credenciado pela Polícia Federal, atestando aptidão para o manuseio de arma de fogo. Custo estimado: R$ 300,00 a R$ 800,00.',
+    issuer: 'Psicólogo credenciado pela Polícia Federal',
+    obs: 'Somente psicólogos credenciados pela PF podem emitir este laudo.',
+    link: 'https://www.gov.br/pf/pt-br/assuntos/armas/psicologos/psicologos-crediciados',
+    linkLabel: 'PF – Consultar psicólogos credenciados',
   },
   'Comprovante de filiação a entidade de tiro desportivo': {
-    description: 'Documento emitido pelo clube de tiro desportivo registrado no Exército Brasileiro, comprovando filiação ativa. O clube deve estar vinculado ao CBATIRO ou entidade equivalente.',
+    description: 'Documento emitido pelo clube de tiro desportivo reconhecido, comprovando filiação ativa do requerente à modalidade.',
     issuer: 'Clube de tiro desportivo registrado no Exército / CBATIRO',
+    obs: 'Dispensado para atividade de colecionamento (Portaria 150-COLOG, 05/12/2019).',
     link: 'https://www.cbatiro.org.br',
     linkLabel: 'CBATIRO – Confederação Brasileira de Tiro',
   },
   'Comprovante de filiação a entidade de caça': {
-    description: 'Documento emitido por entidade de caça devidamente autorizada pelo IBAMA, comprovando que o requerente é membro ativo da modalidade de caça regulamentada.',
-    issuer: 'Entidade de caça autorizada pelo IBAMA',
+    description: 'Documento emitido por associação de caça reconhecida, comprovando filiação ativa do requerente à modalidade de caça regulamentada.',
+    issuer: 'Associação de caça reconhecida',
+    obs: 'Dispensado para atividade de colecionamento (Portaria 150-COLOG, 05/12/2019).',
     link: 'https://www.gov.br/ibama/pt-br',
     linkLabel: 'Portal IBAMA',
   },
   'Comprovante da necessidade de abate de fauna invasora': {
-    description: 'Documento expedido pelo IBAMA autorizando o controle de espécies invasoras em propriedade rural. Exigido para registro de armas destinadas ao manejo de fauna.',
-    issuer: 'IBAMA – Instituto Brasileiro do Meio Ambiente',
+    description: 'Documento expedido pelo IBAMA autorizando e comprovando a necessidade de controle de espécie invasora em propriedade rural.',
+    issuer: 'IBAMA – Instituto Brasileiro do Meio Ambiente e dos Recursos Naturais Renováveis',
     link: 'https://www.gov.br/ibama/pt-br/assuntos/fauna/controle-e-erradicacao',
     linkLabel: 'IBAMA – Controle de Fauna Invasora',
   },
   'Comprovante de Segundo Endereço': {
-    description: 'Comprovante de um segundo endereço do requerente (imóvel de temporada, sítio, fazenda ou endereço comercial) para fins de cadastro no Exército Brasileiro.',
-    issuer: 'Concessionárias / Documentos do imóvel',
-  },
-  'Declaração de Segurança do Acervo': {
-    description: 'Declaração assinada pelo titular afirmando que as armas do acervo estão guardadas com segurança (cofre ou depósito adequado), conforme normas do Exército Brasileiro.',
-    issuer: 'Declaração pessoal do requerente',
-  },
-  'Declaração com compromisso de comprovar a habitualidade': {
-    description: 'Declaração exigida de atiradores desportivos, comprometendo-se a comprovar habitualidade de prática de tiro (mínimo de participações em competições), conforme R-105 e normas do Exército.',
-    issuer: 'Declaração pessoal / Clube de tiro',
+    description: 'Comprovante de um segundo endereço do requerente (imóvel de temporada, fazenda, sítio ou endereço comercial), para fins de cadastro no Exército.',
+    issuer: 'Concessionárias de serviços / Documentos do imóvel',
   },
 };
 
-/** Ícone ⓘ com balão de informação ao passar o mouse sobre o documento */
+/** Ícone ⓘ com balão de informação ao passar o mouse sobre o documento.
+ *  Usa HoverCard (não Tooltip) para permitir links clicáveis dentro do balão. */
 function DocumentInfoTooltip({ label }: { label: string }) {
+  // Busca por substring do label — case-sensitive, primeiro match wins
   const key = Object.keys(DOCUMENT_INFO).find((k) => label.includes(k));
   const info = key ? DOCUMENT_INFO[key] : null;
   if (!info) return null;
@@ -224,6 +254,13 @@ function DocumentInfoTooltip({ label }: { label: string }) {
             <span className="text-[0.65rem] font-semibold text-gray-400 uppercase tracking-wide mt-0.5 shrink-0">Emitido por</span>
             <span className="text-xs text-gray-700">{info.issuer}</span>
           </div>
+
+          {info.obs && (
+            <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+              <span className="text-amber-500 mt-0.5 shrink-0">⚠</span>
+              <span className="text-xs text-amber-800 leading-snug">{info.obs}</span>
+            </div>
+          )}
 
           {info.link && (
             <a
