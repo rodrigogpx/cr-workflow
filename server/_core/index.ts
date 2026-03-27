@@ -79,9 +79,11 @@ async function startServer() {
 
   // SECURITY: Restrict CORS origin in production to configured domain(s)
   const isProduction = process.env.NODE_ENV === "production";
+  // Normalize DOMAIN — aceita com ou sem protocolo (ex: "cac360.com.br" ou "https://hml.cac360.com.br")
+  const rawDomain = process.env.DOMAIN?.replace(/^https?:\/\//, "").replace(/\/$/, "") ?? "";
   const allowedOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(",").map(o => o.trim())
-    : (process.env.DOMAIN ? [`https://${process.env.DOMAIN}`, `https://hml.${process.env.DOMAIN}`] : []);
+    ? process.env.CORS_ORIGINS.split(",").map(o => o.trim().replace(/\/$/, ""))
+    : (rawDomain ? [`https://${rawDomain}`, `https://hml.${rawDomain}`] : []);
 
   // SECURITY: Fail-fast if no origins configured in production — wildcard CORS with credentials is dangerous
   if (isProduction && allowedOrigins.length === 0) {
