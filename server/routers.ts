@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS, SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure, platformSuperAdminProcedure, platformAdminOrSuperProcedure } from "./_core/trpc";
@@ -10,7 +10,7 @@ import * as db from "./db";
 import { invalidateTenantCache, getTenantConfig, getTenantDb } from "./config/tenant.config";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
-import { saveClientDocumentFile, getTenantStorageUsage } from "./fileStorage";
+import { saveClientDocumentFile, getTenantStorageUsage, validateFileUpload } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
@@ -88,13 +88,13 @@ export const appRouter = router({
         // Fazer login automático após bootstrap
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: SESSION_MAX_AGE_MS,
           isPlatformAdmin: true,
         });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
           ...cookieOptions,
-          maxAge: ONE_YEAR_MS,
+          maxAge: SESSION_MAX_AGE_MS,
           path: '/',
           httpOnly: true,
           sameSite: 'lax',
@@ -118,14 +118,14 @@ export const appRouter = router({
 
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: SESSION_MAX_AGE_MS,
           isPlatformAdmin: true,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, { 
-          ...cookieOptions, 
-          maxAge: ONE_YEAR_MS, 
+        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: SESSION_MAX_AGE_MS,
           path: "/",
           httpOnly: true,
           sameSite: "lax",
@@ -174,14 +174,14 @@ export const appRouter = router({
 
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
           name: user.name || "",
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: SESSION_MAX_AGE_MS,
           tenantSlug,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { 
-          ...cookieOptions, 
-          maxAge: ONE_YEAR_MS, 
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: SESSION_MAX_AGE_MS,
           path: "/",
           httpOnly: true,
           sameSite: "lax",
@@ -593,6 +593,17 @@ export const appRouter = router({
           console.warn('[Clients.create] Client created but workflow setup incomplete, clientId:', clientId);
         }
 
+        // Gerar token de convite para o Portal do Cliente
+        try {
+          const activePortalDb = tenantDb || await db.getDb();
+          if (activePortalDb) {
+            await db.createClientInviteToken(activePortalDb, clientId, ctx.tenant?.id);
+          }
+        } catch (tokenErr) {
+          console.warn('[Clients.create] Falha ao gerar token de convite do portal:', tokenErr);
+          // Não falha o cadastro
+        }
+
         // Enviar email de boas-vindas automaticamente
         try {
           const welcomeTemplate = tenantDb
@@ -606,6 +617,26 @@ export const appRouter = router({
             const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
             
             // Logo já está salva como base64 no banco
+
+            // Variável {{link_portal}} — link de ativação do portal do cliente
+            const portalBaseUrl = ctx.tenant?.domain
+              ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
+              : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+
+            let portalLink = '';
+            try {
+              const activePortalDb = tenantDb || await db.getDb();
+              if (activePortalDb) {
+                const rawRows = await activePortalDb.execute(
+                  sql`SELECT "token" FROM "clientInviteTokens" WHERE "clientId" = ${clientId} ORDER BY "createdAt" DESC LIMIT 1`
+                );
+                const tokenRows: any[] = Array.isArray(rawRows) ? rawRows : ((rawRows as any).rows ?? []);
+                if (tokenRows[0]?.token) {
+                  portalLink = `${portalBaseUrl}/portal/acesso?t=${tokenRows[0].token}`;
+                }
+              }
+            } catch {}
+
             // Substituir variáveis no template
             const replaceVariables = (text: string) => {
               let result = text;
@@ -620,6 +651,10 @@ export const appRouter = router({
               } else {
                 result = result.replace(/{{logo}}/g, '');
               }
+              // Variável {{link_portal}} — botão de acesso ao portal
+              result = result.replace(/{{link_portal}}/g, portalLink
+                ? `<a href="${portalLink}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold;">Completar Meu Cadastro →</a>`
+                : '');
               return result;
             };
 
@@ -805,6 +840,107 @@ export const appRouter = router({
         }
 
         return { success: true };
+      }),
+
+    reenviarConvitePortal: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        if (!['admin', 'operator'].includes(ctx.user.role ?? '')) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão.' });
+        }
+
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await (await import('./db')).getDb();
+        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponível.' });
+
+        // Buscar o cliente
+        const clientRows = await activeDb.execute(
+          (await import('drizzle-orm')).sql`SELECT * FROM "clients" WHERE "id" = ${input.clientId} LIMIT 1`
+        );
+        const clientArr = Array.isArray(clientRows) ? clientRows : (clientRows as any).rows || [];
+        if (clientArr.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado.' });
+        const client = clientArr[0];
+
+        // Regenerar token
+        const newToken = await db.regenerateClientInviteToken(activeDb, input.clientId, ctx.tenant?.id);
+
+        // Montar link do portal
+        const portalBaseUrl = ctx.tenant?.domain
+          ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
+          : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+        const portalLink = `${portalBaseUrl}/portal/acesso?t=${newToken}`;
+
+        // Enviar email com o link
+        if (client.email) {
+          try {
+            const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
+            const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+            const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
+
+            const subject = `Seu link de acesso ao Portal — ${ctx.tenant?.name || 'CAC 360'}`;
+            const html = `
+              <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+                ${emailLogoUrl ? `<img src="cid:email-logo" alt="Logo" style="max-height:60px;margin-bottom:16px;display:block;" />` : ''}
+                <h2 style="color:#7c3aed">Portal do Associado</h2>
+                <p>Olá, <strong>${client.name}</strong>!</p>
+                <p>Seu link de acesso ao Portal foi renovado. Clique no botão abaixo para acessar:</p>
+                <p style="margin:24px 0">
+                  <a href="${portalLink}"
+                     style="background:#7c3aed;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
+                    Acessar o Portal →
+                  </a>
+                </p>
+                <p style="font-size:12px;color:#888">
+                  Este link é pessoal e expira em 30 dias.<br>
+                  Você precisará confirmar seu email (<strong>${client.email}</strong>) e CPF para acessar.
+                </p>
+              </div>
+            `;
+
+            await sendEmail({
+              to: client.email,
+              subject,
+              html,
+              attachments: inlineLogo ? [inlineLogo] : undefined,
+              tenantDb,
+              tenantId: ctx.tenant?.id,
+            });
+          } catch (emailErr) {
+            console.warn('[portal.reenviarConvite] Email falhou:', emailErr);
+            // Não falha o processo — token já foi gerado
+          }
+        }
+
+        return { success: true, message: 'Convite reenviado com sucesso.' };
+      }),
+  }),
+
+  // Portal router
+  portal: router({
+    getStatus: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await (await import('./db')).getDb();
+        if (!activeDb) return { hasToken: false, activated: false, activatedAt: null };
+
+        const rows = await activeDb.execute(
+          (await import('drizzle-orm')).sql`
+            SELECT "activatedAt", "expiresAt", "createdAt"
+            FROM "clientInviteTokens"
+            WHERE "clientId" = ${input.clientId}
+            ORDER BY "createdAt" DESC LIMIT 1
+          `
+        );
+        const arr = Array.isArray(rows) ? rows : (rows as any).rows || [];
+        if (arr.length === 0) return { hasToken: false, activated: false, activatedAt: null };
+
+        return {
+          hasToken: true,
+          activated: !!arr[0].activatedAt,
+          activatedAt: arr[0].activatedAt ?? null,
+          expiresAt: arr[0].expiresAt,
+        };
       }),
   }),
 
@@ -1386,6 +1522,9 @@ export const appRouter = router({
             });
           }
         }
+
+        // SECURITY: Validar MIME type e extensão antes de salvar
+        validateFileUpload(input.fileName, input.mimeType);
 
         const buffer = Buffer.from(input.fileData, "base64");
 

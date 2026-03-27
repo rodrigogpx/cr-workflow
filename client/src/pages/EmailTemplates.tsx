@@ -289,9 +289,13 @@ export default function EmailTemplates() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-2">Preview</p>
-                  <div
-                    className="w-full min-h-[400px] p-3 border rounded-md bg-white overflow-auto"
-                    dangerouslySetInnerHTML={{ __html: replaceLogoVariable(tpl.content) || '<p class="text-gray-400">O preview aparecerá aqui...</p>' }}
+                  {/* SECURITY: iframe srcdoc com sandbox bloqueia scripts, forms e plugins */}
+                  <iframe
+                    srcDoc={replaceLogoVariable(tpl.content) || '<p style="color:#9ca3af">O preview aparecerá aqui...</p>'}
+                    sandbox="allow-same-origin"
+                    className="w-full border rounded-md bg-white"
+                    title="Preview do template"
+                    style={{ minHeight: "400px", height: "400px" }}
                   />
                 </div>
               </div>

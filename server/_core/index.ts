@@ -5,6 +5,7 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerPortalRoutes } from "./portalRouter";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -77,15 +78,21 @@ async function startServer() {
     (process.env.INSTALL_WIZARD_ENABLED ?? "true").toLowerCase() !== "false";
 
   // SECURITY: Restrict CORS origin in production to configured domain(s)
+  const isProduction = process.env.NODE_ENV === "production";
   const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(",").map(o => o.trim())
     : (process.env.DOMAIN ? [`https://${process.env.DOMAIN}`, `https://hml.${process.env.DOMAIN}`] : []);
 
+  // SECURITY: Fail-fast if no origins configured in production — wildcard CORS with credentials is dangerous
+  if (isProduction && allowedOrigins.length === 0) {
+    throw new Error("[SECURITY] CORS_ORIGINS ou DOMAIN não configurados. Defina pelo menos uma variável de ambiente antes de iniciar em produção.");
+  }
+
   app.use(
     cors({
-      origin: process.env.NODE_ENV === 'development'
-        ? 'http://localhost:5173'
-        : (allowedOrigins.length > 0 ? allowedOrigins : true),
+      origin: !isProduction
+        ? (process.env.DEV_CORS_ORIGIN ?? 'http://localhost:5173')
+        : allowedOrigins,
       credentials: true,
     })
   );
@@ -94,10 +101,25 @@ async function startServer() {
   app.use((_req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
-    res.setHeader("X-XSS-Protection", "1; mode=block");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-    if (process.env.NODE_ENV === "production") {
-      res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    // Content-Security-Policy: restritivo mas compatível com TailwindCSS inline styles e imagens/blobs de documentos
+    res.setHeader(
+      "Content-Security-Policy",
+      [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "font-src 'self' data:",
+        "connect-src 'self'",
+        "frame-src 'none'",
+        "object-src 'none'",
+        "base-uri 'self'",
+      ].join("; ")
+    );
+    if (isProduction) {
+      res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
     }
     next();
   });
@@ -128,6 +150,9 @@ async function startServer() {
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+
+  // Portal do Cliente — rotas públicas self-service
+  registerPortalRoutes(app);
 
   // SECURITY: Install wizard is gated by env var AND checks isPlatformInstalled() internally.
   // Once installed, the /complete endpoint rejects with 409.

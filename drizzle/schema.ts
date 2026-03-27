@@ -824,3 +824,81 @@ export const iatClassEnrollmentsRelations = relations(iatClassEnrollments, ({ on
     references: [clients.id],
   }),
 }));
+
+/**
+ * ============================================
+ * Portal do Cliente — Tokens de Convite
+ * Gerado ao criar cliente; usado para primeiro acesso
+ * ============================================
+ */
+export const clientInviteTokens = pgTable("clientInviteTokens", {
+  id: serial("id").primaryKey(),
+  clientId: integer("clientId").notNull(),
+  tenantId: integer("tenantId"),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  activatedAt: timestamp("activatedAt", { withTimezone: false }),
+  expiresAt: timestamp("expiresAt", { withTimezone: false }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type ClientInviteToken = typeof clientInviteTokens.$inferSelect;
+export type InsertClientInviteToken = typeof clientInviteTokens.$inferInsert;
+
+/**
+ * ============================================
+ * Portal do Cliente — Sessões Autenticadas
+ * Criada após verificação email+CPF; válida 30 dias
+ * ============================================
+ */
+export const clientPortalSessions = pgTable("clientPortalSessions", {
+  id: serial("id").primaryKey(),
+  clientId: integer("clientId").notNull(),
+  tenantId: integer("tenantId"),
+  sessionToken: varchar("sessionToken", { length: 64 }).notNull().unique(),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  lastSeenAt: timestamp("lastSeenAt", { withTimezone: false }).defaultNow(),
+  expiresAt: timestamp("expiresAt", { withTimezone: false }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type ClientPortalSession = typeof clientPortalSessions.$inferSelect;
+export type InsertClientPortalSession = typeof clientPortalSessions.$inferInsert;
+
+/**
+ * ============================================
+ * Portal do Cliente — Consentimentos LGPD
+ * Registra aceite do termo com IP e timestamp
+ * ============================================
+ */
+export const lgpdConsents = pgTable("lgpdConsents", {
+  id: serial("id").primaryKey(),
+  clientId: integer("clientId").notNull(),
+  tenantId: integer("tenantId"),
+  version: varchar("version", { length: 10 }).notNull().default("1.0"),
+  acceptedAt: timestamp("acceptedAt", { withTimezone: false }).notNull(),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type LgpdConsent = typeof lgpdConsents.$inferSelect;
+export type InsertLgpdConsent = typeof lgpdConsents.$inferInsert;
+
+/**
+ * ============================================
+ * Portal do Cliente — Log de Atividades
+ * Auditoria de tudo que o cliente faz no portal
+ * ============================================
+ */
+export const clientPortalActivityLog = pgTable("clientPortalActivityLog", {
+  id: serial("id").primaryKey(),
+  clientId: integer("clientId").notNull(),
+  tenantId: integer("tenantId"),
+  action: varchar("action", { length: 100 }).notNull(),
+  details: text("details"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type ClientPortalActivity = typeof clientPortalActivityLog.$inferSelect;

@@ -17,9 +17,46 @@ const DOCUMENTS_BASE_DIR = process.env.DOCUMENTS_STORAGE_DIR
   ? path.resolve(process.env.DOCUMENTS_STORAGE_DIR)
   : path.resolve(process.cwd(), "documents");
 
+// SECURITY: Whitelist de MIME types permitidos para upload de documentos
+const ALLOWED_MIME_TYPES = new Set([
+  // Documentos
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  // Imagens
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/tiff",
+  // Planilhas
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
+
+// SECURITY: Extensões bloqueadas explicitamente (executáveis e scripts)
+const BLOCKED_EXTENSIONS = new Set([
+  ".exe", ".bat", ".cmd", ".sh", ".ps1", ".msi", ".com", ".scr",
+  ".vbs", ".js", ".ts", ".py", ".rb", ".php", ".pl", ".jar", ".class",
+]);
+
 function sanitizeFileName(name: string): string {
   // Remove caracteres problemáticos de caminho
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+export function validateFileUpload(fileName: string, mimeType: string): void {
+  // Verificar extensão bloqueada
+  const ext = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
+  if (BLOCKED_EXTENSIONS.has(ext)) {
+    throw new Error(`[FileStorage] Tipo de arquivo não permitido: ${ext}`);
+  }
+
+  // Verificar MIME type na whitelist
+  if (mimeType && !ALLOWED_MIME_TYPES.has(mimeType.toLowerCase().split(";")[0].trim())) {
+    throw new Error(`[FileStorage] MIME type não permitido: ${mimeType}. Apenas documentos e imagens são aceitos.`);
+  }
 }
 
 export function getDocumentsBaseDir(): string {

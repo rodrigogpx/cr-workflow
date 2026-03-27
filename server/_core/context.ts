@@ -45,8 +45,14 @@ export async function createContext(
   }
 
   // Fallback de desenvolvimento: se não houver sessão válida, usar o admin
-  // SECURITY: Requires BOTH !isProduction AND explicit opt-in via DEV_AUTO_LOGIN=true
-  if (!user && !ENV.isProduction && process.env.DEV_AUTO_LOGIN === 'true') {
+  // SECURITY: Requires ALL THREE conditions: NODE_ENV=development, !isProduction, DEV_AUTO_LOGIN=true
+  // Never enabled in production builds regardless of env vars
+  if (
+    !user &&
+    process.env.NODE_ENV === "development" &&
+    !ENV.isProduction &&
+    process.env.DEV_AUTO_LOGIN === "true"
+  ) {
     const adminEmail = process.env.ADMIN_EMAIL;
     if (adminEmail) {
       const admin = await db.getUserByEmail(adminEmail);
