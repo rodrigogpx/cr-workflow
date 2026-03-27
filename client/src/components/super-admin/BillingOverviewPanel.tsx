@@ -408,7 +408,7 @@ function PlansManagement() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {plans.map((plan: any) => (
-            <Card key={plan.id} className={`${!plan.isActive ? "opacity-60" : ""}">
+            <Card key={plan.id} className={`${!plan.isActive ? "opacity-60" : ""}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
