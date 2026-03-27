@@ -30,6 +30,12 @@ const IATModule = lazy(() => import("./pages/IATModule"));
 // Platform Admin pages
 const PlatformAdminBootstrap = lazy(() => import("./pages/PlatformAdminBootstrap"));
 const PlatformAdminAdmins = lazy(() => import("./pages/PlatformAdminAdmins"));
+// Portal do Cliente
+const PortalDashboard = lazy(() => import("./pages/portal/PortalDashboard"));
+const PortalLogin = lazy(() => import("./pages/portal/PortalLogin"));
+const PortalAcesso = lazy(() => import("./pages/portal/PortalAcesso"));
+const PortalLgpd = lazy(() => import("./pages/portal/PortalLgpd"));
+const PortalMeusDados = lazy(() => import("./pages/portal/PortalMeusDados"));
 
 function getBackgroundForPath(path: string) {
   // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
@@ -143,6 +149,13 @@ function Router() {
         </div>
       }>
       <Switch>
+        {/* Portal do Cliente — área pública separada, sem auth de admin */}
+        <Route path="/portal/acesso" component={PortalAcesso} />
+        <Route path="/portal/login" component={PortalLogin} />
+        <Route path="/portal/lgpd" component={PortalLgpd} />
+        <Route path="/portal/meus-dados" component={PortalMeusDados} />
+        <Route path="/portal" component={PortalDashboard} />
+
         {/* Platform Admin Routes */}
         <Route path={"/platform-admin/login"} component={PlatformAdminLogin} />
         {/* Bootstrap: rota pública, só funciona quando não há admins cadastrados */}

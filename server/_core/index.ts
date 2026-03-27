@@ -5,6 +5,7 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerPortalRoutes } from "./portalRouter";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -149,6 +150,9 @@ async function startServer() {
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+
+  // Portal do Cliente — rotas públicas self-service
+  registerPortalRoutes(app);
 
   // SECURITY: Install wizard is gated by env var AND checks isPlatformInstalled() internally.
   // Once installed, the /complete endpoint rejects with 409.

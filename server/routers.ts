@@ -593,6 +593,17 @@ export const appRouter = router({
           console.warn('[Clients.create] Client created but workflow setup incomplete, clientId:', clientId);
         }
 
+        // Gerar token de convite para o Portal do Cliente
+        try {
+          const activePortalDb = tenantDb || await db.getDb();
+          if (activePortalDb) {
+            await db.createClientInviteToken(activePortalDb, clientId, ctx.tenant?.id);
+          }
+        } catch (tokenErr) {
+          console.warn('[Clients.create] Falha ao gerar token de convite do portal:', tokenErr);
+          // Não falha o cadastro
+        }
+
         // Enviar email de boas-vindas automaticamente
         try {
           const welcomeTemplate = tenantDb
@@ -606,6 +617,26 @@ export const appRouter = router({
             const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
             
             // Logo já está salva como base64 no banco
+
+            // Variável {{link_portal}} — link de ativação do portal do cliente
+            const portalBaseUrl = ctx.tenant?.domain
+              ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
+              : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+
+            let portalLink = '';
+            try {
+              const activePortalDb = tenantDb || await db.getDb();
+              if (activePortalDb) {
+                const rawRows = await activePortalDb.execute(
+                  sql`SELECT "token" FROM "clientInviteTokens" WHERE "clientId" = ${clientId} ORDER BY "createdAt" DESC LIMIT 1`
+                );
+                const tokenRows: any[] = Array.isArray(rawRows) ? rawRows : ((rawRows as any).rows ?? []);
+                if (tokenRows[0]?.token) {
+                  portalLink = `${portalBaseUrl}/portal/acesso?t=${tokenRows[0].token}`;
+                }
+              }
+            } catch {}
+
             // Substituir variáveis no template
             const replaceVariables = (text: string) => {
               let result = text;
@@ -620,6 +651,10 @@ export const appRouter = router({
               } else {
                 result = result.replace(/{{logo}}/g, '');
               }
+              // Variável {{link_portal}} — botão de acesso ao portal
+              result = result.replace(/{{link_portal}}/g, portalLink
+                ? `<a href="${portalLink}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold;">Completar Meu Cadastro →</a>`
+                : '');
               return result;
             };
 

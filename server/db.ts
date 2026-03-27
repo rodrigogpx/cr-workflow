@@ -42,6 +42,13 @@ import {
   InsertInvoice,
   usageSnapshots,
   InsertUsageSnapshot,
+  clientInviteTokens,
+  InsertClientInviteToken,
+  clientPortalSessions,
+  InsertClientPortalSession,
+  lgpdConsents,
+  InsertLgpdConsent,
+  clientPortalActivityLog,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
@@ -250,6 +257,56 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       }
     }
     await seedDefaultPlans(db);
+  }
+
+  // ── CREATE Portal do Cliente tables (all tenant DBs) ──
+  const portalStatements = [
+    sql`CREATE TABLE IF NOT EXISTS "clientInviteTokens" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "token" varchar(64) NOT NULL UNIQUE,
+      "activatedAt" timestamp,
+      "expiresAt" timestamp NOT NULL,
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "clientPortalSessions" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "sessionToken" varchar(64) NOT NULL UNIQUE,
+      "ipAddress" varchar(45),
+      "userAgent" text,
+      "lastSeenAt" timestamp DEFAULT now(),
+      "expiresAt" timestamp NOT NULL,
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "lgpdConsents" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "version" varchar(10) NOT NULL DEFAULT '1.0',
+      "acceptedAt" timestamp NOT NULL,
+      "ipAddress" varchar(45),
+      "userAgent" text,
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "clientPortalActivityLog" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "action" varchar(100) NOT NULL,
+      "details" text,
+      "ipAddress" varchar(45),
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+  ];
+  for (const stmt of portalStatements) {
+    try {
+      await db.execute(stmt);
+    } catch (error: any) {
+      console.warn('[Schema] Portal CREATE TABLE skipped:', error?.message || error);
+    }
   }
 
   // ── ADD missing columns to existing tables ──
@@ -2636,4 +2693,241 @@ export async function getTenantCountByPlan(): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
   for (const row of rows) { const p = row.plan ?? "starter"; counts[p] = (counts[p] || 0) + 1; }
   return counts;
+}
+
+// ============================================
+// PORTAL DO CLIENTE — Funções de dados
+// ============================================
+import crypto from "crypto";
+
+const PORTAL_SESSION_DAYS = 30;
+const INVITE_TOKEN_DAYS = 30;
+
+/** Gera token de convite para o cliente acessar o portal pela primeira vez */
+export async function createClientInviteToken(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId?: number | null
+): Promise<string> {
+  const token = crypto.randomBytes(32).toString("hex"); // 64 chars
+  const expiresAt = new Date(Date.now() + INVITE_TOKEN_DAYS * 24 * 60 * 60 * 1000);
+  await db.execute(sql`
+    INSERT INTO "clientInviteTokens" ("clientId", "tenantId", "token", "expiresAt", "createdAt")
+    VALUES (${clientId}, ${tenantId ?? null}, ${token}, ${expiresAt}, now())
+    ON CONFLICT ("token") DO UPDATE
+      SET "token" = EXCLUDED."token",
+          "activatedAt" = NULL,
+          "expiresAt" = EXCLUDED."expiresAt"
+  `);
+  return token;
+}
+
+/** Busca um token de convite pelo valor do token */
+export async function getClientInviteToken(
+  db: ReturnType<typeof drizzle>,
+  token: string
+) {
+  const rows = extractRows(await db.execute(sql`
+    SELECT * FROM "clientInviteTokens" WHERE "token" = ${token} LIMIT 1
+  `));
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/** Ativa o token de convite (marca como usado) */
+export async function activateInviteToken(
+  db: ReturnType<typeof drizzle>,
+  token: string
+) {
+  await db.execute(sql`
+    UPDATE "clientInviteTokens"
+    SET "activatedAt" = now()
+    WHERE "token" = ${token}
+  `);
+}
+
+/** Busca cliente por email + CPF (autenticação do portal) */
+export async function getClientByEmailAndCpf(
+  db: ReturnType<typeof drizzle>,
+  email: string,
+  cpf: string,
+  tenantId?: number | null
+) {
+  const cleanCpf = cpf.replace(/\D/g, "");
+  const rows = tenantId
+    ? extractRows(await db.execute(sql`
+        SELECT * FROM "clients"
+        WHERE LOWER("email") = LOWER(${email})
+          AND REGEXP_REPLACE("cpf", '[^0-9]', '', 'g') = ${cleanCpf}
+          AND "tenantId" = ${tenantId}
+        LIMIT 1
+      `))
+    : extractRows(await db.execute(sql`
+        SELECT * FROM "clients"
+        WHERE LOWER("email") = LOWER(${email})
+          AND REGEXP_REPLACE("cpf", '[^0-9]', '', 'g') = ${cleanCpf}
+        LIMIT 1
+      `));
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/** Cria sessão autenticada do portal */
+export async function createPortalSession(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId: number | null | undefined,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<string> {
+  const sessionToken = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + PORTAL_SESSION_DAYS * 24 * 60 * 60 * 1000);
+  await db.execute(sql`
+    INSERT INTO "clientPortalSessions"
+      ("clientId", "tenantId", "sessionToken", "ipAddress", "userAgent", "lastSeenAt", "expiresAt", "createdAt")
+    VALUES
+      (${clientId}, ${tenantId ?? null}, ${sessionToken}, ${ipAddress ?? null}, ${userAgent ?? null}, now(), ${expiresAt}, now())
+  `);
+  return sessionToken;
+}
+
+/** Busca e valida sessão do portal (renova lastSeenAt) */
+export async function getPortalSession(
+  db: ReturnType<typeof drizzle>,
+  sessionToken: string
+) {
+  const rows = extractRows(await db.execute(sql`
+    SELECT * FROM "clientPortalSessions"
+    WHERE "sessionToken" = ${sessionToken}
+      AND "expiresAt" > now()
+    LIMIT 1
+  `));
+  if (rows.length === 0) return null;
+  // Renovar lastSeenAt
+  await db.execute(sql`
+    UPDATE "clientPortalSessions" SET "lastSeenAt" = now()
+    WHERE "sessionToken" = ${sessionToken}
+  `);
+  return rows[0];
+}
+
+/** Remove sessão do portal (logout) */
+export async function deletePortalSession(
+  db: ReturnType<typeof drizzle>,
+  sessionToken: string
+) {
+  await db.execute(sql`
+    DELETE FROM "clientPortalSessions" WHERE "sessionToken" = ${sessionToken}
+  `);
+}
+
+/** Registra aceite do termo LGPD */
+export async function recordLgpdConsent(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId: number | null | undefined,
+  ipAddress?: string,
+  userAgent?: string,
+  version = "1.0"
+) {
+  await db.execute(sql`
+    INSERT INTO "lgpdConsents" ("clientId", "tenantId", "version", "acceptedAt", "ipAddress", "userAgent", "createdAt")
+    VALUES (${clientId}, ${tenantId ?? null}, ${version}, now(), ${ipAddress ?? null}, ${userAgent ?? null}, now())
+  `);
+}
+
+/** Verifica se cliente já aceitou o termo LGPD */
+export async function getLgpdConsent(
+  db: ReturnType<typeof drizzle>,
+  clientId: number
+) {
+  const rows = extractRows(await db.execute(sql`
+    SELECT * FROM "lgpdConsents"
+    WHERE "clientId" = ${clientId}
+    ORDER BY "acceptedAt" DESC LIMIT 1
+  `));
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/** Loga atividade do cliente no portal */
+export async function logPortalActivity(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId: number | null | undefined,
+  action: string,
+  details?: Record<string, any>,
+  ipAddress?: string
+) {
+  await db.execute(sql`
+    INSERT INTO "clientPortalActivityLog" ("clientId", "tenantId", "action", "details", "ipAddress", "createdAt")
+    VALUES (${clientId}, ${tenantId ?? null}, ${action}, ${details ? JSON.stringify(details) : null}, ${ipAddress ?? null}, now())
+  `).catch(() => {}); // log não deve quebrar o fluxo principal
+}
+
+/** Atualiza dados cadastrais do cliente pelo portal */
+export async function updateClientFromPortal(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId: number | null | undefined,
+  data: {
+    name?: string;
+    phone?: string;
+    phone2?: string;
+    identityNumber?: string;
+    identityIssueDate?: string;
+    identityIssuer?: string;
+    identityUf?: string;
+    birthDate?: string;
+    gender?: string;
+    motherName?: string;
+    fatherName?: string;
+    maritalStatus?: string;
+    profession?: string;
+    cep?: string;
+    address?: string;
+    addressNumber?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    residenceUf?: string;
+  }
+) {
+  // Construir update usando drizzle set() para tipagem segura
+  const setData: Partial<typeof clients.$inferInsert> = {};
+  if (data.name !== undefined) setData.name = data.name;
+  if (data.phone !== undefined) setData.phone = data.phone;
+  if (data.phone2 !== undefined) setData.phone2 = data.phone2;
+  if (data.identityNumber !== undefined) setData.identityNumber = data.identityNumber;
+  if (data.identityIssueDate !== undefined) setData.identityIssueDate = data.identityIssueDate;
+  if (data.identityIssuer !== undefined) setData.identityIssuer = data.identityIssuer;
+  if (data.identityUf !== undefined) setData.identityUf = data.identityUf;
+  if (data.birthDate !== undefined) setData.birthDate = data.birthDate;
+  if (data.gender !== undefined) setData.gender = data.gender;
+  if (data.motherName !== undefined) setData.motherName = data.motherName;
+  if (data.fatherName !== undefined) setData.fatherName = data.fatherName;
+  if (data.maritalStatus !== undefined) setData.maritalStatus = data.maritalStatus;
+  if (data.profession !== undefined) setData.profession = data.profession;
+  if (data.cep !== undefined) setData.cep = data.cep;
+  if (data.address !== undefined) setData.address = data.address;
+  if (data.addressNumber !== undefined) setData.addressNumber = data.addressNumber;
+  if (data.complement !== undefined) setData.complement = data.complement;
+  if (data.neighborhood !== undefined) setData.neighborhood = data.neighborhood;
+  if (data.city !== undefined) setData.city = data.city;
+  if (data.residenceUf !== undefined) setData.residenceUf = data.residenceUf;
+  setData.updatedAt = new Date();
+
+  if (Object.keys(setData).length <= 1) return; // só updatedAt, nada para salvar
+
+  const whereClause = tenantId != null
+    ? and(eq(clients.id, clientId), eq(clients.tenantId, tenantId))
+    : eq(clients.id, clientId);
+
+  await db.update(clients).set(setData).where(whereClause);
+}
+
+/** Regenera token de convite (reenvio manual pelo operador) */
+export async function regenerateClientInviteToken(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId?: number | null
+): Promise<string> {
+  return createClientInviteToken(db, clientId, tenantId);
 }
