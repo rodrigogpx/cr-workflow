@@ -8,14 +8,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  ArrowLeft, 
-  CheckCircle2, 
-  Download, 
-  FileText, 
-  Calendar, 
-  ChevronDown, 
-  ChevronUp, 
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Download,
+  FileText,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
   Loader2,
   Clock,
   User,
@@ -25,8 +25,15 @@ import {
   FolderOpen,
   Upload,
   CheckCircle,
-  Circle
+  Circle,
+  Info,
+  ExternalLink
 } from "lucide-react";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { toast } from "sonner";
 import React, { useState, useEffect, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -90,6 +97,148 @@ function SinarmCommentsInline({ stepId }: { stepId: number }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Informações sobre cada tipo de documento exigido na Juntada ─────────────
+const DOCUMENT_INFO: Record<string, {
+  description: string;
+  issuer: string;
+  link?: string;
+  linkLabel?: string;
+}> = {
+  'Comprovante de Capacidade Técnica': {
+    description: 'Certificado emitido por instrutor credenciado ou clube de tiro registrado no Exército Brasileiro, atestando aptidão técnica para manusear arma de fogo com segurança.',
+    issuer: 'Instrutor credenciado / Clube de Tiro registrado no Exército',
+  },
+  'Certidão de Antecedente Criminal Justiça Federal': {
+    description: 'Certidão que atesta a inexistência de antecedentes na Justiça Federal em todo território nacional. Emitida gratuitamente online pelo Conselho da Justiça Federal.',
+    issuer: 'Conselho da Justiça Federal (CJF)',
+    link: 'https://www.cjf.jus.br/cjf/certidoes',
+    linkLabel: 'Emitir Certidão Federal (CJF)',
+  },
+  'Certidão de Antecedente Criminal Justiça Estadual': {
+    description: 'Certidão de antecedentes criminais da Justiça Estadual. Cada estado possui seu próprio Tribunal de Justiça. Acesse o portal do CNJ para localizar o TJ do seu estado.',
+    issuer: 'Tribunal de Justiça do Estado (TJ)',
+    link: 'https://www.cnj.jus.br/certidao-negativa/',
+    linkLabel: 'Portal CNJ – Certidões Estaduais',
+  },
+  'Certidão de Antecedente Criminal Justiça Militar': {
+    description: 'Certidão negativa de crimes militares emitida pelo Superior Tribunal Militar (STM), cobrindo toda a Justiça Militar Federal do Brasil.',
+    issuer: 'Superior Tribunal Militar (STM)',
+    link: 'https://certidao.stm.jus.br/certidao/faces/index.xhtml',
+    linkLabel: 'Emitir Certidão Militar (STM)',
+  },
+  'Certidão de Antecedente Criminal Justiça Eleitoral': {
+    description: 'Certidão negativa de crimes eleitorais emitida pelo Tribunal Superior Eleitoral (TSE), atestando a inexistência de condenações na Justiça Eleitoral.',
+    issuer: 'Tribunal Superior Eleitoral (TSE)',
+    link: 'https://www.tse.jus.br/servicos-tse/certidao-de-crimes-eleitorais',
+    linkLabel: 'Emitir Certidão Eleitoral (TSE)',
+  },
+  'Declaração de não estar respondendo': {
+    description: 'Declaração pessoal assinada pelo requerente, sob as penas da lei, afirmando não responder a inquérito policial ou processo criminal em curso. Não é necessário reconhecimento de firma.',
+    issuer: 'Declaração pessoal do requerente (assinada)',
+  },
+  'Documento de Identificação Pessoal': {
+    description: 'Documento oficial com foto: RG (Carteira de Identidade Nacional), CNH (Carteira Nacional de Habilitação) ou Passaporte válido. Deve estar dentro da validade.',
+    issuer: 'SSP (RG) / DETRAN (CNH) / Polícia Federal (Passaporte)',
+  },
+  'Laudo de Aptidão Psicológica': {
+    description: 'Laudo emitido por psicólogo credenciado pelo CFP, atestando aptidão psicológica para posse ou porte de arma de fogo. Exigido pela Portaria SFPC nº 7/2023 e R-105.',
+    issuer: 'Psicólogo credenciado pelo Conselho Federal de Psicologia (CFP)',
+  },
+  'Comprovante de Residência Fixa': {
+    description: 'Documento comprovando residência fixa: conta de água, luz, gás, telefone ou extrato bancário em nome do requerente. Validade máxima de 3 meses.',
+    issuer: 'Concessionárias de serviços públicos / Instituição bancária',
+  },
+  'Comprovante de Ocupação Lícita': {
+    description: 'Comprova atividade profissional legal: CTPS com registro, contrato de trabalho, pró-labore, DECORE (profissionais liberais) ou declaração de autônomo com CNPJ ativo.',
+    issuer: 'Empregador / Contador / Receita Federal',
+  },
+  'Comprovante de filiação a entidade de tiro desportivo': {
+    description: 'Documento emitido pelo clube de tiro desportivo registrado no Exército Brasileiro, comprovando filiação ativa. O clube deve estar vinculado ao CBATIRO ou entidade equivalente.',
+    issuer: 'Clube de tiro desportivo registrado no Exército / CBATIRO',
+    link: 'https://www.cbatiro.org.br',
+    linkLabel: 'CBATIRO – Confederação Brasileira de Tiro',
+  },
+  'Comprovante de filiação a entidade de caça': {
+    description: 'Documento emitido por entidade de caça devidamente autorizada pelo IBAMA, comprovando que o requerente é membro ativo da modalidade de caça regulamentada.',
+    issuer: 'Entidade de caça autorizada pelo IBAMA',
+    link: 'https://www.gov.br/ibama/pt-br',
+    linkLabel: 'Portal IBAMA',
+  },
+  'Comprovante da necessidade de abate de fauna invasora': {
+    description: 'Documento expedido pelo IBAMA autorizando o controle de espécies invasoras em propriedade rural. Exigido para registro de armas destinadas ao manejo de fauna.',
+    issuer: 'IBAMA – Instituto Brasileiro do Meio Ambiente',
+    link: 'https://www.gov.br/ibama/pt-br/assuntos/fauna/controle-e-erradicacao',
+    linkLabel: 'IBAMA – Controle de Fauna Invasora',
+  },
+  'Comprovante de Segundo Endereço': {
+    description: 'Comprovante de um segundo endereço do requerente (imóvel de temporada, sítio, fazenda ou endereço comercial) para fins de cadastro no Exército Brasileiro.',
+    issuer: 'Concessionárias / Documentos do imóvel',
+  },
+  'Declaração de Segurança do Acervo': {
+    description: 'Declaração assinada pelo titular afirmando que as armas do acervo estão guardadas com segurança (cofre ou depósito adequado), conforme normas do Exército Brasileiro.',
+    issuer: 'Declaração pessoal do requerente',
+  },
+  'Declaração com compromisso de comprovar a habitualidade': {
+    description: 'Declaração exigida de atiradores desportivos, comprometendo-se a comprovar habitualidade de prática de tiro (mínimo de participações em competições), conforme R-105 e normas do Exército.',
+    issuer: 'Declaração pessoal / Clube de tiro',
+  },
+};
+
+/** Ícone ⓘ com balão de informação ao passar o mouse sobre o documento */
+function DocumentInfoTooltip({ label }: { label: string }) {
+  const key = Object.keys(DOCUMENT_INFO).find((k) => label.includes(k));
+  const info = key ? DOCUMENT_INFO[key] : null;
+  if (!info) return null;
+
+  return (
+    <HoverCard openDelay={200} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          tabIndex={-1}
+          className="inline-flex items-center justify-center text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+          aria-label={`Informações sobre: ${label}`}
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        className="w-80 p-0 shadow-xl border border-blue-100 rounded-xl overflow-hidden"
+      >
+        {/* Cabeçalho */}
+        <div className="bg-blue-50 border-b border-blue-100 px-4 py-2.5">
+          <p className="text-xs font-semibold text-blue-800 leading-snug">{label}</p>
+        </div>
+
+        {/* Corpo */}
+        <div className="px-4 py-3 space-y-2.5 bg-white">
+          <p className="text-xs text-gray-600 leading-relaxed">{info.description}</p>
+
+          <div className="flex items-start gap-1.5">
+            <span className="text-[0.65rem] font-semibold text-gray-400 uppercase tracking-wide mt-0.5 shrink-0">Emitido por</span>
+            <span className="text-xs text-gray-700">{info.issuer}</span>
+          </div>
+
+          {info.link && (
+            <a
+              href={info.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors w-full"
+            >
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              {info.linkLabel ?? 'Acessar portal de emissão'}
+            </a>
+          )}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 
@@ -708,7 +857,12 @@ export default function ClientWorkflow() {
                             <div className="flex items-start gap-3 justify-between">
                               <div className="flex items-start gap-3 flex-1">
                                 <Checkbox checked={subTask.completed} onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)} className="mt-0.5" />
-                                <div className="flex-1 min-w-0"><p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>{subTask.label}</p></div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="flex items-center gap-1.5 flex-wrap">
+                                    <p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>{subTask.label}</p>
+                                    <DocumentInfoTooltip label={subTask.label} />
+                                  </span>
+                                </div>
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 {user?.role !== 'despachante' && (
