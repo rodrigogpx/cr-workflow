@@ -5,15 +5,31 @@ const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
 function getKey(): Buffer {
-  const secret =
-    process.env.SECRET_KEY ||
-    process.env.ENCRYPTION_KEY ||
-    process.env.JWT_SECRET ||
-    process.env.COOKIE_SECRET;
+  // SECURITY: Em produção, exige SECRET_KEY dedicado — nunca reutilizar JWT_SECRET para criptografia.
+  // Chaves de diferentes propósitos (assinatura vs. criptografia) DEVEM ser separadas.
+  const isProduction = process.env.NODE_ENV === "production";
+
+  const secret = process.env.SECRET_KEY || process.env.ENCRYPTION_KEY;
+
+  if (!secret && isProduction) {
+    throw new Error(
+      "[SECURITY] SECRET_KEY não configurado. Defina SECRET_KEY com um valor aleatório de pelo menos 32 caracteres antes de iniciar em produção. Não reutilize JWT_SECRET ou COOKIE_SECRET."
+    );
+  }
+
+  // Em desenvolvimento, aceita fallback para JWT_SECRET ou COOKIE_SECRET com aviso
+  const fallback = process.env.JWT_SECRET || process.env.COOKIE_SECRET;
+  if (!secret && fallback) {
+    console.warn(
+      "[SECURITY WARNING] SECRET_KEY não configurado — usando fallback de JWT_SECRET/COOKIE_SECRET. Configure SECRET_KEY separado antes de ir para produção."
+    );
+    return crypto.createHash("sha256").update(fallback).digest();
+  }
 
   if (!secret) {
-    throw new Error("SECRET_KEY/ENCRYPTION_KEY/JWT_SECRET not configured for crypto.util");
+    throw new Error("[Crypto] SECRET_KEY/ENCRYPTION_KEY/JWT_SECRET não configurado");
   }
+
   // Derive 32 bytes key
   return crypto.createHash("sha256").update(secret).digest();
 }

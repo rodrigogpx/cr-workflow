@@ -141,9 +141,13 @@ export function EmailPreview({
                 {/* Conteúdo */}
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-700">Conteúdo:</p>
-                  <div 
-                    className="p-6 bg-white border rounded-lg shadow-sm prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: previewContent }} 
+                  {/* SECURITY: iframe srcdoc com sandbox bloqueia scripts, forms e plugins sem precisar de biblioteca externa */}
+                  <iframe
+                    srcDoc={previewContent}
+                    sandbox="allow-same-origin"
+                    className="w-full min-h-[400px] border rounded-lg shadow-sm bg-white"
+                    title="Preview do email"
+                    style={{ height: "400px" }}
                   />
                 </div>
 

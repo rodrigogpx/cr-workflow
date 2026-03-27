@@ -20,8 +20,9 @@ COPY package.json pnpm-lock.yaml ./
 # Copiar patches antes da instalação para que pnpm os encontre
 COPY patches ./patches
 
-# Instalar pnpm globalmente
-RUN npm install -g pnpm && npm cache clean --force
+# Instalar pnpm com versão fixada (alinhado com packageManager no package.json)
+ARG PNPM_VERSION=10.15.1
+RUN npm install -g pnpm@${PNPM_VERSION} && npm cache clean --force
 
 # Instalar dependências (com fallback quando o lock estiver ausente/desatualizado)
 RUN set -eux; \
@@ -55,8 +56,9 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 
-# Instalar pnpm globalmente
-RUN npm install -g pnpm && npm cache clean --force
+# Instalar pnpm com versão fixada
+ARG PNPM_VERSION=10.15.1
+RUN npm install -g pnpm@${PNPM_VERSION} && npm cache clean --force
 
 # Instalar todas as dependências com fallback remoto
 RUN set -eux; \
@@ -90,8 +92,9 @@ LABEL version="1.0.0"
 
 WORKDIR /app
 
-# Instalar pnpm globalmente
-RUN npm install -g pnpm && npm cache clean --force
+# Instalar pnpm com versão fixada
+ARG PNPM_VERSION=10.15.1
+RUN npm install -g pnpm@${PNPM_VERSION} && npm cache clean --force
 
 # Copiar manifestos para referência em runtime
 COPY package.json ./

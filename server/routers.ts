@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS, SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure, platformSuperAdminProcedure, platformAdminOrSuperProcedure } from "./_core/trpc";
@@ -10,7 +10,7 @@ import * as db from "./db";
 import { invalidateTenantCache, getTenantConfig, getTenantDb } from "./config/tenant.config";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
-import { saveClientDocumentFile, getTenantStorageUsage } from "./fileStorage";
+import { saveClientDocumentFile, getTenantStorageUsage, validateFileUpload } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
@@ -88,13 +88,13 @@ export const appRouter = router({
         // Fazer login automático após bootstrap
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: SESSION_MAX_AGE_MS,
           isPlatformAdmin: true,
         });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
           ...cookieOptions,
-          maxAge: ONE_YEAR_MS,
+          maxAge: SESSION_MAX_AGE_MS,
           path: '/',
           httpOnly: true,
           sameSite: 'lax',
@@ -118,14 +118,14 @@ export const appRouter = router({
 
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: SESSION_MAX_AGE_MS,
           isPlatformAdmin: true,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, { 
-          ...cookieOptions, 
-          maxAge: ONE_YEAR_MS, 
+        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: SESSION_MAX_AGE_MS,
           path: "/",
           httpOnly: true,
           sameSite: "lax",
@@ -174,14 +174,14 @@ export const appRouter = router({
 
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
           name: user.name || "",
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: SESSION_MAX_AGE_MS,
           tenantSlug,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { 
-          ...cookieOptions, 
-          maxAge: ONE_YEAR_MS, 
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: SESSION_MAX_AGE_MS,
           path: "/",
           httpOnly: true,
           sameSite: "lax",
@@ -1386,6 +1386,9 @@ export const appRouter = router({
             });
           }
         }
+
+        // SECURITY: Validar MIME type e extensão antes de salvar
+        validateFileUpload(input.fileName, input.mimeType);
 
         const buffer = Buffer.from(input.fileData, "base64");
 
