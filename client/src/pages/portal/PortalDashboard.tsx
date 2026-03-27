@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { useLocation } from "wouter";
 import PortalLayout from "./PortalLayout";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, CheckCircle2, LogOut, ChevronRight, Clock } from "lucide-react";
+import { ClipboardList, CheckCircle2, LogOut, ChevronRight, Clock, GitBranch, FileText, MessageSquare } from "lucide-react";
 import { usePortalAuth } from "./usePortalAuth";
 
 export default function PortalDashboard() {
@@ -44,11 +44,12 @@ export default function PortalDashboard() {
             </Button>
           </div>
 
-          {/* Cards de ação */}
+          {/* Cards de ação — 4 cards em grid 2x2 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Meus Dados */}
             <button
               onClick={() => navigate("/portal/meus-dados")}
-              className="bg-white rounded-xl border border-purple-100 shadow-sm p-6 text-left hover:border-purple-300 hover:shadow-md transition-all group"
+              className="bg-white rounded-xl border border-purple-100 shadow-sm p-5 text-left hover:border-purple-300 hover:shadow-md transition-all group"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -56,21 +57,50 @@ export default function PortalDashboard() {
                 </div>
                 <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-purple-500 transition-colors" />
               </div>
-              <h3 className="font-semibold text-gray-800">Meus Dados</h3>
-              <p className="text-sm text-gray-500 mt-1">Complete e atualize seu cadastro</p>
+              <h3 className="font-semibold text-gray-800 text-sm">Meus Dados</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Complete seu cadastro</p>
             </button>
 
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 opacity-60 cursor-not-allowed">
+            {/* Meu Processo */}
+            <button
+              onClick={() => navigate("/portal/meu-processo")}
+              className="bg-white rounded-xl border border-indigo-100 shadow-sm p-5 text-left hover:border-indigo-300 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <GitBranch className="h-5 w-5 text-indigo-600" />
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-indigo-500 transition-colors" />
+              </div>
+              <h3 className="font-semibold text-gray-800 text-sm">Meu Processo</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Acompanhe as etapas do seu CR</p>
+            </button>
+
+            {/* Documentos */}
+            <button
+              onClick={() => navigate("/portal/documentos")}
+              className="bg-white rounded-xl border border-pink-100 shadow-sm p-5 text-left hover:border-pink-300 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-pink-600" />
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-pink-500 transition-colors" />
+              </div>
+              <h3 className="font-semibold text-gray-800 text-sm">Documentos</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Status da juntada de documentos</p>
+            </button>
+
+            {/* Mensagens — Em breve */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 opacity-50 cursor-not-allowed">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-gray-400" />
+                  <MessageSquare className="h-5 w-5 text-gray-400" />
                 </div>
-                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                  Em breve
-                </span>
+                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Em breve</span>
               </div>
-              <h3 className="font-semibold text-gray-600">Meu Processo</h3>
-              <p className="text-sm text-gray-400 mt-1">Acompanhe o andamento do seu CR</p>
+              <h3 className="font-semibold text-gray-600 text-sm">Mensagens</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Canal direto com o clube</p>
             </div>
           </div>
 

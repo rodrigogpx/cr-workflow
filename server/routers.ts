@@ -841,6 +841,107 @@ export const appRouter = router({
 
         return { success: true };
       }),
+
+    reenviarConvitePortal: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        if (!['admin', 'operator'].includes(ctx.user.role ?? '')) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão.' });
+        }
+
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await (await import('./db')).getDb();
+        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponível.' });
+
+        // Buscar o cliente
+        const clientRows = await activeDb.execute(
+          (await import('drizzle-orm')).sql`SELECT * FROM "clients" WHERE "id" = ${input.clientId} LIMIT 1`
+        );
+        const clientArr = Array.isArray(clientRows) ? clientRows : (clientRows as any).rows || [];
+        if (clientArr.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado.' });
+        const client = clientArr[0];
+
+        // Regenerar token
+        const newToken = await db.regenerateClientInviteToken(activeDb, input.clientId, ctx.tenant?.id);
+
+        // Montar link do portal
+        const portalBaseUrl = ctx.tenant?.domain
+          ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
+          : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+        const portalLink = `${portalBaseUrl}/portal/acesso?t=${newToken}`;
+
+        // Enviar email com o link
+        if (client.email) {
+          try {
+            const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
+            const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+            const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
+
+            const subject = `Seu link de acesso ao Portal — ${ctx.tenant?.name || 'CAC 360'}`;
+            const html = `
+              <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+                ${emailLogoUrl ? `<img src="cid:email-logo" alt="Logo" style="max-height:60px;margin-bottom:16px;display:block;" />` : ''}
+                <h2 style="color:#7c3aed">Portal do Associado</h2>
+                <p>Olá, <strong>${client.name}</strong>!</p>
+                <p>Seu link de acesso ao Portal foi renovado. Clique no botão abaixo para acessar:</p>
+                <p style="margin:24px 0">
+                  <a href="${portalLink}"
+                     style="background:#7c3aed;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
+                    Acessar o Portal →
+                  </a>
+                </p>
+                <p style="font-size:12px;color:#888">
+                  Este link é pessoal e expira em 30 dias.<br>
+                  Você precisará confirmar seu email (<strong>${client.email}</strong>) e CPF para acessar.
+                </p>
+              </div>
+            `;
+
+            await sendEmail({
+              to: client.email,
+              subject,
+              html,
+              attachments: inlineLogo ? [inlineLogo] : undefined,
+              tenantDb,
+              tenantId: ctx.tenant?.id,
+            });
+          } catch (emailErr) {
+            console.warn('[portal.reenviarConvite] Email falhou:', emailErr);
+            // Não falha o processo — token já foi gerado
+          }
+        }
+
+        return { success: true, message: 'Convite reenviado com sucesso.' };
+      }),
+  }),
+
+  // Portal router
+  portal: router({
+    getStatus: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await (await import('./db')).getDb();
+        if (!activeDb) return { hasToken: false, activated: false, activatedAt: null };
+
+        const rows = await activeDb.execute(
+          (await import('drizzle-orm')).sql`
+            SELECT "activatedAt", "expiresAt", "createdAt"
+            FROM "clientInviteTokens"
+            WHERE "clientId" = ${input.clientId}
+            ORDER BY "createdAt" DESC LIMIT 1
+          `
+        );
+        const arr = Array.isArray(rows) ? rows : (rows as any).rows || [];
+        if (arr.length === 0) return { hasToken: false, activated: false, activatedAt: null };
+
+        return {
+          hasToken: true,
+          activated: !!arr[0].activatedAt,
+          activatedAt: arr[0].activatedAt ?? null,
+          expiresAt: arr[0].expiresAt,
+        };
+      }),
   }),
 
   // Workflow router

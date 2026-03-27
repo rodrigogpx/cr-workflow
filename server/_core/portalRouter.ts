@@ -365,6 +365,43 @@ export function registerPortalRoutes(app: Express) {
       await db.updateClientFromPortal(activeDb, client.id, tenantId, data);
       await db.logPortalActivity(activeDb, client.id, tenantId, "UPDATE_DATA", { fields: Object.keys(data) }, getClientIp(req));
 
+      // Notificar operador que cliente preencheu dados
+      try {
+        // Buscar email do operador responsável pelo cliente
+        const opRows = await activeDb.execute(
+          (await import("drizzle-orm")).sql`
+            SELECT u.email, u.name FROM "users" u
+            INNER JOIN "clients" c ON c."operatorId" = u.id
+            WHERE c."id" = ${client.id}
+            LIMIT 1
+          `
+        );
+        const opArr = Array.isArray(opRows) ? opRows : (opRows as any).rows || [];
+        if (opArr.length > 0 && opArr[0].email) {
+          const { sendEmail } = await import("../emailService");
+          await sendEmail({
+            to: opArr[0].email,
+            subject: `[Portal] ${client.name} preencheu os dados cadastrais`,
+            html: `
+              <div style="font-family:sans-serif;max-width:600px">
+                <h3 style="color:#7c3aed">Novo preenchimento no Portal</h3>
+                <p>O cliente <strong>${client.name}</strong> (${client.email}) acabou de preencher seus dados cadastrais no Portal do Associado.</p>
+                <p>Acesse o sistema para revisar as informações:</p>
+                <ul style="color:#555">
+                  <li>CPF: ${client.cpf}</li>
+                  <li>Email: ${client.email}</li>
+                </ul>
+                <p style="color:#888;font-size:12px">Esta é uma notificação automática do CAC 360.</p>
+              </div>
+            `,
+            tenantDb: activeDb,
+            tenantId: tenantId ?? undefined,
+          });
+        }
+      } catch (notifErr) {
+        console.warn("[Portal] Falha ao notificar operador:", notifErr);
+      }
+
       return res.json({ success: true, message: "Dados atualizados com sucesso." });
     } catch (err) {
       console.error("[Portal] Erro ao atualizar dados:", err);
@@ -421,6 +458,127 @@ export function registerPortalRoutes(app: Express) {
       });
     } catch (err) {
       return res.status(500).json({ error: "Erro ao verificar consentimento." });
+    }
+  });
+
+  /**
+   * GET /api/portal/meu-processo
+   * Retorna os workflow steps do cliente com sub-tarefas
+   */
+  app.get("/api/portal/meu-processo", requirePortalSession as any, async (req: any, res: Response) => {
+    try {
+      const client = req.portalClient;
+      const activeDb = req.portalDb;
+
+      // Buscar workflow steps do cliente
+      const steps = await activeDb.execute(
+        (await import("drizzle-orm")).sql`
+          SELECT ws.*,
+            COALESCE(
+              json_agg(
+                json_build_object(
+                  'id', st.id,
+                  'subTaskId', st."subTaskId",
+                  'label', st.label,
+                  'completed', st.completed,
+                  'completedAt', st."completedAt"
+                ) ORDER BY st.id
+              ) FILTER (WHERE st.id IS NOT NULL),
+              '[]'
+            ) as "subTasks"
+          FROM "workflowSteps" ws
+          LEFT JOIN "subTasks" st ON st."workflowStepId" = ws.id
+          WHERE ws."clientId" = ${client.id}
+          GROUP BY ws.id
+          ORDER BY ws.id
+        `
+      );
+
+      const stepsArr = Array.isArray(steps) ? steps : (steps as any).rows || [];
+
+      return res.json({ steps: stepsArr });
+    } catch (err) {
+      console.error("[Portal] Erro ao buscar processo:", err);
+      return res.status(500).json({ error: "Erro ao buscar processo." });
+    }
+  });
+
+  /**
+   * GET /api/portal/documentos
+   * Retorna a lista de subtarefas de juntada de documentos com status dos docs enviados
+   */
+  app.get("/api/portal/documentos", requirePortalSession as any, async (req: any, res: Response) => {
+    try {
+      const client = req.portalClient;
+      const activeDb = req.portalDb;
+
+      // Buscar a etapa "juntada-documento" do cliente
+      const juntadaRows = await activeDb.execute(
+        (await import("drizzle-orm")).sql`
+          SELECT id FROM "workflowSteps"
+          WHERE "clientId" = ${client.id} AND "stepId" = 'juntada-documento'
+          LIMIT 1
+        `
+      );
+      const juntadaArr = Array.isArray(juntadaRows) ? juntadaRows : (juntadaRows as any).rows || [];
+
+      if (juntadaArr.length === 0) {
+        return res.json({ documents: [] });
+      }
+
+      const juntadaStepId = juntadaArr[0].id;
+
+      // Buscar subtarefas com documentos associados
+      const docs = await activeDb.execute(
+        (await import("drizzle-orm")).sql`
+          SELECT
+            st.id,
+            st."subTaskId",
+            st.label,
+            st.completed,
+            d.id as "docId",
+            d."fileName",
+            d."fileUrl",
+            d."mimeType",
+            d."fileSize",
+            d."createdAt" as "uploadedAt"
+          FROM "subTasks" st
+          LEFT JOIN "documents" d ON d."subTaskId" = st.id AND d."clientId" = ${client.id}
+          WHERE st."workflowStepId" = ${juntadaStepId}
+          ORDER BY st.id, d."createdAt" DESC
+        `
+      );
+
+      const docsArr = Array.isArray(docs) ? docs : (docs as any).rows || [];
+
+      // Agrupar por subtarefa
+      const grouped: Record<number, any> = {};
+      for (const row of docsArr) {
+        if (!grouped[row.id]) {
+          grouped[row.id] = {
+            id: row.id,
+            subTaskId: row.subTaskId,
+            label: row.label,
+            completed: row.completed,
+            documents: [],
+          };
+        }
+        if (row.docId) {
+          grouped[row.id].documents.push({
+            id: row.docId,
+            fileName: row.fileName,
+            fileUrl: row.fileUrl,
+            mimeType: row.mimeType,
+            fileSize: row.fileSize,
+            uploadedAt: row.uploadedAt,
+          });
+        }
+      }
+
+      return res.json({ documents: Object.values(grouped) });
+    } catch (err) {
+      console.error("[Portal] Erro ao buscar documentos:", err);
+      return res.status(500).json({ error: "Erro ao buscar documentos." });
     }
   });
 }

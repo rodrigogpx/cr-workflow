@@ -93,6 +93,57 @@ function SinarmCommentsInline({ stepId }: { stepId: number }) {
   );
 }
 
+function PortalStatusBadge({ clientId }: { clientId: number }) {
+  const { data: portalStatus, isLoading } = (trpc as any).portal.getStatus.useQuery(
+    { clientId },
+    { enabled: !!clientId }
+  );
+  const reenviarMutation = (trpc as any).clients.reenviarConvitePortal.useMutation({
+    onSuccess: () => toast.success("Convite reenviado com sucesso!"),
+    onError: (err: any) => toast.error(err.message || "Erro ao reenviar convite"),
+  });
+
+  if (isLoading) return null;
+
+  const activated = portalStatus?.activated;
+  const hasToken = portalStatus?.hasToken;
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {activated ? (
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          Portal Ativo
+        </span>
+      ) : hasToken ? (
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          Convite Pendente
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+          Portal não ativo
+        </span>
+      )}
+
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+        disabled={reenviarMutation.isPending}
+        onClick={() => reenviarMutation.mutate({ clientId })}
+      >
+        {reenviarMutation.isPending ? (
+          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Enviando...</>
+        ) : (
+          <>✉ Reenviar Convite</>
+        )}
+      </Button>
+    </div>
+  );
+}
+
 export default function ClientWorkflow() {
   const { id: clientId } = useParams();
   const [, setLocation] = useLocation();
@@ -504,6 +555,9 @@ export default function ClientWorkflow() {
                     <Phone className="h-4 w-4" />
                     {client.phone && formatPhone(client.phone)}
                   </span>
+                </div>
+                <div className="mt-2">
+                  <PortalStatusBadge clientId={Number(clientId)} />
                 </div>
               </div>
             </div>

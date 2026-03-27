@@ -36,6 +36,8 @@ const PortalLogin = lazy(() => import("./pages/portal/PortalLogin"));
 const PortalAcesso = lazy(() => import("./pages/portal/PortalAcesso"));
 const PortalLgpd = lazy(() => import("./pages/portal/PortalLgpd"));
 const PortalMeusDados = lazy(() => import("./pages/portal/PortalMeusDados"));
+const PortalMeuProcesso = lazy(() => import("./pages/portal/PortalMeuProcesso"));
+const PortalDocumentos = lazy(() => import("./pages/portal/PortalDocumentos"));
 
 function getBackgroundForPath(path: string) {
   // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
@@ -154,6 +156,8 @@ function Router() {
         <Route path="/portal/login" component={PortalLogin} />
         <Route path="/portal/lgpd" component={PortalLgpd} />
         <Route path="/portal/meus-dados" component={PortalMeusDados} />
+        <Route path="/portal/meu-processo" component={PortalMeuProcesso} />
+        <Route path="/portal/documentos" component={PortalDocumentos} />
         <Route path="/portal" component={PortalDashboard} />
 
         {/* Platform Admin Routes */}
