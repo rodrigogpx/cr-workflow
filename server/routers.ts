@@ -1,8 +1,8 @@
 /// <reference types="node" />
-import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS, SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure, platformSuperAdminProcedure, platformAdminOrSuperProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64, buildInlineLogoAttachment } from "./emailService";
@@ -10,7 +10,7 @@ import * as db from "./db";
 import { invalidateTenantCache, getTenantConfig, getTenantDb } from "./config/tenant.config";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
-import { saveClientDocumentFile, getTenantStorageUsage } from "./fileStorage";
+import { saveClientDocumentFile, getTenantStorageUsage, validateFileUpload } from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
@@ -71,6 +71,37 @@ export const appRouter = router({
       const { hashedPassword, ...safeAdmin } = ctx.platformAdmin;
       return safeAdmin;
     }),
+    // Cria o primeiro superadmin quando a tabela platformAdmins está vazia.
+    // Retorna 403 se já existir qualquer admin (proteção contra bootstrap repetido).
+    bootstrapSuperAdmin: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().min(2),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const existing = await db.getAllPlatformAdmins();
+        if (existing.length > 0) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Bootstrap não permitido: já existem administradores cadastrados.' });
+        }
+        const admin = await db.createPlatformAdmin({ ...input, role: 'superadmin' });
+        // Fazer login automático após bootstrap
+        const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
+          name: admin.name || "",
+          expiresInMs: SESSION_MAX_AGE_MS,
+          isPlatformAdmin: true,
+        });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: SESSION_MAX_AGE_MS,
+          path: '/',
+          httpOnly: true,
+          sameSite: 'lax',
+        });
+        return { success: true, admin };
+      }),
+
     platformLogin: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
@@ -87,14 +118,14 @@ export const appRouter = router({
 
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: SESSION_MAX_AGE_MS,
           isPlatformAdmin: true,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, { 
-          ...cookieOptions, 
-          maxAge: ONE_YEAR_MS, 
+        ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: SESSION_MAX_AGE_MS,
           path: "/",
           httpOnly: true,
           sameSite: "lax",
@@ -135,26 +166,22 @@ export const appRouter = router({
             tenantSlug = userTenant.slug;
           }
         } else if (!user.tenantId) {
-          // Fallback para usuários legados: associar ao primeiro tenant existente
-          const allTenants = await db.getAllTenants();
-          if (allTenants && allTenants.length > 0) {
-            const firstTenant = allTenants[0];
-            await db.updateUser(user.id, { tenantId: firstTenant.id });
-            tenantSlug = firstTenant.slug;
-            user.tenantId = firstTenant.id;
-          }
+          // SECURITY: Do NOT auto-associate users without tenant to the first tenant.
+          // Legacy users without tenantId must be manually assigned by an admin.
+          console.warn(`[Auth] User ${user.id} (${user.email}) has no tenantId — login blocked until admin assigns a tenant`);
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Usuário sem tenant associado. Contate o administrador.' });
         }
 
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
           name: user.name || "",
-          expiresInMs: ONE_YEAR_MS,
+          expiresInMs: SESSION_MAX_AGE_MS,
           tenantSlug,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { 
-          ...cookieOptions, 
-          maxAge: ONE_YEAR_MS, 
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: SESSION_MAX_AGE_MS,
           path: "/",
           httpOnly: true,
           sameSite: "lax",
@@ -186,14 +213,10 @@ export const appRouter = router({
       }),
     logout: publicProcedure.mutation(({ ctx }: { ctx: TrpcContext }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      // Garantir que os atributos de limpeza correspondam aos de criação
-      ctx.res.clearCookie(COOKIE_NAME, { 
-        ...cookieOptions, 
-        maxAge: -1,
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-      });
+      const clearOpts = { ...cookieOptions, maxAge: -1, path: "/", httpOnly: true, sameSite: "lax" as const };
+      // SECURITY: Clear BOTH session cookies to fully invalidate tenant and platform admin sessions
+      ctx.res.clearCookie(COOKIE_NAME, clearOpts);
+      ctx.res.clearCookie(PLATFORM_COOKIE_NAME, clearOpts);
       return {
         success: true,
       } as const;
@@ -220,6 +243,22 @@ export const appRouter = router({
 
         if (existingUser) {
           throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
+        }
+
+        // Verificar limite de usuários do tenant
+        if (tenantSlug && ctx.tenant) {
+          const tenantDb = await getTenantDb(ctx.tenant);
+          if (tenantDb) {
+            const { checkUserLimit, getEffectiveLimits } = await import("./config/tenant.limits");
+            const limits = getEffectiveLimits(ctx.tenant);
+            const check = await checkUserLimit(tenantDb, ctx.tenant.id, limits.maxUsers);
+            if (!check.allowed) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: `Limite de usuários atingido (${check.current}/${check.max}). Entre em contato com o administrador para upgrade do plano.`,
+              });
+            }
+          }
         }
 
         // Hash da senha
@@ -428,7 +467,20 @@ export const appRouter = router({
 
         const tenantDb = await getTenantDbOrNull(ctx);
         const operatorId = ctx.user.role === 'admin' ? (input.operatorId || ctx.user.id) : ctx.user.id;
-        
+
+        // Verificar limite de clientes do tenant
+        if (ctx.tenant?.id && tenantDb) {
+          const { checkClientLimit, getEffectiveLimits } = await import("./config/tenant.limits");
+          const limits = getEffectiveLimits(ctx.tenant);
+          const check = await checkClientLimit(tenantDb, ctx.tenant.id, limits.maxClients);
+          if (!check.allowed) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: `Limite de clientes atingido (${check.current}/${check.max}). Entre em contato com o administrador para upgrade do plano.`,
+            });
+          }
+        }
+
         let clientId: number;
         try {
           clientId = tenantDb
@@ -541,6 +593,17 @@ export const appRouter = router({
           console.warn('[Clients.create] Client created but workflow setup incomplete, clientId:', clientId);
         }
 
+        // Gerar token de convite para o Portal do Cliente
+        try {
+          const activePortalDb = tenantDb || await db.getDb();
+          if (activePortalDb) {
+            await db.createClientInviteToken(activePortalDb, clientId, ctx.tenant?.id);
+          }
+        } catch (tokenErr) {
+          console.warn('[Clients.create] Falha ao gerar token de convite do portal:', tokenErr);
+          // Não falha o cadastro
+        }
+
         // Enviar email de boas-vindas automaticamente
         try {
           const welcomeTemplate = tenantDb
@@ -554,6 +617,26 @@ export const appRouter = router({
             const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
             
             // Logo já está salva como base64 no banco
+
+            // Variável {{link_portal}} — link de ativação do portal do cliente
+            const portalBaseUrl = ctx.tenant?.domain
+              ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
+              : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+
+            let portalLink = '';
+            try {
+              const activePortalDb = tenantDb || await db.getDb();
+              if (activePortalDb) {
+                const rawRows = await activePortalDb.execute(
+                  sql`SELECT "token" FROM "clientInviteTokens" WHERE "clientId" = ${clientId} ORDER BY "createdAt" DESC LIMIT 1`
+                );
+                const tokenRows: any[] = Array.isArray(rawRows) ? rawRows : ((rawRows as any).rows ?? []);
+                if (tokenRows[0]?.token) {
+                  portalLink = `${portalBaseUrl}/portal/acesso?t=${tokenRows[0].token}`;
+                }
+              }
+            } catch {}
+
             // Substituir variáveis no template
             const replaceVariables = (text: string) => {
               let result = text;
@@ -568,6 +651,10 @@ export const appRouter = router({
               } else {
                 result = result.replace(/{{logo}}/g, '');
               }
+              // Variável {{link_portal}} — botão de acesso ao portal
+              result = result.replace(/{{link_portal}}/g, portalLink
+                ? `<a href="${portalLink}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold;">Completar Meu Cadastro →</a>`
+                : '');
               return result;
             };
 
@@ -754,6 +841,107 @@ export const appRouter = router({
 
         return { success: true };
       }),
+
+    reenviarConvitePortal: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        if (!['admin', 'operator'].includes(ctx.user.role ?? '')) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão.' });
+        }
+
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await (await import('./db')).getDb();
+        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponível.' });
+
+        // Buscar o cliente
+        const clientRows = await activeDb.execute(
+          (await import('drizzle-orm')).sql`SELECT * FROM "clients" WHERE "id" = ${input.clientId} LIMIT 1`
+        );
+        const clientArr = Array.isArray(clientRows) ? clientRows : (clientRows as any).rows || [];
+        if (clientArr.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado.' });
+        const client = clientArr[0];
+
+        // Regenerar token
+        const newToken = await db.regenerateClientInviteToken(activeDb, input.clientId, ctx.tenant?.id);
+
+        // Montar link do portal
+        const portalBaseUrl = ctx.tenant?.domain
+          ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
+          : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+        const portalLink = `${portalBaseUrl}/portal/acesso?t=${newToken}`;
+
+        // Enviar email com o link
+        if (client.email) {
+          try {
+            const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
+            const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+            const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
+
+            const subject = `Seu link de acesso ao Portal — ${ctx.tenant?.name || 'CAC 360'}`;
+            const html = `
+              <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+                ${emailLogoUrl ? `<img src="cid:email-logo" alt="Logo" style="max-height:60px;margin-bottom:16px;display:block;" />` : ''}
+                <h2 style="color:#7c3aed">Portal do Associado</h2>
+                <p>Olá, <strong>${client.name}</strong>!</p>
+                <p>Seu link de acesso ao Portal foi renovado. Clique no botão abaixo para acessar:</p>
+                <p style="margin:24px 0">
+                  <a href="${portalLink}"
+                     style="background:#7c3aed;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
+                    Acessar o Portal →
+                  </a>
+                </p>
+                <p style="font-size:12px;color:#888">
+                  Este link é pessoal e expira em 30 dias.<br>
+                  Você precisará confirmar seu email (<strong>${client.email}</strong>) e CPF para acessar.
+                </p>
+              </div>
+            `;
+
+            await sendEmail({
+              to: client.email,
+              subject,
+              html,
+              attachments: inlineLogo ? [inlineLogo] : undefined,
+              tenantDb,
+              tenantId: ctx.tenant?.id,
+            });
+          } catch (emailErr) {
+            console.warn('[portal.reenviarConvite] Email falhou:', emailErr);
+            // Não falha o processo — token já foi gerado
+          }
+        }
+
+        return { success: true, message: 'Convite reenviado com sucesso.' };
+      }),
+  }),
+
+  // Portal router
+  portal: router({
+    getStatus: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await (await import('./db')).getDb();
+        if (!activeDb) return { hasToken: false, activated: false, activatedAt: null };
+
+        const rows = await activeDb.execute(
+          (await import('drizzle-orm')).sql`
+            SELECT "activatedAt", "expiresAt", "createdAt"
+            FROM "clientInviteTokens"
+            WHERE "clientId" = ${input.clientId}
+            ORDER BY "createdAt" DESC LIMIT 1
+          `
+        );
+        const arr = Array.isArray(rows) ? rows : (rows as any).rows || [];
+        if (arr.length === 0) return { hasToken: false, activated: false, activatedAt: null };
+
+        return {
+          hasToken: true,
+          activated: !!arr[0].activatedAt,
+          activatedAt: arr[0].activatedAt ?? null,
+          expiresAt: arr[0].expiresAt,
+        };
+      }),
   }),
 
   // Workflow router
@@ -797,7 +985,7 @@ export const appRouter = router({
           const stepsWithSubTasks = await Promise.all(
             filteredSteps.map(async (step) => {
               const subTasksList = tenantDb
-                ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, step.id)
+                ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, step.id, ctx.tenant?.id ?? undefined)
                 : await db.getSubTasksByWorkflowStep(step.id);
               return {
                 ...step,
@@ -892,7 +1080,7 @@ export const appRouter = router({
 
           if (isJuntadaStep) {
             const subTasksList = tenantDb
-              ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, currentStep.id)
+              ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, currentStep.id, ctx.tenant?.id ?? undefined)
               : await db.getSubTasksByWorkflowStep(currentStep.id);
 
             const docs = tenantDb
@@ -1130,7 +1318,7 @@ export const appRouter = router({
         }
 
         return tenantDb
-          ? await db.getSinarmCommentsByWorkflowStepIdFromDb(tenantDb, input.stepId)
+          ? await db.getSinarmCommentsByWorkflowStepIdFromDb(tenantDb, input.stepId, ctx.tenant?.id ?? undefined)
           : await db.getSinarmCommentsByWorkflowStepId(input.stepId);
       }),
 
@@ -1321,7 +1509,23 @@ export const appRouter = router({
         if (ctx.user.role === 'despachante') {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode fazer upload de documentos' });
         }
-        
+
+        // Verificar limite de armazenamento do tenant
+        if (ctx.tenant?.id) {
+          const { checkStorageLimit, getEffectiveLimits } = await import("./config/tenant.limits");
+          const limits = getEffectiveLimits(ctx.tenant);
+          const check = await checkStorageLimit(ctx.tenant.id, limits.maxStorageGB);
+          if (!check.allowed) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: `Limite de armazenamento atingido (${check.currentGB.toFixed(1)} GB / ${check.maxGB} GB). Entre em contato com o administrador para upgrade do plano.`,
+            });
+          }
+        }
+
+        // SECURITY: Validar MIME type e extensão antes de salvar
+        validateFileUpload(input.fileName, input.mimeType);
+
         const buffer = Buffer.from(input.fileData, "base64");
 
         let fileKey: string;
@@ -1906,7 +2110,7 @@ export const appRouter = router({
       }),
 
     // Save email template
-    saveTemplate: protectedProcedure
+    saveTemplate: adminProcedure
       .input(z.object({
         templateKey: z.string(),
         module: z.string().optional(),
@@ -1973,6 +2177,11 @@ export const appRouter = router({
         content: z.string(),
       }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
+        // Despachante não pode enviar emails manualmente
+        if (ctx.user?.role === 'despachante') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode enviar emails manualmente' });
+        }
+
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
@@ -2110,15 +2319,15 @@ export const appRouter = router({
       }),
   }),
 
-  // Users router (admin only)
+  // Users router (tenant admin only — tenant obrigatório para isolamento)
   users: router({
-    list: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
+    list: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       return tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
     }),
 
-    create: adminProcedure
+    create: tenantAdminProcedure
       .input(createUserSchema)
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -2164,7 +2373,7 @@ export const appRouter = router({
         return { success: true, userId };
       }),
 
-    update: adminProcedure
+    update: tenantAdminProcedure
       .input(updateUserSchema)
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -2235,7 +2444,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    updateRole: adminProcedure
+    updateRole: tenantAdminProcedure
       .input(z.object({
         userId: z.number(),
         role: z.enum(['operator', 'admin', 'despachante']),
@@ -2282,7 +2491,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    assignRole: adminProcedure
+    assignRole: tenantAdminProcedure
       .input(z.object({
         userId: z.number(),
         role: z.enum(['operator', 'admin', 'despachante']),
@@ -2315,7 +2524,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    deleteUser: adminProcedure
+    deleteUser: tenantAdminProcedure
       .input(z.object({
         userId: z.number(),
       }))
@@ -2367,7 +2576,7 @@ export const appRouter = router({
       }),
 
     // Listar operadores com estatísticas de clientes
-    listOperatorsWithStats: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
+    listOperatorsWithStats: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       const allUsers = tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
@@ -2387,7 +2596,7 @@ export const appRouter = router({
     }),
 
     // Listar clientes disponíveis para atribuição
-    listClientsForAssignment: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
+    listClientsForAssignment: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
       const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
@@ -2400,7 +2609,7 @@ export const appRouter = router({
     }),
 
     // Atribuir cliente a operador
-    assignClientToOperator: adminProcedure
+    assignClientToOperator: tenantAdminProcedure
       .input(z.object({
         clientId: z.number(),
         operatorId: z.number(),
@@ -2434,7 +2643,7 @@ export const appRouter = router({
   // Platform Admin / Tenants Management
   tenants: router({
     // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
-    seedMocks: platformAdminProcedure.mutation(async ({ ctx }: { ctx: TrpcContext }) => {
+    seedMocks: platformSuperAdminProcedure.mutation(async ({ ctx }: { ctx: TrpcContext }) => {
       try {
         const result = await db.seedMockTenants();
         invalidateTenantCache();
@@ -2477,7 +2686,7 @@ export const appRouter = router({
       }),
 
     // Criar novo tenant
-    create: platformAdminProcedure
+    create: platformAdminOrSuperProcedure
       .input(z.object({
         slug: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/),
         name: z.string().min(2).max(255),
@@ -2598,7 +2807,7 @@ export const appRouter = router({
       }),
 
     // Atualizar tenant
-    update: platformAdminProcedure
+    update: platformAdminOrSuperProcedure
       .input(z.object({
         id: z.number(),
         name: z.string().optional(),
@@ -2634,7 +2843,7 @@ export const appRouter = router({
       }),
 
     // Suspender/Ativar tenant
-    setStatus: platformAdminProcedure
+    setStatus: platformAdminOrSuperProcedure
       .input(z.object({
         id: z.number(),
         status: z.enum(['active', 'suspended', 'trial', 'cancelled']),
@@ -2656,7 +2865,7 @@ export const appRouter = router({
       }),
 
     // Deletar tenant (soft delete)
-    delete: platformAdminProcedure
+    delete: platformSuperAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2675,7 +2884,7 @@ export const appRouter = router({
       }),
 
     // Deletar tenant DEFINITIVAMENTE (hard delete)
-    hardDelete: platformAdminProcedure
+    hardDelete: platformSuperAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
@@ -2758,7 +2967,7 @@ export const appRouter = router({
       }),
 
     // Health check do tenant (verifica conexão com banco)
-    healthCheck: adminProcedure
+    healthCheck: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }: { input: any }) => {
         const startTime = Date.now();
@@ -2789,7 +2998,7 @@ export const appRouter = router({
       }),
 
     // Impersonate: entrar como admin de um tenant específico
-    impersonate: platformAdminProcedure
+    impersonate: platformAdminOrSuperProcedure
       .input(z.object({ 
         tenantId: z.number(),
         confirmPassword: z.string()
@@ -2862,7 +3071,7 @@ export const appRouter = router({
         };
       }),
 
-    updateEmailConfig: platformAdminProcedure
+    updateEmailConfig: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         emailMethod: z.enum(["smtp", "gateway"]),
@@ -2917,7 +3126,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    testEmailConfig: platformAdminProcedure
+    testEmailConfig: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         testEmail: z.string().email(),
@@ -2994,7 +3203,7 @@ export const appRouter = router({
         }
       }),
 
-    saveEmailTemplate: platformAdminProcedure
+    saveEmailTemplate: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         templateKey: z.string(),
@@ -3023,7 +3232,7 @@ export const appRouter = router({
         return { success: true, templateId };
       }),
 
-    seedEmailTemplates: platformAdminProcedure
+    seedEmailTemplates: platformAdminOrSuperProcedure
       .input(z.object({ tenantId: z.number() }))
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
@@ -3038,7 +3247,7 @@ export const appRouter = router({
         return await seedTenantEmailTemplates(tenantDb, input.tenantId);
       }),
 
-    createEmailTrigger: platformAdminProcedure
+    createEmailTrigger: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         name: z.string().min(1),
@@ -3066,7 +3275,7 @@ export const appRouter = router({
         return trigger;
       }),
 
-    updateEmailTrigger: platformAdminProcedure
+    updateEmailTrigger: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         triggerId: z.number(),
@@ -3099,7 +3308,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    deleteEmailTrigger: platformAdminProcedure
+    deleteEmailTrigger: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         triggerId: z.number(),
@@ -3131,7 +3340,7 @@ export const appRouter = router({
         return await db.getTemplatesByTriggerIdFromDb(tenantDb, input.triggerId);
       }),
 
-    updateTriggerTemplates: platformAdminProcedure
+    updateTriggerTemplates: platformAdminOrSuperProcedure
       .input(z.object({
         tenantId: z.number(),
         triggerId: z.number(),
@@ -3166,7 +3375,7 @@ export const appRouter = router({
   // AUDIT LOGS ROUTER
   // ===========================================
   audit: router({
-    getLogs: adminProcedure
+    getLogs: tenantAdminProcedure
       .input(z.object({
         startDate: z.string().optional(),
         endDate: z.string().optional(),
@@ -3266,7 +3475,7 @@ export const appRouter = router({
         }
       }),
 
-    exportCsv: adminProcedure
+    exportCsv: tenantAdminProcedure
       .input(z.object({
         startDate: z.string().optional(),
         endDate: z.string().optional(),
@@ -3349,7 +3558,7 @@ export const appRouter = router({
 
   // Email Triggers Router - Automação de emails
   emailTriggers: router({
-    list: adminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
+    list: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       try {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
@@ -3375,7 +3584,7 @@ export const appRouter = router({
       }
     }),
 
-    getById: adminProcedure
+    getById: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -3394,7 +3603,7 @@ export const appRouter = router({
         return { ...trigger, templates };
       }),
 
-    create: adminProcedure
+    create: tenantAdminProcedure
       .input(z.object({
         name: z.string().min(1),
         triggerEvent: z.string().min(1),
@@ -3446,7 +3655,7 @@ export const appRouter = router({
         return trigger;
       }),
 
-    update: adminProcedure
+    update: tenantAdminProcedure
       .input(z.object({
         id: z.number(),
         name: z.string().min(1).optional(),
@@ -3473,7 +3682,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    delete: adminProcedure
+    delete: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -3484,7 +3693,7 @@ export const appRouter = router({
       }),
 
     // Template management
-    addTemplate: adminProcedure
+    addTemplate: tenantAdminProcedure
       .input(z.object({
         triggerId: z.number(),
         templateId: z.number(),
@@ -3499,7 +3708,7 @@ export const appRouter = router({
         return result;
       }),
 
-    removeTemplate: adminProcedure
+    removeTemplate: tenantAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -3510,7 +3719,7 @@ export const appRouter = router({
       }),
 
     // Get available trigger events
-    getAvailableEvents: adminProcedure.query(() => {
+    getAvailableEvents: tenantAdminProcedure.query(() => {
       return [
         { value: 'CLIENT_CREATED', label: 'Cliente cadastrado', hasSchedule: false },
         { value: 'STEP_COMPLETED:1', label: 'Etapa 1 - Cadastro concluído', hasSchedule: false },
@@ -3519,13 +3728,9 @@ export const appRouter = router({
         { value: 'STEP_COMPLETED:4', label: 'Etapa 4 - Avaliação Psicológica concluída', hasSchedule: false },
         { value: 'STEP_COMPLETED:5', label: 'Etapa 5 - Laudo Técnico concluído', hasSchedule: false },
         { value: 'STEP_COMPLETED:6', label: 'Etapa 6 - Acompanhamento Sinarm concluído', hasSchedule: false },
-        { value: 'STEP_COMPLETED:7', label: 'Etapa 7 - Montagem Sinarm', hasSchedule: false },
-        { value: 'STEP_COMPLETED:8', label: 'Etapa 8 - Protocolado', hasSchedule: false },
-        { value: 'STEP_COMPLETED:9', label: 'Etapa 9 - Concluído', hasSchedule: false },
-        { value: 'SCHEDULE_CREATED', label: 'Agendamento Criado (Geral)', hasSchedule: true },
         { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
         { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'Confirmação de Agendamento de Laudo Técnico', hasSchedule: true },
-        { value: 'SCHEDULE_TECH_REMINDER', label: 'Lembrete de Agendamento de Laudo Técnico', hasSchedule: true },
+        // SCHEDULE_TECH_REMINDER e WORKFLOW_COMPLETE removidos: eventos não disparados no backend
         { value: 'SINARM_STATUS:Iniciado', label: 'Sinarm - Iniciado', hasSchedule: false },
         { value: 'SINARM_STATUS:Solicitado', label: 'Sinarm - Solicitado', hasSchedule: false },
         { value: 'SINARM_STATUS:Aguardando Baixa GRU', label: 'Sinarm - Aguardando Baixa GRU', hasSchedule: false },
@@ -3533,12 +3738,11 @@ export const appRouter = router({
         { value: 'SINARM_STATUS:Correção Solicitada', label: 'Sinarm - Correção Solicitada', hasSchedule: false },
         { value: 'SINARM_STATUS:Deferido', label: 'Sinarm - Deferido', hasSchedule: false },
         { value: 'SINARM_STATUS:Indeferido', label: 'Sinarm - Indeferido', hasSchedule: false },
-        { value: 'WORKFLOW_COMPLETE', label: 'Processo concluído (todas etapas)', hasSchedule: false },
       ];
     }),
 
     // Scheduled emails management
-    getScheduledByClient: adminProcedure
+    getScheduledByClient: tenantAdminProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -3547,7 +3751,7 @@ export const appRouter = router({
           : await db.getScheduledEmailsByClient(input.clientId);
       }),
 
-    cancelScheduledByClient: adminProcedure
+    cancelScheduledByClient: tenantAdminProcedure
       .input(z.object({ clientId: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -3555,6 +3759,323 @@ export const appRouter = router({
           ? await db.cancelScheduledEmailsByClientToDb(tenantDb, input.clientId)
           : await db.cancelScheduledEmailsByClient(input.clientId);
         return { success: true };
+      }),
+  }),
+
+  // ===========================================
+  // PLATFORM ADMINS ROUTER (RBAC)
+  // ===========================================
+  platformAdmins: router({
+    // Lista todos os platform admins — apenas superadmin
+    list: platformSuperAdminProcedure.query(async () => {
+      return db.getAllPlatformAdmins();
+    }),
+
+    // Cria novo platform admin — apenas superadmin
+    create: platformSuperAdminProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().min(2),
+        role: z.enum(['superadmin', 'admin', 'support']).default('admin'),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        const existing = await db.getPlatformAdminByEmail(input.email);
+        if (existing) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'Já existe um administrador com esse e-mail.' });
+        }
+        return db.createPlatformAdmin(input);
+      }),
+
+    // Edita perfil — superadmin edita qualquer um; outros só editam o próprio
+    update: platformAdminProcedure
+      .input(z.object({
+        id: z.number(),
+        email: z.string().email().optional(),
+        name: z.string().min(2).optional(),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const isSelf = ctx.platformAdmin!.id === input.id;
+        if (!isSelf && ctx.platformAdmin!.role !== 'superadmin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para editar outro administrador.' });
+        }
+        if (input.email) {
+          const existing = await db.getPlatformAdminByEmail(input.email);
+          if (existing && existing.id !== input.id) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'E-mail já em uso por outro administrador.' });
+          }
+        }
+        const { id, ...data } = input;
+        return db.updatePlatformAdmin(id, data);
+      }),
+
+    // Troca senha — superadmin troca de qualquer um sem senha atual; outros só a própria (com senha atual)
+    changePassword: platformAdminProcedure
+      .input(z.object({
+        id: z.number(),
+        currentPassword: z.string().optional(),
+        newPassword: z.string().min(8),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const isSelf = ctx.platformAdmin!.id === input.id;
+        const isSuperAdmin = ctx.platformAdmin!.role === 'superadmin';
+
+        if (!isSelf && !isSuperAdmin) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para alterar a senha de outro administrador.' });
+        }
+        if (isSelf) {
+          if (!input.currentPassword) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Informe a senha atual.' });
+          }
+          const admin = await db.getPlatformAdminById(input.id);
+          if (!admin) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador não encontrado.' });
+          const match = await comparePassword(input.currentPassword, admin.hashedPassword);
+          if (!match) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Senha atual incorreta.' });
+        }
+        await db.updatePlatformAdminPassword(input.id, input.newPassword);
+        return { success: true };
+      }),
+
+    // Ativa/desativa — apenas superadmin; bloqueia se for o último superadmin ativo
+    setStatus: platformSuperAdminProcedure
+      .input(z.object({ id: z.number(), isActive: z.boolean() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        if (!input.isActive) {
+          const target = await db.getPlatformAdminById(input.id);
+          if (target?.role === 'superadmin') {
+            const count = await db.countActivePlatformAdmins();
+            if (count <= 1) {
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível desativar o único superadmin ativo.' });
+            }
+          }
+        }
+        await db.setPlatformAdminStatus(input.id, input.isActive);
+        return { success: true };
+      }),
+
+    // Altera role — apenas superadmin; bloqueia rebaixamento do último superadmin
+    setRole: platformSuperAdminProcedure
+      .input(z.object({ id: z.number(), role: z.enum(['superadmin', 'admin', 'support']) }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        if (ctx.platformAdmin!.id === input.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode alterar o próprio role.' });
+        }
+        if (input.role !== 'superadmin') {
+          const target = await db.getPlatformAdminById(input.id);
+          if (target?.role === 'superadmin') {
+            const count = await db.countActivePlatformAdmins();
+            if (count <= 1) {
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível rebaixar o único superadmin ativo.' });
+            }
+          }
+        }
+        await db.setPlatformAdminRole(input.id, input.role);
+        return { success: true };
+      }),
+
+    // Deleta — apenas superadmin; bloqueia deleção do último superadmin
+    delete: platformSuperAdminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        if (ctx.platformAdmin!.id === input.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode deletar a própria conta.' });
+        }
+        const target = await db.getPlatformAdminById(input.id);
+        if (!target) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador não encontrado.' });
+        if (target.role === 'superadmin') {
+          const count = await db.countActivePlatformAdmins();
+          if (count <= 1) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível deletar o único superadmin ativo.' });
+          }
+        }
+        await db.deletePlatformAdmin(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============================================
+  // Plans & Billing Router (Platform Admin)
+  // ============================================
+  plans: router({
+    list: platformAdminProcedure.query(async () => {
+      return await db.getAllPlanDefinitions();
+    }),
+    listPublic: publicProcedure.query(async () => {
+      return await db.getActivePlanDefinitions();
+    }),
+    getById: platformAdminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }: { input: any }) => {
+        const plan = await db.getPlanDefinitionById(input.id);
+        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano não encontrado' });
+        return plan;
+      }),
+    create: platformAdminProcedure
+      .input(z.object({
+        slug: z.string().min(2).max(30).regex(/^[a-z0-9-]+$/),
+        name: z.string().min(2).max(100),
+        description: z.string().optional(),
+        maxUsers: z.number().int().min(1).default(5),
+        maxClients: z.number().int().min(1).default(100),
+        maxStorageGB: z.number().int().min(1).default(10),
+        featureWorkflowCR: z.boolean().default(true),
+        featureApostilamento: z.boolean().default(false),
+        featureRenovacao: z.boolean().default(false),
+        featureInsumos: z.boolean().default(false),
+        featureIAT: z.boolean().default(false),
+        priceMonthlyBRL: z.number().int().min(0).default(0),
+        priceYearlyBRL: z.number().int().min(0).default(0),
+        setupFeeBRL: z.number().int().min(0).default(0),
+        trialDays: z.number().int().min(0).default(14),
+        displayOrder: z.number().int().default(0),
+        isPublic: z.boolean().default(true),
+        highlightLabel: z.string().max(50).optional(),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        const existing = await db.getPlanDefinitionBySlug(input.slug);
+        if (existing) throw new TRPCError({ code: 'CONFLICT', message: 'Já existe um plano com este slug' });
+        return await db.createPlanDefinition(input);
+      }),
+    update: platformAdminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(2).max(100).optional(),
+        description: z.string().optional(),
+        maxUsers: z.number().int().min(1).optional(),
+        maxClients: z.number().int().min(1).optional(),
+        maxStorageGB: z.number().int().min(1).optional(),
+        featureWorkflowCR: z.boolean().optional(),
+        featureApostilamento: z.boolean().optional(),
+        featureRenovacao: z.boolean().optional(),
+        featureInsumos: z.boolean().optional(),
+        featureIAT: z.boolean().optional(),
+        priceMonthlyBRL: z.number().int().min(0).optional(),
+        priceYearlyBRL: z.number().int().min(0).optional(),
+        setupFeeBRL: z.number().int().min(0).optional(),
+        trialDays: z.number().int().min(0).optional(),
+        displayOrder: z.number().int().optional(),
+        isPublic: z.boolean().optional(),
+        highlightLabel: z.string().max(50).nullable().optional(),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        const { id, ...updates } = input;
+        await db.updatePlanDefinition(id, updates);
+        return { success: true };
+      }),
+    delete: platformAdminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }: { input: any }) => {
+        await db.deletePlanDefinition(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============================================
+  // Subscriptions Router (Platform Admin)
+  // ============================================
+  subscriptions: router({
+    listByTenant: platformAdminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }: { input: any }) => {
+        return await db.getSubscriptionsByTenant(input.tenantId);
+      }),
+    getActive: platformAdminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }: { input: any }) => {
+        return await db.getActiveSubscription(input.tenantId);
+      }),
+    create: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        planId: z.number(),
+        billingCycle: z.enum(["monthly", "yearly", "lifetime"]).default("monthly"),
+        priceBRL: z.number().int().min(0),
+        discountBRL: z.number().int().min(0).default(0),
+        status: z.enum(["active", "trialing"]).default("active"),
+        overrideMaxUsers: z.number().int().min(1).optional(),
+        overrideMaxClients: z.number().int().min(1).optional(),
+        overrideMaxStorageGB: z.number().int().min(1).optional(),
+        paymentGateway: z.string().max(30).optional(),
+        endDate: z.string().datetime().optional(),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const plan = await db.getPlanDefinitionById(input.planId);
+        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano não encontrado' });
+        const activeSub = await db.getActiveSubscription(input.tenantId);
+        if (activeSub) {
+          await db.updateSubscription(activeSub.id, { status: "cancelled", cancelledAt: new Date(), cancelReason: "Substituída por nova assinatura" });
+        }
+        const sub = await db.createSubscription({
+          tenantId: input.tenantId, planId: input.planId, startDate: new Date(),
+          endDate: input.endDate ? new Date(input.endDate) : null,
+          billingCycle: input.billingCycle, priceBRL: input.priceBRL, discountBRL: input.discountBRL,
+          status: input.status,
+          overrideMaxUsers: input.overrideMaxUsers ?? null,
+          overrideMaxClients: input.overrideMaxClients ?? null,
+          overrideMaxStorageGB: input.overrideMaxStorageGB ?? null,
+          paymentGateway: input.paymentGateway ?? null,
+          createdBy: ctx.platformAdmin?.id ?? null,
+        });
+        await db.syncTenantFromSubscription(input.tenantId);
+        return sub;
+      }),
+    cancel: platformAdminProcedure
+      .input(z.object({ id: z.number(), tenantId: z.number(), reason: z.string().optional() }))
+      .mutation(async ({ input }: { input: any }) => {
+        await db.updateSubscription(input.id, { status: "cancelled", cancelledAt: new Date(), cancelReason: input.reason ?? "Cancelada pelo administrador" });
+        await db.syncTenantFromSubscription(input.tenantId);
+        return { success: true };
+      }),
+  }),
+
+  // ============================================
+  // Billing Router (Platform Admin)
+  // ============================================
+  billing: router({
+    invoicesByTenant: platformAdminProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }: { input: any }) => {
+        return await db.getInvoicesByTenant(input.tenantId);
+      }),
+    allInvoices: platformAdminProcedure
+      .input(z.object({ status: z.string().optional() }).optional())
+      .query(async ({ input }: { input: any }) => {
+        return await db.getAllInvoices(input?.status);
+      }),
+    createInvoice: platformAdminProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        subscriptionId: z.number().optional(),
+        periodStart: z.string().datetime(),
+        periodEnd: z.string().datetime(),
+        subtotalBRL: z.number().int().min(0),
+        discountBRL: z.number().int().min(0).default(0),
+        totalBRL: z.number().int().min(0),
+        dueDate: z.string().datetime(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        return await db.createInvoice({
+          tenantId: input.tenantId, subscriptionId: input.subscriptionId ?? null,
+          periodStart: new Date(input.periodStart), periodEnd: new Date(input.periodEnd),
+          subtotalBRL: input.subtotalBRL, discountBRL: input.discountBRL, totalBRL: input.totalBRL,
+          dueDate: new Date(input.dueDate), notes: input.notes ?? null,
+        });
+      }),
+    markPaid: platformAdminProcedure
+      .input(z.object({ invoiceId: z.number(), paymentMethod: z.string().max(30), paymentReference: z.string().max(255).optional() }))
+      .mutation(async ({ input }: { input: any }) => {
+        await db.markInvoicePaid(input.invoiceId, input.paymentMethod, input.paymentReference);
+        return { success: true };
+      }),
+    metrics: platformAdminProcedure.query(async () => {
+      const [mrr, tenantsByPlan] = await Promise.all([db.calculateMRR(), db.getTenantCountByPlan()]);
+      return { mrrBRL: mrr, mrrFormatted: `R$ ${(mrr / 100).toFixed(2).replace('.', ',')}`, tenantsByPlan };
+    }),
+    usageHistory: platformAdminProcedure
+      .input(z.object({ tenantId: z.number(), limit: z.number().int().min(1).max(365).default(30) }))
+      .query(async ({ input }: { input: any }) => {
+        return await db.getUsageSnapshotsByTenant(input.tenantId, input.limit);
       }),
   }),
 });

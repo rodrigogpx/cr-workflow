@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray, like } from "drizzle-orm";
+import { eq, and, or, isNull, desc, sql, inArray, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { 
@@ -34,6 +34,21 @@ import {
   platformAdmins,
   sinarmCommentsHistory,
   InsertSinarmCommentHistory,
+  planDefinitions,
+  InsertPlanDefinition,
+  subscriptions,
+  InsertSubscription,
+  invoices,
+  InsertInvoice,
+  usageSnapshots,
+  InsertUsageSnapshot,
+  clientInviteTokens,
+  InsertClientInviteToken,
+  clientPortalSessions,
+  InsertClientPortalSession,
+  lgpdConsents,
+  InsertLgpdConsent,
+  clientPortalActivityLog,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
@@ -153,6 +168,144 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       await db.execute(stmt);
     } catch (error: any) {
       console.warn('[Schema] CREATE TABLE skipped:', error?.message || error);
+    }
+  }
+
+  // ── CREATE billing/licensing tables (only in main/platform DB) ──
+  if (dbKey === 'main') {
+    const billingStatements = [
+      sql`CREATE TABLE IF NOT EXISTS "planDefinitions" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "slug" varchar(30) NOT NULL UNIQUE,
+        "name" varchar(100) NOT NULL,
+        "description" text,
+        "maxUsers" integer NOT NULL DEFAULT 5,
+        "maxClients" integer NOT NULL DEFAULT 100,
+        "maxStorageGB" integer NOT NULL DEFAULT 10,
+        "featureWorkflowCR" boolean NOT NULL DEFAULT true,
+        "featureApostilamento" boolean NOT NULL DEFAULT false,
+        "featureRenovacao" boolean NOT NULL DEFAULT false,
+        "featureInsumos" boolean NOT NULL DEFAULT false,
+        "featureIAT" boolean NOT NULL DEFAULT false,
+        "priceMonthlyBRL" integer NOT NULL DEFAULT 0,
+        "priceYearlyBRL" integer NOT NULL DEFAULT 0,
+        "setupFeeBRL" integer NOT NULL DEFAULT 0,
+        "trialDays" integer NOT NULL DEFAULT 14,
+        "displayOrder" integer NOT NULL DEFAULT 0,
+        "isPublic" boolean NOT NULL DEFAULT true,
+        "isActive" boolean NOT NULL DEFAULT true,
+        "highlightLabel" varchar(50),
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS "subscriptions" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "planId" integer NOT NULL,
+        "startDate" timestamp with time zone NOT NULL,
+        "endDate" timestamp with time zone,
+        "billingCycle" varchar(20) NOT NULL DEFAULT 'monthly',
+        "priceBRL" integer NOT NULL,
+        "discountBRL" integer NOT NULL DEFAULT 0,
+        "overrideMaxUsers" integer,
+        "overrideMaxClients" integer,
+        "overrideMaxStorageGB" integer,
+        "status" varchar(20) NOT NULL DEFAULT 'active',
+        "cancelledAt" timestamp with time zone,
+        "cancelReason" text,
+        "paymentGateway" varchar(30),
+        "externalId" varchar(255),
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "createdBy" integer
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS "invoices" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "subscriptionId" integer,
+        "periodStart" timestamp with time zone NOT NULL,
+        "periodEnd" timestamp with time zone NOT NULL,
+        "subtotalBRL" integer NOT NULL,
+        "discountBRL" integer NOT NULL DEFAULT 0,
+        "totalBRL" integer NOT NULL,
+        "status" varchar(20) NOT NULL DEFAULT 'pending',
+        "dueDate" timestamp with time zone NOT NULL,
+        "paidAt" timestamp with time zone,
+        "paymentMethod" varchar(30),
+        "paymentReference" varchar(255),
+        "notes" text,
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS "usageSnapshots" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "snapshotDate" timestamp with time zone NOT NULL,
+        "usersCount" integer NOT NULL DEFAULT 0,
+        "clientsCount" integer NOT NULL DEFAULT 0,
+        "storageUsedGB" numeric(10,3) NOT NULL DEFAULT 0,
+        "dbSizeMB" numeric(10,1) NOT NULL DEFAULT 0,
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        UNIQUE("tenantId", "snapshotDate")
+      )`,
+    ];
+    for (const stmt of billingStatements) {
+      try {
+        await db.execute(stmt);
+      } catch (error: any) {
+        console.warn('[Schema] Billing CREATE TABLE skipped:', error?.message || error);
+      }
+    }
+    await seedDefaultPlans(db);
+  }
+
+  // ── CREATE Portal do Cliente tables (all tenant DBs) ──
+  const portalStatements = [
+    sql`CREATE TABLE IF NOT EXISTS "clientInviteTokens" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "token" varchar(64) NOT NULL UNIQUE,
+      "activatedAt" timestamp,
+      "expiresAt" timestamp NOT NULL,
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "clientPortalSessions" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "sessionToken" varchar(64) NOT NULL UNIQUE,
+      "ipAddress" varchar(45),
+      "userAgent" text,
+      "lastSeenAt" timestamp DEFAULT now(),
+      "expiresAt" timestamp NOT NULL,
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "lgpdConsents" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "version" varchar(10) NOT NULL DEFAULT '1.0',
+      "acceptedAt" timestamp NOT NULL,
+      "ipAddress" varchar(45),
+      "userAgent" text,
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS "clientPortalActivityLog" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "action" varchar(100) NOT NULL,
+      "details" text,
+      "ipAddress" varchar(45),
+      "createdAt" timestamp DEFAULT now() NOT NULL
+    )`,
+  ];
+  for (const stmt of portalStatements) {
+    try {
+      await db.execute(stmt);
+    } catch (error: any) {
+      console.warn('[Schema] Portal CREATE TABLE skipped:', error?.message || error);
     }
   }
 
@@ -431,8 +584,18 @@ export async function getSinarmCommentsByWorkflowStepId(workflowStepId: number) 
 
 export async function getSinarmCommentsByWorkflowStepIdFromDb(
   tenantDb: ReturnType<typeof drizzle>,
-  workflowStepId: number
+  workflowStepId: number,
+  tenantId?: number
 ) {
+  // SECURITY: When tenantId is provided, restrict to records belonging to that tenant.
+  // Allow NULL tenantId records to pass through (legacy rows not yet backfilled).
+  const tenantFilter = tenantId
+    ? or(isNull(sinarmCommentsHistory.tenantId), eq(sinarmCommentsHistory.tenantId, tenantId))!
+    : undefined;
+  const where = tenantFilter
+    ? and(eq(sinarmCommentsHistory.workflowStepId, workflowStepId), tenantFilter)
+    : eq(sinarmCommentsHistory.workflowStepId, workflowStepId);
+
   const result = await tenantDb
     .select({
       id: sinarmCommentsHistory.id,
@@ -447,7 +610,7 @@ export async function getSinarmCommentsByWorkflowStepIdFromDb(
     })
     .from(sinarmCommentsHistory)
     .leftJoin(users, eq(users.id, sinarmCommentsHistory.createdBy))
-    .where(eq(sinarmCommentsHistory.workflowStepId, workflowStepId))
+    .where(where)
     .orderBy(desc(sinarmCommentsHistory.createdAt));
 
   return result;
@@ -490,8 +653,10 @@ export async function getEmailTemplateFromDb(
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getUserByIdFromDb(tenantDb: ReturnType<typeof drizzle>, id: number) {
-  const result = await tenantDb.select().from(users).where(eq(users.id, id)).limit(1);
+export async function getUserByIdFromDb(tenantDb: ReturnType<typeof drizzle>, id: number, tenantId?: number) {
+  const conditions = [eq(users.id, id)];
+  if (tenantId) conditions.push(eq(users.tenantId, tenantId));
+  const result = await tenantDb.select().from(users).where(and(...conditions)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -644,8 +809,10 @@ export async function getClientById(clientId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getClientByIdFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
-  const result = await tenantDb.select().from(clients).where(eq(clients.id, clientId)).limit(1);
+export async function getClientByIdFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number, tenantId?: number) {
+  const conditions = [eq(clients.id, clientId)];
+  if (tenantId) conditions.push(eq(clients.tenantId, tenantId));
+  const result = await tenantDb.select().from(clients).where(and(...conditions)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -659,9 +826,12 @@ export async function updateClient(clientId: number, data: Partial<InsertClient>
 export async function updateClientToDb(
   tenantDb: ReturnType<typeof drizzle>,
   clientId: number,
-  data: Partial<InsertClient>
+  data: Partial<InsertClient>,
+  tenantId?: number
 ) {
-  await tenantDb.update(clients).set(data).where(eq(clients.id, clientId));
+  const conditions = [eq(clients.id, clientId)];
+  if (tenantId) conditions.push(eq(clients.tenantId, tenantId));
+  await tenantDb.update(clients).set(data).where(and(...conditions));
 }
 
 export async function deleteClient(clientId: number) {
@@ -677,7 +847,12 @@ export async function deleteClient(clientId: number) {
   await db.delete(clients).where(eq(clients.id, clientId));
 }
 
-export async function deleteClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
+export async function deleteClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number, tenantId?: number) {
+  // SECURITY: Verify client belongs to tenant before cascading deletes
+  if (tenantId) {
+    const client = await getClientByIdFromDb(tenantDb, clientId, tenantId);
+    if (!client) throw new Error('Client not found or does not belong to this tenant');
+  }
   await tenantDb.delete(documents).where(eq(documents.clientId, clientId));
   const clientWorkflowSteps = await tenantDb
     .select()
@@ -797,12 +972,18 @@ export async function getSubTasksByWorkflowStep(workflowStepId: number) {
 
 export async function getSubTasksByWorkflowStepFromDb(
   tenantDb: ReturnType<typeof drizzle>,
-  workflowStepId: number
+  workflowStepId: number,
+  tenantId?: number
 ) {
-  return await tenantDb
-    .select()
-    .from(subTasks)
-    .where(eq(subTasks.workflowStepId, workflowStepId));
+  // SECURITY: When tenantId is provided, restrict to records belonging to that tenant.
+  // Allow NULL tenantId records to pass through (legacy rows not yet backfilled).
+  const tenantFilter = tenantId
+    ? or(isNull(subTasks.tenantId), eq(subTasks.tenantId, tenantId))!
+    : undefined;
+  const where = tenantFilter
+    ? and(eq(subTasks.workflowStepId, workflowStepId), tenantFilter)
+    : eq(subTasks.workflowStepId, workflowStepId);
+  return await tenantDb.select().from(subTasks).where(where);
 }
 
 export async function getWorkflowStepById(stepId: number) {
@@ -813,13 +994,20 @@ export async function getWorkflowStepById(stepId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getWorkflowStepByIdFromDb(tenantDb: ReturnType<typeof drizzle>, stepId: number) {
+export async function getWorkflowStepByIdFromDb(tenantDb: ReturnType<typeof drizzle>, stepId: number, tenantId?: number) {
+  // Note: workflowSteps doesn't have tenantId directly — verify via client ownership
   const result = await tenantDb
     .select()
     .from(workflowSteps)
     .where(eq(workflowSteps.id, stepId))
     .limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  if (result.length === 0) return undefined;
+  // SECURITY: If tenantId provided, verify the parent client belongs to this tenant
+  if (tenantId && result[0].clientId) {
+    const client = await getClientByIdFromDb(tenantDb, result[0].clientId, tenantId);
+    if (!client) return undefined;
+  }
+  return result[0];
 }
 
 export async function upsertWorkflowStep(step: InsertWorkflowStep & { id?: number }) {
@@ -946,11 +1134,13 @@ export async function getDocumentById(documentId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getDocumentByIdFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number) {
+export async function getDocumentByIdFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number, tenantId?: number) {
+  const conditions = [eq(documents.id, documentId)];
+  if (tenantId) conditions.push(eq(documents.tenantId, tenantId));
   const result = await tenantDb
     .select()
     .from(documents)
-    .where(eq(documents.id, documentId))
+    .where(and(...conditions))
     .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -962,8 +1152,10 @@ export async function deleteDocument(documentId: number) {
   await db.delete(documents).where(eq(documents.id, documentId));
 }
 
-export async function deleteDocumentFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number) {
-  await tenantDb.delete(documents).where(eq(documents.id, documentId));
+export async function deleteDocumentFromDb(tenantDb: ReturnType<typeof drizzle>, documentId: number, tenantId?: number) {
+  const conditions = [eq(documents.id, documentId)];
+  if (tenantId) conditions.push(eq(documents.tenantId, tenantId));
+  await tenantDb.delete(documents).where(and(...conditions));
 }
 
 // User management
@@ -1002,9 +1194,12 @@ export async function updateUser(userId: number, data: Partial<InsertUser>) {
 export async function updateUserToDb(
   tenantDb: ReturnType<typeof drizzle>,
   userId: number,
-  data: Partial<InsertUser>
+  data: Partial<InsertUser>,
+  tenantId?: number
 ) {
-  await tenantDb.update(users).set(data).where(eq(users.id, userId));
+  const conditions = [eq(users.id, userId)];
+  if (tenantId) conditions.push(eq(users.tenantId, tenantId));
+  await tenantDb.update(users).set(data).where(and(...conditions));
 }
 
 export async function updateUserRole(userId: number, role: "operator" | "admin") {
@@ -1017,9 +1212,12 @@ export async function updateUserRole(userId: number, role: "operator" | "admin")
 export async function updateUserRoleToDb(
   tenantDb: ReturnType<typeof drizzle>,
   userId: number,
-  role: "operator" | "admin"
+  role: "operator" | "admin",
+  tenantId?: number
 ) {
-  await tenantDb.update(users).set({ role }).where(eq(users.id, userId));
+  const conditions = [eq(users.id, userId)];
+  if (tenantId) conditions.push(eq(users.tenantId, tenantId));
+  await tenantDb.update(users).set({ role }).where(and(...conditions));
 }
 
 export async function deleteUser(userId: number) {
@@ -1029,8 +1227,10 @@ export async function deleteUser(userId: number) {
   await db.delete(users).where(eq(users.id, userId));
 }
 
-export async function deleteUserFromDb(tenantDb: ReturnType<typeof drizzle>, userId: number) {
-  await tenantDb.delete(users).where(eq(users.id, userId));
+export async function deleteUserFromDb(tenantDb: ReturnType<typeof drizzle>, userId: number, tenantId?: number) {
+  const conditions = [eq(users.id, userId)];
+  if (tenantId) conditions.push(eq(users.tenantId, tenantId));
+  await tenantDb.delete(users).where(and(...conditions));
 }
 
 // Tenant SMTP settings - stored directly in tenants table
@@ -1351,19 +1551,21 @@ export async function deleteEmailTemplate(templateKey: string, module?: string) 
 }
 
 export async function deleteEmailTemplateFromDb(
-  tenantDb: ReturnType<typeof drizzle>, 
-  templateKey: string, 
+  tenantDb: ReturnType<typeof drizzle>,
+  templateKey: string,
   module?: string,
   tenantId?: number
 ) {
   const moduleValue = module || 'workflow-cr';
+  const { isNull, or } = await import('drizzle-orm');
 
-  let conditions = [
+  let conditions: any[] = [
     eq(emailTemplates.templateKey, templateKey),
     eq(emailTemplates.module, moduleValue)
   ];
   if (tenantId) {
-    conditions.push(eq(emailTemplates.tenantId, tenantId));
+    // Usar mesma condição do select: deleta tanto templates do tenant quanto globais (tenantId IS NULL)
+    conditions.push(or(eq(emailTemplates.tenantId, tenantId), isNull(emailTemplates.tenantId))!);
   }
 
   await tenantDb.delete(emailTemplates)
@@ -1455,6 +1657,115 @@ export async function getPlatformAdminByEmail(email: string) {
   if (!db) return null;
   const result = await db.select().from(platformAdmins).where(eq(platformAdmins.email, email)).limit(1);
   return result.length > 0 ? result[0] : null;
+}
+
+export async function getAllPlatformAdmins() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: platformAdmins.id,
+      email: platformAdmins.email,
+      name: platformAdmins.name,
+      role: platformAdmins.role,
+      isActive: platformAdmins.isActive,
+      lastSignedIn: platformAdmins.lastSignedIn,
+      createdAt: platformAdmins.createdAt,
+    })
+    .from(platformAdmins)
+    .orderBy(platformAdmins.createdAt);
+}
+
+export async function countActivePlatformAdmins() {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(platformAdmins)
+    .where(and(eq(platformAdmins.isActive, true), eq(platformAdmins.role, 'superadmin')));
+  return result[0]?.count ?? 0;
+}
+
+export async function createPlatformAdmin(data: {
+  email: string;
+  password: string;
+  name?: string;
+  role?: 'superadmin' | 'admin' | 'support';
+}) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const hashedPassword = bcrypt.hashSync(data.password, 12);
+  const [inserted] = await db
+    .insert(platformAdmins)
+    .values({
+      email: data.email,
+      hashedPassword,
+      name: data.name ?? null,
+      role: data.role ?? 'admin',
+      isActive: true,
+    })
+    .returning({
+      id: platformAdmins.id,
+      email: platformAdmins.email,
+      name: platformAdmins.name,
+      role: platformAdmins.role,
+      isActive: platformAdmins.isActive,
+    });
+  return inserted;
+}
+
+export async function updatePlatformAdmin(id: number, data: {
+  email?: string;
+  name?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const [updated] = await db
+    .update(platformAdmins)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(platformAdmins.id, id))
+    .returning({
+      id: platformAdmins.id,
+      email: platformAdmins.email,
+      name: platformAdmins.name,
+      role: platformAdmins.role,
+      isActive: platformAdmins.isActive,
+    });
+  return updated ?? null;
+}
+
+export async function updatePlatformAdminPassword(id: number, newPassword: string) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const hashedPassword = bcrypt.hashSync(newPassword, 12);
+  await db
+    .update(platformAdmins)
+    .set({ hashedPassword, updatedAt: new Date() })
+    .where(eq(platformAdmins.id, id));
+}
+
+export async function setPlatformAdminStatus(id: number, isActive: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db
+    .update(platformAdmins)
+    .set({ isActive, updatedAt: new Date() })
+    .where(eq(platformAdmins.id, id));
+}
+
+export async function setPlatformAdminRole(id: number, role: 'superadmin' | 'admin' | 'support') {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db
+    .update(platformAdmins)
+    .set({ role, updatedAt: new Date() })
+    .where(eq(platformAdmins.id, id));
+}
+
+export async function deletePlatformAdmin(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db.delete(platformAdmins).where(eq(platformAdmins.id, id));
 }
 
 export async function getAllTenants() {
@@ -2144,4 +2455,479 @@ export async function getScheduledEmailsByClient(clientId: number) {
 
 export async function getScheduledEmailsByClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number) {
   return await tenantDb.select().from(emailScheduled).where(eq(emailScheduled.clientId, clientId)).orderBy(desc(emailScheduled.scheduledFor));
+}
+
+// ============================================
+// Plan Definitions — CRUD & Seed
+// ============================================
+
+async function seedDefaultPlans(db: ReturnType<typeof drizzle>) {
+  try {
+    const existing = await db.select({ id: planDefinitions.id }).from(planDefinitions).limit(1);
+    if (existing.length > 0) return;
+    await db.insert(planDefinitions).values([
+      {
+        slug: "starter", name: "Plano Starter",
+        description: "Ideal para despachantes individuais ou pequenos clubes de tiro.",
+        maxUsers: 5, maxClients: 100, maxStorageGB: 10,
+        featureWorkflowCR: true, featureApostilamento: false, featureRenovacao: false, featureInsumos: false, featureIAT: false,
+        priceMonthlyBRL: 14900, priceYearlyBRL: 149900, setupFeeBRL: 0, trialDays: 14, displayOrder: 1,
+        isPublic: true, isActive: true,
+      },
+      {
+        slug: "professional", name: "Plano Professional",
+        description: "Para clubes e despachantes em crescimento com múltiplos módulos.",
+        maxUsers: 20, maxClients: 1000, maxStorageGB: 100,
+        featureWorkflowCR: true, featureApostilamento: true, featureRenovacao: true, featureInsumos: false, featureIAT: false,
+        priceMonthlyBRL: 29900, priceYearlyBRL: 299900, setupFeeBRL: 0, trialDays: 14, displayOrder: 2,
+        isPublic: true, isActive: true, highlightLabel: "Mais Popular",
+      },
+      {
+        slug: "enterprise", name: "Plano Enterprise",
+        description: "Para grandes operações com todos os módulos e suporte dedicado.",
+        maxUsers: 100, maxClients: 5000, maxStorageGB: 500,
+        featureWorkflowCR: true, featureApostilamento: true, featureRenovacao: true, featureInsumos: true, featureIAT: true,
+        priceMonthlyBRL: 59900, priceYearlyBRL: 599900, setupFeeBRL: 0, trialDays: 30, displayOrder: 3,
+        isPublic: true, isActive: true,
+      },
+    ]);
+    console.log('[Seed] Default plan definitions created (starter, professional, enterprise)');
+  } catch (error: any) {
+    if (!error?.message?.includes('duplicate') && !error?.message?.includes('already exists')) {
+      console.warn('[Seed] Error creating default plans:', error?.message);
+    }
+  }
+}
+
+export async function getAllPlanDefinitions() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(planDefinitions).orderBy(planDefinitions.displayOrder);
+}
+
+export async function getActivePlanDefinitions() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(planDefinitions)
+    .where(and(eq(planDefinitions.isActive, true), eq(planDefinitions.isPublic, true)))
+    .orderBy(planDefinitions.displayOrder);
+}
+
+export async function getPlanDefinitionById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [plan] = await db.select().from(planDefinitions).where(eq(planDefinitions.id, id)).limit(1);
+  return plan || null;
+}
+
+export async function getPlanDefinitionBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const [plan] = await db.select().from(planDefinitions).where(eq(planDefinitions.slug, slug)).limit(1);
+  return plan || null;
+}
+
+export async function createPlanDefinition(plan: InsertPlanDefinition) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [created] = await db.insert(planDefinitions).values(plan).returning();
+  return created;
+}
+
+export async function updatePlanDefinition(id: number, updates: Partial<InsertPlanDefinition>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(planDefinitions).set({ ...updates, updatedAt: new Date() }).where(eq(planDefinitions.id, id));
+}
+
+export async function deletePlanDefinition(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(planDefinitions).set({ isActive: false, updatedAt: new Date() }).where(eq(planDefinitions.id, id));
+}
+
+// ============================================
+// Subscriptions — CRUD
+// ============================================
+
+export async function getActiveSubscription(tenantId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [sub] = await db.select().from(subscriptions)
+    .where(and(eq(subscriptions.tenantId, tenantId), eq(subscriptions.status, "active")))
+    .orderBy(desc(subscriptions.startDate)).limit(1);
+  return sub || null;
+}
+
+export async function getSubscriptionsByTenant(tenantId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(subscriptions).where(eq(subscriptions.tenantId, tenantId)).orderBy(desc(subscriptions.startDate));
+}
+
+export async function createSubscription(sub: InsertSubscription) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [created] = await db.insert(subscriptions).values(sub).returning();
+  return created;
+}
+
+export async function updateSubscription(id: number, updates: Partial<InsertSubscription>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(subscriptions).set({ ...updates, updatedAt: new Date() }).where(eq(subscriptions.id, id));
+}
+
+export async function syncTenantFromSubscription(tenantId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [activeSub] = await db.select().from(subscriptions)
+    .where(and(eq(subscriptions.tenantId, tenantId), inArray(subscriptions.status, ["active", "trialing"])))
+    .orderBy(desc(subscriptions.startDate)).limit(1);
+  if (!activeSub) {
+    await db.update(tenants).set({ subscriptionStatus: "suspended", updatedAt: new Date() }).where(eq(tenants.id, tenantId));
+    return;
+  }
+  const [plan] = await db.select().from(planDefinitions).where(eq(planDefinitions.id, activeSub.planId)).limit(1);
+  if (!plan) { console.warn(`[syncTenant] Plan ID ${activeSub.planId} not found for tenant ${tenantId}`); return; }
+  const statusMap: Record<string, "active" | "suspended" | "trial" | "cancelled"> = {
+    active: "active", trialing: "trial", past_due: "active", cancelled: "cancelled", expired: "suspended",
+  };
+  await db.update(tenants).set({
+    plan: plan.slug as "starter" | "professional" | "enterprise",
+    subscriptionStatus: statusMap[activeSub.status] ?? "suspended",
+    subscriptionExpiresAt: activeSub.endDate,
+    maxUsers: activeSub.overrideMaxUsers ?? plan.maxUsers,
+    maxClients: activeSub.overrideMaxClients ?? plan.maxClients,
+    maxStorageGB: activeSub.overrideMaxStorageGB ?? plan.maxStorageGB,
+    featureWorkflowCR: plan.featureWorkflowCR,
+    featureApostilamento: plan.featureApostilamento,
+    featureRenovacao: plan.featureRenovacao,
+    featureInsumos: plan.featureInsumos,
+    featureIAT: plan.featureIAT,
+    updatedAt: new Date(),
+  }).where(eq(tenants.id, tenantId));
+}
+
+// ============================================
+// Invoices — CRUD
+// ============================================
+
+export async function getInvoicesByTenant(tenantId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(invoices).where(eq(invoices.tenantId, tenantId)).orderBy(desc(invoices.createdAt));
+}
+
+export async function getAllInvoices(status?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (status) return await db.select().from(invoices).where(eq(invoices.status, status as any)).orderBy(desc(invoices.createdAt));
+  return await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+}
+
+export async function createInvoice(invoice: InsertInvoice) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [created] = await db.insert(invoices).values(invoice).returning();
+  return created;
+}
+
+export async function updateInvoice(id: number, updates: Partial<InsertInvoice>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(invoices).set({ ...updates, updatedAt: new Date() }).where(eq(invoices.id, id));
+}
+
+export async function markInvoicePaid(id: number, paymentMethod: string, paymentReference?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(invoices).set({
+    status: "paid", paidAt: new Date(), paymentMethod,
+    paymentReference: paymentReference ?? null, updatedAt: new Date(),
+  }).where(eq(invoices.id, id));
+}
+
+// ============================================
+// Usage Snapshots
+// ============================================
+
+export async function createUsageSnapshot(snapshot: InsertUsageSnapshot) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [created] = await db.insert(usageSnapshots).values(snapshot).returning();
+  return created;
+}
+
+export async function getUsageSnapshotsByTenant(tenantId: number, limit = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(usageSnapshots).where(eq(usageSnapshots.tenantId, tenantId))
+    .orderBy(desc(usageSnapshots.snapshotDate)).limit(limit);
+}
+
+// ============================================
+// Financial Metrics
+// ============================================
+
+export async function calculateMRR(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const activeSubs = await db.select({
+    priceBRL: subscriptions.priceBRL,
+    discountBRL: subscriptions.discountBRL,
+    billingCycle: subscriptions.billingCycle,
+  }).from(subscriptions).where(inArray(subscriptions.status, ["active", "trialing"]));
+  let mrr = 0;
+  for (const sub of activeSubs) {
+    const net = sub.priceBRL - sub.discountBRL;
+    mrr += sub.billingCycle === "monthly" ? net : sub.billingCycle === "yearly" ? Math.round(net / 12) : 0;
+  }
+  return mrr;
+}
+
+export async function getTenantCountByPlan(): Promise<Record<string, number>> {
+  const db = await getDb();
+  if (!db) return {};
+  const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.isActive, true));
+  const counts: Record<string, number> = {};
+  for (const row of rows) { const p = row.plan ?? "starter"; counts[p] = (counts[p] || 0) + 1; }
+  return counts;
+}
+
+// ============================================
+// PORTAL DO CLIENTE — Funções de dados
+// ============================================
+import crypto from "crypto";
+
+const PORTAL_SESSION_DAYS = 30;
+const INVITE_TOKEN_DAYS = 30;
+
+/** Gera token de convite para o cliente acessar o portal pela primeira vez */
+export async function createClientInviteToken(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId?: number | null
+): Promise<string> {
+  const token = crypto.randomBytes(32).toString("hex"); // 64 chars
+  const expiresAt = new Date(Date.now() + INVITE_TOKEN_DAYS * 24 * 60 * 60 * 1000);
+  await db.execute(sql`
+    INSERT INTO "clientInviteTokens" ("clientId", "tenantId", "token", "expiresAt", "createdAt")
+    VALUES (${clientId}, ${tenantId ?? null}, ${token}, ${expiresAt}, now())
+    ON CONFLICT ("token") DO UPDATE
+      SET "token" = EXCLUDED."token",
+          "activatedAt" = NULL,
+          "expiresAt" = EXCLUDED."expiresAt"
+  `);
+  return token;
+}
+
+/** Busca um token de convite pelo valor do token */
+export async function getClientInviteToken(
+  db: ReturnType<typeof drizzle>,
+  token: string
+) {
+  const rows = extractRows(await db.execute(sql`
+    SELECT * FROM "clientInviteTokens" WHERE "token" = ${token} LIMIT 1
+  `));
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/** Ativa o token de convite (marca como usado) */
+export async function activateInviteToken(
+  db: ReturnType<typeof drizzle>,
+  token: string
+) {
+  await db.execute(sql`
+    UPDATE "clientInviteTokens"
+    SET "activatedAt" = now()
+    WHERE "token" = ${token}
+  `);
+}
+
+/** Busca cliente por email + CPF (autenticação do portal) */
+export async function getClientByEmailAndCpf(
+  db: ReturnType<typeof drizzle>,
+  email: string,
+  cpf: string,
+  tenantId?: number | null
+) {
+  const cleanCpf = cpf.replace(/\D/g, "");
+  const rows = tenantId
+    ? extractRows(await db.execute(sql`
+        SELECT * FROM "clients"
+        WHERE LOWER("email") = LOWER(${email})
+          AND REGEXP_REPLACE("cpf", '[^0-9]', '', 'g') = ${cleanCpf}
+          AND "tenantId" = ${tenantId}
+        LIMIT 1
+      `))
+    : extractRows(await db.execute(sql`
+        SELECT * FROM "clients"
+        WHERE LOWER("email") = LOWER(${email})
+          AND REGEXP_REPLACE("cpf", '[^0-9]', '', 'g') = ${cleanCpf}
+        LIMIT 1
+      `));
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/** Cria sessão autenticada do portal */
+export async function createPortalSession(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId: number | null | undefined,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<string> {
+  const sessionToken = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + PORTAL_SESSION_DAYS * 24 * 60 * 60 * 1000);
+  await db.execute(sql`
+    INSERT INTO "clientPortalSessions"
+      ("clientId", "tenantId", "sessionToken", "ipAddress", "userAgent", "lastSeenAt", "expiresAt", "createdAt")
+    VALUES
+      (${clientId}, ${tenantId ?? null}, ${sessionToken}, ${ipAddress ?? null}, ${userAgent ?? null}, now(), ${expiresAt}, now())
+  `);
+  return sessionToken;
+}
+
+/** Busca e valida sessão do portal (renova lastSeenAt) */
+export async function getPortalSession(
+  db: ReturnType<typeof drizzle>,
+  sessionToken: string
+) {
+  const rows = extractRows(await db.execute(sql`
+    SELECT * FROM "clientPortalSessions"
+    WHERE "sessionToken" = ${sessionToken}
+      AND "expiresAt" > now()
+    LIMIT 1
+  `));
+  if (rows.length === 0) return null;
+  // Renovar lastSeenAt
+  await db.execute(sql`
+    UPDATE "clientPortalSessions" SET "lastSeenAt" = now()
+    WHERE "sessionToken" = ${sessionToken}
+  `);
+  return rows[0];
+}
+
+/** Remove sessão do portal (logout) */
+export async function deletePortalSession(
+  db: ReturnType<typeof drizzle>,
+  sessionToken: string
+) {
+  await db.execute(sql`
+    DELETE FROM "clientPortalSessions" WHERE "sessionToken" = ${sessionToken}
+  `);
+}
+
+/** Registra aceite do termo LGPD */
+export async function recordLgpdConsent(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId: number | null | undefined,
+  ipAddress?: string,
+  userAgent?: string,
+  version = "1.0"
+) {
+  await db.execute(sql`
+    INSERT INTO "lgpdConsents" ("clientId", "tenantId", "version", "acceptedAt", "ipAddress", "userAgent", "createdAt")
+    VALUES (${clientId}, ${tenantId ?? null}, ${version}, now(), ${ipAddress ?? null}, ${userAgent ?? null}, now())
+  `);
+}
+
+/** Verifica se cliente já aceitou o termo LGPD */
+export async function getLgpdConsent(
+  db: ReturnType<typeof drizzle>,
+  clientId: number
+) {
+  const rows = extractRows(await db.execute(sql`
+    SELECT * FROM "lgpdConsents"
+    WHERE "clientId" = ${clientId}
+    ORDER BY "acceptedAt" DESC LIMIT 1
+  `));
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/** Loga atividade do cliente no portal */
+export async function logPortalActivity(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId: number | null | undefined,
+  action: string,
+  details?: Record<string, any>,
+  ipAddress?: string
+) {
+  await db.execute(sql`
+    INSERT INTO "clientPortalActivityLog" ("clientId", "tenantId", "action", "details", "ipAddress", "createdAt")
+    VALUES (${clientId}, ${tenantId ?? null}, ${action}, ${details ? JSON.stringify(details) : null}, ${ipAddress ?? null}, now())
+  `).catch(() => {}); // log não deve quebrar o fluxo principal
+}
+
+/** Atualiza dados cadastrais do cliente pelo portal */
+export async function updateClientFromPortal(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId: number | null | undefined,
+  data: {
+    name?: string;
+    phone?: string;
+    phone2?: string;
+    identityNumber?: string;
+    identityIssueDate?: string;
+    identityIssuer?: string;
+    identityUf?: string;
+    birthDate?: string;
+    gender?: string;
+    motherName?: string;
+    fatherName?: string;
+    maritalStatus?: string;
+    profession?: string;
+    cep?: string;
+    address?: string;
+    addressNumber?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    residenceUf?: string;
+  }
+) {
+  // Construir update usando drizzle set() para tipagem segura
+  const setData: Partial<typeof clients.$inferInsert> = {};
+  if (data.name !== undefined) setData.name = data.name;
+  if (data.phone !== undefined) setData.phone = data.phone;
+  if (data.phone2 !== undefined) setData.phone2 = data.phone2;
+  if (data.identityNumber !== undefined) setData.identityNumber = data.identityNumber;
+  if (data.identityIssueDate !== undefined) setData.identityIssueDate = data.identityIssueDate;
+  if (data.identityIssuer !== undefined) setData.identityIssuer = data.identityIssuer;
+  if (data.identityUf !== undefined) setData.identityUf = data.identityUf;
+  if (data.birthDate !== undefined) setData.birthDate = data.birthDate;
+  if (data.gender !== undefined) setData.gender = data.gender;
+  if (data.motherName !== undefined) setData.motherName = data.motherName;
+  if (data.fatherName !== undefined) setData.fatherName = data.fatherName;
+  if (data.maritalStatus !== undefined) setData.maritalStatus = data.maritalStatus;
+  if (data.profession !== undefined) setData.profession = data.profession;
+  if (data.cep !== undefined) setData.cep = data.cep;
+  if (data.address !== undefined) setData.address = data.address;
+  if (data.addressNumber !== undefined) setData.addressNumber = data.addressNumber;
+  if (data.complement !== undefined) setData.complement = data.complement;
+  if (data.neighborhood !== undefined) setData.neighborhood = data.neighborhood;
+  if (data.city !== undefined) setData.city = data.city;
+  if (data.residenceUf !== undefined) setData.residenceUf = data.residenceUf;
+  setData.updatedAt = new Date();
+
+  if (Object.keys(setData).length <= 1) return; // só updatedAt, nada para salvar
+
+  const whereClause = tenantId != null
+    ? and(eq(clients.id, clientId), eq(clients.tenantId, tenantId))
+    : eq(clients.id, clientId);
+
+  await db.update(clients).set(setData).where(whereClause);
+}
+
+/** Regenera token de convite (reenvio manual pelo operador) */
+export async function regenerateClientInviteToken(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId?: number | null
+): Promise<string> {
+  return createClientInviteToken(db, clientId, tenantId);
 }

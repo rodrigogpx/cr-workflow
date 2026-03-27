@@ -8,14 +8,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  ArrowLeft, 
-  CheckCircle2, 
-  Download, 
-  FileText, 
-  Calendar, 
-  ChevronDown, 
-  ChevronUp, 
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Download,
+  FileText,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
   Loader2,
   Clock,
   User,
@@ -25,8 +25,15 @@ import {
   FolderOpen,
   Upload,
   CheckCircle,
-  Circle
+  Circle,
+  Info,
+  ExternalLink
 } from "lucide-react";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { toast } from "sonner";
 import React, { useState, useEffect, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -89,6 +96,237 @@ function SinarmCommentsInline({ stepId }: { stepId: number }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Informações sobre cada tipo de documento exigido na Juntada ─────────────
+// Fonte: "Lista Completa de Certidões para Obtenção do CR CAC - Pessoa Física" (Out/2025)
+// Sistema de solicitação: SisGCorp — https://sisgcorp.eb.mil.br/#/solicitar-servico
+const DOCUMENT_INFO: Record<string, {
+  description: string;
+  issuer: string;
+  obs?: string;
+  link?: string;
+  linkLabel?: string;
+  cost?: string;
+}> = {
+  // ── Identificação ───────────────────────────────────────────────────────────
+  'Documento de Identificação Pessoal': {
+    description: 'RG, CNH ou outro documento oficial com foto, em original e cópia. Deve estar dentro do prazo de validade.',
+    issuer: 'SSP (RG) · DETRAN (CNH) · Polícia Federal (Passaporte)',
+  },
+
+  // ── Certidões criminais ──────────────────────────────────────────────────────
+  'Certidão de Antecedente Criminal Justiça Federal': {
+    description: 'Comprova ausência de antecedentes criminais na Justiça Federal. Certidão unificada válida para todas as regiões do país. Gratuita e emitida online.',
+    issuer: 'Conselho da Justiça Federal (CJF)',
+    obs: 'Validade: 90 dias a partir da emissão.',
+    link: 'https://certidao-unificada.cjf.jus.br/',
+    linkLabel: 'Emitir Certidão Federal Unificada (CJF)',
+  },
+  'Certidão de Antecedente Criminal Justiça Estadual': {
+    description: 'Comprova ausência de antecedentes criminais na Justiça Estadual, incluindo Juizados Especiais Criminais. Deve conter distribuição e execução criminal.',
+    issuer: 'Tribunal de Justiça do Estado (TJ)',
+    obs: 'O site varia por estado. Validade: 90 dias. Consulte o TJ do seu estado.',
+    link: 'https://www.cnj.jus.br/certidao-negativa/',
+    linkLabel: 'Portal CNJ – Localize seu Tribunal Estadual',
+  },
+  'Certidão de Antecedente Criminal Justiça Eleitoral': {
+    description: 'Certidão de crimes eleitorais emitida pelo TSE. Válida para todos os estados. ATENÇÃO: não confundir com a certidão de quitação eleitoral — são documentos diferentes.',
+    issuer: 'Tribunal Superior Eleitoral (TSE)',
+    obs: 'Validade: 90 dias. Gratuita e emitida online.',
+    link: 'https://www.tse.jus.br/eleitor/certidoes/certidao-de-crimes-eleitorais',
+    linkLabel: 'Emitir Certidão Eleitoral (TSE)',
+  },
+  'Certidão de Antecedente Criminal Justiça Militar': {
+    description: 'Comprova ausência de antecedentes na Justiça Militar Federal. Emitida pelo Superior Tribunal Militar (STM). Válida para todos os estados.',
+    issuer: 'Superior Tribunal Militar (STM)',
+    obs: 'Validade: 90 dias. Gratuita e emitida online.',
+    link: 'https://www.stm.jus.br/servicos-stm/certidao-negativa',
+    linkLabel: 'Emitir Certidão Militar (STM)',
+  },
+
+  // ── Declarações (geradas no SisGCorp) ───────────────────────────────────────
+  'Declaração de não estar respondendo': {
+    description: 'Declaração formal assinada pelo requerente afirmando que não responde a inquérito policial ou processo criminal em curso.',
+    issuer: 'Gerada automaticamente pelo sistema SisGCorp durante o cadastro',
+    link: 'https://sisgcorp.eb.mil.br/#/solicitar-servico',
+    linkLabel: 'Acessar SisGCorp (Exército Brasileiro)',
+  },
+  'Declaração de Segurança do Acervo': {
+    description: 'Declaração sobre as condições de segurança do local onde as armas serão guardadas (cofre, armário reforçado etc.), conforme normas do Exército Brasileiro.',
+    issuer: 'Gerada automaticamente pelo sistema SisGCorp durante o cadastro',
+    link: 'https://sisgcorp.eb.mil.br/#/solicitar-servico',
+    linkLabel: 'Acessar SisGCorp (Exército Brasileiro)',
+  },
+  'Declaração com compromisso de comprovar a habitualidade': {
+    description: 'Exigida de atiradores desportivos: compromisso de comprovar habitualidade de prática de tiro (participação mínima em competições), conforme R-105 e normas do Exército.',
+    issuer: 'Declaração pessoal / Clube de tiro registrado',
+    obs: 'Dispensado para colecionadores.',
+  },
+
+  // ── Comprovantes ────────────────────────────────────────────────────────────
+  'Comprovante de Residência Fixa': {
+    description: 'Conta de luz, água, telefone, contrato de aluguel ou similar, em nome do requerente, com no máximo 90 dias de emissão.',
+    issuer: 'Concessionárias de serviços públicos / Cartório (contrato de aluguel)',
+  },
+  'Comprovante de Ocupação Lícita': {
+    description: 'Comprova atividade profissional legal: carteira de trabalho assinada, contracheque, declaração de autônomo, pró-labore ou contrato de prestação de serviços.',
+    issuer: 'Empregador / Contador / Órgão competente',
+  },
+  'Comprovante de Capacidade Técnica': {
+    description: 'Certificado de aprovação em teste prático de tiro (laudo de tiro), emitido por instrutor de armamento credenciado pela Polícia Federal. Custo estimado: R$ 170,00 a R$ 450,00.',
+    issuer: 'Instrutor credenciado pela Polícia Federal / Clube de tiro',
+    obs: 'Apenas instrutores credenciados pela PF podem emitir este documento.',
+    link: 'https://www.gov.br/pf/pt-br/assuntos/armas',
+    linkLabel: 'PF – Consultar instrutores credenciados',
+  },
+  'Laudo de Aptidão Psicológica': {
+    description: 'Avaliação psicológica realizada por psicólogo credenciado pela Polícia Federal, atestando aptidão para o manuseio de arma de fogo. Custo estimado: R$ 300,00 a R$ 800,00.',
+    issuer: 'Psicólogo credenciado pela Polícia Federal',
+    obs: 'Somente psicólogos credenciados pela PF podem emitir este laudo.',
+    link: 'https://www.gov.br/pf/pt-br/assuntos/armas/psicologos/psicologos-crediciados',
+    linkLabel: 'PF – Consultar psicólogos credenciados',
+  },
+  'Comprovante de filiação a entidade de tiro desportivo': {
+    description: 'Documento emitido pelo clube de tiro desportivo reconhecido, comprovando filiação ativa do requerente à modalidade.',
+    issuer: 'Clube de tiro desportivo registrado no Exército / CBATIRO',
+    obs: 'Dispensado para atividade de colecionamento (Portaria 150-COLOG, 05/12/2019).',
+    link: 'https://www.cbatiro.org.br',
+    linkLabel: 'CBATIRO – Confederação Brasileira de Tiro',
+  },
+  'Comprovante de filiação a entidade de caça': {
+    description: 'Documento emitido por associação de caça reconhecida, comprovando filiação ativa do requerente à modalidade de caça regulamentada.',
+    issuer: 'Associação de caça reconhecida',
+    obs: 'Dispensado para atividade de colecionamento (Portaria 150-COLOG, 05/12/2019).',
+    link: 'https://www.gov.br/ibama/pt-br',
+    linkLabel: 'Portal IBAMA',
+  },
+  'Comprovante da necessidade de abate de fauna invasora': {
+    description: 'Documento expedido pelo IBAMA autorizando e comprovando a necessidade de controle de espécie invasora em propriedade rural.',
+    issuer: 'IBAMA – Instituto Brasileiro do Meio Ambiente e dos Recursos Naturais Renováveis',
+    link: 'https://www.gov.br/ibama/pt-br/assuntos/fauna/controle-e-erradicacao',
+    linkLabel: 'IBAMA – Controle de Fauna Invasora',
+  },
+  'Comprovante de Segundo Endereço': {
+    description: 'Comprovante de um segundo endereço do requerente (imóvel de temporada, fazenda, sítio ou endereço comercial), para fins de cadastro no Exército.',
+    issuer: 'Concessionárias de serviços / Documentos do imóvel',
+  },
+};
+
+/** Ícone ⓘ com balão de informação ao passar o mouse sobre o documento.
+ *  Usa HoverCard (não Tooltip) para permitir links clicáveis dentro do balão. */
+function DocumentInfoTooltip({ label }: { label: string }) {
+  // Busca por substring do label — case-sensitive, primeiro match wins
+  const key = Object.keys(DOCUMENT_INFO).find((k) => label.includes(k));
+  const info = key ? DOCUMENT_INFO[key] : null;
+  if (!info) return null;
+
+  return (
+    <HoverCard openDelay={200} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          tabIndex={-1}
+          className="inline-flex items-center justify-center text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+          aria-label={`Informações sobre: ${label}`}
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        className="w-80 p-0 shadow-xl border border-blue-100 rounded-xl overflow-hidden"
+      >
+        {/* Cabeçalho */}
+        <div className="bg-blue-50 border-b border-blue-100 px-4 py-2.5">
+          <p className="text-xs font-semibold text-blue-800 leading-snug">{label}</p>
+        </div>
+
+        {/* Corpo */}
+        <div className="px-4 py-3 space-y-2.5 bg-white">
+          <p className="text-xs text-gray-600 leading-relaxed">{info.description}</p>
+
+          <div className="flex items-start gap-1.5">
+            <span className="text-[0.65rem] font-semibold text-gray-400 uppercase tracking-wide mt-0.5 shrink-0">Emitido por</span>
+            <span className="text-xs text-gray-700">{info.issuer}</span>
+          </div>
+
+          {info.obs && (
+            <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+              <span className="text-amber-500 mt-0.5 shrink-0">⚠</span>
+              <span className="text-xs text-amber-800 leading-snug">{info.obs}</span>
+            </div>
+          )}
+
+          {info.link && (
+            <a
+              href={info.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors w-full"
+            >
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              {info.linkLabel ?? 'Acessar portal de emissão'}
+            </a>
+          )}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
+/** Badge de status do Portal do Cliente + botão Reenviar Convite */
+function PortalStatusBadge({ clientId }: { clientId: number }) {
+  const { data: portalStatus, isLoading } = (trpc as any).portal.getStatus.useQuery(
+    { clientId },
+    { enabled: !!clientId }
+  );
+  const reenviarMutation = (trpc as any).clients.reenviarConvitePortal.useMutation({
+    onSuccess: () => toast.success("Convite reenviado com sucesso!"),
+    onError: (err: any) => toast.error(err.message || "Erro ao reenviar convite"),
+  });
+
+  if (isLoading) return null;
+
+  const activated = portalStatus?.activated;
+  const hasToken = portalStatus?.hasToken;
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {activated ? (
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          Portal Ativo
+        </span>
+      ) : hasToken ? (
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          Convite Pendente
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+          Portal não ativo
+        </span>
+      )}
+
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+        disabled={reenviarMutation.isPending}
+        onClick={() => reenviarMutation.mutate({ clientId })}
+      >
+        {reenviarMutation.isPending ? (
+          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Enviando...</>
+        ) : (
+          <>✉ Reenviar Convite</>
+        )}
+      </Button>
     </div>
   );
 }
@@ -505,6 +743,9 @@ export default function ClientWorkflow() {
                     {client.phone && formatPhone(client.phone)}
                   </span>
                 </div>
+                <div className="mt-2">
+                  <PortalStatusBadge clientId={Number(clientId)} />
+                </div>
               </div>
             </div>
 
@@ -708,7 +949,12 @@ export default function ClientWorkflow() {
                             <div className="flex items-start gap-3 justify-between">
                               <div className="flex items-start gap-3 flex-1">
                                 <Checkbox checked={subTask.completed} onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)} className="mt-0.5" />
-                                <div className="flex-1 min-w-0"><p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>{subTask.label}</p></div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="flex items-center gap-1.5 flex-wrap">
+                                    <p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>{subTask.label}</p>
+                                    <DocumentInfoTooltip label={subTask.label} />
+                                  </span>
+                                </div>
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 {user?.role !== 'despachante' && (

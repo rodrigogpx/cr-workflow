@@ -312,6 +312,105 @@ export async function ensureMissingTables() {
       );
     `);
 
+    // ============================================
+    // Plan Definitions (catálogo de planos)
+    // ============================================
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "planDefinitions" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "slug" varchar(30) NOT NULL,
+        "name" varchar(100) NOT NULL,
+        "description" text,
+        "maxUsers" integer NOT NULL DEFAULT 5,
+        "maxClients" integer NOT NULL DEFAULT 100,
+        "maxStorageGB" integer NOT NULL DEFAULT 10,
+        "featureWorkflowCR" boolean NOT NULL DEFAULT true,
+        "featureApostilamento" boolean NOT NULL DEFAULT false,
+        "featureRenovacao" boolean NOT NULL DEFAULT false,
+        "featureInsumos" boolean NOT NULL DEFAULT false,
+        "featureIAT" boolean NOT NULL DEFAULT false,
+        "priceMonthlyBRL" integer NOT NULL DEFAULT 0,
+        "priceYearlyBRL" integer NOT NULL DEFAULT 0,
+        "setupFeeBRL" integer NOT NULL DEFAULT 0,
+        "trialDays" integer NOT NULL DEFAULT 14,
+        "displayOrder" integer NOT NULL DEFAULT 0,
+        "isPublic" boolean NOT NULL DEFAULT true,
+        "isActive" boolean NOT NULL DEFAULT true,
+        "highlightLabel" varchar(50),
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL,
+        CONSTRAINT "planDefinitions_slug_unique" UNIQUE("slug")
+      );
+    `);
+
+    // ============================================
+    // Subscriptions (assinaturas por tenant)
+    // ============================================
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "subscriptions" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "planId" integer NOT NULL,
+        "startDate" timestamp with time zone NOT NULL,
+        "endDate" timestamp with time zone,
+        "billingCycle" varchar(20) NOT NULL DEFAULT 'monthly',
+        "priceBRL" integer NOT NULL,
+        "discountBRL" integer NOT NULL DEFAULT 0,
+        "overrideMaxUsers" integer,
+        "overrideMaxClients" integer,
+        "overrideMaxStorageGB" integer,
+        "status" varchar(20) NOT NULL DEFAULT 'active',
+        "cancelledAt" timestamp with time zone,
+        "cancelReason" text,
+        "paymentGateway" varchar(30),
+        "externalId" varchar(255),
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "createdBy" integer
+      );
+    `);
+
+    // ============================================
+    // Invoices (faturas)
+    // ============================================
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "invoices" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "subscriptionId" integer,
+        "periodStart" timestamp with time zone NOT NULL,
+        "periodEnd" timestamp with time zone NOT NULL,
+        "subtotalBRL" integer NOT NULL,
+        "discountBRL" integer NOT NULL DEFAULT 0,
+        "totalBRL" integer NOT NULL,
+        "status" varchar(20) NOT NULL DEFAULT 'pending',
+        "dueDate" timestamp with time zone NOT NULL,
+        "paidAt" timestamp with time zone,
+        "paymentMethod" varchar(30),
+        "paymentReference" varchar(255),
+        "notes" text,
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+      );
+    `);
+
+    // ============================================
+    // Usage Snapshots (foto diária de uso)
+    // ============================================
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "usageSnapshots" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "snapshotDate" timestamp with time zone NOT NULL,
+        "usersCount" integer NOT NULL DEFAULT 0,
+        "clientsCount" integer NOT NULL DEFAULT 0,
+        "storageUsedGB" numeric(10, 3) NOT NULL DEFAULT 0,
+        "dbSizeMB" numeric(10, 1) NOT NULL DEFAULT 0,
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        CONSTRAINT "usageSnapshots_tenantId_snapshotDate_unique" UNIQUE("tenantId", "snapshotDate")
+      );
+    `);
+
     // Sinarm Comments History
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "sinarmCommentsHistory" (
@@ -349,6 +448,31 @@ export async function ensureMissingTables() {
       `);
     } catch (cpfErr) {
       console.error("[Migration] Error migrating CPF constraint:", cpfErr);
+    }
+
+    // ============================================
+    // Seed default plan definitions
+    // ============================================
+    try {
+      await db.execute(sql`
+        INSERT INTO "planDefinitions" ("slug", "name", "description", "maxUsers", "maxClients", "maxStorageGB",
+          "featureWorkflowCR", "featureApostilamento", "featureRenovacao", "featureInsumos", "featureIAT",
+          "priceMonthlyBRL", "priceYearlyBRL", "setupFeeBRL", "trialDays", "displayOrder", "isPublic", "isActive", "highlightLabel")
+        VALUES
+          ('starter', 'Starter', 'Ideal para clubes pequenos com até 10 usuários e 500 clientes.',
+           10, 500, 50, true, false, false, false, false,
+           9900, 99900, 0, 14, 1, true, true, NULL),
+          ('professional', 'Professional', 'Para clubes em crescimento com módulos avançados e mais capacidade.',
+           50, 2000, 200, true, true, true, false, true,
+           29900, 299900, 0, 14, 2, true, true, 'Mais Popular'),
+          ('enterprise', 'Enterprise', 'Para grandes clubes com todos os módulos e limites expandidos.',
+           200, 10000, 1000, true, true, true, true, true,
+           99900, 999900, 0, 30, 3, true, true, NULL)
+        ON CONFLICT ("slug") DO NOTHING;
+      `);
+      console.log("[Migration] Default plan definitions seeded");
+    } catch (seedErr) {
+      console.error("[Migration] Error seeding plan definitions:", seedErr);
     }
 
     // Ensure default platform admin exists

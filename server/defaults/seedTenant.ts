@@ -1,31 +1,117 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { emailTemplates, emailTriggers, emailTriggerTemplates } from '../../drizzle/schema';
-import { defaultEmailTemplates } from './defaultTemplates';
+import { defaultEmailTemplates as staticDefaultTemplates } from './defaultTemplates';
 import { defaultEmailTriggers } from './defaultTriggers';
 
-// Map trigger name → template key for correct associations
-const TRIGGER_TEMPLATE_MAP: Record<string, string> = {
-  'Boas Vindas': 'welcome',
-  'Conclusão Juntada de Documentos': 'juntada_documentos',
-  'Encaminhamento Psicotécnico': 'psicotecnico',
-  'Avaliação Psicológica Concluída': 'psicotecnico_concluido',
-  'Agendamento Laudo Técnico': 'laudo_tecnico',
-  'Lembrete Agendamento Laudo Técnico': 'agendamento-laudo',
-  'Laudo Técnico Concluído': 'laudo_tecnico_concluido',
-  'Processo Solicitado no Sinarm': 'sinarm_montagem_iniciada',
-  'Processo Deferido': 'sinarm_protocolado',
-  'Aguardando Baixa GRU': 'sinarm_aguardando_gru',
-  'Processo em Análise': 'sinarm_em_analise',
-  'Processo Restituído': 'sinarm_restituido',
-  'Processo Indeferido': 'sinarm_restituido',
+// ─── Normalização de chaves (DB → padrão do seed) ───────────────────────────
+// Aplicada aos templates com tenantId = NULL quando carregados do banco em runtime.
+// Permite que os templates sejam editados diretamente no banco sem re-deploy.
+const KEY_MAP: Record<string, string> = {
+  'boas_vindas_clube':            'welcome',
+  'juntada_documentos':           'juntada_documentos',        // já igual
+  'encaminhamento_psicologico':   'psicotecnico',
+  'avaliacao_psicologica':        'psicotecnico_concluido',
+  'agendamento_laudo':            'laudo_tecnico',
+  'confirmacao_laudo':            'laudo_tecnico_concluido',
+  'cadastro-concluido':           'cadastro_concluido',
+  'sinarm_cac_status-solicitado': 'sinarm_solicitado',
+  'sinarm_cac_status-iniciado':   'sinarm_iniciado',
+  'sinarm_cac_status-analise':    'sinarm_em_analise',
+  'sinarm_cac_status-gru':        'sinarm_aguardando_gru',
+  'sinarm_cac_status-restituido': 'sinarm_restituido',
 };
 
+// Subjects e títulos padrão por chave normalizada.
+// Usados quando o template do banco não tem subject/title definido.
+const META: Record<string, { title: string; subject: string }> = {
+  'welcome':                { title: 'Boas Vindas',                        subject: 'Bem-vindo(a) à {{nome_clube}} - {{nome}}' },
+  'cadastro_concluido':     { title: 'Cadastro Concluído',                 subject: 'Seu cadastro foi concluído - {{nome}}' },
+  'juntada_documentos':     { title: 'Juntada de Documentos',              subject: 'Conclusão da Juntada de Documentos - {{nome}}' },
+  'psicotecnico':           { title: 'Encaminhamento Psicotécnico',        subject: 'Encaminhamento para Avaliação Psicológica - {{nome}}' },
+  'psicotecnico_concluido': { title: 'Avaliação Psicológica Concluída',    subject: 'Sua Avaliação Psicológica foi recebida - {{nome}}' },
+  'laudo_tecnico':          { title: 'Agendamento Laudo Técnico',          subject: 'Agendamento de Laudo de Capacidade Técnica - {{nome}}' },
+  'laudo_tecnico_concluido':{ title: 'Laudo Técnico Concluído',            subject: 'Seu Laudo Técnico foi recebido - {{nome}}' },
+  'sinarm_iniciado':        { title: 'Status Sinarm: Processo Iniciado',   subject: 'Montagem do Processo CAC Iniciada - {{nome}}' },
+  'sinarm_solicitado':      { title: 'Status Sinarm: Processo Solicitado', subject: 'Seu Processo CAC foi Solicitado no Sinarm - {{nome}}' },
+  'sinarm_em_analise':      { title: 'Status Sinarm: Em Análise',          subject: 'Seu Processo CAC está em Análise - {{nome}}' },
+  'sinarm_aguardando_gru':  { title: 'Status Sinarm: Aguardando Baixa GRU',subject: 'Aguardando Baixa do Pagamento (GRU) - {{nome}}' },
+  'sinarm_restituido':      { title: 'Status Sinarm: Processo Restituído', subject: 'Ação Necessária: Processo CAC Restituído - {{nome}}' },
+};
+
+// ─── Mapa trigger name → template key ───────────────────────────────────────
+// As chaves correspondem exatamente às templateKey normalizadas acima.
+const TRIGGER_TEMPLATE_MAP: Record<string, string> = {
+  'Boas Vindas':                       'welcome',
+  'Conclusão Juntada de Documentos':   'juntada_documentos',
+  'Encaminhamento Psicotécnico':       'psicotecnico',
+  'Avaliação Psicológica Concluída':   'psicotecnico_concluido',
+  'Agendamento Laudo Técnico':         'laudo_tecnico',
+  'Lembrete Agendamento Laudo Técnico':'laudo_tecnico',     // compartilha template base; diferenciado por sendBeforeHours
+  'Laudo Técnico Concluído':           'laudo_tecnico_concluido',
+  'Processo Solicitado no Sinarm':     'sinarm_solicitado',
+  'Aguardando Baixa GRU':              'sinarm_aguardando_gru',
+  'Processo em Análise':               'sinarm_em_analise',
+  'Processo Restituído':               'sinarm_restituido',
+  'Processo Indeferido':               'sinarm_restituido',
+  // 'Processo Deferido' não possui template padrão no seed atual
+};
+
+/**
+ * Carrega os templates de seed com prioridade:
+ *   1. Templates com tenantId = NULL do banco (editáveis sem re-deploy)
+ *   2. Fallback: arquivos TypeScript estáticos compilados
+ */
+async function loadSeedTemplates(tenantDb: any): Promise<Array<{
+  templateKey: string;
+  templateTitle: string;
+  subject: string;
+  content: string;
+  attachments: string;
+  module: string;
+}>> {
+  try {
+    const nullTemplates = await tenantDb
+      .select({
+        templateKey: emailTemplates.templateKey,
+        templateTitle: emailTemplates.templateTitle,
+        subject: emailTemplates.subject,
+        content: emailTemplates.content,
+      })
+      .from(emailTemplates)
+      .where(isNull(emailTemplates.tenantId));
+
+    if (nullTemplates.length > 0) {
+      console.log(`[Seed] Usando ${nullTemplates.length} templates do banco (tenantId = NULL) como fonte de seed.`);
+      return nullTemplates.map((t: any) => {
+        const newKey = KEY_MAP[t.templateKey] ?? t.templateKey;
+        const meta = META[newKey] ?? { title: t.templateTitle || newKey, subject: t.subject || '' };
+        return {
+          templateKey: newKey,
+          templateTitle: t.templateTitle || meta.title,
+          subject: t.subject || meta.subject,
+          content: t.content || '',
+          attachments: '[]',
+          module: 'workflow-cr',
+        };
+      });
+    }
+  } catch (err: any) {
+    console.warn('[Seed] Não foi possível carregar templates null-tenant do banco, usando fallback estático:', err?.message);
+  }
+
+  console.log(`[Seed] Usando ${staticDefaultTemplates.length} templates estáticos compilados como fonte de seed.`);
+  return staticDefaultTemplates;
+}
+
 export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) {
-  // 1. Upsert Templates (insert or update existing by key)
+  // ── 1. Carregar fonte de templates (banco ou estático) ──────────────────
+  const seedTemplates = await loadSeedTemplates(tenantDb);
+
+  // ── 2. Upsert Templates ─────────────────────────────────────────────────
   const templateIdMap = new Map<string, number>();
   let templatesInserted = 0;
 
-  for (const t of defaultEmailTemplates) {
+  for (const t of seedTemplates) {
     try {
       const existingTemplate = await tenantDb
         .select({ id: emailTemplates.id })
@@ -37,7 +123,6 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
         .limit(1);
 
       if (existingTemplate.length > 0) {
-        // UPDATE existing template with corrected content/subject/title
         await tenantDb
           .update(emailTemplates)
           .set({
@@ -62,11 +147,10 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
     }
   }
 
-  // 2. Upsert Triggers and Map to Templates
+  // ── 3. Upsert Triggers e associações ────────────────────────────────────
   let triggersInserted = 0;
   for (const trigger of defaultEmailTriggers) {
     try {
-      // Check by name only (event may have changed)
       const existingTrigger = await tenantDb
         .select({ id: emailTriggers.id })
         .from(emailTriggers)
@@ -78,7 +162,6 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
 
       let triggerId: number;
       if (existingTrigger.length > 0) {
-        // Update existing trigger with corrected event
         await tenantDb
           .update(emailTriggers)
           .set({
@@ -100,13 +183,11 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
         triggersInserted++;
       }
 
-      // Map trigger to template by name
       const templateKeyToMap = TRIGGER_TEMPLATE_MAP[trigger.name] || null;
 
       if (templateKeyToMap && templateIdMap.has(templateKeyToMap)) {
         const templateId = templateIdMap.get(templateKeyToMap)!;
-        
-        // Check if association already exists
+
         const existingAssoc = await tenantDb
           .select()
           .from(emailTriggerTemplates)

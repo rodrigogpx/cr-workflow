@@ -235,7 +235,8 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
     await ensureSchemaColumns(db, `tenant_${cacheKey}`);
 
     if (isSingleDbMode && tenant.id) {
-      await client`SET LOCAL app.current_tenant_id = ${tenant.id.toString()}`;
+      // SET LOCAL não suporta parâmetros ($1) no PostgreSQL — usar set_config() que aceita parâmetros normalmente
+      await client`SELECT set_config('app.current_tenant_id', ${tenant.id.toString()}, true)`;
     }
 
     // Cachear conexão com metadata

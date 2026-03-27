@@ -1,47 +1,71 @@
-import { ReactNode } from "react";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { ReactNode, useState } from "react";
+import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
 import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, Mail, Settings, ChevronRight } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Shield, Building2, Settings, ChevronRight, UserCog, LayoutDashboard } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
+import SuperAdminTenantsPage from "@/pages/SuperAdminTenants";
 
 interface PlatformAdminLayoutProps {
   children: ReactNode;
-  active: "users" | "emails" | "settings";
+  active: "dashboard" | "tenants" | "admins";
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  superadmin: 'Super Admin',
+  admin: 'Admin',
+  support: 'Suporte',
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  superadmin: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+  admin: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+  support: 'bg-slate-500/20 text-slate-300 border-slate-500/40',
+};
+
 export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutProps) {
-  const { user } = useAuth();
-  const [location, setLocation] = useLocation();
+  const { admin, role, isSuperAdmin } = usePlatformAuth();
+  const [, setLocation] = useLocation();
   const tenantSlug = useTenantSlug();
+  const [tenantsOpen, setTenantsOpen] = useState(false);
 
   const items = [
     {
-      id: "users" as const,
-      label: "Usuários da Plataforma",
-      description: "Perfis de acesso (admin e operadores)",
-      icon: Users,
-      path: "/platform-admin/users",
+      id: "dashboard" as const,
+      label: "Dashboard",
+      description: "Visão geral da plataforma",
+      icon: LayoutDashboard,
+      path: "/platform-admin",
+      action: undefined as (() => void) | undefined,
       enabled: true,
+      visible: true,
     },
     {
-      id: "emails" as const,
-      label: "Templates de Email",
-      description: "Conteúdo de comunicação com clientes",
-      icon: Mail,
-      path: "/platform-admin/email-templates",
+      id: "tenants" as const,
+      label: "Tenants (Clubes)",
+      description: "Gestão de clubes e planos",
+      icon: Building2,
+      path: "",
+      action: () => setTenantsOpen(true),
       enabled: true,
+      visible: true,
     },
     {
-      id: "settings" as const,
-      label: "Configurações",
-      description: "Parâmetros globais e compliance",
-      icon: Settings,
-      path: "/platform-admin/settings",
+      id: "admins" as const,
+      label: "Administradores",
+      description: "Gestão de platform admins",
+      icon: UserCog,
+      path: "/platform-admin/admins",
+      action: undefined as (() => void) | undefined,
       enabled: true,
+      visible: isSuperAdmin,
     },
-  ];
+  ].filter(item => item.visible);
+
+  const roleLabel = role ? ROLE_LABELS[role] ?? role : 'Administrador';
+  const roleClass = role ? ROLE_COLORS[role] ?? ROLE_COLORS['support'] : ROLE_COLORS['support'];
 
   return (
     <div className="min-h-screen flex">
@@ -60,6 +84,9 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
         <div className="px-4 py-3 border-b border-white/10 text-[0.7rem] flex items-center gap-2">
           <Shield className="h-3 w-3 text-emerald-400" />
           <span className="uppercase tracking-wide">Administrador</span>
+          <span className={`ml-auto text-[0.6rem] font-semibold px-1.5 py-0.5 rounded border ${roleClass}`}>
+            {roleLabel}
+          </span>
         </div>
 
         <nav className="flex-1 px-2 py-4 space-y-1 text-xs">
@@ -70,7 +97,7 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
               <button
                 key={item.id}
                 disabled={!item.enabled}
-                onClick={() => item.enabled && setLocation(buildTenantPath(tenantSlug, item.path))}
+                onClick={() => item.enabled && (item.action ? item.action() : setLocation(buildTenantPath(tenantSlug, item.path)))}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-3 transition-all border border-transparent ${
                   isActive
                     ? "bg-white text-black border-white/60 shadow"
@@ -93,8 +120,8 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
         </nav>
 
         <div className="px-4 py-3 border-t border-white/10 text-[0.65rem] text-white/60 flex flex-col gap-1">
-          <span className="truncate">{user?.name || user?.email}</span>
-          <span className="uppercase tracking-[0.2em] text-white/40">Admin da Plataforma</span>
+          <span className="truncate">{(admin as any)?.name || (admin as any)?.email}</span>
+          <span className="uppercase tracking-[0.2em] text-white/40">{roleLabel}</span>
         </div>
       </aside>
 
@@ -118,6 +145,16 @@ export function PlatformAdminLayout({ children, active }: PlatformAdminLayoutPro
           {children}
         </div>
       </main>
+
+      {/* Tenants Sheet — 70% da tela */}
+      <Sheet open={tenantsOpen} onOpenChange={setTenantsOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-purple-900/80 [&>button]:rounded-md [&>button]:p-1"
+        >
+          <SuperAdminTenantsPage />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

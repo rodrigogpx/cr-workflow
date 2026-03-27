@@ -44,6 +44,24 @@ export async function createContext(
     user = null;
   }
 
+  // Fallback de desenvolvimento: se não houver sessão válida, usar o admin
+  // SECURITY: Requires ALL THREE conditions: NODE_ENV=development, !isProduction, DEV_AUTO_LOGIN=true
+  // Never enabled in production builds regardless of env vars
+  if (
+    !user &&
+    process.env.NODE_ENV === "development" &&
+    !ENV.isProduction &&
+    process.env.DEV_AUTO_LOGIN === "true"
+  ) {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail) {
+      const admin = await db.getUserByEmail(adminEmail);
+      if (admin) {
+        user = admin as User;
+      }
+    }
+  }
+
   // ==========================
   // Resolver tenant (URI primeiro, hostname como fallback)
   // ==========================
@@ -57,20 +75,13 @@ export async function createContext(
     tenantSlug = sessionTenantSlug;
   }
 
-  // 1) Tentar obter o slug a partir do header enviado pelo frontend.
-  // SEGURANÇA: só aceita o header se o usuário autenticado NÃO possui um tenant na sessão.
-  // Isso impede que um usuário logado em um tenant consiga trocar de tenant via header.
-  if (!tenantSlug) {
+  // 1) Tentar obter o slug a partir do header enviado pelo frontend
+  // SECURITY: Only accept x-tenant-slug if there's NO authenticated session with a tenantSlug.
+  // This prevents an attacker from injecting a different tenant via header manipulation.
+  if (!tenantSlug && !sessionTenantSlug) {
     const headerSlug = opts.req.headers["x-tenant-slug"];
     if (typeof headerSlug === "string" && headerSlug.trim() !== "") {
-      // Se há um usuário autenticado com tenantId, o header deve corresponder ao seu tenant.
-      // Só permite o header para usuários sem tenant (platform admins) ou sem sessão ativa.
-      const userTenantId = (user as any)?.tenantId;
-      if (!userTenantId) {
-        tenantSlug = headerSlug.trim();
-      }
-      // Se há usuário com tenant mas o header não foi usado, tenantSlug ficará null
-      // e será resolvido pelo hostname abaixo (fallback seguro).
+      tenantSlug = headerSlug.trim();
     }
   }
 

@@ -17,7 +17,7 @@ export default function PlatformAdminLogin() {
     onSuccess: async (data) => {
       toast.success(`Bem-vindo, ${data.admin.name}!`);
       // Force reload to ensure TRPC context is completely refreshed with new cookie
-      window.location.href = "/super-admin/tenants";
+      window.location.href = "/platform-admin";
     },
     onError: (error) => {
       toast.error(error.message || "Erro ao fazer login. Verifique suas credenciais.");

@@ -17,9 +17,46 @@ const DOCUMENTS_BASE_DIR = process.env.DOCUMENTS_STORAGE_DIR
   ? path.resolve(process.env.DOCUMENTS_STORAGE_DIR)
   : path.resolve(process.cwd(), "documents");
 
+// SECURITY: Whitelist de MIME types permitidos para upload de documentos
+const ALLOWED_MIME_TYPES = new Set([
+  // Documentos
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  // Imagens
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/tiff",
+  // Planilhas
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
+
+// SECURITY: Extensões bloqueadas explicitamente (executáveis e scripts)
+const BLOCKED_EXTENSIONS = new Set([
+  ".exe", ".bat", ".cmd", ".sh", ".ps1", ".msi", ".com", ".scr",
+  ".vbs", ".js", ".ts", ".py", ".rb", ".php", ".pl", ".jar", ".class",
+]);
+
 function sanitizeFileName(name: string): string {
   // Remove caracteres problemáticos de caminho
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+export function validateFileUpload(fileName: string, mimeType: string): void {
+  // Verificar extensão bloqueada
+  const ext = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
+  if (BLOCKED_EXTENSIONS.has(ext)) {
+    throw new Error(`[FileStorage] Tipo de arquivo não permitido: ${ext}`);
+  }
+
+  // Verificar MIME type na whitelist
+  if (mimeType && !ALLOWED_MIME_TYPES.has(mimeType.toLowerCase().split(";")[0].trim())) {
+    throw new Error(`[FileStorage] MIME type não permitido: ${mimeType}. Apenas documentos e imagens são aceitos.`);
+  }
 }
 
 export function getDocumentsBaseDir(): string {
@@ -34,6 +71,14 @@ export async function saveClientDocumentFile(params: {
 }): Promise<{ key: string; fullPath: string; publicPath: string; size: number }> {
   const safeName = sanitizeFileName(params.fileName);
 
+  // SECURITY: Validate that clientId and tenantId are positive integers to prevent path traversal
+  if (!Number.isInteger(params.clientId) || params.clientId <= 0) {
+    throw new Error("[FileStorage] Invalid clientId");
+  }
+  if (params.tenantId !== undefined && (!Number.isInteger(params.tenantId) || params.tenantId <= 0)) {
+    throw new Error("[FileStorage] Invalid tenantId");
+  }
+
   // Estrutura: 
   // Multi-tenant: tenants/<tenantId>/clients/<clientId>/<timestamp>-<fileName>
   // Legado/Sem tenant: clients/<clientId>/<timestamp>-<fileName>
@@ -46,7 +91,13 @@ export async function saveClientDocumentFile(params: {
   }
 
   const relKey = path.join(relDir, `${Date.now()}-${safeName}`);
-  const fullPath = path.join(DOCUMENTS_BASE_DIR, relKey);
+  const fullPath = path.resolve(DOCUMENTS_BASE_DIR, relKey);
+
+  // SECURITY: Ensure resolved path is within DOCUMENTS_BASE_DIR (prevent path traversal)
+  const normalizedBase = path.resolve(DOCUMENTS_BASE_DIR);
+  if (!fullPath.startsWith(normalizedBase + path.sep)) {
+    throw new Error("[FileStorage] Path traversal detected — file rejected");
+  }
 
   await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
   await fs.promises.writeFile(fullPath, params.buffer);

@@ -150,7 +150,7 @@ export default function Admin() {
                   </div>
                 </div>
                 <Button
-                  onClick={() => setLocation("/super-admin/tenants")}
+                  onClick={() => setLocation("/platform-admin/tenants")}
                   className="bg-purple-600 hover:bg-purple-700 border-2 border-dashed border-white/40 font-bold uppercase tracking-wide"
                 >
                   Gerenciar →

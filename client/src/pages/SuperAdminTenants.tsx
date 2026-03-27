@@ -13,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { 
   Building2, 
   Plus, 
@@ -34,15 +33,154 @@ import {
   Loader,
   PlayCircle,
   PauseCircle,
-  Mail
+  Mail,
+  GitBranch,
+  ScrollText,
+  CalendarCheck,
+  Package,
+  Bot,
+  CheckCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { EmailConfigPanel } from "@/components/super-admin/EmailConfigPanel";
 import { EmailTemplatesPanel } from "@/components/super-admin/EmailTemplatesPanel";
 import { EmailTriggersPanel } from "@/components/super-admin/EmailTriggersPanel";
+import { TenantBillingPanel } from "@/components/super-admin/TenantBillingPanel";
 
 // Logo
 const APP_LOGO = "/logo.png";
+
+// ─── Módulos disponíveis para habilitar por tenant ───────────────────────────
+const MODULE_DEFINITIONS = [
+  {
+    key: "featureWorkflowCR" as const,
+    label: "Workflow CR",
+    description: "Gestão de processos e documentos CR",
+    icon: GitBranch,
+    color: "purple",
+  },
+  {
+    key: "featureApostilamento" as const,
+    label: "Aquisição & CRAF",
+    description: "Processos de aquisição e registro CRAF",
+    icon: ScrollText,
+    color: "blue",
+  },
+  {
+    key: "featureRenovacao" as const,
+    label: "Compliance & Vencimentos",
+    description: "Alertas e controle de vencimentos",
+    icon: CalendarCheck,
+    color: "amber",
+  },
+  {
+    key: "featureInsumos" as const,
+    label: "Munições & Insumos",
+    description: "Controle de estoque de munições",
+    icon: Package,
+    color: "green",
+  },
+  {
+    key: "featureIAT" as const,
+    label: "Módulo IAT",
+    description: "Inteligência artificial e automações",
+    icon: Bot,
+    color: "rose",
+  },
+] as const;
+
+type ModuleKey = (typeof MODULE_DEFINITIONS)[number]["key"];
+
+const MODULE_COLOR_MAP: Record<string, { enabled: string; hover: string; icon: string; check: string }> = {
+  purple: {
+    enabled: "border-purple-500 bg-purple-50",
+    hover:   "hover:border-purple-400 hover:bg-purple-50/60",
+    icon:    "bg-purple-100 text-purple-600",
+    check:   "text-purple-500",
+  },
+  blue: {
+    enabled: "border-blue-500 bg-blue-50",
+    hover:   "hover:border-blue-400 hover:bg-blue-50/60",
+    icon:    "bg-blue-100 text-blue-600",
+    check:   "text-blue-500",
+  },
+  amber: {
+    enabled: "border-amber-500 bg-amber-50",
+    hover:   "hover:border-amber-400 hover:bg-amber-50/60",
+    icon:    "bg-amber-100 text-amber-600",
+    check:   "text-amber-500",
+  },
+  green: {
+    enabled: "border-green-500 bg-green-50",
+    hover:   "hover:border-green-400 hover:bg-green-50/60",
+    icon:    "bg-green-100 text-green-600",
+    check:   "text-green-500",
+  },
+  rose: {
+    enabled: "border-rose-500 bg-rose-50",
+    hover:   "hover:border-rose-400 hover:bg-rose-50/60",
+    icon:    "bg-rose-100 text-rose-600",
+    check:   "text-rose-500",
+  },
+};
+
+function ModuleCard({
+  mod,
+  enabled,
+  onToggle,
+}: {
+  mod: (typeof MODULE_DEFINITIONS)[number];
+  enabled: boolean;
+  onToggle: () => void;
+}) {
+  const colors = MODULE_COLOR_MAP[mod.color];
+  const Icon = mod.icon;
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={[
+        "relative w-full text-left rounded-xl border-2 p-4 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400",
+        enabled
+          ? colors.enabled + " shadow-sm"
+          : "border-gray-200 bg-white " + colors.hover,
+      ].join(" ")}
+    >
+      {/* Ícone + check */}
+      <div className="flex items-start justify-between mb-3">
+        <div className={`p-2 rounded-lg ${enabled ? colors.icon : "bg-gray-100 text-gray-400"}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        {enabled && (
+          <CheckCircle className={`h-5 w-5 ${colors.check} shrink-0`} />
+        )}
+      </div>
+
+      {/* Nome */}
+      <p className={`text-sm font-semibold leading-tight ${enabled ? "text-gray-900" : "text-gray-500"}`}>
+        {mod.label}
+      </p>
+
+      {/* Descrição */}
+      <p className={`text-xs mt-1 leading-snug ${enabled ? "text-gray-600" : "text-gray-400"}`}>
+        {mod.description}
+      </p>
+
+      {/* Status badge */}
+      <span
+        className={[
+          "inline-block mt-3 text-[0.65rem] font-medium px-2 py-0.5 rounded-full",
+          enabled
+            ? `${colors.check} bg-white/70 border border-current`
+            : "text-gray-400 bg-gray-100",
+        ].join(" ")}
+      >
+        {enabled ? "Habilitado" : "Desabilitado"}
+      </span>
+    </button>
+  );
+}
 
 interface Tenant {
   id: number;
@@ -370,13 +508,7 @@ export default function SuperAdminTenants() {
   };
 
   return (
-    <div className="min-h-screen relative bg-gray-950">
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/background-super-admin.png')" }}
-      />
-      <div className="absolute inset-0 bg-slate-950/70" />
-      <div className="relative z-10 min-h-screen">
+    <div className="min-h-screen bg-[#f0f0f0]">
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900/95 to-purple-700/95 text-white sticky top-0 z-10 backdrop-blur-sm border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
@@ -384,7 +516,7 @@ export default function SuperAdminTenants() {
             <div className="flex items-center gap-4">
               <img src={APP_LOGO} alt="CAC 360" className="h-10 w-auto" />
               <div>
-                <h1 className="text-xl font-bold">CAC 360 - Super Admin</h1>
+                <h1 className="text-xl font-bold">CAC 360 — Platform Admin</h1>
                 <p className="text-sm text-purple-200">Gerenciamento de Tenants</p>
               </div>
             </div>
@@ -396,7 +528,7 @@ export default function SuperAdminTenants() {
               <Button 
                 variant="outline" 
                 className="text-white border-white/50 hover:bg-white/10"
-                onClick={() => setLocation("/platform-admin/users")}
+                onClick={() => setLocation("/platform-admin")}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Voltar
@@ -410,7 +542,7 @@ export default function SuperAdminTenants() {
       <main className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+          <Card className="bg-white shadow-sm border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -421,7 +553,7 @@ export default function SuperAdminTenants() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+          <Card className="bg-white shadow-sm border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -434,7 +566,7 @@ export default function SuperAdminTenants() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+          <Card className="bg-white shadow-sm border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -447,7 +579,7 @@ export default function SuperAdminTenants() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+          <Card className="bg-white shadow-sm border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -483,7 +615,7 @@ export default function SuperAdminTenants() {
                 clearMocks.mutate();
               }}
               disabled={clearMocks.isLoading || seedMocks.isLoading}
-              className="flex items-center gap-2 border-red-500/70 bg-red-500/12 text-red-100 hover:bg-red-500/20 hover:text-red-50"
+              className="flex items-center gap-2 border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"
             >
               {clearMocks.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -496,7 +628,7 @@ export default function SuperAdminTenants() {
               variant="outline"
               onClick={() => seedMocks.mutate()}
               disabled={seedMocks.isLoading}
-              className="flex items-center gap-2 border-slate-500/70 bg-slate-500/12 text-slate-100 hover:bg-slate-500/20 hover:text-white"
+              className="flex items-center gap-2 border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
             >
               {seedMocks.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -524,7 +656,7 @@ export default function SuperAdminTenants() {
             </Card>
           ) : filteredTenants.length > 0 ? (
             filteredTenants.map((tenant) => (
-              <Card key={tenant.id} className="bg-white/95 backdrop-blur-sm border-white/40 shadow-xl hover:shadow-2xl transition-shadow">
+              <Card key={tenant.id} className="bg-white shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -619,7 +751,7 @@ export default function SuperAdminTenants() {
               </Card>
             ))
           ) : (
-            <Card className="text-center py-12 bg-white/95 backdrop-blur-sm border-white/40 shadow-xl">
+            <Card className="text-center py-12 bg-white shadow-sm border border-gray-200">
               <CardContent>
                 <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-4" />
                 <p className="text-gray-500">Nenhum tenant encontrado</p>
@@ -628,7 +760,6 @@ export default function SuperAdminTenants() {
           )}
         </div>
       </main>
-      </div>
 
       {/* Create Tenant Modal */}
       {showCreateModal && (
@@ -665,7 +796,7 @@ export default function SuperAdminTenants() {
               </div>
 
               {/* Admin Credentials */}
-              <div className="border rounded-lg p-4 space-y-4">
+              <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-white">
                 <h4 className="font-medium flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   Administrador do Tenant
@@ -707,7 +838,7 @@ export default function SuperAdminTenants() {
               </div>
 
               {/* Plan & Limits */}
-              <div className="border rounded-lg p-4 space-y-4">
+              <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-white">
                 <h4 className="font-medium">Plano e Limites</h4>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -745,49 +876,20 @@ export default function SuperAdminTenants() {
               </div>
 
               {/* Features */}
-              <div className="border rounded-lg p-4 space-y-4">
-                <h4 className="font-medium">Módulos Habilitados</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="featureWorkflowCR">Workflow CR</Label>
-                    <Switch
-                      id="featureWorkflowCR"
-                      checked={newTenant.featureWorkflowCR}
-                      onCheckedChange={(checked) => setNewTenant({ ...newTenant, featureWorkflowCR: checked })}
+              <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                <div>
+                  <h4 className="font-semibold text-gray-800">Módulos Habilitados</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Clique em um módulo para habilitar ou desabilitar</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {MODULE_DEFINITIONS.map((mod) => (
+                    <ModuleCard
+                      key={mod.key}
+                      mod={mod}
+                      enabled={!!newTenant[mod.key]}
+                      onToggle={() => setNewTenant({ ...newTenant, [mod.key]: !newTenant[mod.key] })}
                     />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="featureApostilamento">Aquisição & CRAF</Label>
-                    <Switch
-                      id="featureApostilamento"
-                      checked={newTenant.featureApostilamento}
-                      onCheckedChange={(checked) => setNewTenant({ ...newTenant, featureApostilamento: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="featureRenovacao">Compliance & Vencimentos</Label>
-                    <Switch
-                      id="featureRenovacao"
-                      checked={newTenant.featureRenovacao}
-                      onCheckedChange={(checked) => setNewTenant({ ...newTenant, featureRenovacao: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="featureInsumos">Munições & Insumos</Label>
-                    <Switch
-                      id="featureInsumos"
-                      checked={newTenant.featureInsumos}
-                      onCheckedChange={(checked) => setNewTenant({ ...newTenant, featureInsumos: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="featureIAT">Módulo IAT</Label>
-                    <Switch
-                      id="featureIAT"
-                      checked={newTenant.featureIAT}
-                      onCheckedChange={(checked) => setNewTenant({ ...newTenant, featureIAT: checked })}
-                    />
-                  </div>
+                  ))}
                 </div>
               </div>
 
@@ -836,7 +938,7 @@ export default function SuperAdminTenants() {
             </div>
 
             {/* Panel Content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto bg-[#f5f5f5]">
               <div className="p-6 space-y-6">
               {/* Tabs Navigation */}
               <div className="flex gap-2 border-b">
@@ -880,6 +982,16 @@ export default function SuperAdminTenants() {
                   onClick={() => setActiveTab("triggers")}
                 >
                   Automações
+                </button>
+                <button
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "billing"
+                      ? "border-b-2 border-purple-600 text-purple-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  onClick={() => setActiveTab("billing")}
+                >
+                  Financeiro
                 </button>
               </div>
 
@@ -948,49 +1060,20 @@ export default function SuperAdminTenants() {
                 </div>
               </div>
 
-              <div className="border rounded-lg p-4 space-y-4">
-                <h4 className="font-medium">Módulos Habilitados</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="editFeatureWorkflowCR">Workflow CR</Label>
-                    <Switch
-                      id="editFeatureWorkflowCR"
-                      checked={editingTenant.featureWorkflowCR}
-                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureWorkflowCR: checked })}
+              <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                <div>
+                  <h4 className="font-semibold text-gray-800">Módulos Habilitados</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Clique em um módulo para habilitar ou desabilitar</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {MODULE_DEFINITIONS.map((mod) => (
+                    <ModuleCard
+                      key={mod.key}
+                      mod={mod}
+                      enabled={!!editingTenant[mod.key]}
+                      onToggle={() => setEditingTenant({ ...editingTenant, [mod.key]: !editingTenant[mod.key] })}
                     />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="editFeatureApostilamento">Aquisição & CRAF</Label>
-                    <Switch
-                      id="editFeatureApostilamento"
-                      checked={editingTenant.featureApostilamento}
-                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureApostilamento: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="editFeatureRenovacao">Compliance & Vencimentos</Label>
-                    <Switch
-                      id="editFeatureRenovacao"
-                      checked={editingTenant.featureRenovacao}
-                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureRenovacao: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="edit-featureInsumos">Munições & Insumos</Label>
-                    <Switch 
-                      id="edit-featureInsumos" 
-                      checked={editingTenant.featureInsumos}
-                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureInsumos: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="edit-featureIAT">Módulo IAT</Label>
-                    <Switch 
-                      id="edit-featureIAT" 
-                      checked={editingTenant.featureIAT}
-                      onCheckedChange={(checked) => setEditingTenant({ ...editingTenant, featureIAT: checked })}
-                    />
-                  </div>
+                  ))}
                 </div>
               </div>
 
@@ -1019,6 +1102,11 @@ export default function SuperAdminTenants() {
               {/* Tab Content - Triggers */}
               {activeTab === "triggers" && (
                 <EmailTriggersPanel tenantId={editingTenant.id} />
+              )}
+
+              {/* Tab Content - Billing */}
+              {activeTab === "billing" && (
+                <TenantBillingPanel tenantId={editingTenant.id} tenantName={editingTenant.name} />
               )}
               </div>
             </div>
