@@ -4153,8 +4153,12 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ clientId: z.number().int().optional() }))
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        // ctx.db não existe no TrpcContext — usar getTenantDbOrNull com fallback à platform DB
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await db.getDb();
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
         return await db.getPendingDocumentsForTriage(
-          ctx.db,
+          activeDb,
           input.clientId ?? null,
           ctx.tenant?.id ?? null
         );
@@ -4164,7 +4168,10 @@ export const appRouter = router({
     approve: protectedProcedure
       .input(z.object({ docId: z.number().int() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-        await db.updatePendingDocumentStatus(ctx.db, input.docId, "approved");
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await db.getDb();
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+        await db.updatePendingDocumentStatus(activeDb, input.docId, "approved");
         notifyClientOfDocumentDecision(ctx, input.docId, "approved").catch(() => {});
         return { success: true };
       }),
@@ -4173,7 +4180,10 @@ export const appRouter = router({
     reject: protectedProcedure
       .input(z.object({ docId: z.number().int(), reason: z.string().optional() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-        await db.updatePendingDocumentStatus(ctx.db, input.docId, "rejected", {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await db.getDb();
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+        await db.updatePendingDocumentStatus(activeDb, input.docId, "rejected", {
           rejectionReason: input.reason,
         });
         notifyClientOfDocumentDecision(ctx, input.docId, "rejected", input.reason).catch(() => {});
@@ -4188,20 +4198,24 @@ export const appRouter = router({
         fileName: z.string(),
       }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await db.getDb();
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+
         // Buscar dados do documento pendente
-        const docRows = await db.getPendingDocumentsForTriage(ctx.db, undefined, undefined);
+        const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
         const doc = docRows.find((d: any) => d.id === input.docId);
         if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
 
         // Inserir na juntada oficial
-        await ctx.db.execute(sql`
+        await activeDb.execute(sql`
           INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileUrl", "mimeType", "fileSize", "uploadedAt")
           VALUES (${input.subTaskId}, ${doc.clientId}, ${input.fileName}, ${doc.fileUrl},
                   ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, now())
         `);
 
         // Marcar como vinculado
-        await db.updatePendingDocumentStatus(ctx.db, input.docId, "linked", {
+        await db.updatePendingDocumentStatus(activeDb, input.docId, "linked", {
           linkedSubTaskId: input.subTaskId,
         });
 
@@ -4218,7 +4232,10 @@ async function notifyClientOfDocumentDecision(
   reason?: string
 ): Promise<void> {
   try {
-    const docRows = await ctx.db.execute(sql`
+    const tenantDb = await getTenantDbOrNull(ctx);
+    const activeDb = tenantDb || await db.getDb();
+    if (!activeDb) return;
+    const docRows = await activeDb.execute(sql`
       SELECT pd.*, c.name AS "clientName", c.email AS "clientEmail", pd."fileName"
       FROM "clientPendingDocuments" pd
       INNER JOIN "clients" c ON c.id = pd."clientId"
