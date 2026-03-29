@@ -596,7 +596,10 @@ export function registerPortalRoutes(app: Express) {
   app.post("/api/portal/documentos/upload", requirePortalSession as any, async (req: any, res: Response) => {
     const client   = req.portalClient;
     const activeDb = req.portalDb;
-    const tenantId = req.portalTenantId as number | null;
+    // Usar tenantId do hostname quando disponível; caso contrário usar o tenantId do próprio cliente
+    // (necessário quando o portal é acessado pelo domínio principal, ex: hml.cac360.com.br,
+    //  onde o subdomain 'hml' é excluído da resolução de tenant)
+    const tenantId: number | null = (req.portalTenantId as number | null) ?? (client.tenantId as number | null) ?? null;
     try {
       const { fileName, fileData, mimeType, fileSize } = req.body ?? {};
       if (!fileName || !fileData) {

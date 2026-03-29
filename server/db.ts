@@ -3084,7 +3084,7 @@ export async function getPendingDocumentsForTriage(
     LEFT JOIN "clients" c ON c.id = pd."clientId"
     WHERE pd.status = 'pending'
     ${clientId != null ? sql`AND pd."clientId" = ${clientId}` : sql``}
-    ${tenantId != null ? sql`AND pd."tenantId" = ${tenantId}` : sql``}
+    ${tenantId != null && clientId == null ? sql`AND (pd."tenantId" = ${tenantId} OR pd."tenantId" IS NULL)` : sql``}
     ORDER BY pd."uploadedAt" ASC
   `);
   return extractRows(result);
