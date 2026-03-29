@@ -795,12 +795,11 @@ function PlansManagement() {
     slug: "",
     name: "",
     description: "",
-    monthlyPriceBRL: 0,
-    yearlyPriceBRL: 0,
+    priceMonthlyBRL: 0,
+    priceYearlyBRL: 0,
     maxUsers: 10,
     maxClients: 100,
     maxStorageGB: 10,
-    features: [],
     isActive: true,
     trialDays: 14,
   });
@@ -838,12 +837,11 @@ function PlansManagement() {
       slug: "",
       name: "",
       description: "",
-      monthlyPriceBRL: 0,
-      yearlyPriceBRL: 0,
+      priceMonthlyBRL: 0,
+      priceYearlyBRL: 0,
       maxUsers: 10,
       maxClients: 100,
       maxStorageGB: 10,
-      features: [],
       isActive: true,
       trialDays: 14,
     });
@@ -856,8 +854,8 @@ function PlansManagement() {
       slug: plan.slug,
       name: plan.name,
       description: plan.description || "",
-      monthlyPriceBRL: plan.monthlyPriceBRL,
-      yearlyPriceBRL: plan.yearlyPriceBRL,
+      priceMonthlyBRL: plan.priceMonthlyBRL ?? 0,
+      priceYearlyBRL: plan.priceYearlyBRL ?? 0,
       maxUsers: plan.maxUsers,
       maxClients: plan.maxClients,
       maxStorageGB: plan.maxStorageGB,
@@ -936,13 +934,13 @@ function PlansManagement() {
                 <p className="text-sm text-gray-600">{plan.description}</p>
                 <div className="space-y-1">
                   <p className="text-2xl font-bold text-gray-900">
-                    R$ {(plan.monthlyPriceBRL / 100).toFixed(2)}
+                    {formatBRL(plan.priceMonthlyBRL ?? 0)}
                     <span className="text-sm font-normal text-gray-500">
                       /mês
                     </span>
                   </p>
                   <p className="text-sm text-gray-500">
-                    R$ {(plan.yearlyPriceBRL / 100).toFixed(2)}/ano
+                    {formatBRL(plan.priceYearlyBRL ?? 0)}/ano
                   </p>
                 </div>
                 <div className="pt-2 border-t space-y-1 text-xs text-gray-600">
@@ -1000,27 +998,33 @@ function PlansManagement() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Preço Mensal (centavos)</Label>
+                <Label>Preço Mensal (R$)</Label>
                 <Input
                   type="number"
-                  value={formData.monthlyPriceBRL}
+                  min="0"
+                  step="0.01"
+                  placeholder="Ex: 150.00"
+                  value={(formData.priceMonthlyBRL / 100).toFixed(2)}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      monthlyPriceBRL: parseInt(e.target.value),
+                      priceMonthlyBRL: Math.round(parseFloat(e.target.value || "0") * 100),
                     })
                   }
                 />
               </div>
               <div>
-                <Label>Preço Anual (centavos)</Label>
+                <Label>Preço Anual (R$)</Label>
                 <Input
                   type="number"
-                  value={formData.yearlyPriceBRL}
+                  min="0"
+                  step="0.01"
+                  placeholder="Ex: 1500.00"
+                  value={(formData.priceYearlyBRL / 100).toFixed(2)}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      yearlyPriceBRL: parseInt(e.target.value),
+                      priceYearlyBRL: Math.round(parseFloat(e.target.value || "0") * 100),
                     })
                   }
                 />
