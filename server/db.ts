@@ -2711,13 +2711,11 @@ export async function createClientInviteToken(
 ): Promise<string> {
   const token = crypto.randomBytes(32).toString("hex"); // 64 chars
   const expiresAt = new Date(Date.now() + INVITE_TOKEN_DAYS * 24 * 60 * 60 * 1000);
+  // Remove token anterior do cliente (se existir) e insere novo
+  await db.execute(sql`DELETE FROM "clientInviteTokens" WHERE "clientId" = ${clientId}`);
   await db.execute(sql`
     INSERT INTO "clientInviteTokens" ("clientId", "tenantId", "token", "expiresAt", "createdAt")
     VALUES (${clientId}, ${tenantId ?? null}, ${token}, ${expiresAt}, now())
-    ON CONFLICT ("token") DO UPDATE
-      SET "token" = EXCLUDED."token",
-          "activatedAt" = NULL,
-          "expiresAt" = EXCLUDED."expiresAt"
   `);
   return token;
 }
