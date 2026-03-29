@@ -302,6 +302,21 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       "ipAddress" varchar(45),
       "createdAt" timestamp DEFAULT now() NOT NULL
     )`,
+    sql`CREATE TABLE IF NOT EXISTS "clientPendingDocuments" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "fileName" varchar(255) NOT NULL,
+      "fileUrl" text NOT NULL,
+      "mimeType" varchar(100),
+      "fileSize" integer,
+      "status" varchar(20) NOT NULL DEFAULT 'pending',
+      "linkedSubTaskId" integer,
+      "rejectionReason" text,
+      "uploadedAt" timestamp NOT NULL DEFAULT now(),
+      "reviewedAt" timestamp,
+      "createdAt" timestamp NOT NULL DEFAULT now()
+    )`,
   ];
   for (const stmt of portalStatements) {
     try {
