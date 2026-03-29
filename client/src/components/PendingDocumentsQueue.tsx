@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import {
   FileText, CheckCircle2, XCircle, Link2,
-  ChevronDown, ChevronUp, Loader2,
+  ChevronDown, ChevronUp, Loader2, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Props {
   clientId: number;
@@ -44,7 +47,7 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
     onSuccess: () => { utils.invalidate(); setRejectDialog(null); setRejectReason(""); },
   });
   const linkMut = (trpc as any).pendingDocuments.linkToSubTask.useMutation({
-    onSuccess: () => { utils.invalidate(); setLinkDialog(null); setLinkSubTask(""); },
+    onSuccess: () => { utils.invalidate(); setLinkDialog(null); setLinkSubTask(""); setRenameFile(false); setNewFileName(""); },
   });
 
   const [expanded, setExpanded] = useState(true);
@@ -52,6 +55,36 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
   const [rejectReason, setRejectReason] = useState("");
   const [linkDialog, setLinkDialog] = useState<{ docId: number; fileName: string } | null>(null);
   const [linkSubTask, setLinkSubTask] = useState("");
+  const [renameFile, setRenameFile] = useState(false);
+  const [newFileName, setNewFileName] = useState("");
+
+  // Quando seleciona subtask, pré-preenche sugestão de nome
+  function handleSubTaskChange(value: string) {
+    setLinkSubTask(value);
+    const st = subTasks.find(s => String(s.id) === value);
+    if (st && renameFile) {
+      // Mantém extensão original, muda o nome base
+      const ext = linkDialog?.fileName.includes(".")
+        ? "." + linkDialog!.fileName.split(".").pop()
+        : "";
+      setNewFileName(st.label + ext);
+    }
+  }
+
+  function handleRenameToggle(checked: boolean) {
+    setRenameFile(checked);
+    if (checked && linkSubTask) {
+      const st = subTasks.find(s => String(s.id) === linkSubTask);
+      if (st) {
+        const ext = linkDialog?.fileName.includes(".")
+          ? "." + linkDialog!.fileName.split(".").pop()
+          : "";
+        setNewFileName(st.label + ext);
+      }
+    } else {
+      setNewFileName("");
+    }
+  }
 
   if (isLoading) return null;
   if (isError) return (
@@ -126,7 +159,12 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
                       size="sm"
                       variant="outline"
                       className="text-blue-700 border-blue-300 hover:bg-blue-50 h-7 text-xs"
-                      onClick={() => setLinkDialog({ docId: doc.id, fileName: doc.fileName })}
+                      onClick={() => {
+                        setLinkSubTask("");
+                        setRenameFile(false);
+                        setNewFileName("");
+                        setLinkDialog({ docId: doc.id, fileName: doc.fileName });
+                      }}
                     >
                       <Link2 className="w-3 h-3 mr-1" />
                       Vincular
@@ -183,24 +221,65 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
       </Dialog>
 
       {/* Dialog — Vincular à juntada */}
-      <Dialog open={!!linkDialog} onOpenChange={open => !open && setLinkDialog(null)}>
-        <DialogContent>
+      <Dialog open={!!linkDialog} onOpenChange={open => {
+        if (!open) { setLinkDialog(null); setLinkSubTask(""); setRenameFile(false); setNewFileName(""); }
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Vincular à juntada</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600 truncate">{linkDialog?.fileName}</p>
-          <Select value={linkSubTask} onValueChange={setLinkSubTask}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecionar nicho / subetapa de destino" />
-            </SelectTrigger>
-            <SelectContent>
-              {subTasks.map(st => (
-                <SelectItem key={st.id} value={String(st.id)}>
-                  {st.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+          {/* Nome do arquivo original */}
+          <div className="text-sm text-gray-500 truncate bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+            <span className="font-medium text-gray-700">{linkDialog?.fileName}</span>
+          </div>
+
+          {/* Seleção da subetapa */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-600">Tipo de documento</Label>
+            <Select value={linkSubTask} onValueChange={handleSubTaskChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar tipo de documento na juntada" />
+              </SelectTrigger>
+              <SelectContent>
+                {subTasks.map(st => (
+                  <SelectItem key={st.id} value={String(st.id)}>
+                    {st.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Pergunta: deseja renomear o arquivo? */}
+          {linkSubTask && (
+            <div className="border border-blue-100 rounded-xl bg-blue-50/60 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="rename-check"
+                  checked={renameFile}
+                  onCheckedChange={(v) => handleRenameToggle(!!v)}
+                />
+                <label htmlFor="rename-check" className="text-sm text-gray-700 cursor-pointer flex items-center gap-1.5">
+                  <Pencil className="h-3.5 w-3.5 text-blue-500" />
+                  Renomear arquivo para o tipo do documento
+                </label>
+              </div>
+              {renameFile && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">Nome final do arquivo</Label>
+                  <Input
+                    value={newFileName}
+                    onChange={e => setNewFileName(e.target.value)}
+                    placeholder="Ex: Certidão de Antecedentes.pdf"
+                    className="text-sm h-8"
+                  />
+                  <p className="text-[0.65rem] text-gray-400">A extensão original será preservada se não alterada.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setLinkDialog(null)}>Cancelar</Button>
             <Button
@@ -209,6 +288,7 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
                   docId: linkDialog!.docId,
                   subTaskId: Number(linkSubTask),
                   fileName: linkDialog!.fileName,
+                  newFileName: renameFile && newFileName.trim() ? newFileName.trim() : undefined,
                 })
               }
               disabled={!linkSubTask || linkMut.isPending}

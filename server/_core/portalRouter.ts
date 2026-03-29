@@ -471,6 +471,101 @@ export function registerPortalRoutes(app: Express) {
   });
 
   /**
+   * GET /api/portal/lgpd/documento
+   * Retorna o Termo de Consentimento LGPD como página HTML formatada para visualização/impressão.
+   * Rota pública (sem autenticação) — apenas exibe o texto do termo.
+   */
+  app.get("/api/portal/lgpd/documento", (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Termo de Consentimento — LGPD</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; line-height: 1.7; color: #222; background: #fff; padding: 48px 60px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+    h2 { font-size: 13px; font-weight: 600; color: #333; margin-top: 20px; margin-bottom: 6px; }
+    p { margin-bottom: 10px; }
+    ul { padding-left: 20px; margin-bottom: 10px; }
+    ul li { margin-bottom: 4px; }
+    .header { border-bottom: 2px solid #123A63; padding-bottom: 16px; margin-bottom: 24px; }
+    .header .subtitle { color: #555; font-size: 12px; margin-top: 2px; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #888; }
+    @media print {
+      body { padding: 20px 30px; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="background:#123A63;color:#fff;padding:10px 16px;margin:-48px -60px 32px;font-size:12px;display:flex;align-items:center;gap:12px;">
+    <span>📄 Termo de Consentimento LGPD — CAC 360</span>
+    <button onclick="window.print()" style="margin-left:auto;background:#F37321;color:#fff;border:none;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;">Imprimir / Salvar como PDF</button>
+  </div>
+
+  <div class="header">
+    <h1>Termo de Consentimento para Tratamento de Dados Pessoais</h1>
+    <p class="subtitle">Lei nº 13.709/2018 — Lei Geral de Proteção de Dados Pessoais (LGPD) · Versão 1.0 · Vigente a partir de 2026</p>
+  </div>
+
+  <p>Ao utilizar este portal, você concorda com o tratamento dos seus dados pessoais pela entidade responsável
+  (doravante denominada "Clube" ou "Controlador"), nos termos descritos abaixo.</p>
+
+  <h2>1. Dados Coletados</h2>
+  <p>Nome completo, CPF, RG, data de nascimento, endereço residencial, telefone, email, profissão, e
+  documentos relacionados ao processo de obtenção do Certificado de Registro (CR) junto ao Exército Brasileiro.</p>
+
+  <h2>2. Finalidade do Tratamento</h2>
+  <p>Os dados coletados serão utilizados exclusivamente para:</p>
+  <ul>
+    <li>Gestão do processo de obtenção do CR CAC (Certificado de Registro para Caçadores, Atiradores e Colecionadores);</li>
+    <li>Comunicação sobre o andamento do processo;</li>
+    <li>Cumprimento de obrigações legais perante o Exército Brasileiro e demais órgãos;</li>
+    <li>Emissão de documentos e certidões relacionadas ao processo.</li>
+  </ul>
+
+  <h2>3. Base Legal</h2>
+  <p>O tratamento dos dados se fundamenta no art. 7º, incisos II (execução de contrato) e V
+  (execução de políticas públicas), da Lei nº 13.709/2018 (LGPD).</p>
+
+  <h2>4. Compartilhamento de Dados</h2>
+  <p>Seus dados poderão ser compartilhados com:</p>
+  <ul>
+    <li>Exército Brasileiro (para fins de registro e controle);</li>
+    <li>Polícia Federal (verificação de antecedentes);</li>
+    <li>Órgãos estaduais e federais competentes, conforme exigência legal.</li>
+  </ul>
+  <p>Não compartilhamos seus dados com terceiros para fins comerciais.</p>
+
+  <h2>5. Prazo de Retenção</h2>
+  <p>Seus dados serão mantidos pelo período necessário ao cumprimento das finalidades acima e das obrigações
+  legais, podendo ser retidos por até 5 (cinco) anos após o encerramento do processo, conforme determinação legal.</p>
+
+  <h2>6. Seus Direitos (Art. 18 da LGPD)</h2>
+  <p>Você tem direito a:</p>
+  <ul>
+    <li>Confirmar a existência de tratamento;</li>
+    <li>Acessar seus dados;</li>
+    <li>Corrigir dados incompletos, inexatos ou desatualizados;</li>
+    <li>Solicitar a anonimização, bloqueio ou eliminação de dados desnecessários;</li>
+    <li>Revogar este consentimento a qualquer momento, mediante solicitação ao clube.</li>
+  </ul>
+
+  <h2>7. Contato do Controlador</h2>
+  <p>Para exercer seus direitos ou esclarecer dúvidas sobre o tratamento de dados, entre em contato
+  diretamente com a secretaria do clube.</p>
+
+  <div class="footer">
+    Versão 1.0 — Vigente a partir de 2026. Este documento foi gerado automaticamente pelo sistema CAC 360.
+  </div>
+</body>
+</html>`);
+  });
+
+  /**
    * GET /api/portal/meu-processo
    * Retorna os workflow steps do cliente com sub-tarefas
    */

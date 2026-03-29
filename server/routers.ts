@@ -4263,22 +4263,32 @@ export const appRouter = router({
         docId: z.number().int(),
         subTaskId: z.number().int(),
         fileName: z.string(),
+        newFileName: z.string().optional(), // nome final do arquivo (renomeado pelo operador)
       }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const activeDb = tenantDb || await db.getDb();
         if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
 
-        // Buscar dados do documento pendente
+        // Buscar dados do documento pendente (sem filtro de tenantId para encontrar por id)
         const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
         const doc = docRows.find((d: any) => d.id === input.docId);
         if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
 
-        // Inserir na juntada oficial
+        // Nome final: renomeado pelo operador ou nome original
+        const finalFileName = (input.newFileName?.trim() || input.fileName).trim();
+
+        // fileKey: derivar do fileUrl removendo o prefixo /files/
+        const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
+
+        // uploadedBy: operador logado
+        const uploadedBy = ctx.user?.id ?? 0;
+
+        // Inserir na juntada oficial (todos campos obrigatórios)
         await activeDb.execute(sql`
-          INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileUrl", "mimeType", "fileSize", "uploadedAt")
-          VALUES (${input.subTaskId}, ${doc.clientId}, ${input.fileName}, ${doc.fileUrl},
-                  ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, now())
+          INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileKey", "fileUrl", "mimeType", "fileSize", "uploadedBy", "createdAt")
+          VALUES (${input.subTaskId}, ${doc.clientId}, ${finalFileName}, ${fileKey}, ${doc.fileUrl},
+                  ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, ${uploadedBy}, now())
         `);
 
         // Marcar como vinculado

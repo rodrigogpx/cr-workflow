@@ -4,7 +4,7 @@ import PortalLayout from "./PortalLayout";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ScrollText, Loader2 } from "lucide-react";
+import { ScrollText, Loader2, ExternalLink } from "lucide-react";
 import { usePortalAuth } from "./usePortalAuth";
 
 export default function PortalLgpd() {
@@ -63,7 +63,16 @@ export default function PortalLgpd() {
         {/* Header do termo */}
         <div className="bg-purple-700 text-white px-6 py-4 flex items-center gap-3">
           <ScrollText className="h-5 w-5 flex-shrink-0" />
-          <p className="text-sm font-medium">Role até o final para habilitar o aceite</p>
+          <p className="text-sm font-medium flex-1">Role até o final para habilitar o aceite</p>
+          <a
+            href="/api/portal/lgpd/documento"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 text-xs text-purple-200 hover:text-white border border-purple-400 hover:border-white rounded-md px-2.5 py-1 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Ver em PDF
+          </a>
         </div>
 
         {/* Texto do termo — scrollável */}

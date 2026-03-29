@@ -4,11 +4,16 @@ import PortalLayout from "./PortalLayout";
 import { usePortalAuth } from "./usePortalAuth";
 import {
   CheckCircle2, Circle, FileText, Eye,
-  Clock, AlertCircle, File, Upload
+  Clock, AlertCircle, File, Upload, Info, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 function formatBytes(bytes: number): string {
   if (!bytes) return "";
@@ -24,6 +29,77 @@ function formatDateTime(dateStr: string): string {
 
 const ACCEPTED_EXTENSIONS = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx";
 const MAX_BYTES = 10 * 1024 * 1024;
+
+// ─── Informações sobre cada tipo de documento exigido na Juntada ─────────────
+const DOCUMENT_INFO: Record<string, { description: string; issuer: string; obs?: string; link?: string; linkLabel?: string }> = {
+  'Documento de Identificação Pessoal': { description: 'RG, CNH ou outro documento oficial com foto. Deve estar dentro do prazo de validade.', issuer: 'SSP (RG) · DETRAN (CNH) · Polícia Federal (Passaporte)' },
+  'Certidão de Antecedente Criminal Justiça Federal': { description: 'Comprova ausência de antecedentes na Justiça Federal. Gratuita e emitida online.', issuer: 'Conselho da Justiça Federal (CJF)', obs: 'Validade: 90 dias.', link: 'https://certidao-unificada.cjf.jus.br/', linkLabel: 'Emitir Certidão (CJF)' },
+  'Certidão de Antecedente Criminal Justiça Estadual': { description: 'Comprova ausência de antecedentes na Justiça Estadual. Deve conter distribuição e execução criminal.', issuer: 'Tribunal de Justiça do Estado (TJ)', obs: 'Validade: 90 dias. Consulte o TJ do seu estado.', link: 'https://www.cnj.jus.br/certidao-negativa/', linkLabel: 'Portal CNJ' },
+  'Certidão de Antecedente Criminal Justiça Eleitoral': { description: 'Certidão de crimes eleitorais emitida pelo TSE.', issuer: 'Tribunal Superior Eleitoral (TSE)', obs: 'Validade: 90 dias. Gratuita.', link: 'https://www.tse.jus.br/eleitor/certidoes/certidao-de-crimes-eleitorais', linkLabel: 'Emitir Certidão (TSE)' },
+  'Certidão de Antecedente Criminal Justiça Militar': { description: 'Comprova ausência de antecedentes na Justiça Militar Federal.', issuer: 'Superior Tribunal Militar (STM)', obs: 'Validade: 90 dias.', link: 'https://www.stm.jus.br/servicos-stm/certidao-negativa', linkLabel: 'Emitir Certidão (STM)' },
+  'Declaração de não estar respondendo': { description: 'Declaração formal afirmando que não responde a inquérito policial ou processo criminal.', issuer: 'Gerada automaticamente pelo SisGCorp', link: 'https://sisgcorp.eb.mil.br/#/solicitar-servico', linkLabel: 'Acessar SisGCorp' },
+  'Declaração de Segurança do Acervo': { description: 'Declaração sobre condições de segurança do local onde as armas serão guardadas.', issuer: 'Gerada automaticamente pelo SisGCorp', link: 'https://sisgcorp.eb.mil.br/#/solicitar-servico', linkLabel: 'Acessar SisGCorp' },
+  'Declaração com compromisso de comprovar a habitualidade': { description: 'Compromisso de comprovar habitualidade de prática de tiro. Exigido de atiradores desportivos.', issuer: 'Declaração pessoal / Clube de tiro registrado', obs: 'Dispensado para colecionadores.' },
+  'Comprovante de Residência Fixa': { description: 'Conta de luz, água, telefone ou contrato de aluguel, em nome do requerente, com no máximo 90 dias.', issuer: 'Concessionárias de serviços públicos / Cartório' },
+  'Comprovante de Ocupação Lícita': { description: 'Comprova atividade profissional: CTPS, contracheque, declaração de autônomo ou pró-labore.', issuer: 'Empregador / Contador / Órgão competente' },
+  'Comprovante de Capacidade Técnica': { description: 'Certificado de aprovação em teste de tiro emitido por instrutor credenciado pela PF.', issuer: 'Instrutor credenciado pela PF / Clube de tiro', obs: 'Custo estimado: R$ 170 a R$ 450.', link: 'https://www.gov.br/pf/pt-br/assuntos/armas', linkLabel: 'PF – Instrutores credenciados' },
+  'Laudo de Aptidão Psicológica': { description: 'Avaliação psicológica atestando aptidão para manuseio de arma de fogo.', issuer: 'Psicólogo credenciado pela PF', obs: 'Custo estimado: R$ 300 a R$ 800.', link: 'https://www.gov.br/pf/pt-br/assuntos/armas/psicologos/psicologos-crediciados', linkLabel: 'PF – Psicólogos credenciados' },
+  'Comprovante de filiação a entidade de tiro desportivo': { description: 'Documento do clube comprovando filiação ativa na modalidade.', issuer: 'Clube de tiro desportivo registrado no Exército / CBATIRO', obs: 'Dispensado para colecionamento.', link: 'https://www.cbatiro.org.br', linkLabel: 'CBATIRO' },
+  'Comprovante de filiação a entidade de caça': { description: 'Documento comprovando filiação ativa na modalidade de caça regulamentada.', issuer: 'Associação de caça reconhecida', obs: 'Dispensado para colecionamento.' },
+  'Comprovante da necessidade de abate de fauna invasora': { description: 'Autorização do IBAMA para controle de espécie invasora em propriedade rural.', issuer: 'IBAMA', link: 'https://www.gov.br/ibama/pt-br/assuntos/fauna/controle-e-erradicacao', linkLabel: 'IBAMA – Controle de Fauna Invasora' },
+  'Comprovante de Segundo Endereço': { description: 'Comprovante de segundo endereço do requerente (imóvel de temporada, fazenda, sítio ou endereço comercial).', issuer: 'Concessionárias de serviços / Documentos do imóvel' },
+};
+
+function DocumentInfoTooltip({ label }: { label: string }) {
+  const key = Object.keys(DOCUMENT_INFO).find((k) => label.includes(k));
+  const info = key ? DOCUMENT_INFO[key] : null;
+  if (!info) return null;
+
+  return (
+    <HoverCard openDelay={200} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          tabIndex={-1}
+          className="inline-flex items-center justify-center text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0 rounded focus:outline-none"
+          aria-label={`Informações sobre: ${label}`}
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        className="w-80 p-0 shadow-xl border border-blue-100 rounded-xl overflow-hidden z-50"
+      >
+        <div className="bg-blue-50 border-b border-blue-100 px-4 py-2.5">
+          <p className="text-xs font-semibold text-blue-800 leading-snug">{key}</p>
+        </div>
+        <div className="px-4 py-3 space-y-2.5 bg-white">
+          <p className="text-xs text-gray-600 leading-relaxed">{info.description}</p>
+          <div className="flex items-start gap-1.5">
+            <span className="text-[0.65rem] font-semibold text-gray-400 uppercase tracking-wide mt-0.5 shrink-0">Emitido por</span>
+            <span className="text-xs text-gray-700">{info.issuer}</span>
+          </div>
+          {info.obs && (
+            <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+              <span className="text-amber-500 mt-0.5 shrink-0">⚠</span>
+              <span className="text-xs text-amber-800 leading-snug">{info.obs}</span>
+            </div>
+          )}
+          {info.link && (
+            <a href={info.link} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium group">
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              {info.linkLabel ?? info.link}
+            </a>
+          )}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
 
 type UploadStatus = "pending" | "linked" | "approved" | "rejected";
 
@@ -309,7 +385,10 @@ export default function PortalDocumentos() {
                   }
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 leading-tight">{group.label}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-gray-800 leading-tight">{group.label}</p>
+                    <DocumentInfoTooltip label={group.label} />
+                  </div>
                   <div className="mt-1">
                     {isApproved && (
                       <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
