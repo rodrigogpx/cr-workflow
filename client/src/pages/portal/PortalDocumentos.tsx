@@ -260,23 +260,25 @@ export default function PortalDocumentos() {
         </div>
       )}
 
-      {/* ── Summary Cards ───────────────────────────────────────── */}
-      {groups.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
-            <p className="text-2xl font-bold text-gray-800">{totalDocs}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Total</p>
-          </div>
-          <div className="bg-white border border-blue-100 rounded-xl p-4 text-center shadow-sm">
-            <p className="text-2xl font-bold text-blue-600">{sent}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Enviados</p>
-          </div>
-          <div className="bg-white border border-green-100 rounded-xl p-4 text-center shadow-sm">
-            <p className="text-2xl font-bold text-green-600">{approved}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Aprovados</p>
-          </div>
+      {/* ── Summary Cards — stats dos meus uploads ──────────────── */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
+          <p className="text-2xl font-bold text-gray-800">{uploadedDocs.length}</p>
+          <p className="text-xs text-gray-500 mt-0.5">Enviados por mim</p>
         </div>
-      )}
+        <div className="bg-white border border-amber-100 rounded-xl p-4 text-center shadow-sm">
+          <p className="text-2xl font-bold text-amber-600">
+            {uploadedDocs.filter(d => d.status === "pending" || d.status === "linked").length}
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">Em análise</p>
+        </div>
+        <div className="bg-white border border-green-100 rounded-xl p-4 text-center shadow-sm">
+          <p className="text-2xl font-bold text-green-600">
+            {uploadedDocs.filter(d => d.status === "approved").length}
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">Aprovados</p>
+        </div>
+      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
