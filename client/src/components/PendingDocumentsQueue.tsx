@@ -28,10 +28,14 @@ function formatBytes(b: number) {
 export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
   const utils = trpc.useUtils();
 
-  const { data: docs = [], isLoading } = (trpc as any).pendingDocuments.list.useQuery(
+  const { data: docs = [], isLoading, isError, error } = (trpc as any).pendingDocuments.list.useQuery(
     { clientId },
     { refetchInterval: 30_000 }
   );
+
+  if (isError) {
+    console.error("[PendingDocumentsQueue] Erro ao carregar documentos:", error);
+  }
 
   const approveMut = (trpc as any).pendingDocuments.approve.useMutation({
     onSuccess: () => utils.invalidate(),
@@ -49,7 +53,14 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
   const [linkDialog, setLinkDialog] = useState<{ docId: number; fileName: string } | null>(null);
   const [linkSubTask, setLinkSubTask] = useState("");
 
-  if (isLoading || !docs.length) return null;
+  if (isLoading) return null;
+  if (isError) return (
+    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6 text-sm text-red-700 flex items-center gap-2">
+      <span className="font-medium">Erro ao carregar fila de documentos.</span>
+      <span className="text-red-500 text-xs">{(error as any)?.message ?? "Tente recarregar a página."}</span>
+    </div>
+  );
+  if (!docs.length) return null;
 
   return (
     <>

@@ -3077,9 +3077,11 @@ export async function getPendingDocumentsForTriage(
   tenantId?: number | null
 ): Promise<any[]> {
   const result = await db.execute(sql`
-    SELECT pd.*, c.name AS "clientName", c.email AS "clientEmail"
+    SELECT pd.*,
+           COALESCE(c.name, 'Cliente') AS "clientName",
+           c.email AS "clientEmail"
     FROM "clientPendingDocuments" pd
-    INNER JOIN "clients" c ON c.id = pd."clientId"
+    LEFT JOIN "clients" c ON c.id = pd."clientId"
     WHERE pd.status = 'pending'
     ${clientId != null ? sql`AND pd."clientId" = ${clientId}` : sql``}
     ${tenantId != null ? sql`AND pd."tenantId" = ${tenantId}` : sql``}

@@ -116,7 +116,7 @@ async function startServer() {
         "script-src 'self' 'unsafe-inline' https://use.typekit.net",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://use.typekit.net",
         "img-src 'self' data: blob: https:",
-        "font-src 'self' data: https://fonts.gstatic.com https://use.typekit.net https://p.typekit.net",
+        "font-src 'self' data: blob: https://fonts.gstatic.com https://use.typekit.net https://p.typekit.net https://fonts.typekit.net",
         "connect-src 'self' https://performance.typekit.net",
         "frame-src 'none'",
         "object-src 'none'",
