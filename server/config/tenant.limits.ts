@@ -4,10 +4,11 @@
  * Funções de verificação de limites de uso por tenant.
  * Chamadas nos endpoints de criação de users, clients e upload de documentos.
  */
-import { eq, and, isNotNull } from "drizzle-orm";
+import { eq, and, isNotNull, sql } from "drizzle-orm";
 import { users, clients } from "../../drizzle/schema";
 import { getTenantStorageUsage } from "../fileStorage";
 import type { TenantConfig } from "./tenant.config";
+import { getDb } from "../db";
 
 export interface LimitCheckResult {
   allowed: boolean;
@@ -86,12 +87,29 @@ export async function checkStorageLimit(
   maxStorageGB: number
 ): Promise<StorageLimitCheckResult> {
   const usageBytes = await getTenantStorageUsage(tenantId);
-  const currentGB = usageBytes / (1024 * 1024 * 1024);
+  const fileGB = usageBytes / (1024 * 1024 * 1024);
+
+  // Incluir tamanho do banco de dados do último snapshot
+  let dbSizeGB = 0;
+  try {
+    const platformDb = await getDb();
+    if (platformDb) {
+      const snap = await platformDb.execute(
+        sql`SELECT "dbSizeMB" FROM "usageSnapshots" WHERE "tenantId" = ${tenantId} ORDER BY "snapshotDate" DESC LIMIT 1`
+      );
+      const rows = (snap as any)?.rows ?? snap;
+      const row = Array.isArray(rows) ? rows[0] : null;
+      const dbMB = Number(row?.dbSizeMB ?? 0);
+      dbSizeGB = dbMB / 1024;
+    }
+  } catch { /* ignora erro */ }
+
+  const currentGB = fileGB + dbSizeGB;
   const percentUsed = maxStorageGB > 0 ? Math.round((currentGB / maxStorageGB) * 100) : 0;
 
   return {
     allowed: currentGB < maxStorageGB,
-    currentGB: Math.round(currentGB * 100) / 100, // 2 decimais
+    currentGB: Math.round(currentGB * 1000) / 1000,
     maxGB: maxStorageGB,
     percentUsed,
   };

@@ -146,3 +146,11 @@ export function startCronJobs(): void {
 
   console.log("[Cron] Jobs de billing agendados (9h faturas, 10h suspensão).");
 }
+
+/** Permite execução manual via admin panel */
+export async function runDailyJobNow(): Promise<void> {
+  return runDailyJob();
+}
+export async function runSuspensionJobNow(): Promise<void> {
+  return runSuspensionJob();
+}

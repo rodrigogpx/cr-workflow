@@ -952,7 +952,7 @@ function PlansManagement() {
                 <div className="pt-2 border-t space-y-1 text-xs text-gray-600">
                   <p>{plan.maxUsers} usuários</p>
                   <p>{plan.maxClients} clientes</p>
-                  <p>{plan.maxStorageGB} GB armazenamento</p>
+                  <p>{Number(plan.maxStorageGB) < 1 ? `${Math.round(Number(plan.maxStorageGB) * 1024)} MB` : `${Number(plan.maxStorageGB)} GB`} armazenamento</p>
                   <p>{plan.trialDays} dias trial</p>
                 </div>
               </CardContent>
@@ -1064,14 +1064,16 @@ function PlansManagement() {
                 />
               </div>
               <div>
-                <Label>Storage (GB)</Label>
+                <Label>Storage (GB) <span className="text-xs text-gray-400 font-normal">mín. 0.1 GB</span></Label>
                 <Input
                   type="number"
+                  min="0.1"
+                  step="0.1"
                   value={formData.maxStorageGB}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      maxStorageGB: parseInt(e.target.value),
+                      maxStorageGB: parseFloat(e.target.value) || 0.1,
                     })
                   }
                 />
@@ -1202,7 +1204,7 @@ function PlanTenantsContent({
           return (
             <button
               key={t.id}
-              onClick={() => onSelectTenant(t.id)}
+              onClick={(e) => { e.stopPropagation(); onSelectTenant(Number(t.id)); }}
               className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white hover:border-[#123A63]/30 hover:bg-[#123A63]/5 transition-all group text-left shadow-sm"
             >
               <div className="min-w-0 flex-1">
@@ -1562,7 +1564,7 @@ function ClientsByPlanReport() {
         <>
           {/* Backdrop */}
           <div
-            onClick={closeAll}
+            onClick={(e) => { if (e.target === e.currentTarget) closeAll(); }}
             style={{
               position: "fixed",
               inset: 0,

@@ -3922,7 +3922,7 @@ export const appRouter = router({
         description: z.string().optional(),
         maxUsers: z.number().int().min(1).default(5),
         maxClients: z.number().int().min(1).default(100),
-        maxStorageGB: z.number().int().min(1).default(10),
+        maxStorageGB: z.number().min(0.1).default(10),
         featureWorkflowCR: z.boolean().default(true),
         featureApostilamento: z.boolean().default(false),
         featureRenovacao: z.boolean().default(false),
@@ -3948,7 +3948,7 @@ export const appRouter = router({
         description: z.string().optional(),
         maxUsers: z.number().int().min(1).optional(),
         maxClients: z.number().int().min(1).optional(),
-        maxStorageGB: z.number().int().min(1).optional(),
+        maxStorageGB: z.number().min(0.1).optional(),
         featureWorkflowCR: z.boolean().optional(),
         featureApostilamento: z.boolean().optional(),
         featureRenovacao: z.boolean().optional(),
@@ -4164,7 +4164,7 @@ export const appRouter = router({
         priceYearlyBRL: z.number().int().min(0).default(0),
         maxUsers: z.number().int().min(1).default(5),
         maxClients: z.number().int().min(1).default(100),
-        maxStorageGB: z.number().int().min(1).default(10),
+        maxStorageGB: z.number().min(0.1).default(10),
         trialDays: z.number().int().min(0).default(14),
         isPublic: z.boolean().default(true),
         displayOrder: z.number().int().default(0),
@@ -4195,7 +4195,7 @@ export const appRouter = router({
         priceYearlyBRL: z.number().int().min(0).optional(),
         maxUsers: z.number().int().min(1).optional(),
         maxClients: z.number().int().min(1).optional(),
-        maxStorageGB: z.number().int().min(1).optional(),
+        maxStorageGB: z.number().min(0.1).optional(),
         trialDays: z.number().int().min(0).optional(),
         isPublic: z.boolean().optional(),
         displayOrder: z.number().int().optional(),
@@ -4297,6 +4297,32 @@ export const appRouter = router({
         });
 
         return { success: true };
+      }),
+  }),
+  platform: router({
+    settings: router({
+      getAll: platformAdminProcedure.query(async () => {
+        return await db.getPlatformSettings();
+      }),
+      bulkSet: platformAdminProcedure
+        .input(z.record(z.string(), z.string()))
+        .mutation(async ({ input }: { input: any }) => {
+          for (const [key, value] of Object.entries(input)) {
+            await db.setPlatformSetting(key, String(value));
+          }
+          return { success: true };
+        }),
+    }),
+    runCron: platformAdminProcedure
+      .input(z.object({ job: z.enum(["daily", "suspension"]) }))
+      .mutation(async ({ input }: { input: any }) => {
+        const { startCronJobs: _unused, ...cronModule } = await import("./cron");
+        if (input.job === "daily") {
+          await (cronModule as any).runDailyJobNow?.() ?? Promise.resolve();
+        } else {
+          await (cronModule as any).runSuspensionJobNow?.() ?? Promise.resolve();
+        }
+        return { success: true, message: `Job '${input.job}' executado.` };
       }),
   }),
 });

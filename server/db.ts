@@ -388,6 +388,8 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
     sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "approved" boolean DEFAULT true`,
     // sinarmCommentsHistory — tenantId necessário para filtro de segurança multi-tenant
     sql`ALTER TABLE "sinarmCommentsHistory" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
+    sql`ALTER TABLE "planDefinitions" ALTER COLUMN "maxStorageGB" TYPE numeric(10,2)`,
+    sql`ALTER TABLE "tenants" ALTER COLUMN "maxStorageGB" TYPE numeric(10,2)`,
   ];
   let ok = 0, skipped = 0;
   for (const alter of alterations) {
@@ -2636,6 +2638,20 @@ export async function getInvoicesByTenant(tenantId: number) {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(invoices).where(eq(invoices.tenantId, tenantId)).orderBy(desc(invoices.createdAt));
+}
+
+export async function getSubscriptionsByTenant(tenantId: number): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.execute(
+    sql`SELECT s.*, pd.name AS "planName", pd.slug AS "planSlug"
+        FROM "subscriptions" s
+        LEFT JOIN "planDefinitions" pd ON pd.id = s."planId"
+        WHERE s."tenantId" = ${tenantId}
+        ORDER BY s."startDate" DESC`
+  );
+  const rows = (result as any)?.rows ?? result;
+  return Array.isArray(rows) ? rows : [];
 }
 
 export async function getAllInvoices(status?: string) {

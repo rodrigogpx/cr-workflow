@@ -4,7 +4,7 @@ import PortalLayout from "./PortalLayout";
 import { usePortalAuth } from "./usePortalAuth";
 import {
   CheckCircle2, Circle, FileText, Eye,
-  Clock, AlertCircle, File, Upload, Info, ExternalLink
+  Clock, AlertCircle, File, Upload, Info, ExternalLink, XCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,7 @@ function formatDateTime(dateStr: string): string {
 }
 
 const ACCEPTED_EXTENSIONS = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx";
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 3 * 1024 * 1024;
 
 // ─── Informações sobre cada tipo de documento exigido na Juntada ─────────────
 const DOCUMENT_INFO: Record<string, { description: string; issuer: string; obs?: string; link?: string; linkLabel?: string }> = {
@@ -129,9 +129,9 @@ export default function PortalDocumentos() {
   const [error, setError] = useState("");
 
   // --- new: upload section ---
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- new: uploaded docs queue ---
@@ -187,51 +187,75 @@ export default function PortalDocumentos() {
   function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) validateAndSet(file);
+    const files = Array.from(e.dataTransfer.files);
+    validateAndAdd(files);
   }
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) validateAndSet(file);
+    const files = Array.from(e.target.files || []);
+    validateAndAdd(files);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function validateAndSet(file: File) {
-    if (file.size > MAX_BYTES) {
-      toast.error("Arquivo muito grande. Máximo permitido: 10 MB.");
-      return;
-    }
-    setSelectedFile(file);
-  }
-
-  function handleUpload() {
-    if (!selectedFile) return;
-    setUploading(true);
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const res = await fetch("/api/portal/documentos/upload", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileName: selectedFile.name,
-            fileData: reader.result as string,
-            mimeType: selectedFile.type,
-          }),
-        });
-        if (!res.ok) throw new Error();
-        toast.success("Documento enviado com sucesso!");
-        setSelectedFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        fetchQueue();
-      } catch {
-        toast.error("Erro ao enviar documento. Tente novamente.");
-      } finally {
-        setUploading(false);
+  function validateAndAdd(files: File[]) {
+    const valid: File[] = [];
+    for (const file of files) {
+      if (file.size > MAX_BYTES) {
+        toast.error(`"${file.name}" excede o limite de 3 MB e foi ignorado.`);
+        continue;
       }
-    };
-    reader.readAsDataURL(selectedFile);
+      valid.push(file);
+    }
+    if (valid.length > 0) {
+      setSelectedFiles(prev => [...prev, ...valid]);
+    }
+  }
+
+  function removeFile(idx: number) {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  async function handleUpload() {
+    if (selectedFiles.length === 0) return;
+    let successCount = 0;
+    for (let i = 0; i < selectedFiles.length; i++) {
+      setUploadingIdx(i);
+      const file = selectedFiles[i];
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = async () => {
+            try {
+              const res = await fetch("/api/portal/documentos/upload", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  fileName: file.name,
+                  fileData: reader.result as string,
+                  mimeType: file.type,
+                }),
+              });
+              if (!res.ok) throw new Error();
+              successCount++;
+              resolve();
+            } catch {
+              toast.error(`Erro ao enviar "${file.name}".`);
+              resolve();
+            }
+          };
+          reader.onerror = () => reject();
+          reader.readAsDataURL(file);
+        });
+      } catch {
+        toast.error(`Erro ao ler "${file.name}".`);
+      }
+    }
+    setUploadingIdx(null);
+    setSelectedFiles([]);
+    if (successCount > 0) {
+      toast.success(`${successCount} documento${successCount > 1 ? "s" : ""} enviado${successCount > 1 ? "s" : ""} com sucesso!`);
+      fetchQueue();
+    }
   }
 
   return (
@@ -254,36 +278,67 @@ export default function PortalDocumentos() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => uploadingIdx === null && fileInputRef.current?.click()}
           >
             <input
               ref={fileInputRef}
               type="file"
               accept={ACCEPTED_EXTENSIONS}
+              multiple
               className="hidden"
               onChange={handleFileChange}
             />
-            {selectedFile ? (
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
-                <File className="h-5 w-5 text-[#123A63]" />
-                <span className="font-medium truncate max-w-xs">{selectedFile.name}</span>
-                <span className="text-gray-400 flex-shrink-0">({formatBytes(selectedFile.size)})</span>
-              </div>
-            ) : (
-              <>
-                <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm text-gray-600">Clique para selecionar ou arraste aqui</p>
-                <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, Word — máximo 10 MB</p>
-              </>
-            )}
+            <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+            <p className="text-sm text-gray-600">Clique para selecionar ou arraste aqui</p>
+            <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, Word — máximo 3 MB por arquivo</p>
           </div>
+
+          {/* Lista de arquivos selecionados */}
+          {selectedFiles.length > 0 && (
+            <div className="space-y-1.5">
+              {selectedFiles.map((file, idx) => (
+                <div
+                  key={idx}
+                  className={`flex items-center justify-between p-2.5 rounded-lg border text-sm ${
+                    uploadingIdx === idx
+                      ? "bg-blue-50 border-blue-200"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    {uploadingIdx === idx
+                      ? <Loader2 className="h-4 w-4 text-blue-500 animate-spin shrink-0" />
+                      : <File className="h-4 w-4 text-gray-400 shrink-0" />
+                    }
+                    <span className="truncate text-xs text-gray-700">{file.name}</span>
+                    <span className="text-xs text-gray-400 shrink-0">{formatBytes(file.size)}</span>
+                  </div>
+                  {uploadingIdx === null && (
+                    <button
+                      type="button"
+                      onClick={() => removeFile(idx)}
+                      className="text-gray-400 hover:text-red-500 transition-colors ml-2 shrink-0"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </button>
+                  )}
+                  {uploadingIdx === idx && (
+                    <span className="text-xs text-blue-600 shrink-0 ml-2">Enviando...</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <Button
             className="w-full bg-[#F37321] hover:bg-orange-600 text-white"
-            disabled={!selectedFile || uploading}
+            disabled={selectedFiles.length === 0 || uploadingIdx !== null}
             onClick={handleUpload}
           >
-            {uploading ? "Enviando…" : "Enviar Documento"}
+            {uploadingIdx !== null
+              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</>
+              : `Enviar ${selectedFiles.length > 0 ? selectedFiles.length + " documento" + (selectedFiles.length > 1 ? "s" : "") : "Documento"}`
+            }
           </Button>
         </CardContent>
       </Card>
