@@ -4083,6 +4083,48 @@ export const appRouter = router({
         return await db.getUsageSnapshotsByTenant(input.tenantId, input.limit);
       }),
 
+    /** Detalhamento financeiro completo de um tenant */
+    tenantDetail: platformAdminProcedure
+      .input(z.object({ tenantId: z.number().int() }))
+      .query(async ({ input }: { input: any }) => {
+        const [tenant, subs, invs, allPlans] = await Promise.all([
+          db.getTenantById(input.tenantId),
+          db.getSubscriptionsByTenant(input.tenantId),
+          db.getInvoicesByTenant(input.tenantId),
+          db.getAllPlanDefinitions(),
+        ]);
+        const planMap = new Map(allPlans.map((p: any) => [p.id, p]));
+        const now = Date.now();
+        const enrichedSubs = subs.map((sub: any) => {
+          const plan = planMap.get(sub.planId) as any;
+          const start = new Date(sub.startDate).getTime();
+          const end = sub.endDate ? new Date(sub.endDate).getTime() : now;
+          const days = Math.max(0, Math.round((end - start) / 86_400_000));
+          return {
+            ...sub,
+            planName: plan?.name ?? `Plano #${sub.planId}`,
+            planSlug: plan?.slug ?? null,
+            durationDays: days,
+          };
+        });
+        const totalPaidBRL = invs
+          .filter((i: any) => i.status === 'paid')
+          .reduce((s: number, i: any) => s + (i.totalBRL ?? 0), 0);
+        const hasOverdue = invs.some((i: any) => i.status === 'overdue');
+        const clientSinceDays = tenant?.createdAt
+          ? Math.round((now - new Date(tenant.createdAt).getTime()) / 86_400_000)
+          : null;
+        return {
+          tenant: tenant ?? null,
+          subscriptions: enrichedSubs,
+          invoices: invs,
+          totalPaidBRL,
+          hasOverdue,
+          isAdimplente: !hasOverdue,
+          clientSinceDays,
+        };
+      }),
+
     // ── Planos de assinatura ──────────────────────────────────────────────────
     listPlans: platformAdminProcedure.query(async () => {
       return await db.getAllPlanDefinitions();

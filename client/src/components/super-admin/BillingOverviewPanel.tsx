@@ -23,6 +23,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
   Loader2,
   Receipt,
   CheckCircle2,
@@ -39,6 +46,11 @@ import {
   Trash2,
   BarChart3,
   Download,
+  ChevronRight,
+  Calendar,
+  History,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import {
   BarChart,
@@ -1117,8 +1129,199 @@ function PlansManagement() {
   );
 }
 
+// ─── Tenant Detail Slide ──────────────────────────────────────────────────────
+function TenantDetailSlide({ tenantId, onClose }: { tenantId: number | null; onClose: () => void }) {
+  const { data, isLoading } = (trpc as any).billing.tenantDetail.useQuery(
+    { tenantId: tenantId! },
+    { enabled: tenantId != null }
+  );
+
+  function durationLabel(days: number): string {
+    if (days < 30) return `${days} dia${days !== 1 ? "s" : ""}`;
+    if (days < 365) return `${Math.round(days / 30)} mês${Math.round(days / 30) !== 1 ? "es" : ""}`;
+    const y = Math.floor(days / 365);
+    const m = Math.round((days % 365) / 30);
+    return m > 0 ? `${y} ano${y !== 1 ? "s" : ""} e ${m} mês${m !== 1 ? "es" : ""}` : `${y} ano${y !== 1 ? "s" : ""}`;
+  }
+
+  const STATUS_SUB: Record<string, { label: string; color: string }> = {
+    active:    { label: "Ativo",     color: "bg-green-100 text-green-700" },
+    trialing:  { label: "Trial",     color: "bg-blue-100 text-blue-700" },
+    past_due:  { label: "Atrasado",  color: "bg-yellow-100 text-yellow-700" },
+    cancelled: { label: "Cancelado", color: "bg-gray-100 text-gray-500" },
+    expired:   { label: "Expirado",  color: "bg-red-100 text-red-600" },
+  };
+
+  const invoiceStatusColor: Record<string, string> = {
+    paid:      "text-green-600",
+    pending:   "text-yellow-600",
+    overdue:   "text-red-600",
+    cancelled: "text-gray-400",
+  };
+
+  return (
+    <Sheet open={tenantId != null} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent
+        side="right"
+        className="w-[min(560px,85vw)] overflow-y-auto p-0"
+      >
+        {isLoading || !data ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-[#123A63]" />
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="bg-[#123A63] px-6 py-5 text-white">
+              <SheetHeader>
+                <SheetTitle className="text-white text-lg">
+                  {data.tenant?.name ?? "—"}
+                </SheetTitle>
+                <SheetDescription className="text-blue-200 text-xs">
+                  {data.tenant?.slug}
+                </SheetDescription>
+              </SheetHeader>
+
+              {/* Status adimplente */}
+              <div className="mt-4 flex items-center gap-3">
+                {data.isAdimplente ? (
+                  <span className="inline-flex items-center gap-1.5 bg-green-500/20 text-green-200 border border-green-400/40 rounded-full px-3 py-1 text-xs font-semibold">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Adimplente
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 bg-red-500/20 text-red-200 border border-red-400/40 rounded-full px-3 py-1 text-xs font-semibold">
+                    <ShieldAlert className="h-3.5 w-3.5" /> Inadimplente
+                  </span>
+                )}
+                <span className="text-blue-200 text-xs flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Cliente há {data.clientSinceDays != null ? durationLabel(data.clientSinceDays) : "—"}
+                </span>
+              </div>
+            </div>
+
+            <div className="px-6 py-5 space-y-6">
+              {/* KPIs rápidos */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[#123A63]/5 rounded-xl p-4">
+                  <p className="text-[0.68rem] text-gray-500 uppercase tracking-wide mb-1">Total Faturado</p>
+                  <p className="text-xl font-bold text-[#123A63]">{formatBRL(data.totalPaidBRL)}</p>
+                  <p className="text-[0.65rem] text-gray-400 mt-0.5">faturas pagas</p>
+                </div>
+                <div className="bg-[#123A63]/5 rounded-xl p-4">
+                  <p className="text-[0.68rem] text-gray-500 uppercase tracking-wide mb-1">Faturas</p>
+                  <div className="flex items-end gap-2">
+                    <p className="text-xl font-bold text-[#123A63]">{data.invoices.length}</p>
+                    <p className="text-xs text-gray-500 mb-0.5">total</p>
+                  </div>
+                  <div className="flex gap-2 mt-1 text-[0.65rem]">
+                    <span className="text-green-600">{data.invoices.filter((i: any) => i.status === "paid").length} pagas</span>
+                    {data.invoices.filter((i: any) => i.status === "overdue").length > 0 && (
+                      <span className="text-red-500 font-semibold">{data.invoices.filter((i: any) => i.status === "overdue").length} vencidas</span>
+                    )}
+                    {data.invoices.filter((i: any) => i.status === "pending").length > 0 && (
+                      <span className="text-yellow-600">{data.invoices.filter((i: any) => i.status === "pending").length} pendentes</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Plano atual */}
+              {data.subscriptions.filter((s: any) => ["active","trialing"].includes(s.status)).slice(0,1).map((sub: any) => (
+                <div key={sub.id} className="border border-[#123A63]/20 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-[#123A63] uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5" /> Plano Atual
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-900">{sub.planName}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Desde {new Date(sub.startDate).toLocaleDateString("pt-BR")}
+                        {sub.endDate && ` · até ${new Date(sub.endDate).toLocaleDateString("pt-BR")}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}>
+                        {STATUS_SUB[sub.status]?.label ?? sub.status}
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">{durationLabel(sub.durationDays)} no plano</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Histórico de planos */}
+              {data.subscriptions.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                    <History className="h-3.5 w-3.5" /> Histórico de Planos
+                  </p>
+                  <div className="space-y-2">
+                    {data.subscriptions.map((sub: any, idx: number) => (
+                      <div key={sub.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-gray-50 border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-[#123A63]" : "bg-gray-300"}`} />
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{sub.planName}</p>
+                            <p className="text-xs text-gray-400">
+                              {new Date(sub.startDate).toLocaleDateString("pt-BR")}
+                              {sub.endDate ? ` → ${new Date(sub.endDate).toLocaleDateString("pt-BR")}` : " → atual"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-semibold text-gray-700">{durationLabel(sub.durationDays)}</p>
+                          <span className={`text-[0.6rem] px-1.5 py-0.5 rounded-full ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}>
+                            {STATUS_SUB[sub.status]?.label ?? sub.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Últimas faturas */}
+              {data.invoices.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                    <Receipt className="h-3.5 w-3.5" /> Últimas Faturas
+                  </p>
+                  <div className="space-y-1.5">
+                    {data.invoices.slice(0, 8).map((inv: any) => (
+                      <div key={inv.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 border border-gray-100 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-500">
+                            {inv.periodStart ? new Date(inv.periodStart).toLocaleDateString("pt-BR", { month: "short", year: "numeric" }) : `Fatura #${inv.id}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-xs font-medium ${invoiceStatusColor[inv.status] ?? "text-gray-500"}`}>
+                            {inv.status === "paid" ? "Paga" : inv.status === "pending" ? "Pendente" : inv.status === "overdue" ? "Vencida" : inv.status}
+                          </span>
+                          <span className="text-sm font-semibold text-gray-900">{formatBRL(inv.totalBRL)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {data.subscriptions.length === 0 && data.invoices.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-8">Nenhum histórico financeiro encontrado.</p>
+              )}
+            </div>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ─── Clients by Plan Report ───────────────────────────────────────────────────
 function ClientsByPlanReport({ tenants }: { tenants: any[] }) {
+  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+
   const planStats = tenants.reduce((acc: any, tenant: any) => {
     const planSlug = tenant.planSlug || "sem-plano";
     if (!acc[planSlug]) {
@@ -1138,13 +1341,18 @@ function ClientsByPlanReport({ tenants }: { tenants: any[] }) {
   );
 
   return (
+    <>
+    <TenantDetailSlide
+      tenantId={selectedTenantId}
+      onClose={() => setSelectedTenantId(null)}
+    />
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold text-gray-900">
           Distribuição de Clientes por Plano
         </h3>
         <p className="text-sm text-gray-500 mt-1">
-          Análise de tenants por plano de assinatura
+          Análise de tenants por plano de assinatura — clique em um tenant para ver detalhes financeiros
         </p>
       </div>
 
@@ -1179,9 +1387,14 @@ function ClientsByPlanReport({ tenants }: { tenants: any[] }) {
                   </p>
                   <div className="space-y-0.5 max-h-32 overflow-y-auto">
                     {stat.tenants.map((t: any) => (
-                      <p key={t.id} className="text-xs text-gray-600 truncate">
-                        • {t.name}
-                      </p>
+                      <button
+                        key={t.id}
+                        onClick={() => setSelectedTenantId(t.id)}
+                        className="w-full flex items-center justify-between text-xs text-left px-2 py-1.5 rounded-md hover:bg-[#123A63]/5 hover:text-[#123A63] transition-colors group"
+                      >
+                        <span className="truncate">• {t.name}</span>
+                        <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -1227,5 +1440,6 @@ function ClientsByPlanReport({ tenants }: { tenants: any[] }) {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
