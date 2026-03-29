@@ -2580,12 +2580,6 @@ export async function getActiveSubscription(tenantId: number) {
   return sub || null;
 }
 
-export async function getSubscriptionsByTenant(tenantId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  return await db.select().from(subscriptions).where(eq(subscriptions.tenantId, tenantId)).orderBy(desc(subscriptions.startDate));
-}
-
 export async function createSubscription(sub: InsertSubscription) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
