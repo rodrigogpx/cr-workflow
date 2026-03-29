@@ -18,7 +18,12 @@ import {
   Plus,
   Receipt,
   ChevronRight,
+  Download,
 } from "lucide-react";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend,
+} from "recharts";
 import { toast } from "sonner";
 import { PlanChangeDialog } from "./PlanChangeDialog";
 import { InvoiceCreateDialog } from "./InvoiceCreateDialog";
@@ -75,6 +80,46 @@ function UsageBar({ label, current, max, unit = "" }: { label: string; current: 
   );
 }
 
+function downloadInvoicePdf(inv: any, tenantName: string) {
+  import("jspdf").then(({ jsPDF }) => {
+    const doc = new jsPDF();
+    // Cabeçalho
+    doc.setFontSize(22);
+    doc.setTextColor(18, 58, 99); // #123A63
+    doc.text("CAC 360", 20, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text("Comprovante de Fatura", 20, 30);
+    // Linha divisória
+    doc.setDrawColor(220);
+    doc.line(20, 35, 190, 35);
+    // Dados
+    doc.setTextColor(40);
+    doc.setFontSize(11);
+    const rows = [
+      ["Tenant / Clube", tenantName],
+      ["Período", inv.periodRef ?? `${inv.periodStart ?? "—"} – ${inv.periodEnd ?? "—"}`],
+      ["Vencimento", inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("pt-BR") : "—"],
+      ["Valor", `R$ ${((inv.totalBRL ?? inv.amountCents ?? 0) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`],
+      ["Status", inv.status === "paid" ? "Pago" : inv.status === "pending" ? "Pendente" : inv.status],
+      ["Pago em", inv.paidAt ? new Date(inv.paidAt).toLocaleDateString("pt-BR") : "—"],
+    ];
+    let y = 45;
+    for (const [label, value] of rows) {
+      doc.setFont("helvetica", "bold");
+      doc.text(`${label}:`, 22, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(String(value), 75, y);
+      y += 10;
+    }
+    // Rodapé
+    doc.setFontSize(8);
+    doc.setTextColor(160);
+    doc.text(`Gerado em ${new Date().toLocaleString("pt-BR")} · CAC 360`, 20, 280);
+    doc.save(`fatura-${inv.id}-${inv.periodRef ?? "ref"}.pdf`);
+  }).catch(() => {});
+}
+
 export function TenantBillingPanel({ tenantId, tenantName }: TenantBillingPanelProps) {
   const utils = trpc.useUtils();
   const [showPlanChange, setShowPlanChange] = useState(false);
@@ -83,7 +128,7 @@ export function TenantBillingPanel({ tenantId, tenantName }: TenantBillingPanelP
   const { data: activeSub, isLoading: subLoading } = trpc.subscriptions.getActive.useQuery({ tenantId });
   const { data: subs = [] } = trpc.subscriptions.listByTenant.useQuery({ tenantId });
   const { data: invoices = [], isLoading: invLoading } = trpc.billing.invoicesByTenant.useQuery({ tenantId });
-  const { data: usageHistory = [] } = trpc.billing.usageHistory.useQuery({ tenantId, limit: 1 });
+  const { data: usageHistory = [] } = trpc.billing.usageHistory.useQuery({ tenantId, limit: 90 });
 
   const cancelMutation = trpc.subscriptions.cancel.useMutation({
     onSuccess: () => {
@@ -211,6 +256,40 @@ export function TenantBillingPanel({ tenantId, tenantName }: TenantBillingPanelP
         </Card>
       )}
 
+      {/* Gráfico de Uso Histórico (90 dias) */}
+      {usageHistory.length > 1 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-indigo-600" />
+              Uso Histórico (90 dias)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart
+                data={[...usageHistory].reverse().map((s: any) => ({
+                  data: new Date(s.snapshotDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
+                  Usuários: s.usersCount ?? 0,
+                  Clientes: s.clientsCount ?? 0,
+                  "Storage (GB)": Number(parseFloat(String(s.storageUsedGB ?? 0)).toFixed(2)),
+                }))}
+                margin={{ top: 5, right: 10, left: -15, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="data" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="Usuários" stroke="#123A63" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Clientes" stroke="#F37321" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Storage (GB)" stroke="#7c3aed" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Histórico de Faturas */}
       <Card>
         <CardHeader className="pb-3">
@@ -259,6 +338,15 @@ export function TenantBillingPanel({ tenantId, tenantName }: TenantBillingPanelP
                         Registrar Pgto
                       </Button>
                     ) : null}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs px-2 text-gray-500 hover:text-[#123A63]"
+                      title="Baixar PDF"
+                      onClick={() => downloadInvoicePdf(inv, tenantName)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))}
