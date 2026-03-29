@@ -2727,13 +2727,19 @@ export async function createClientInviteToken(
   tenantId?: number | null
 ): Promise<string> {
   const token = crypto.randomBytes(32).toString("hex"); // 64 chars
-  const expiresAt = new Date(Date.now() + INVITE_TOKEN_DAYS * 24 * 60 * 60 * 1000);
+  // ISO 8601 garante compatibilidade com postgres.js (evita problemas com Date.toString() locale)
+  const expiresAt = new Date(Date.now() + INVITE_TOKEN_DAYS * 24 * 60 * 60 * 1000).toISOString();
   // Remove token anterior do cliente (se existir) e insere novo
   await db.execute(sql`DELETE FROM "clientInviteTokens" WHERE "clientId" = ${clientId}`);
-  await db.execute(sql`
-    INSERT INTO "clientInviteTokens" ("clientId", "tenantId", "token", "expiresAt", "createdAt")
-    VALUES (${clientId}, ${tenantId ?? null}, ${token}, ${expiresAt}, now())
-  `);
+  try {
+    await db.execute(sql`
+      INSERT INTO "clientInviteTokens" ("clientId", "tenantId", "token", "expiresAt", "createdAt")
+      VALUES (${clientId}, ${tenantId ?? null}, ${token}, ${expiresAt}::timestamp, now())
+    `);
+  } catch (err: any) {
+    console.error('[createClientInviteToken] INSERT falhou:', err?.message ?? err);
+    throw err;
+  }
   return token;
 }
 
