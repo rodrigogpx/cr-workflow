@@ -386,6 +386,8 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoLongitude" varchar(50)`,
     sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
     sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "approved" boolean DEFAULT true`,
+    // sinarmCommentsHistory — tenantId necessário para filtro de segurança multi-tenant
+    sql`ALTER TABLE "sinarmCommentsHistory" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
   ];
   let ok = 0, skipped = 0;
   for (const alter of alterations) {
@@ -2800,12 +2802,13 @@ export async function createPortalSession(
   userAgent?: string
 ): Promise<string> {
   const sessionToken = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + PORTAL_SESSION_DAYS * 24 * 60 * 60 * 1000);
+  // ISO 8601 garante compatibilidade com postgres.js
+  const expiresAt = new Date(Date.now() + PORTAL_SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   await db.execute(sql`
     INSERT INTO "clientPortalSessions"
       ("clientId", "tenantId", "sessionToken", "ipAddress", "userAgent", "lastSeenAt", "expiresAt", "createdAt")
     VALUES
-      (${clientId}, ${tenantId ?? null}, ${sessionToken}, ${ipAddress ?? null}, ${userAgent ?? null}, now(), ${expiresAt}, now())
+      (${clientId}, ${tenantId ?? null}, ${sessionToken}, ${ipAddress ?? null}, ${userAgent ?? null}, now(), ${expiresAt}::timestamp, now())
   `);
   return sessionToken;
 }

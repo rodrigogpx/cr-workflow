@@ -108,15 +108,17 @@ async function startServer() {
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-    // Content-Security-Policy: restritivo mas compatível com TailwindCSS inline styles e imagens/blobs de documentos
+    // Content-Security-Policy: compatível com Vite SPA + analytics opcional + Google Fonts
+    // 'unsafe-inline' em script-src é necessário para o snippet de analytics do index.html
+    // e para chunks do Vite que injetam inline em alguns builds
     res.setHeader(
       "Content-Security-Policy",
       [
         "default-src 'self'",
-        "script-src 'self'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
-        "font-src 'self' data:",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "img-src 'self' data: blob: https:",
+        "font-src 'self' data: https://fonts.gstatic.com",
         "connect-src 'self'",
         "frame-src 'none'",
         "object-src 'none'",
