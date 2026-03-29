@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -1554,74 +1555,124 @@ function ClientsByPlanReport() {
         </Card>
       </div>
 
-      {/* ── CASCADING PANELS ── */}
-
-      {/* Backdrop — fecha tudo ao clicar na área exposta do main */}
-      {slide1Open && (
-        <div
-          className="fixed inset-0 bg-black/25 transition-opacity"
-          style={{ zIndex: 49 }}
-          onClick={closeAll}
-        />
-      )}
-
-      {/* Slide 1 — Lista de Tenants do Plano (SLIDE1_W = 60vw) */}
-      <div
-        className="fixed top-0 right-0 h-screen bg-white overflow-hidden"
-        style={{
-          width: `${SLIDE1_W}vw`,
-          zIndex: 50,
-          transform: slide1Open ? "translateX(0)" : "translateX(110%)",
-          transition: "transform 0.32s cubic-bezier(0.4, 0, 0.2, 1)",
-          boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
-        }}
-      >
-        {/* Faixa exposta: quando Slide 2 está aberto, mostra a borda esquerda de Slide 1
-            com overlay escuro e indicador de "voltar" para fechar Slide 2 */}
-        {slide2Open && (
+      {/* ── CASCADING PANELS — renderizados via portal no document.body
+           para garantir position:fixed relativo ao viewport, independente
+           de qualquer ancestor com transform/overflow/contain ── */}
+      {typeof window !== "undefined" && createPortal(
+        <>
+          {/* Backdrop */}
           <div
-            className="absolute inset-y-0 left-0 z-10 cursor-pointer group"
+            onClick={closeAll}
             style={{
-              width: `${SLIDE1_W - SLIDE2_W}vw`,
-              background: "rgba(0,0,0,0.18)",
-              backdropFilter: "blur(1px)",
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.35)",
+              zIndex: 1000,
+              opacity: slide1Open ? 1 : 0,
+              pointerEvents: slide1Open ? "auto" : "none",
+              transition: "opacity 0.3s ease",
             }}
-            onClick={closeSlide2}
-          >
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-              <div className="bg-white/20 rounded-full p-2">
-                <ChevronRight className="h-5 w-5 text-white rotate-180" />
-              </div>
-              <span className="text-[0.65rem] text-white font-medium text-center px-2 leading-tight">
-                Voltar à<br/>lista
-              </span>
-            </div>
-          </div>
-        )}
-        <PlanTenantsContent
-          plan={selectedPlan}
-          onClose={closeAll}
-          onSelectTenant={(id) => setSelectedTenantId(id)}
-          hasDeeper={slide2Open}
-        />
-      </div>
+          />
 
-      {/* Slide 2 — Detalhe Financeiro do Tenant (SLIDE2_W = 45vw) */}
-      <div
-        className="fixed top-0 right-0 h-screen bg-white overflow-hidden"
-        style={{
-          width: `${SLIDE2_W}vw`,
-          zIndex: 51,
-          transform: slide2Open ? "translateX(0)" : "translateX(110%)",
-          transition: "transform 0.32s cubic-bezier(0.4, 0, 0.2, 1)",
-          boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
-        }}
-      >
-        <TenantDetailContent
-          tenantId={selectedTenantId}
-          onClose={closeSlide2}
-        />
-      </div>
+          {/* ── Slide 1 — Lista de tenants (60 vw) ── */}
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              height: "100vh",
+              width: `${SLIDE1_W}vw`,
+              zIndex: 1001,
+              background: "white",
+              overflow: "hidden",
+              boxShadow: "-6px 0 32px rgba(0,0,0,0.22)",
+              transform: slide1Open ? "translateX(0)" : "translateX(105%)",
+              transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+            }}
+          >
+            {/* Strip overlay: aparece quando Slide2 está aberto,
+                cobrindo os 15vw visíveis com overlay clicável para voltar */}
+            <div
+              onClick={slide2Open ? closeSlide2 : undefined}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: `${SLIDE1_W - SLIDE2_W}vw`,
+                height: "100%",
+                zIndex: 10,
+                background: slide2Open ? "rgba(0,0,0,0.32)" : "transparent",
+                backdropFilter: slide2Open ? "blur(1px)" : "none",
+                cursor: slide2Open ? "pointer" : "default",
+                pointerEvents: slide2Open ? "auto" : "none",
+                transition: "background 0.3s",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+              }}
+            >
+              {slide2Open && (
+                <>
+                  <div style={{
+                    background: "rgba(255,255,255,0.18)",
+                    borderRadius: "50%",
+                    padding: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <ChevronRight
+                      style={{ width: 20, height: 20, color: "white", transform: "rotate(180deg)" }}
+                    />
+                  </div>
+                  <span style={{
+                    fontSize: "0.6rem",
+                    color: "white",
+                    fontWeight: 600,
+                    textAlign: "center",
+                    lineHeight: 1.4,
+                    letterSpacing: "0.02em",
+                  }}>
+                    Voltar à<br />lista
+                  </span>
+                </>
+              )}
+            </div>
+
+            <PlanTenantsContent
+              plan={selectedPlan}
+              onClose={closeAll}
+              onSelectTenant={(id) => setSelectedTenantId(id)}
+              hasDeeper={slide2Open}
+            />
+          </div>
+
+          {/* ── Slide 2 — Detalhe financeiro do tenant (45 vw) ── */}
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              height: "100vh",
+              width: `${SLIDE2_W}vw`,
+              zIndex: 1002,
+              background: "white",
+              overflow: "hidden",
+              boxShadow: "-6px 0 32px rgba(0,0,0,0.22)",
+              transform: slide2Open ? "translateX(0)" : "translateX(105%)",
+              transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+            }}
+          >
+            <TenantDetailContent
+              tenantId={selectedTenantId}
+              onClose={closeSlide2}
+            />
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }
