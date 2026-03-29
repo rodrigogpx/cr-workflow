@@ -619,9 +619,11 @@ export const appRouter = router({
             // Logo já está salva como base64 no banco
 
             // Variável {{link_portal}} — link de ativação do portal do cliente
+            // DOMAIN pode vir como "hml.cac360.com.br" ou "https://hml.cac360.com.br" — normalizar
+            const _rawDomain1 = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
             const portalBaseUrl = ctx.tenant?.domain
-              ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
-              : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+              ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
+              : (_rawDomain1 ? `https://${_rawDomain1}` : process.env.APP_URL || '');
 
             let portalLink = '';
             try {
@@ -865,9 +867,12 @@ export const appRouter = router({
         const newToken = await db.regenerateClientInviteToken(activeDb, input.clientId, ctx.tenant?.id);
 
         // Montar link do portal
+        // DOMAIN pode vir com ou sem protocolo — normalizar e não adicionar slug do tenant
+        // (o portal vive na raiz do domínio, não em subdomínio por tenant)
+        const _rawDomain2 = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
         const portalBaseUrl = ctx.tenant?.domain
-          ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
-          : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+          ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
+          : (_rawDomain2 ? `https://${_rawDomain2}` : process.env.APP_URL || '');
         const portalLink = `${portalBaseUrl}/portal/acesso?t=${newToken}`;
 
         // Enviar email com o link
