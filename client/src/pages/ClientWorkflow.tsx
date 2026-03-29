@@ -1,5 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { PendingDocumentsQueue } from "@/components/PendingDocumentsQueue";
 import { useAuth } from "@/_core/hooks/useAuth";
 import JSZip from 'jszip';
 import { Button } from "@/components/ui/button";
@@ -755,6 +756,14 @@ export default function ClientWorkflow() {
 
       <main className="container py-8 max-w-6xl">
         <div className="space-y-8 rounded-2xl border border-white/10 bg-background/95 px-4 py-6 sm:px-6 sm:py-7 shadow-xl backdrop-blur-sm">
+          {/* Fila de triagem de documentos enviados pelo portal */}
+          <PendingDocumentsQueue
+            clientId={Number(clientId)}
+            subTasks={(orderedWorkflow ?? []).flatMap((step: any) =>
+              (step.subTasks ?? []).map((st: any) => ({ id: st.id, label: st.label }))
+            )}
+          />
+
           {/* Card de Progresso Geral */}
           <Card className="mb-6 shadow-lg border-0">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">

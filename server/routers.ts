@@ -4078,7 +4078,111 @@ export const appRouter = router({
         return await db.getUsageSnapshotsByTenant(input.tenantId, input.limit);
       }),
   }),
+
+  // ── Triagem de documentos enviados pelo portal do cliente ──────────────────
+  pendingDocuments: router({
+    /** Lista documentos pendentes de triagem (filtrável por clientId) */
+    list: protectedProcedure
+      .input(z.object({ clientId: z.number().int().optional() }))
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        return await db.getPendingDocumentsForTriage(
+          ctx.db,
+          input.clientId ?? null,
+          ctx.tenant?.id ?? null
+        );
+      }),
+
+    /** Aprova documento — notifica cliente por email */
+    approve: protectedProcedure
+      .input(z.object({ docId: z.number().int() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        await db.updatePendingDocumentStatus(ctx.db, input.docId, "approved");
+        notifyClientOfDocumentDecision(ctx, input.docId, "approved").catch(() => {});
+        return { success: true };
+      }),
+
+    /** Rejeita documento com motivo opcional — notifica cliente */
+    reject: protectedProcedure
+      .input(z.object({ docId: z.number().int(), reason: z.string().optional() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        await db.updatePendingDocumentStatus(ctx.db, input.docId, "rejected", {
+          rejectionReason: input.reason,
+        });
+        notifyClientOfDocumentDecision(ctx, input.docId, "rejected", input.reason).catch(() => {});
+        return { success: true };
+      }),
+
+    /** Vincula documento a uma subTarefa existente (insere na juntada oficial) */
+    linkToSubTask: protectedProcedure
+      .input(z.object({
+        docId: z.number().int(),
+        subTaskId: z.number().int(),
+        fileName: z.string(),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        // Buscar dados do documento pendente
+        const docRows = await db.getPendingDocumentsForTriage(ctx.db, undefined, undefined);
+        const doc = docRows.find((d: any) => d.id === input.docId);
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+
+        // Inserir na juntada oficial
+        await ctx.db.execute(sql`
+          INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileUrl", "mimeType", "fileSize", "uploadedAt")
+          VALUES (${input.subTaskId}, ${doc.clientId}, ${input.fileName}, ${doc.fileUrl},
+                  ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, now())
+        `);
+
+        // Marcar como vinculado
+        await db.updatePendingDocumentStatus(ctx.db, input.docId, "linked", {
+          linkedSubTaskId: input.subTaskId,
+        });
+
+        return { success: true };
+      }),
+  }),
 });
+
+/** Notifica cliente sobre decisão de triagem do documento */
+async function notifyClientOfDocumentDecision(
+  ctx: TrpcContext,
+  docId: number,
+  decision: "approved" | "rejected",
+  reason?: string
+): Promise<void> {
+  try {
+    const docRows = await ctx.db.execute(sql`
+      SELECT pd.*, c.name AS "clientName", c.email AS "clientEmail", pd."fileName"
+      FROM "clientPendingDocuments" pd
+      INNER JOIN "clients" c ON c.id = pd."clientId"
+      WHERE pd.id = ${docId} LIMIT 1
+    `);
+    const arr = Array.isArray(docRows) ? docRows : (docRows as any).rows ?? [];
+    if (!arr[0]?.clientEmail) return;
+    const { clientName, clientEmail, fileName } = arr[0];
+    const isApproved = decision === "approved";
+    await sendEmail({
+      to: clientEmail,
+      subject: isApproved ? `[CAC 360] Documento aprovado!` : `[CAC 360] Documento não aprovado`,
+      html: isApproved
+        ? `<div style="font-family:sans-serif;max-width:600px">
+            <h3 style="color:#16a34a">Documento aprovado! ✓</h3>
+            <p>Olá <strong>${clientName}</strong>,</p>
+            <p>Seu documento <strong>${fileName ?? ""}</strong> foi aprovado pela equipe do clube.</p>
+            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
+          </div>`
+        : `<div style="font-family:sans-serif;max-width:600px">
+            <h3 style="color:#dc2626">Documento não aprovado</h3>
+            <p>Olá <strong>${clientName}</strong>,</p>
+            <p>Seu documento <strong>${fileName ?? ""}</strong> não foi aprovado.</p>
+            ${reason ? `<p><strong>Motivo:</strong> ${reason}</p>` : ""}
+            <p>Acesse o portal e envie o documento corrigido.</p>
+            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
+          </div>`,
+    } as any).catch((e: any) => console.error("[PendingDocs] Email cliente:", e));
+  } catch (e) {
+    console.error("[PendingDocs] notifyClientOfDocumentDecision:", e);
+  }
+}
 
 export type AppRouter = typeof appRouter;
 
