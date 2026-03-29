@@ -4077,6 +4077,69 @@ export const appRouter = router({
       .query(async ({ input }: { input: any }) => {
         return await db.getUsageSnapshotsByTenant(input.tenantId, input.limit);
       }),
+
+    // ── Planos de assinatura ──────────────────────────────────────────────────
+    listPlans: platformAdminProcedure.query(async () => {
+      return await db.getAllPlanDefinitions();
+    }),
+
+    createPlan: platformAdminProcedure
+      .input(z.object({
+        slug: z.string().min(1).max(50),
+        name: z.string().min(1).max(100),
+        description: z.string().optional(),
+        priceBRL: z.number().int().min(0),
+        billingCycle: z.enum(["monthly", "yearly", "lifetime"]).default("monthly"),
+        maxUsers: z.number().int().min(1).default(5),
+        maxClients: z.number().int().min(1).default(100),
+        maxStorageGB: z.number().int().min(1).default(10),
+        features: z.array(z.string()).default([]),
+        isPublic: z.boolean().default(true),
+        displayOrder: z.number().int().default(0),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        return await db.createPlanDefinition({
+          slug: input.slug,
+          name: input.name,
+          description: input.description ?? null,
+          priceBRL: input.priceBRL,
+          billingCycle: input.billingCycle,
+          maxUsers: input.maxUsers,
+          maxClients: input.maxClients,
+          maxStorageGB: input.maxStorageGB,
+          features: input.features,
+          isActive: true,
+          isPublic: input.isPublic,
+          displayOrder: input.displayOrder,
+        });
+      }),
+
+    updatePlan: platformAdminProcedure
+      .input(z.object({
+        id: z.number().int(),
+        name: z.string().min(1).max(100).optional(),
+        description: z.string().optional(),
+        priceBRL: z.number().int().min(0).optional(),
+        billingCycle: z.enum(["monthly", "yearly", "lifetime"]).optional(),
+        maxUsers: z.number().int().min(1).optional(),
+        maxClients: z.number().int().min(1).optional(),
+        maxStorageGB: z.number().int().min(1).optional(),
+        features: z.array(z.string()).optional(),
+        isPublic: z.boolean().optional(),
+        displayOrder: z.number().int().optional(),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        const { id, ...updates } = input;
+        await db.updatePlanDefinition(id, updates);
+        return { success: true };
+      }),
+
+    deletePlan: platformAdminProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(async ({ input }: { input: any }) => {
+        await db.deletePlanDefinition(input.id);
+        return { success: true };
+      }),
   }),
 
   // ── Triagem de documentos enviados pelo portal do cliente ──────────────────
