@@ -49,6 +49,8 @@ import {
   lgpdConsents,
   InsertLgpdConsent,
   clientPortalActivityLog,
+  clientPendingDocuments,
+  leads,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
@@ -2921,6 +2923,78 @@ export async function updateClientFromPortal(
   await db.update(clients).set(setData).where(whereClause);
 }
 
+// ============================================
+// BILLING — Funções para cron jobs
+// ============================================
+
+/** Subscriptions ativas com renovação em até dueInDays dias */
+export async function getActiveSubscriptionsDueSoon(dueInDays: number): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const cutoff = new Date(Date.now() + dueInDays * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const result = await db.execute(sql`
+    SELECT s.*, t.name AS "tenantName", t.id AS "tenantIdVal"
+    FROM "subscriptions" s
+    INNER JOIN "tenants" t ON t.id = s."tenantId"
+    WHERE s.status = 'active'
+      AND s."currentPeriodEnd" <= ${cutoff}
+      AND s."currentPeriodEnd" >= ${now}
+  `);
+  return extractRows(result);
+}
+
+/** Subscriptions ativas com currentPeriodEnd no passado (inadimplentes) */
+export async function getExpiredSubscriptions(): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const now = new Date();
+  const result = await db.execute(sql`
+    SELECT s.*, t.name AS "tenantName", t.id AS "tenantIdVal"
+    FROM "subscriptions" s
+    INNER JOIN "tenants" t ON t.id = s."tenantId"
+    WHERE s.status = 'active' AND s."currentPeriodEnd" < ${now}
+  `);
+  return extractRows(result);
+}
+
+/** Cria fatura se ainda não existir para o mês de referência. Retorna true se criada. */
+export async function createInvoiceIfNotExists(
+  tenantId: number,
+  subscriptionId: number,
+  periodRef: string,
+  amountCents: number
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const existing = await db.execute(sql`
+    SELECT id FROM "invoices"
+    WHERE "tenantId" = ${tenantId}
+      AND "subscriptionId" = ${subscriptionId}
+      AND "periodRef" = ${periodRef}
+    LIMIT 1
+  `);
+  if (extractRows(existing).length > 0) return false;
+  await db.execute(sql`
+    INSERT INTO "invoices" ("tenantId", "subscriptionId", "periodRef", "amountCents", "status", "createdAt")
+    VALUES (${tenantId}, ${subscriptionId}, ${periodRef}, ${amountCents}, 'pending', now())
+  `);
+  return true;
+}
+
+/** Suspende tenant (isActive = false) e subscription (status = suspended) */
+export async function suspendTenantSubscription(
+  tenantId: number,
+  subscriptionId: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await Promise.all([
+    db.execute(sql`UPDATE "tenants" SET "isActive" = false WHERE id = ${tenantId}`),
+    db.execute(sql`UPDATE "subscriptions" SET status = 'suspended' WHERE id = ${subscriptionId}`),
+  ]);
+}
+
 /** Regenera token de convite (reenvio manual pelo operador) */
 export async function regenerateClientInviteToken(
   db: ReturnType<typeof drizzle>,
@@ -2928,4 +3002,143 @@ export async function regenerateClientInviteToken(
   tenantId?: number | null
 ): Promise<string> {
   return createClientInviteToken(db, clientId, tenantId);
+}
+
+// ============================================
+// PORTAL — Documentos Pendentes de Triagem
+// ============================================
+
+/** Cria registro de documento pendente enviado pelo cliente via portal */
+export async function createPendingDocument(
+  db: ReturnType<typeof drizzle>,
+  data: {
+    clientId: number;
+    tenantId?: number | null;
+    fileName: string;
+    fileUrl: string;
+    mimeType?: string | null;
+    fileSize?: number | null;
+  }
+): Promise<number> {
+  const result = await db.execute(sql`
+    INSERT INTO "clientPendingDocuments"
+      ("clientId", "tenantId", "fileName", "fileUrl", "mimeType", "fileSize", "status", "uploadedAt", "createdAt")
+    VALUES
+      (${data.clientId}, ${data.tenantId ?? null}, ${data.fileName}, ${data.fileUrl},
+       ${data.mimeType ?? null}, ${data.fileSize ?? null}, 'pending', now(), now())
+    RETURNING id
+  `);
+  return extractRows(result)[0]?.id ?? 0;
+}
+
+/** Lista documentos enviados por um cliente (para o próprio cliente ver no portal) */
+export async function getPendingDocumentsByClient(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId?: number | null
+): Promise<any[]> {
+  const result = await db.execute(sql`
+    SELECT * FROM "clientPendingDocuments"
+    WHERE "clientId" = ${clientId}
+    ${tenantId != null ? sql`AND "tenantId" = ${tenantId}` : sql``}
+    ORDER BY "uploadedAt" DESC
+  `);
+  return extractRows(result);
+}
+
+/** Lista documentos pendentes de triagem de um tenant (para operador) */
+export async function getPendingDocumentsForTriage(
+  db: ReturnType<typeof drizzle>,
+  clientId?: number | null,
+  tenantId?: number | null
+): Promise<any[]> {
+  const result = await db.execute(sql`
+    SELECT pd.*, c.name AS "clientName", c.email AS "clientEmail"
+    FROM "clientPendingDocuments" pd
+    INNER JOIN "clients" c ON c.id = pd."clientId"
+    WHERE pd.status = 'pending'
+    ${clientId != null ? sql`AND pd."clientId" = ${clientId}` : sql``}
+    ${tenantId != null ? sql`AND pd."tenantId" = ${tenantId}` : sql``}
+    ORDER BY pd."uploadedAt" ASC
+  `);
+  return extractRows(result);
+}
+
+/** Atualiza status de documento pendente após triagem */
+export async function updatePendingDocumentStatus(
+  db: ReturnType<typeof drizzle>,
+  docId: number,
+  status: "approved" | "rejected" | "linked",
+  opts?: { linkedSubTaskId?: number; rejectionReason?: string }
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE "clientPendingDocuments"
+    SET status = ${status},
+        "reviewedAt" = now(),
+        "linkedSubTaskId" = ${opts?.linkedSubTaskId ?? null},
+        "rejectionReason" = ${opts?.rejectionReason ?? null}
+    WHERE id = ${docId}
+  `);
+}
+
+// ============================================
+// MARKETING — Leads
+// ============================================
+
+/** Salva lead capturado pelo formulário público da landing page */
+export async function createLead(data: {
+  name: string;
+  clubName?: string;
+  email: string;
+  whatsapp?: string;
+  message?: string;
+  ipAddress?: string;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.execute(sql`
+    INSERT INTO "leads" ("name", "clubName", "email", "whatsapp", "message", "status", "source", "ipAddress", "createdAt", "updatedAt")
+    VALUES (${data.name}, ${data.clubName ?? null}, ${data.email}, ${data.whatsapp ?? null},
+            ${data.message ?? null}, 'new', 'landing', ${data.ipAddress ?? null}, now(), now())
+    RETURNING id
+  `);
+  return extractRows(result)[0]?.id ?? 0;
+}
+
+/** Garante que as tabelas de portal e leads existem (idempotente) */
+export async function ensurePortalAndMarketingTables(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "clientPendingDocuments" (
+      id SERIAL PRIMARY KEY,
+      "clientId" INTEGER NOT NULL,
+      "tenantId" INTEGER,
+      "fileName" VARCHAR(255) NOT NULL,
+      "fileUrl" TEXT NOT NULL,
+      "mimeType" VARCHAR(100),
+      "fileSize" INTEGER,
+      "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
+      "linkedSubTaskId" INTEGER,
+      "rejectionReason" TEXT,
+      "uploadedAt" TIMESTAMP NOT NULL DEFAULT now(),
+      "reviewedAt" TIMESTAMP,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "leads" (
+      id SERIAL PRIMARY KEY,
+      "name" VARCHAR(255) NOT NULL,
+      "clubName" VARCHAR(255),
+      "email" VARCHAR(320) NOT NULL,
+      "whatsapp" VARCHAR(20),
+      "message" TEXT,
+      "status" VARCHAR(30) NOT NULL DEFAULT 'new',
+      "source" VARCHAR(50) DEFAULT 'landing',
+      "ipAddress" VARCHAR(45),
+      "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
 }

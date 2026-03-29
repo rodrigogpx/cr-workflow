@@ -902,3 +902,53 @@ export const clientPortalActivityLog = pgTable("clientPortalActivityLog", {
 });
 
 export type ClientPortalActivity = typeof clientPortalActivityLog.$inferSelect;
+
+/**
+ * ============================================
+ * Portal do Cliente — Documentos Pendentes de Triagem
+ * Arquivos enviados pelo cliente aguardando validação do operador
+ * ============================================
+ */
+export const clientPendingDocuments = pgTable("clientPendingDocuments", {
+  id: serial("id").primaryKey(),
+  clientId: integer("clientId").notNull(),
+  tenantId: integer("tenantId"),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  mimeType: varchar("mimeType", { length: 100 }),
+  fileSize: integer("fileSize"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  // pending | approved | rejected | linked
+  linkedSubTaskId: integer("linkedSubTaskId"),
+  rejectionReason: text("rejectionReason"),
+  uploadedAt: timestamp("uploadedAt", { withTimezone: false }).defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt", { withTimezone: false }),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type ClientPendingDocument = typeof clientPendingDocuments.$inferSelect;
+export type InsertClientPendingDocument = typeof clientPendingDocuments.$inferInsert;
+
+/**
+ * ============================================
+ * Marketing — Leads de demonstração
+ * Capturados pelo formulário público da landing page
+ * ============================================
+ */
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  clubName: varchar("clubName", { length: 255 }),
+  email: varchar("email", { length: 320 }).notNull(),
+  whatsapp: varchar("whatsapp", { length: 20 }),
+  message: text("message"),
+  status: varchar("status", { length: 30 }).notNull().default("new"),
+  // new | contacted | demo_scheduled | converted | lost
+  source: varchar("source", { length: 50 }).default("landing"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = typeof leads.$inferInsert;

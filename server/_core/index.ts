@@ -14,6 +14,8 @@ import { authenticatedFileServing } from "./fileAuth";
 import { installRouter } from "../install/router";
 import { ensureMissingTables } from "../ensure-tables";
 import { tenantApiRouter } from "./tenantApi";
+import { startCronJobs } from "../cron";
+import { ensurePortalAndMarketingTables, createLead } from "../db";
 
 // SECURITY: Simple in-memory rate limiter for auth endpoints (no external deps)
 const _rateLimitStore = new Map<string, { count: number; resetAt: number }>();
@@ -71,6 +73,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   // Ensure critical tables exist (migration fix)
   await ensureMissingTables();
+  await ensurePortalAndMarketingTables();
 
   const app = express();
   const server = createServer(app);
@@ -165,6 +168,48 @@ async function startServer() {
   // Tenant Management API (REST)
   app.use("/api/tenants", tenantApiRouter);
 
+  // Rota pública — captura de leads do formulário de demonstração (landing page)
+  app.post("/api/public/leads", async (req: Request, res: Response) => {
+    try {
+      const { name, clubName, email, whatsapp, message } = req.body ?? {};
+      if (!name || !email) {
+        return res.status(400).json({ error: "Nome e email são obrigatórios." });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
+        return res.status(400).json({ error: "Email inválido." });
+      }
+      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+        ?? req.socket.remoteAddress ?? undefined;
+      const leadId = await createLead({ name, clubName, email, whatsapp, message, ipAddress: ip });
+
+      // Notificar admin por email (fire-and-forget)
+      const adminEmail = process.env.ADMIN_EMAIL ?? process.env.SMTP_USER;
+      if (adminEmail) {
+        const { sendEmail } = await import("../emailService");
+        sendEmail({
+          to: adminEmail,
+          subject: `[CAC 360] Novo lead: ${name} (${clubName ?? "sem clube"})`,
+          html: `<div style="font-family:sans-serif;max-width:600px">
+            <h3 style="color:#123A63">Novo lead pela landing page</h3>
+            <table style="border-collapse:collapse;width:100%">
+              <tr><td style="padding:4px 8px;font-weight:bold">Nome</td><td>${name}</td></tr>
+              <tr><td style="padding:4px 8px;font-weight:bold">Clube</td><td>${clubName ?? "—"}</td></tr>
+              <tr><td style="padding:4px 8px;font-weight:bold">Email</td><td>${email}</td></tr>
+              <tr><td style="padding:4px 8px;font-weight:bold">WhatsApp</td><td>${whatsapp ?? "—"}</td></tr>
+              <tr><td style="padding:4px 8px;font-weight:bold">Mensagem</td><td>${message ?? "—"}</td></tr>
+            </table>
+            <p style="color:#888;font-size:12px">Lead #${leadId} — ${new Date().toLocaleString("pt-BR")}</p>
+          </div>`,
+        } as any).catch((e: any) => console.error("[Leads] Email admin:", e));
+      }
+
+      return res.json({ success: true, leadId });
+    } catch (err) {
+      console.error("[Leads] Erro ao salvar lead:", err);
+      return res.status(500).json({ error: "Erro ao processar solicitação." });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",
@@ -189,6 +234,7 @@ async function startServer() {
 
   server.listen(port, "0.0.0.0", () => {
     // Server running
+    startCronJobs();
   });
 }
 

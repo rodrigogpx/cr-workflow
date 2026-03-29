@@ -581,4 +581,117 @@ export function registerPortalRoutes(app: Express) {
       return res.status(500).json({ error: "Erro ao buscar documentos." });
     }
   });
+
+  // ─── Upload de documento pelo cliente ───────────────────────────────────────
+  // POST /api/portal/documentos/upload
+  app.post("/api/portal/documentos/upload", requirePortalSession, async (req: Request, res: Response) => {
+    const { client, tenantDb, tenantId } = res.locals as any;
+    try {
+      const { fileName, fileData, mimeType, fileSize } = req.body ?? {};
+      if (!fileName || !fileData) {
+        return res.status(400).json({ error: "fileName e fileData são obrigatórios." });
+      }
+
+      const ALLOWED_MIMES = [
+        "application/pdf", "image/jpeg", "image/png", "image/webp",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+      if (mimeType && !ALLOWED_MIMES.includes(mimeType)) {
+        return res.status(400).json({ error: "Tipo de arquivo não permitido." });
+      }
+      if (fileSize && fileSize > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "Arquivo muito grande. Máximo: 10 MB." });
+      }
+
+      const pathMod = await import("path");
+      const fsMod = await import("fs/promises");
+      const { getDocumentsBaseDir } = await import("../fileStorage");
+
+      const baseDir = getDocumentsBaseDir();
+      const clientDir = pathMod.join(baseDir, "portal", String(client.id));
+      await fsMod.mkdir(clientDir, { recursive: true });
+
+      const ext = (fileName.split(".").pop() ?? "bin").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10);
+      const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const filePath = pathMod.join(clientDir, uniqueName);
+
+      const base64 = fileData.includes(",") ? fileData.split(",")[1] : fileData;
+      await fsMod.writeFile(filePath, Buffer.from(base64, "base64"));
+
+      const relativeUrl = `/documents/portal/${client.id}/${uniqueName}`;
+      const activeDb = tenantDb ?? tenantDb;
+
+      const pendingDocId = await db.createPendingDocument(activeDb, {
+        clientId: client.id,
+        tenantId: tenantId ?? null,
+        fileName,
+        fileUrl: relativeUrl,
+        mimeType: mimeType ?? null,
+        fileSize: fileSize ?? null,
+      });
+
+      await db.logPortalActivity(activeDb, client.id, tenantId, "document_upload", `Arquivo: ${fileName}`);
+
+      // Notificar operador (fire-and-forget)
+      notifyOperatorOfUpload(activeDb, client.id, tenantId ?? null, fileName).catch(() => {});
+
+      return res.json({ success: true, pendingDocId, fileUrl: relativeUrl });
+    } catch (err) {
+      console.error("[Portal] Erro no upload:", err);
+      return res.status(500).json({ error: "Erro ao salvar documento." });
+    }
+  });
+
+  // GET /api/portal/documentos/fila — documentos enviados pelo cliente com status de triagem
+  app.get("/api/portal/documentos/fila", requirePortalSession, async (req: Request, res: Response) => {
+    const { client, tenantDb, tenantId } = res.locals as any;
+    try {
+      const docs = await db.getPendingDocumentsByClient(tenantDb ?? tenantDb, client.id, tenantId);
+      return res.json({ documents: docs });
+    } catch (err) {
+      console.error("[Portal] Erro ao listar fila:", err);
+      return res.status(500).json({ error: "Erro ao buscar documentos." });
+    }
+  });
+}
+
+// ─── Notificação ao operador quando cliente envia documento ──────────────────
+async function notifyOperatorOfUpload(
+  tenantDb: any,
+  clientId: number,
+  tenantId: number | null,
+  fileName: string
+): Promise<void> {
+  try {
+    const { sql } = await import("drizzle-orm");
+    const opRows = await tenantDb.execute(sql`
+      SELECT u.email, u.name AS "operatorName", c.name AS "clientName", c.email AS "clientEmail"
+      FROM "users" u
+      INNER JOIN "clients" c ON c."operatorId" = u.id
+      WHERE c.id = ${clientId}
+      LIMIT 1
+    `);
+    const arr = Array.isArray(opRows) ? opRows : (opRows as any).rows ?? [];
+    if (!arr[0]?.email) return;
+    const { email, operatorName, clientName } = arr[0];
+    const { sendEmail } = await import("../emailService");
+    await sendEmail({
+      to: email,
+      subject: `[CAC 360] Novo documento enviado pelo cliente`,
+      html: `<div style="font-family:sans-serif;max-width:600px">
+        <h3 style="color:#7c3aed">Novo documento para triagem</h3>
+        <p>Olá <strong>${operatorName ?? ""}</strong>,</p>
+        <p>O cliente <strong>${clientName}</strong> enviou o arquivo
+           <strong>${fileName}</strong> pelo portal e aguarda triagem.</p>
+        <p><a href="/client/${clientId}"
+           style="background:#7c3aed;color:#fff;padding:8px 16px;border-radius:4px;text-decoration:none">
+           Abrir workflow
+        </a></p>
+        <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
+      </div>`,
+    } as any).catch((e: any) => console.error("[Portal] Email op upload:", e));
+  } catch (e) {
+    console.error("[Portal] notifyOperatorOfUpload:", e);
+  }
 }
