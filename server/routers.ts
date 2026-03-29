@@ -4083,6 +4083,31 @@ export const appRouter = router({
         return await db.getUsageSnapshotsByTenant(input.tenantId, input.limit);
       }),
 
+    /** Lista tenants enriquecidos com plano ativo (para relatórios) */
+    tenantsWithPlans: platformAdminProcedure.query(async () => {
+      const platformDb = await db.getDb();
+      if (!platformDb) return [];
+      const rows = await platformDb.execute(sql`
+        SELECT t.*,
+               pd.name  AS "planName",
+               pd.slug  AS "planSlug",
+               s.status AS "subStatus"
+        FROM "tenants" t
+        LEFT JOIN LATERAL (
+          SELECT s2.* FROM "subscriptions" s2
+          WHERE s2."tenantId" = t.id
+          ORDER BY
+            CASE WHEN s2.status IN ('active','trialing') THEN 0 ELSE 1 END,
+            s2."startDate" DESC
+          LIMIT 1
+        ) s ON true
+        LEFT JOIN "planDefinitions" pd ON pd.id = s."planId"
+        WHERE t."isActive" = true
+        ORDER BY t."createdAt" DESC
+      `);
+      return (Array.isArray(rows) ? rows : (rows as any).rows ?? []) as any[];
+    }),
+
     /** Detalhamento financeiro completo de um tenant */
     tenantDetail: platformAdminProcedure
       .input(z.object({ tenantId: z.number().int() }))

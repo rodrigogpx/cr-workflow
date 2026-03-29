@@ -758,7 +758,7 @@ export function BillingOverviewPanel() {
 
       {activeTab === "plans" && <PlansManagement />}
       {activeTab === "reports" && (
-        <ClientsByPlanReport tenants={tenants} />
+        <ClientsByPlanReport />
       )}
 
       {/* Mark Paid Dialog */}
@@ -1163,7 +1163,7 @@ function TenantDetailSlide({ tenantId, onClose }: { tenantId: number | null; onC
     <Sheet open={tenantId != null} onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent
         side="right"
-        className="w-[min(560px,85vw)] overflow-y-auto p-0"
+        className="w-[min(560px,70vw)] overflow-y-auto p-0"
       >
         {isLoading || !data ? (
           <div className="flex items-center justify-center h-full">
@@ -1318,18 +1318,88 @@ function TenantDetailSlide({ tenantId, onClose }: { tenantId: number | null; onC
   );
 }
 
+// ─── Plan Tenants Slide (Nível 1 — 85vw) ─────────────────────────────────────
+function PlanTenantsSlide({
+  plan,
+  onClose,
+  onSelectTenant,
+}: {
+  plan: { planName: string; planSlug: string; count: number; tenants: any[] } | null;
+  onClose: () => void;
+  onSelectTenant: (id: number) => void;
+}) {
+  const SUB_STATUS: Record<string, { label: string; color: string }> = {
+    active:    { label: "Ativo",     color: "bg-green-100 text-green-700" },
+    trialing:  { label: "Trial",     color: "bg-blue-100 text-blue-700" },
+    past_due:  { label: "Atrasado",  color: "bg-yellow-100 text-yellow-700" },
+    cancelled: { label: "Cancelado", color: "bg-gray-100 text-gray-500" },
+    suspended: { label: "Suspenso",  color: "bg-red-100 text-red-600" },
+  };
+
+  return (
+    <Sheet open={plan != null} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent side="right" className="w-[85vw] max-w-none overflow-y-auto p-0">
+        {/* Header */}
+        <div className="bg-[#123A63] px-6 py-5 text-white">
+          <SheetHeader>
+            <SheetTitle className="text-white text-lg flex items-center gap-2">
+              <Layers className="h-5 w-5 text-blue-200" />
+              {plan?.planName ?? "—"}
+            </SheetTitle>
+            <SheetDescription className="text-blue-200 text-xs">
+              {plan?.count ?? 0} tenant{(plan?.count ?? 0) !== 1 ? "s" : ""} neste plano — clique para ver detalhes financeiros
+            </SheetDescription>
+          </SheetHeader>
+        </div>
+
+        <div className="px-6 py-5 space-y-3">
+          {(plan?.tenants ?? []).map((t: any) => {
+            const ss = SUB_STATUS[t.subStatus ?? t.subscriptionStatus ?? ""] ?? null;
+            return (
+              <button
+                key={t.id}
+                onClick={() => onSelectTenant(t.id)}
+                className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white hover:border-[#123A63]/30 hover:bg-[#123A63]/5 transition-all group text-left"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-gray-900 truncate">{t.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{t.slug}</p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0 ml-4">
+                  {ss && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ss.color}`}>
+                      {ss.label}
+                    </span>
+                  )}
+                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-[#123A63] transition-colors" />
+                </div>
+              </button>
+            );
+          })}
+
+          {(plan?.tenants ?? []).length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-12">Nenhum tenant neste plano.</p>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ─── Clients by Plan Report ───────────────────────────────────────────────────
-function ClientsByPlanReport({ tenants }: { tenants: any[] }) {
+function ClientsByPlanReport() {
+  const { data: enrichedTenants = [], isLoading } = (trpc as any).billing.tenantsWithPlans.useQuery();
+
+  const [selectedPlan, setSelectedPlan] = useState<{
+    planName: string; planSlug: string; count: number; tenants: any[];
+  } | null>(null);
   const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
 
-  const planStats = tenants.reduce((acc: any, tenant: any) => {
+  const planStats = (enrichedTenants as any[]).reduce((acc: any, tenant: any) => {
     const planSlug = tenant.planSlug || "sem-plano";
+    const planName = tenant.planName || "Sem Plano";
     if (!acc[planSlug]) {
-      acc[planSlug] = {
-        planName: tenant.planSlug || "Sem Plano",
-        count: 0,
-        tenants: [],
-      };
+      acc[planSlug] = { planName, planSlug, count: 0, tenants: [] };
     }
     acc[planSlug].count++;
     acc[planSlug].tenants.push(tenant);
@@ -1338,108 +1408,162 @@ function ClientsByPlanReport({ tenants }: { tenants: any[] }) {
 
   const sortedPlans = Object.values(planStats).sort(
     (a: any, b: any) => b.count - a.count
-  );
+  ) as any[];
+
+  const totalTenants = enrichedTenants.length;
+
+  const STATUS_COLORS: Record<string, string> = {
+    active:    "bg-green-500",
+    trialing:  "bg-blue-400",
+    past_due:  "bg-yellow-400",
+    cancelled: "bg-gray-300",
+    suspended: "bg-red-400",
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-[#123A63]" />
+      </div>
+    );
+  }
 
   return (
     <>
-    <TenantDetailSlide
-      tenantId={selectedTenantId}
-      onClose={() => setSelectedTenantId(null)}
-    />
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900">
-          Distribuição de Clientes por Plano
-        </h3>
-        <p className="text-sm text-gray-500 mt-1">
-          Análise de tenants por plano de assinatura — clique em um tenant para ver detalhes financeiros
-        </p>
-      </div>
+      {/* Slide Nível 1 — lista de tenants do plano (85vw) */}
+      <PlanTenantsSlide
+        plan={selectedPlan}
+        onClose={() => setSelectedPlan(null)}
+        onSelectTenant={(id) => setSelectedTenantId(id)}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sortedPlans.map((stat: any, idx: number) => (
-          <Card key={idx} className="border-l-4 border-l-[#123A63]">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
-                <span>{stat.planName}</span>
-                <Badge className="bg-[#123A63]/10 text-[#123A63]">
-                  {stat.count}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Total de Tenants</span>
-                  <span className="font-bold text-gray-900">{stat.count}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">% do Total</span>
-                  <span className="font-bold text-gray-900">
-                    {tenants.length > 0
-                      ? `${((stat.count / tenants.length) * 100).toFixed(1)}%`
-                      : "—"}
-                  </span>
-                </div>
-                <div className="pt-2 border-t">
-                  <p className="text-xs text-gray-500 font-medium mb-1">
-                    Tenants:
-                  </p>
-                  <div className="space-y-0.5 max-h-32 overflow-y-auto">
-                    {stat.tenants.map((t: any) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setSelectedTenantId(t.id)}
-                        className="w-full flex items-center justify-between text-xs text-left px-2 py-1.5 rounded-md hover:bg-[#123A63]/5 hover:text-[#123A63] transition-colors group"
-                      >
-                        <span className="truncate">• {t.name}</span>
-                        <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
+      {/* Slide Nível 2 — detalhes financeiros do tenant (70vw) */}
+      <TenantDetailSlide
+        tenantId={selectedTenantId}
+        onClose={() => setSelectedTenantId(null)}
+      />
+
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Distribuição de Clientes por Plano
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Clique em um plano para ver seus tenants — depois clique no tenant para detalhes financeiros
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sortedPlans.map((stat: any, idx: number) => {
+            // Contagem de status dos tenants deste plano
+            const statusCounts = stat.tenants.reduce((a: any, t: any) => {
+              const s = t.subStatus ?? t.subscriptionStatus ?? "unknown";
+              a[s] = (a[s] ?? 0) + 1;
+              return a;
+            }, {});
+
+            return (
+              <button
+                key={idx}
+                onClick={() => setSelectedPlan(stat)}
+                className="text-left w-full group"
+              >
+                <Card className="border-l-4 border-l-[#123A63] hover:shadow-md hover:border-[#F37321] transition-all cursor-pointer h-full">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center justify-between">
+                      <span className="truncate">{stat.planName}</span>
+                      <Badge className="bg-[#123A63]/10 text-[#123A63] shrink-0 ml-2">
+                        {stat.count} tenant{stat.count !== 1 ? "s" : ""}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-3">
+                      {/* Barra de progresso do total */}
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>Participação</span>
+                          <span className="font-semibold">
+                            {totalTenants > 0 ? `${((stat.count / totalTenants) * 100).toFixed(1)}%` : "—"}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#123A63] rounded-full transition-all"
+                            style={{ width: totalTenants > 0 ? `${(stat.count / totalTenants) * 100}%` : "0%" }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Distribuição de status */}
+                      {Object.keys(statusCounts).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(statusCounts).map(([status, count]: any) => (
+                            <span
+                              key={status}
+                              className={`inline-flex items-center gap-1 text-[0.65rem] px-1.5 py-0.5 rounded-full font-medium ${
+                                status === "active"    ? "bg-green-100 text-green-700" :
+                                status === "trialing"  ? "bg-blue-100 text-blue-700" :
+                                status === "past_due"  ? "bg-yellow-100 text-yellow-700" :
+                                status === "suspended" ? "bg-red-100 text-red-600" :
+                                "bg-gray-100 text-gray-500"
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_COLORS[status] ?? "bg-gray-400"}`} />
+                              {count} {
+                                status === "active" ? "ativo" :
+                                status === "trialing" ? "trial" :
+                                status === "past_due" ? "atrasado" :
+                                status === "suspended" ? "suspenso" :
+                                status
+                              }{count !== 1 ? "s" : ""}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="text-xs text-[#123A63] font-medium flex items-center gap-1 mt-1 group-hover:gap-2 transition-all">
+                        Ver tenants <ChevronRight className="h-3 w-3" />
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Resumo Geral */}
+        <Card className="bg-gradient-to-br from-[#123A63]/5 to-[#F37321]/5">
+          <CardHeader>
+            <CardTitle className="text-base">Resumo Geral</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-gray-600">Total de Tenants</p>
+                <p className="text-2xl font-bold text-gray-900">{totalTenants}</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <div>
+                <p className="text-xs text-gray-600">Planos Diferentes</p>
+                <p className="text-2xl font-bold text-gray-900">{sortedPlans.length}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Plano Mais Popular</p>
+                <p className="text-sm font-bold text-gray-900 mt-1">{sortedPlans[0]?.planName || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Concentração</p>
+                <p className="text-sm font-bold text-gray-900 mt-1">
+                  {sortedPlans[0] && totalTenants > 0
+                    ? `${((sortedPlans[0].count / totalTenants) * 100).toFixed(1)}%`
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-
-      <Card className="bg-gradient-to-br from-[#123A63]/5 to-[#F37321]/5">
-        <CardHeader>
-          <CardTitle className="text-base">Resumo Geral</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-gray-600">Total de Tenants</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {tenants.length}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">Planos Diferentes</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {sortedPlans.length}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">Plano Mais Popular</p>
-              <p className="text-sm font-bold text-gray-900 mt-1">
-                {sortedPlans[0]?.planName || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">Concentração</p>
-              <p className="text-sm font-bold text-gray-900 mt-1">
-                {sortedPlans[0] && tenants.length > 0
-                  ? `${(((sortedPlans[0] as any).count / tenants.length) * 100).toFixed(1)}%`
-                  : "N/A"}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
     </>
   );
 }
