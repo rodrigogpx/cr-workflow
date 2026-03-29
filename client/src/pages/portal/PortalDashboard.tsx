@@ -7,7 +7,7 @@ import { usePortalAuth } from "./usePortalAuth";
 
 export default function PortalDashboard() {
   const [, navigate] = useLocation();
-  const { client, lgpdAccepted, loading, logout } = usePortalAuth();
+  const { client, lgpdAccepted, cadastroCompleto, loading, logout } = usePortalAuth();
 
   useEffect(() => {
     if (!loading && !client) navigate("/portal/login");
@@ -58,7 +58,7 @@ export default function PortalDashboard() {
                 <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-purple-500 transition-colors" />
               </div>
               <h3 className="font-semibold text-gray-800 text-sm">Meus Dados</h3>
-              <p className="text-xs text-gray-500 mt-0.5">Complete seu cadastro</p>
+              <p className="text-xs text-gray-500 mt-0.5">{cadastroCompleto ? "Ver / editar dados" : "Complete seu cadastro"}</p>
             </button>
 
             {/* Meu Processo */}
@@ -112,11 +112,13 @@ export default function PortalDashboard() {
             </div>
           )}
 
-          {/* Dica */}
-          <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 text-sm text-purple-800">
-            <strong>Próximo passo:</strong> Complete seus dados cadastrais clicando em "Meus
-            Dados". Quanto mais completo seu cadastro, mais rápido seu processo avança!
-          </div>
+          {/* Dica — exibida apenas quando o cadastro ainda não foi concluído */}
+          {!cadastroCompleto && (
+            <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 text-sm text-purple-800">
+              <strong>Próximo passo:</strong> Complete seus dados cadastrais clicando em "Meus
+              Dados". Quanto mais completo seu cadastro, mais rápido seu processo avança!
+            </div>
+          )}
         </div>
       )}
     </PortalLayout>

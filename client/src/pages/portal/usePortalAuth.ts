@@ -30,6 +30,7 @@ interface PortalAuthState {
   client: PortalClient | null;
   lgpdAccepted: boolean;
   lgpdAcceptedAt: string | null;
+  cadastroCompleto: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -39,6 +40,7 @@ export function usePortalAuth() {
     client: null,
     lgpdAccepted: false,
     lgpdAcceptedAt: null,
+    cadastroCompleto: false,
     loading: true,
     error: null,
   });
@@ -52,6 +54,7 @@ export function usePortalAuth() {
           client: null,
           lgpdAccepted: false,
           lgpdAcceptedAt: null,
+          cadastroCompleto: false,
           loading: false,
           error: null,
         });
@@ -63,6 +66,7 @@ export function usePortalAuth() {
         client: data.client,
         lgpdAccepted: data.lgpdAccepted,
         lgpdAcceptedAt: data.lgpdAcceptedAt,
+        cadastroCompleto: data.cadastroCompleto ?? false,
         loading: false,
         error: null,
       });
@@ -81,6 +85,7 @@ export function usePortalAuth() {
       client: null,
       lgpdAccepted: false,
       lgpdAcceptedAt: null,
+      cadastroCompleto: false,
       loading: false,
       error: null,
     });

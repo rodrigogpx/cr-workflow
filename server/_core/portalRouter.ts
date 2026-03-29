@@ -298,6 +298,14 @@ export function registerPortalRoutes(app: Express) {
 
       const lgpdConsent = await db.getLgpdConsent(activeDb, client.id);
 
+      // Verificar se a etapa "cadastro" está marcada como concluída
+      const { sql } = await import("drizzle-orm");
+      const cadastroRows = await activeDb.execute(
+        sql`SELECT completed FROM "workflowSteps" WHERE "clientId" = ${client.id} AND "stepId" = 'cadastro' LIMIT 1`
+      );
+      const cadastroArr = Array.isArray(cadastroRows) ? cadastroRows : (cadastroRows as any).rows || [];
+      const cadastroCompleto = cadastroArr.length > 0 && !!cadastroArr[0].completed;
+
       return res.json({
         client: {
           id: client.id,
@@ -326,6 +334,7 @@ export function registerPortalRoutes(app: Express) {
         },
         lgpdAccepted: !!lgpdConsent,
         lgpdAcceptedAt: lgpdConsent?.acceptedAt ?? null,
+        cadastroCompleto,
       });
     } catch (err) {
       console.error("[Portal] Erro ao buscar dados:", err);

@@ -9,17 +9,19 @@ import { usePortalAuth } from "./usePortalAuth";
 
 export default function PortalLgpd() {
   const [, navigate] = useLocation();
-  const { client, lgpdAccepted, loading } = usePortalAuth();
+  const { client, lgpdAccepted, cadastroCompleto, loading } = usePortalAuth();
   const [scrolled, setScrolled] = useState(false);
   const [checked, setChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Se já aceitou, redirecionar para meus-dados
+  // Se já aceitou o LGPD: ir direto ao dashboard se cadastro já está completo, senão para meus-dados
   useEffect(() => {
-    if (!loading && lgpdAccepted) navigate("/portal/meus-dados");
-  }, [loading, lgpdAccepted, navigate]);
+    if (!loading && lgpdAccepted) {
+      navigate(cadastroCompleto ? "/portal" : "/portal/meus-dados");
+    }
+  }, [loading, lgpdAccepted, cadastroCompleto, navigate]);
 
   // Se não autenticado, redirecionar para login
   useEffect(() => {
@@ -46,7 +48,8 @@ export default function PortalLgpd() {
         body: JSON.stringify({ version: "1.0" }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Erro ao registrar consentimento.");
-      navigate("/portal/meus-dados");
+      // Após aceitar LGPD: se cadastro já concluído, ir ao dashboard; senão, preencher dados
+      navigate(cadastroCompleto ? "/portal" : "/portal/meus-dados");
     } catch (err: any) {
       setError(err.message);
     } finally {
