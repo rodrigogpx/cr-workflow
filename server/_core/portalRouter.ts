@@ -584,8 +584,10 @@ export function registerPortalRoutes(app: Express) {
 
   // ─── Upload de documento pelo cliente ───────────────────────────────────────
   // POST /api/portal/documentos/upload
-  app.post("/api/portal/documentos/upload", requirePortalSession, async (req: Request, res: Response) => {
-    const { client, tenantDb, tenantId } = res.locals as any;
+  app.post("/api/portal/documentos/upload", requirePortalSession as any, async (req: any, res: Response) => {
+    const client   = req.portalClient;
+    const activeDb = req.portalDb;
+    const tenantId = req.portalTenantId as number | null;
     try {
       const { fileName, fileData, mimeType, fileSize } = req.body ?? {};
       if (!fileName || !fileData) {
@@ -604,39 +606,34 @@ export function registerPortalRoutes(app: Express) {
         return res.status(400).json({ error: "Arquivo muito grande. Máximo: 10 MB." });
       }
 
-      const pathMod = await import("path");
-      const fsMod = await import("fs/promises");
-      const { getDocumentsBaseDir } = await import("../fileStorage");
+      // Decodificar base64 (aceita data URL ou base64 puro)
+      const base64 = String(fileData).includes(",") ? String(fileData).split(",")[1] : String(fileData);
+      const buffer = Buffer.from(base64, "base64");
 
-      const baseDir = getDocumentsBaseDir();
-      const clientDir = pathMod.join(baseDir, "portal", String(client.id));
-      await fsMod.mkdir(clientDir, { recursive: true });
-
-      const ext = (fileName.split(".").pop() ?? "bin").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10);
-      const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const filePath = pathMod.join(clientDir, uniqueName);
-
-      const base64 = fileData.includes(",") ? fileData.split(",")[1] : fileData;
-      await fsMod.writeFile(filePath, Buffer.from(base64, "base64"));
-
-      const relativeUrl = `/documents/portal/${client.id}/${uniqueName}`;
-      const activeDb = tenantDb ?? tenantDb;
+      // Reutiliza saveClientDocumentFile com validação de path traversal
+      const { saveClientDocumentFile } = await import("../fileStorage");
+      const stored = await saveClientDocumentFile({
+        clientId: client.id,
+        tenantId: tenantId ?? undefined,
+        fileName,
+        buffer,
+      });
 
       const pendingDocId = await db.createPendingDocument(activeDb, {
         clientId: client.id,
         tenantId: tenantId ?? null,
-        fileName,
-        fileUrl: relativeUrl,
+        fileName: stored.key.split("/").pop() ?? fileName,
+        fileUrl: stored.publicPath,
         mimeType: mimeType ?? null,
-        fileSize: fileSize ?? null,
+        fileSize: stored.size,
       });
 
-      await db.logPortalActivity(activeDb, client.id, tenantId, "document_upload", `Arquivo: ${fileName}`);
+      await db.logPortalActivity(activeDb, client.id, tenantId, "document_upload", { fileName }, getClientIp(req));
 
       // Notificar operador (fire-and-forget)
       notifyOperatorOfUpload(activeDb, client.id, tenantId ?? null, fileName).catch(() => {});
 
-      return res.json({ success: true, pendingDocId, fileUrl: relativeUrl });
+      return res.json({ success: true, pendingDocId, fileUrl: stored.publicPath });
     } catch (err) {
       console.error("[Portal] Erro no upload:", err);
       return res.status(500).json({ error: "Erro ao salvar documento." });
@@ -644,10 +641,12 @@ export function registerPortalRoutes(app: Express) {
   });
 
   // GET /api/portal/documentos/fila — documentos enviados pelo cliente com status de triagem
-  app.get("/api/portal/documentos/fila", requirePortalSession, async (req: Request, res: Response) => {
-    const { client, tenantDb, tenantId } = res.locals as any;
+  app.get("/api/portal/documentos/fila", requirePortalSession as any, async (req: any, res: Response) => {
+    const client   = req.portalClient;
+    const activeDb = req.portalDb;
+    const tenantId = req.portalTenantId as number | null;
     try {
-      const docs = await db.getPendingDocumentsByClient(tenantDb ?? tenantDb, client.id, tenantId);
+      const docs = await db.getPendingDocumentsByClient(activeDb, client.id, tenantId);
       return res.json({ documents: docs });
     } catch (err) {
       console.error("[Portal] Erro ao listar fila:", err);
