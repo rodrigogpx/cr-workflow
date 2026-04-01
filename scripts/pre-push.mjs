@@ -43,7 +43,46 @@ async function tableExists(tableName) {
   return rows.length > 0;
 }
 
-// ── Lista de TODOS os unique constraints do schema ───────────────────────────
+// ── Etapa 0: Dropar constraints "fantasma" ───────────────────────────────────
+// O ensureSchemaColumns cria tabelas com UNIQUE inline (ex: cpf UNIQUE), gerando
+// constraints com nomes padrão do Postgres (ex: clients_cpf_key). Mas o schema
+// drizzle espera nomes diferentes (ex: clients_tenantId_cpf_unique). Esses
+// constraints fantasma fazem o drizzle-kit gerar DROP+ADD statements, causando
+// os prompts interativos.
+const ghostConstraints = [
+  // clients: CREATE TABLE tinha "cpf" NOT NULL UNIQUE → cria clients_cpf_key
+  // Mas schema quer clients_tenantId_cpf_unique (composite tenantId+cpf)
+  { name: 'clients_cpf_key', table: 'clients' },
+  { name: 'clients_cpf_unique', table: 'clients' },
+  // users: CREATE TABLE tinha "email" NOT NULL UNIQUE → cria users_email_key
+  // Mas schema quer users_email_unique
+  { name: 'users_email_key', table: 'users' },
+  // tenants: CREATE TABLE UNIQUE inline
+  { name: 'tenants_slug_key', table: 'tenants' },
+  // planDefinitions: CREATE TABLE UNIQUE inline
+  { name: 'planDefinitions_slug_key', table: 'planDefinitions' },
+  // platformAdmins: possível nome default
+  { name: 'platformAdmins_email_key', table: 'platformAdmins' },
+  // platformSettings: possível nome default
+  { name: 'platformSettings_key_key', table: 'platformSettings' },
+  // clientInviteTokens: possível nome default
+  { name: 'clientInviteTokens_token_key', table: 'clientInviteTokens' },
+  // clientPortalSessions: possível nome default
+  { name: 'clientPortalSessions_sessionToken_key', table: 'clientPortalSessions' },
+];
+
+for (const g of ghostConstraints) {
+  if (await constraintExists(g.name)) {
+    try {
+      await sql.unsafe(`ALTER TABLE "${g.table}" DROP CONSTRAINT "${g.name}"`);
+      console.log(`[pre-push] 🗑 Constraint fantasma "${g.name}" removido de "${g.table}".`);
+    } catch (err) {
+      console.warn(`[pre-push] Aviso ao remover "${g.name}": ${err.message}`);
+    }
+  }
+}
+
+// ── Etapa 1: Garantir constraints do schema drizzle ──────────────────────────
 const constraints = [
   { name: 'users_email_unique',                          table: 'users',                cols: ['"email"'] },
   { name: 'clients_tenantId_cpf_unique',                 table: 'clients',              cols: ['"tenantId"', '"cpf"'] },
