@@ -12,7 +12,7 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit push --force",
+    "db:push": "node scripts/pre-push.mjs && drizzle-kit push --force",
     "db:seed": "tsx drizzle/seed.ts"
   },
   "dependencies": {
