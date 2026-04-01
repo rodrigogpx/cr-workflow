@@ -33,6 +33,108 @@ function parseCookies(req: Request): Record<string, string> {
   return cookies;
 }
 
+function parsePortalActivities(value: unknown): Array<'atirador' | 'cacador' | 'colecionador'> {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is 'atirador' | 'cacador' | 'colecionador' =>
+      ['atirador', 'cacador', 'colecionador'].includes(String(v))
+    );
+  }
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((v): v is 'atirador' | 'cacador' | 'colecionador' =>
+          ['atirador', 'cacador', 'colecionador'].includes(String(v))
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return [];
+}
+
+const DISPENSADO_PREFIX = '[DISPENSADO] ';
+
+function buildPortalRequiredDocuments(
+  activities: Array<'atirador' | 'cacador' | 'colecionador'>,
+  hasSecondCollectionAddress: boolean,
+): string[] {
+  const docs = new Set<string>([
+    'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
+    'Certidão de Antecedente Criminal Justiça Federal',
+    'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
+    'Documento de Identificação Pessoal',
+    'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
+    'Comprovante de Residência Fixa',
+    'Comprovante de Ocupação Lícita',
+    'Certidão de Antecedente Criminal Justiça Estadual',
+    'Declaração de Segurança do Acervo',
+    'Certidão de Antecedente Criminal Justiça Militar',
+    'Certidão de Antecedente Criminal Justiça Eleitoral',
+  ]);
+
+  if (activities.includes('atirador')) {
+    docs.add('Declaração com compromisso de comprovar a habitualidade na forma da norma vigente');
+    docs.add('Comprovante de filiação a entidade de tiro desportivo');
+  }
+  if (activities.includes('cacador')) {
+    docs.add('Comprovante de filiação a entidade de caça');
+    docs.add('Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama');
+  }
+  if (hasSecondCollectionAddress) {
+    docs.add('Comprovante de Segundo Endereço');
+  }
+
+  return Array.from(docs);
+}
+
+function stripDispensadoPrefix(label: string): string {
+  return label.startsWith(DISPENSADO_PREFIX) ? label.slice(DISPENSADO_PREFIX.length) : label;
+}
+
+async function syncPortalJuntadaSubTasks(activeDb: any, clientId: number, requiredDocuments: string[]) {
+  const { sql } = await import('drizzle-orm');
+  const stepRows = await activeDb.execute(
+    sql`SELECT id FROM "workflowSteps" WHERE "clientId" = ${clientId} AND "stepId" = 'juntada-documento' LIMIT 1`
+  );
+  const steps = Array.isArray(stepRows) ? stepRows : (stepRows as any).rows || [];
+  if (steps.length === 0) return;
+
+  const workflowStepId = steps[0].id;
+  const subTaskRows = await activeDb.execute(
+    sql`SELECT id, label FROM "subTasks" WHERE "workflowStepId" = ${workflowStepId} ORDER BY id ASC`
+  );
+  const subTasks = Array.isArray(subTaskRows) ? subTaskRows : (subTaskRows as any).rows || [];
+  const requiredSet = new Set(requiredDocuments);
+
+  const existing = new Set<string>();
+  for (const st of subTasks) {
+    const baseLabel = stripDispensadoPrefix(String(st.label ?? ''));
+    existing.add(baseLabel);
+    const shouldBeRequired = requiredSet.has(baseLabel);
+    const isDispensed = String(st.label ?? '').startsWith(DISPENSADO_PREFIX);
+
+    if (shouldBeRequired && isDispensed) {
+      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${baseLabel} WHERE id = ${st.id}`);
+    } else if (!shouldBeRequired && !isDispensed) {
+      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${DISPENSADO_PREFIX + baseLabel} WHERE id = ${st.id}`);
+    }
+  }
+
+  let idx = subTasks.length + 1;
+  for (const doc of requiredDocuments) {
+    if (existing.has(doc)) continue;
+    await db.upsertSubTaskToDb(activeDb, {
+      workflowStepId,
+      subTaskId: `doc-${String(idx).padStart(2, '0')}`,
+      label: doc,
+      completed: false,
+    });
+    idx++;
+  }
+}
+
 function getPortalCookie(req: Request): string | undefined {
   // Support both cookie-parser (req.cookies) and manual parsing
   return (req as any).cookies?.[PORTAL_COOKIE] ?? parseCookies(req)[PORTAL_COOKIE];
@@ -331,10 +433,20 @@ export function registerPortalRoutes(app: Express) {
           neighborhood: client.neighborhood,
           city: client.city,
           residenceUf: client.residenceUf,
+          apostilamentoActivities: parsePortalActivities(client.apostilamentoActivities),
+          hasSecondCollectionAddress: !!client.hasSecondCollectionAddress,
+          acervoCep: client.acervoCep,
+          acervoAddress: client.acervoAddress,
+          acervoAddressNumber: client.acervoAddressNumber,
+          acervoNeighborhood: client.acervoNeighborhood,
+          acervoCity: client.acervoCity,
+          acervoUf: client.acervoUf,
+          acervoComplement: client.acervoComplement,
         },
         lgpdAccepted: !!lgpdConsent,
         lgpdAcceptedAt: lgpdConsent?.acceptedAt ?? null,
         cadastroCompleto,
+        canEditApostilamentoInPortal: !cadastroCompleto,
       });
     } catch (err) {
       console.error("[Portal] Erro ao buscar dados:", err);
@@ -366,12 +478,54 @@ export function registerPortalRoutes(app: Express) {
         "neighborhood", "city", "residenceUf",
       ];
 
-      const data: Record<string, string> = {};
+      // Restringir edição das opções de apostilamento após conclusão do primeiro cadastro.
+      const { sql } = await import("drizzle-orm");
+      const cadastroRows = await activeDb.execute(
+        sql`SELECT completed FROM "workflowSteps" WHERE "clientId" = ${client.id} AND "stepId" = 'cadastro' LIMIT 1`
+      );
+      const cadastroArr = Array.isArray(cadastroRows) ? cadastroRows : (cadastroRows as any).rows || [];
+      const cadastroCompleto = cadastroArr.length > 0 && !!cadastroArr[0].completed;
+
+      if (!cadastroCompleto) {
+        allowed.push(
+          "apostilamentoActivities",
+          "hasSecondCollectionAddress",
+          "acervoCep",
+          "acervoAddress",
+          "acervoAddressNumber",
+          "acervoNeighborhood",
+          "acervoCity",
+          "acervoUf",
+          "acervoComplement",
+        );
+      }
+
+      const data: Record<string, any> = {};
       for (const key of allowed) {
-        if (req.body[key] !== undefined) data[key] = req.body[key];
+        if (req.body[key] !== undefined) {
+          if (key === "apostilamentoActivities") {
+            data[key] = JSON.stringify(parsePortalActivities(req.body[key]));
+          } else if (key === "hasSecondCollectionAddress") {
+            data[key] = Boolean(req.body[key]);
+          } else {
+            data[key] = req.body[key];
+          }
+        }
       }
 
       await db.updateClientFromPortal(activeDb, client.id, tenantId, data);
+
+      if (data.apostilamentoActivities !== undefined || data.hasSecondCollectionAddress !== undefined) {
+        const activities = data.apostilamentoActivities !== undefined
+          ? parsePortalActivities(data.apostilamentoActivities)
+          : parsePortalActivities((client as any).apostilamentoActivities);
+        const hasSecondCollectionAddress = data.hasSecondCollectionAddress !== undefined
+          ? Boolean(data.hasSecondCollectionAddress)
+          : Boolean((client as any).hasSecondCollectionAddress);
+        const requiredDocuments = buildPortalRequiredDocuments(activities, hasSecondCollectionAddress);
+        await syncPortalJuntadaSubTasks(activeDb, client.id, requiredDocuments);
+      }
+
       await db.logPortalActivity(activeDb, client.id, tenantId, "UPDATE_DATA", { fields: Object.keys(data) }, getClientIp(req));
 
       // Notificar operador que cliente preencheu dados

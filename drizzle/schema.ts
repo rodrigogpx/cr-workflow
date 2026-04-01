@@ -50,6 +50,8 @@ export const clients = pgTable("clients", {
   otherProfession: varchar("otherProfession", { length: 255 }),
   registrationNumber: varchar("registrationNumber", { length: 100 }),
   currentActivities: text("currentActivities"),
+  apostilamentoActivities: text("apostilamentoActivities"), // JSON string: ["atirador","cacador"]
+  hasSecondCollectionAddress: boolean("hasSecondCollectionAddress").default(false),
   phone2: varchar("phone2", { length: 20 }),
   motherName: varchar("motherName", { length: 255 }),
   fatherName: varchar("fatherName", { length: 255 }),

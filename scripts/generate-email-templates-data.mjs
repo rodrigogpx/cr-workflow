@@ -20,6 +20,7 @@ const OUTPUT_FILE = resolve(ROOT, 'server', 'defaults', 'emailTemplatesData.ts')
 // Mapeamento: nome do arquivo (sem .html) → templateKey
 // Se não estiver no mapa, usa o próprio nome do arquivo como chave.
 const FILE_TO_KEY = {
+  'cadastro_concluido':      'cadastro_concluido',
   'welcome':                 'welcome',
   'psicotecnico':            'psicotecnico',
   'psicotecnico_agendado':   'psicotecnico_agendado',
@@ -38,7 +39,8 @@ const FILE_TO_KEY = {
 
 // Arquivos a ignorar
 const IGNORE = new Set([
-  'agendamento-laudo.html',
+  'agendamento-laudo.html',        // duplicata de laudo_tecnico.html
+  'sinarm_montagem_iniciada.html', // renomeado para sinarm_iniciado.html — evita templateKey duplicada
   'process.html',
   'process.min.html',
   'status.html',

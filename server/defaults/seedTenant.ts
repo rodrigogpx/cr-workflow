@@ -45,13 +45,15 @@ const META: Record<string, { title: string; subject: string }> = {
 // As chaves correspondem exatamente às templateKey normalizadas acima.
 const TRIGGER_TEMPLATE_MAP: Record<string, string> = {
   'Boas Vindas':                       'welcome',
+  'Cadastro Concluído':                'cadastro_concluido',
   'Conclusão Juntada de Documentos':   'juntada_documentos',
   'Encaminhamento Psicotécnico':       'psicotecnico',
   'Avaliação Psicológica Concluída':   'psicotecnico_concluido',
   'Agendamento Laudo Técnico':         'laudo_tecnico',
   'Lembrete Agendamento Laudo Técnico':'laudo_tecnico',     // compartilha template base; diferenciado por sendBeforeHours
   'Laudo Técnico Concluído':           'laudo_tecnico_concluido',
-  'Processo Solicitado no Sinarm':     'sinarm_solicitado',
+  'Processo Iniciado no Sinarm':        'sinarm_iniciado',
+  'Processo Solicitado no Sinarm':      'sinarm_solicitado',
   'Aguardando Baixa GRU':              'sinarm_aguardando_gru',
   'Processo em Análise':               'sinarm_em_analise',
   'Processo Restituído':               'sinarm_restituido',

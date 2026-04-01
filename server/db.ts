@@ -354,6 +354,8 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "otherProfession" varchar(255)`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "registrationNumber" varchar(100)`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "currentActivities" text`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "apostilamentoActivities" text`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "hasSecondCollectionAddress" boolean DEFAULT false`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "phone2" varchar(20)`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "motherName" varchar(255)`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "fatherName" varchar(255)`,
@@ -400,6 +402,18 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       skipped++;
       console.warn('[Schema] column alter skipped:', error?.message || error);
     }
+  }
+
+  // Backfill defensivo: inferir hasSecondCollectionAddress pelos campos já existentes.
+  try {
+    await db.execute(sql`
+      UPDATE "clients"
+      SET "hasSecondCollectionAddress" = true
+      WHERE COALESCE("hasSecondCollectionAddress", false) = false
+        AND COALESCE(NULLIF(TRIM("acervoAddress"), ''), NULLIF(TRIM("acervoCep"), '')) IS NOT NULL
+    `);
+  } catch (error: any) {
+    console.warn('[Schema] hasSecondCollectionAddress backfill skipped:', error?.message || error);
   }
 }
 
@@ -711,9 +725,13 @@ export async function upsertUserToDb(
 
 async function insertClientRaw(dbInstance: ReturnType<typeof drizzle>, client: InsertClient) {
   try {
+    const apostilamentoActivities = Array.isArray((client as any).apostilamentoActivities)
+      ? JSON.stringify((client as any).apostilamentoActivities)
+      : ((client as any).apostilamentoActivities ?? '[]');
+
     const result = await dbInstance.execute(
-      sql`INSERT INTO "clients" ("tenantId", "name", "cpf", "phone", "email", "operatorId")
-          VALUES (${client.tenantId ?? null}, ${client.name}, ${client.cpf}, ${client.phone}, ${client.email}, ${client.operatorId})
+      sql`INSERT INTO "clients" ("tenantId", "name", "cpf", "phone", "email", "operatorId", "apostilamentoActivities", "hasSecondCollectionAddress")
+          VALUES (${client.tenantId ?? null}, ${client.name}, ${client.cpf}, ${client.phone}, ${client.email}, ${client.operatorId}, ${apostilamentoActivities}, ${(client as any).hasSecondCollectionAddress ?? false})
           RETURNING "id"`
     );
     const rows = extractRows(result);
@@ -2922,6 +2940,15 @@ export async function updateClientFromPortal(
     neighborhood?: string;
     city?: string;
     residenceUf?: string;
+    apostilamentoActivities?: string;
+    hasSecondCollectionAddress?: boolean;
+    acervoCep?: string;
+    acervoAddress?: string;
+    acervoAddressNumber?: string;
+    acervoNeighborhood?: string;
+    acervoCity?: string;
+    acervoUf?: string;
+    acervoComplement?: string;
   }
 ) {
   // Construir update usando drizzle set() para tipagem segura
@@ -2946,6 +2973,15 @@ export async function updateClientFromPortal(
   if (data.neighborhood !== undefined) setData.neighborhood = data.neighborhood;
   if (data.city !== undefined) setData.city = data.city;
   if (data.residenceUf !== undefined) setData.residenceUf = data.residenceUf;
+  if (data.apostilamentoActivities !== undefined) setData.apostilamentoActivities = data.apostilamentoActivities;
+  if (data.hasSecondCollectionAddress !== undefined) setData.hasSecondCollectionAddress = data.hasSecondCollectionAddress;
+  if (data.acervoCep !== undefined) setData.acervoCep = data.acervoCep;
+  if (data.acervoAddress !== undefined) setData.acervoAddress = data.acervoAddress;
+  if (data.acervoAddressNumber !== undefined) setData.acervoAddressNumber = data.acervoAddressNumber;
+  if (data.acervoNeighborhood !== undefined) setData.acervoNeighborhood = data.acervoNeighborhood;
+  if (data.acervoCity !== undefined) setData.acervoCity = data.acervoCity;
+  if (data.acervoUf !== undefined) setData.acervoUf = data.acervoUf;
+  if (data.acervoComplement !== undefined) setData.acervoComplement = data.acervoComplement;
   setData.updatedAt = new Date();
 
   if (Object.keys(setData).length <= 1) return; // só updatedAt, nada para salvar

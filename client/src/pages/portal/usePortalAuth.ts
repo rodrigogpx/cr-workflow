@@ -24,6 +24,15 @@ interface PortalClient {
   neighborhood?: string;
   city?: string;
   residenceUf?: string;
+  apostilamentoActivities?: Array<"atirador" | "cacador" | "colecionador">;
+  hasSecondCollectionAddress?: boolean;
+  acervoCep?: string;
+  acervoAddress?: string;
+  acervoAddressNumber?: string;
+  acervoNeighborhood?: string;
+  acervoCity?: string;
+  acervoUf?: string;
+  acervoComplement?: string;
 }
 
 interface PortalAuthState {
@@ -31,6 +40,7 @@ interface PortalAuthState {
   lgpdAccepted: boolean;
   lgpdAcceptedAt: string | null;
   cadastroCompleto: boolean;
+  canEditApostilamentoInPortal: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -41,6 +51,7 @@ export function usePortalAuth() {
     lgpdAccepted: false,
     lgpdAcceptedAt: null,
     cadastroCompleto: false,
+    canEditApostilamentoInPortal: false,
     loading: true,
     error: null,
   });
@@ -55,6 +66,7 @@ export function usePortalAuth() {
           lgpdAccepted: false,
           lgpdAcceptedAt: null,
           cadastroCompleto: false,
+          canEditApostilamentoInPortal: false,
           loading: false,
           error: null,
         });
@@ -67,6 +79,7 @@ export function usePortalAuth() {
         lgpdAccepted: data.lgpdAccepted,
         lgpdAcceptedAt: data.lgpdAcceptedAt,
         cadastroCompleto: data.cadastroCompleto ?? false,
+        canEditApostilamentoInPortal: data.canEditApostilamentoInPortal ?? false,
         loading: false,
         error: null,
       });
@@ -86,6 +99,7 @@ export function usePortalAuth() {
       lgpdAccepted: false,
       lgpdAcceptedAt: null,
       cadastroCompleto: false,
+      canEditApostilamentoInPortal: false,
       loading: false,
       error: null,
     });

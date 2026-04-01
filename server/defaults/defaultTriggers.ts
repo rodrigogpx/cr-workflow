@@ -24,6 +24,13 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
     isActive: true
   },
   {
+    name: 'Cadastro Concluído',
+    triggerEvent: 'STEP_COMPLETED:1',
+    recipientType: 'client',
+    sendImmediate: true,
+    isActive: true
+  },
+  {
     name: 'Conclusão Juntada de Documentos',
     triggerEvent: 'STEP_COMPLETED:2',
     recipientType: 'client',
@@ -62,6 +69,13 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
   {
     name: 'Laudo Técnico Concluído',
     triggerEvent: 'STEP_COMPLETED:5',
+    recipientType: 'client',
+    sendImmediate: true,
+    isActive: true
+  },
+  {
+    name: 'Processo Iniciado no Sinarm',
+    triggerEvent: 'SINARM_STATUS:Iniciado',
     recipientType: 'client',
     sendImmediate: true,
     isActive: true
