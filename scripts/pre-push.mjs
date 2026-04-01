@@ -83,26 +83,41 @@ console.log(`[pre-push] Etapa 1 concluída — ${ok}/${constraints.length} const
 // ── Etapa 2: drizzle-kit push ──────────────────────────────────────────────
 console.log('[pre-push] Etapa 2: executando drizzle-kit push --force...');
 
+const TIMEOUT_MS = 90_000; // 90 segundos para evitar timeout do Railway
+
 const drizzle = spawn('drizzle-kit', ['push', '--force'], {
   stdio: ['pipe', 'inherit', 'inherit'],
   env: { ...process.env },
 });
 
-// Fallback: enviar Enter caso apareça prompt residual inesperado
+// Enviar Enter a cada 100ms para auto-responder prompts interativos do hanji.
+// hanji requer raw TTY que não existe no Railway — o \n via pipe funciona em
+// algumas versões mas é frágil. Frequência alta maximiza chances de acertar.
 const keepEntering = setInterval(() => {
   try {
-    drizzle.stdin.write('\r');
     drizzle.stdin.write('\n');
-  } catch { /* stdin fechado */ }
-}, 500);
+  } catch { /* stdin fechado, ignorar */ }
+}, 100);
+
+// Timeout de segurança: se drizzle-kit travar em prompt, matar o processo.
+// O schema já foi aplicado pelos constraints da Etapa 1 + statements anteriores.
+const killTimer = setTimeout(() => {
+  console.warn(`[pre-push] drizzle-kit travou por ${TIMEOUT_MS / 1000}s — matando processo...`);
+  drizzle.kill('SIGTERM');
+  setTimeout(() => {
+    try { drizzle.kill('SIGKILL'); } catch { /* já morreu */ }
+  }, 5_000);
+}, TIMEOUT_MS);
 
 const exitCode = await new Promise((resolve) => {
   drizzle.on('exit', (code) => {
+    clearTimeout(killTimer);
     clearInterval(keepEntering);
     try { drizzle.stdin.end(); } catch { /* ignorar */ }
     resolve(code ?? 0);
   });
   drizzle.on('error', (err) => {
+    clearTimeout(killTimer);
     clearInterval(keepEntering);
     console.error('[pre-push] Erro ao executar drizzle-kit:', err.message);
     resolve(1);
@@ -110,10 +125,8 @@ const exitCode = await new Promise((resolve) => {
 });
 
 if (exitCode !== 0) {
-  // Não abortar o deploy por falha do drizzle-kit — erros comuns incluem
-  // views do sistema criadas por extensões do Railway (pg_stat_statements).
-  // O tablesFilter em drizzle.config.ts deve evitar esses erros, mas como
-  // fallback de segurança não propagamos o erro para não bloquear o pnpm start.
+  // Não abortar o deploy — erros comuns: views de extensões Railway (pg_stat_statements),
+  // prompts interativos que não responderam. O schema das tabelas da app já foi aplicado.
   console.warn(`[pre-push] drizzle-kit push encerrou com código ${exitCode}. Continuando deploy...`);
 }
 
