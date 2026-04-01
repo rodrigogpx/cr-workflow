@@ -402,7 +402,7 @@ export const tenants = pgTable("tenants", {
   // Limits
   maxUsers: integer("maxUsers").default(10),
   maxClients: integer("maxClients").default(500),
-  maxStorageGB: integer("maxStorageGB").default(50),
+  maxStorageGB: numeric("maxStorageGB", { precision: 10, scale: 2 }).default("50"),
   // Subscription
   plan: varchar("plan", { length: 20 }).default("starter").$type<"starter" | "professional" | "enterprise">(),
   subscriptionStatus: varchar("subscriptionStatus", { length: 20 }).default("trial").$type<"active" | "suspended" | "trial" | "cancelled">(),
@@ -428,7 +428,7 @@ export const planDefinitions = pgTable("planDefinitions", {
   description: text("description"),
   maxUsers: integer("maxUsers").notNull().default(5),
   maxClients: integer("maxClients").notNull().default(100),
-  maxStorageGB: integer("maxStorageGB").notNull().default(10),
+  maxStorageGB: numeric("maxStorageGB", { precision: 10, scale: 2 }).notNull().default("10"),
   featureWorkflowCR: boolean("featureWorkflowCR").notNull().default(true),
   featureApostilamento: boolean("featureApostilamento").notNull().default(false),
   featureRenovacao: boolean("featureRenovacao").notNull().default(false),
