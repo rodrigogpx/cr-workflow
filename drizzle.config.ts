@@ -12,8 +12,8 @@ export default defineConfig({
   dbCredentials: {
     url: connectionString,
   },
-  // Excluir views/tabelas criadas por extensões do PostgreSQL (pg_stat_statements,
-  // pg_stat_user*, etc.) que o Railway adiciona ao schema public e que causam
-  // crash no drizzle-kit ao tentar gerenciá-las.
-  tablesFilter: ["!pg_stat*", "!pg_statio*"],
+  extensionsFilters: ["postgis"],
+  entities: {
+    roles: false,
+  },
 });

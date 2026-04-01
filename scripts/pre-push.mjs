@@ -47,40 +47,33 @@ function makeStmt(table, constraintName, columns) {
 
 const constraints = [
   // users — email
-  makeStmt('users', 'users_email_unique', ['email']),
-
+  { name: 'users_email_unique',                            stmt: makeStmt('users', 'users_email_unique', ['email']) },
   // clients — tenantId + cpf (composite)
-  makeStmt('clients', 'clients_tenantId_cpf_unique', ['tenantId', 'cpf']),
-
+  { name: 'clients_tenantId_cpf_unique',                   stmt: makeStmt('clients', 'clients_tenantId_cpf_unique', ['tenantId', 'cpf']) },
   // tenants — slug
-  makeStmt('tenants', 'tenants_slug_unique', ['slug']),
-
+  { name: 'tenants_slug_unique',                           stmt: makeStmt('tenants', 'tenants_slug_unique', ['slug']) },
   // planDefinitions — slug
-  makeStmt('planDefinitions', 'planDefinitions_slug_unique', ['slug']),
-
+  { name: 'planDefinitions_slug_unique',                   stmt: makeStmt('planDefinitions', 'planDefinitions_slug_unique', ['slug']) },
   // usageSnapshots — tenantId + snapshotDate (composite)
-  makeStmt('usageSnapshots', 'usageSnapshots_tenantId_snapshotDate_unique', ['tenantId', 'snapshotDate']),
-
+  { name: 'usageSnapshots_tenantId_snapshotDate_unique',   stmt: makeStmt('usageSnapshots', 'usageSnapshots_tenantId_snapshotDate_unique', ['tenantId', 'snapshotDate']) },
   // platformSettings — key
-  makeStmt('platformSettings', 'platformSettings_key_unique', ['key']),
-
+  { name: 'platformSettings_key_unique',                   stmt: makeStmt('platformSettings', 'platformSettings_key_unique', ['key']) },
   // platformAdmins — email
-  makeStmt('platformAdmins', 'platformAdmins_email_unique', ['email']),
-
+  { name: 'platformAdmins_email_unique',                   stmt: makeStmt('platformAdmins', 'platformAdmins_email_unique', ['email']) },
   // clientInviteTokens — token
-  makeStmt('clientInviteTokens', 'clientInviteTokens_token_unique', ['token']),
-
+  { name: 'clientInviteTokens_token_unique',               stmt: makeStmt('clientInviteTokens', 'clientInviteTokens_token_unique', ['token']) },
   // clientPortalSessions — sessionToken
-  makeStmt('clientPortalSessions', 'clientPortalSessions_sessionToken_unique', ['sessionToken']),
+  { name: 'clientPortalSessions_sessionToken_unique',      stmt: makeStmt('clientPortalSessions', 'clientPortalSessions_sessionToken_unique', ['sessionToken']) },
 ];
 
 let ok = 0;
-for (const stmt of constraints) {
+for (const c of constraints) {
   try {
-    await sql.unsafe(stmt);
+    await sql.unsafe(c.stmt);
+    console.log(`[pre-push] ✓ Constraint "${c.name}" garantido.`);
     ok++;
   } catch (err) {
-    console.warn(`[pre-push] Aviso SQL: ${err.message}`);
+    console.warn(`[pre-push] Aviso em "${c.name}": ${err.message}`);
   }
 }
 
