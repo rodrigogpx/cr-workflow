@@ -194,6 +194,22 @@ console.log('[pre-push] === FIM DIAGNÓSTICO ===');
 await sql.end();
 console.log(`[pre-push] Etapa 1 concluída — ok:${ok} pulados:${skipped} falhas:${failed} / ${constraints.length} total`);
 
+// Em CI/Railway, evitar totalmente a etapa interativa do drizzle-kit push.
+// A Etapa 1 já garante os UNIQUE constraints críticos sem prompts.
+const isCi = process.env.CI === 'true';
+const isRailway = Boolean(
+  process.env.RAILWAY_ENVIRONMENT
+  || process.env.RAILWAY_PROJECT_ID
+  || process.env.RAILWAY_SERVICE_ID
+  || process.env.RAILWAY_STATIC_URL
+);
+
+if (isCi || isRailway) {
+  console.log('[pre-push] Ambiente CI/Railway detectado — pulando Etapa 2 (drizzle-kit push) para evitar prompt interativo.');
+  console.log('[pre-push] Concluído.');
+  process.exit(0);
+}
+
 // ── Etapa 2: drizzle-kit push ──────────────────────────────────────────────
 console.log('[pre-push] Etapa 2: executando drizzle-kit push --force...');
 
