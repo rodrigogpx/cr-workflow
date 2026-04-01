@@ -113,6 +113,7 @@ COPY --from=backend-builder /app/dist ./dist
 COPY drizzle ./drizzle
 COPY drizzle.config.ts ./drizzle.config.ts
 COPY email-templates ./email-templates
+COPY scripts ./scripts
 
 # Criar diretório para logs
 RUN mkdir -p /app/logs && chmod 755 /app/logs
