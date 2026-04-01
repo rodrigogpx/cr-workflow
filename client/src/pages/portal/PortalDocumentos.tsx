@@ -391,7 +391,7 @@ export default function PortalDocumentos() {
         </div>
       )}
 
-      {/* ── Summary Cards — stats dos meus uploads ──────────────── */}
+      {/* ── Summary Cards ───────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-gray-800">{uploadedDocs.length}</p>
@@ -417,8 +417,8 @@ export default function PortalDocumentos() {
         </div>
       )}
 
-      {/* ── Juntada List ─────────────────────────────────────────── */}
-      <div className="space-y-3">
+      {/* ── Juntada Grid ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {groups.map((group) => {
           const hasDocs = group.documents.length > 0;
           const isApproved = group.completed;
@@ -441,7 +441,7 @@ export default function PortalDocumentos() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-medium text-gray-800 leading-tight">{group.label}</p>
+                    <p className="text-sm font-medium text-gray-800 leading-tight line-clamp-2">{group.label}</p>
                     <DocumentInfoTooltip label={group.label} />
                   </div>
                   <div className="mt-1">
@@ -462,44 +462,23 @@ export default function PortalDocumentos() {
                     )}
                   </div>
                 </div>
+                {hasDocs && (
+                  <div className="flex-shrink-0 flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400">{group.documents.length} arq.</span>
+                    {group.documents[0]?.fileUrl && (
+                      <a
+                        href={group.documents[0].fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-purple-500 hover:text-purple-700"
+                        title="Visualizar arquivo"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
-
-              {hasDocs && (
-                <div className="border-t border-dashed border-gray-100 px-4 py-3 space-y-2">
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Arquivo(s) enviado(s):</p>
-                  {group.documents.map((doc: any) => (
-                    <div key={doc.id} className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
-                      <File className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                      <span className="flex-1 truncate font-medium">{doc.fileName}</span>
-                      {doc.fileSize && (
-                        <span className="text-gray-400 flex-shrink-0">{formatBytes(doc.fileSize)}</span>
-                      )}
-                      <span className="text-gray-400 flex-shrink-0">
-                        {new Date(doc.uploadedAt).toLocaleDateString("pt-BR")}
-                      </span>
-                      {doc.fileUrl && (
-                        <a
-                          href={doc.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-shrink-0 text-purple-600 hover:text-purple-800"
-                          title="Visualizar"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {!hasDocs && (
-                <div className="border-t border-dashed border-gray-100 px-4 py-2">
-                  <p className="text-xs text-gray-400 italic">
-                    Nenhum documento enviado. Entregue ao clube para que possam fazer o upload.
-                  </p>
-                </div>
-              )}
             </div>
           );
         })}

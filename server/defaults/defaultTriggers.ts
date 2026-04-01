@@ -107,5 +107,12 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
     recipientType: 'client',
     sendImmediate: true,
     isActive: true
+  },
+  {
+    name: 'Agendamento Avaliação Psicológica',
+    triggerEvent: 'SCHEDULE_PSYCH_CREATED',
+    recipientType: 'client',
+    sendImmediate: true,
+    isActive: true
   }
 ];
