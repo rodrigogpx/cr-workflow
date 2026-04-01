@@ -37,6 +37,9 @@ export const defaultEmailTemplates = rawTemplates.map(t => {
     case 'sinarm_em_analise':      subject = 'Seu Processo CAC está em Análise - {{nome}}';         title = 'Status Sinarm: Em Análise';         break;
     case 'sinarm_aguardando_gru':  subject = 'Aguardando Baixa do Pagamento (GRU) - {{nome}}';      title = 'Status Sinarm: Aguardando Baixa GRU'; break;
     case 'sinarm_restituido':      subject = 'Ação Necessária: Processo CAC Restituído - {{nome}}'; title = 'Status Sinarm: Processo Restituído';  break;
+    case 'sinarm_deferido':        subject = 'Parabéns! Seu CR foi Aprovado - {{nome}}';            title = 'Status Sinarm: CR Aprovado';            break;
+    case 'sinarm_indeferido':      subject = 'Resultado do seu Processo CAC - {{nome}}';            title = 'Status Sinarm: Processo Indeferido';    break;
+    case 'psicotecnico_agendado':  subject = 'Agendamento Psicológico Confirmado - {{nome}}';      title = 'Agendamento Avaliação Psicológica';     break;
   }
   const rawContent = Buffer.from(t.contentB64, 'base64').toString('utf8');
   return {

@@ -1,87 +1,131 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{assunto}}</title>
-    <style type="text/css">
-        /* Reset & Base Styles */
-        body, table, td, p, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; }
-        body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #F9FAFB; }
-        
-        /* Container */
-        .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-        
-        /* Header */
-        .header { background-color: #ffffff; padding: 30px 40px; text-align: center; border-bottom: 3px solid #123A63; }
-        
-        /* Hero Section */
-        .hero-section { background-color: #123A63; padding: 40px; text-align: center; }
-        .status-badge { display: inline-block; background-color: #f1c40f; color: #000000; padding: 6px 18px; border-radius: 4px; font-weight: bold; font-family: Arial, sans-serif; font-size: 13px; margin-bottom: 20px; text-transform: uppercase; }
-        .hero-title { font-family: 'Arial Black', Arial, sans-serif; font-size: 24px; color: #ffffff; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px; }
-        
-        /* Content Section */
-        .content-section { background-color: #ffffff; padding: 40px; }
-        .info-box { background-color: #F9FAFB; border-left: 4px solid #f1c40f; padding: 20px; margin-bottom: 25px; }
-        .info-box p { font-family: Arial, sans-serif; font-size: 14px; color: #E5E7EB; margin: 0; line-height: 1.6; }
-        
-        /* Footer */
-        .footer { background-color: #ffffff; padding: 30px; text-align: center; border-top: 1px solid #333333; }
-        .footer p { font-family: Arial; font-size: 11px; color: #666; margin: 0; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Processo em An&#225;lise pela Pol&#237;cia Federal</title>
+  <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+  <style type="text/css">
+    body,table,td,p,a,li{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
+    table,td{mso-table-lspace:0pt;mso-table-rspace:0pt}
+    img{-ms-interpolation-mode:bicubic;border:0;height:auto;line-height:100%;outline:none;text-decoration:none}
+    body{margin:0!important;padding:0!important;width:100%!important;background-color:#F9FAFB}
+    .wrap{max-width:600px;margin:0 auto;background-color:#ffffff}
+    .hdr{background-color:#ffffff;padding:28px 40px;text-align:center;border-bottom:3px solid #123A63}
+    .hero{background-color:#78350F;padding:40px;text-align:center}
+    .icon{background-color:#D97706;color:#ffffff;font-size:24px;width:64px;height:64px;line-height:64px;text-align:center;border-radius:50%;margin:0 auto 18px auto;font-family:Arial,sans-serif}
+    .htitle{font-family:'Arial Black',Arial,sans-serif;font-size:22px;color:#ffffff;margin:0 0 10px 0;text-transform:uppercase;letter-spacing:1px}
+    .hsub{font-family:Arial,sans-serif;font-size:14px;color:#FEF3C7;margin:0;line-height:1.6}
+    .dvd{height:3px;background-color:#F1F5F9}
+    .body{background-color:#ffffff;padding:36px 40px}
+    .stitle{font-family:'Arial Black',Arial,sans-serif;font-size:16px;color:#123A63;margin:0 0 18px 0;text-transform:uppercase;letter-spacing:0.5px}
+    .ptxt{font-family:Arial,sans-serif;font-size:14px;color:#374151;line-height:1.7;margin:0 0 20px 0}
+    .proto-box{background-color:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:16px 20px;margin:20px 0;text-align:center}
+    .proto-label{font-family:Arial,sans-serif;font-size:12px;color:#92400E;text-transform:uppercase;letter-spacing:1px;margin:0 0 6px 0}
+    .proto-number{font-family:'Arial Black',Arial,sans-serif;font-size:20px;color:#92400E;margin:0;letter-spacing:2px}
+    .outcomes-wrap{background-color:#F9FAFB;border-radius:8px;padding:20px;margin:20px 0}
+    .outcome-row{font-family:Arial,sans-serif;font-size:13px;color:#374151;line-height:1.6;margin:0 0 12px 0;padding-left:16px;border-left:3px solid #D97706}
+    .pbar-wrap{background-color:#F9FAFB;border-radius:8px;padding:20px;margin:18px 0}
+    .pbar-bg{background-color:#E5E7EB;border-radius:10px;height:16px;width:100%;margin-bottom:8px}
+    .ptxt-sm{font-family:Arial,sans-serif;font-size:12px;color:#6B7280;text-align:center;margin:0}
+    .steps-wrap{background-color:#F9FAFB;border-radius:8px;padding:20px;margin:18px 0}
+    .bd{color:#ffffff;font-family:'Arial Black',Arial,sans-serif;font-size:13px;font-weight:bold;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;display:inline-block}
+    .bd-done{background-color:#28a745}
+    .bd-next{background-color:#78350F}
+    .sn{font-family:Arial,sans-serif;font-size:13px;font-weight:bold;color:#1F2937;margin:0}
+    .ss-done{font-family:Arial,sans-serif;font-size:11px;color:#28a745;margin:2px 0 0 0}
+    .ss-next{font-family:Arial,sans-serif;font-size:11px;color:#78350F;font-weight:bold;margin:2px 0 0 0}
+    .ftr{background-color:#F9FAFB;padding:24px 40px;text-align:center;border-top:1px solid #E5E7EB}
+    .fcopy{font-family:Arial,sans-serif;font-size:11px;color:#9CA3AF;margin:0}
+    @media screen and (max-width:600px){
+      .wrap{width:100%!important}
+      .hdr,.hero,.body,.ftr{padding:22px 18px!important}
+      .htitle{font-size:18px!important}
+    }
+  </style>
 </head>
 <body>
-    <center>
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #F9FAFB;">
-            <tr>
-                <td>
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="email-container" align="center">
-                        
-                        <tr>
-                            <td class="header"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td align="center">{{logo}}</td></tr></table></td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        
-                        <tr>
-                            <td class="hero-section">
-                                <div class="status-badge">STATUS: EM ANÃLISE</div> <div class="status-badge"> Protocolo Sinarm CAC: {{protocolNumber}} </div>
-                                <h1 class="hero-title">DocumentaÃ§Ã£o em AnÃ¡lise<br><span style="color: #f1c40f;">Pela PolÃ­cia Federal</span></h1>
-                                <p style="color: #E5E7EB; font-family: Arial; font-size: 15px; line-height: 1.6;">Seu processo avanÃ§ou para a etapa de conferÃªncia oficial.</p>
-                            </td>
-                        </tr>
-                        
-                        <tr>
-                            <td class="content-section">
-                                <div class="info-box">
-                                    <p><strong style="color: #ffffff;">O que acontece agora?</strong></p>
-                                    <p style="margin-top: 10px;">Identificamos que seu processo jÃ¡ estÃ¡ sendo avaliado pela PolÃ­cia Federal. Existem dois caminhos possÃ­veis a partir de agora:</p>
-                                    <ul style="color: #E5E7EB; font-family: Arial; font-size: 14px; line-height: 1.6; padding-left: 20px;">
-                                        <li><strong>ValidaÃ§Ã£o:</strong> Caso toda a documentaÃ§Ã£o esteja correta, o processo serÃ¡ enviado imediatamente para a <strong>assinatura da autoridade competente</strong>.</li>
-                                        <li><strong>Ajustes:</strong> Caso haja necessidade de qualquer correÃ§Ã£o ou informaÃ§Ã£o complementar, o processo serÃ¡ <strong>restituÃ­do</strong> para que possamos realizar os ajustes necessÃ¡rios e reenvia-lo rapidamente.</li>
-                                    </ul>
-                                </div>
-                                <p style="color: #888; font-family: Arial; font-size: 12px; text-align: center; line-height: 1.5;">
-                                    Fique tranquilo, nossa equipe monitora seu protocolo diariamente e vocÃª serÃ¡ notificado sobre qualquer movimentaÃ§Ã£o.
-                                </p>
-                            </td>
-                        </tr>
-                        
-                        <tr>
-                            <td class="footer">
-                                <p style="margin-bottom: 10px; color: #fff;"><strong>{{nome_clube}} - Tiro e CaÃ§a</strong></p>
-                                <p>Â© 2026 CAC 360 - ACR Digital. Todos os Direitos Reservados.</p>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+<center>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#F9FAFB">
+<tr><td>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="wrap" align="center">
+
+  <tr><td class="hdr"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td align="center">{{logo}}</td></tr></table></td></tr>
+
+  <tr>
+    <td class="hero">
+      <div class="icon">&#128269;</div>
+      <h1 class="htitle">Documenta&#231;&#227;o em An&#225;lise<br><span style="color:#FDE68A;">Pol&#237;cia Federal</span></h1>
+      <p class="hsub">{{nome}}, seu processo avan&#231;ou para a etapa de confer&#234;ncia oficial pela autoridade competente.</p>
+    </td>
+  </tr>
+
+  <tr><td class="dvd"></td></tr>
+
+  <tr>
+    <td class="body">
+      <h2 class="stitle">Status do Processo</h2>
+
+      <div class="proto-box">
+        <p class="proto-label">Protocolo SINARM-CAC</p>
+        <p class="proto-number">{{protocolNumber}}</p>
+      </div>
+
+      <p class="ptxt">Sua documenta&#231;&#227;o est&#225; sendo verificada pela Pol&#237;cia Federal. A partir daqui, existem dois caminhos poss&#237;veis:</p>
+
+      <div class="outcomes-wrap">
+        <p class="outcome-row"><strong>Aprova&#231;&#227;o:</strong> Caso toda a documenta&#231;&#227;o esteja correta, o processo ser&#225; encaminhado para assinatura da autoridade competente e o seu CR ser&#225; emitido.</p>
+        <p class="outcome-row" style="margin-bottom:0"><strong>Corre&#231;&#227;o:</strong> Se houver necessidade de algum ajuste ou documento complementar, o processo ser&#225; restitu&#237;do para que nossa equipe realize as corre&#231;&#245;es e reenvie rapidamente.</p>
+      </div>
+
+      <p class="ptxt">Fique tranquilo &#8212; nossa equipe monitora seu protocolo diariamente e voc&#234; ser&#225; notificado sobre qualquer movimenta&#231;&#227;o.</p>
+
+      <div class="pbar-wrap">
+        <div class="pbar-bg"><div style="background-color:#D97706;border-radius:10px;height:16px;width:95%"></div></div>
+        <p class="ptxt-sm">Etapa 5 de 5 em andamento &#8212; em an&#225;lise pela PF</p>
+      </div>
+
+      <div class="steps-wrap">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Cadastro</p><p class="ss-done">Conclu&#237;do</p></td>
+          </tr>
         </table>
-    </center>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Avalia&#231;&#227;o Psicol&#243;gica</p><p class="ss-done">Conclu&#237;do</p></td>
+          </tr>
+        </table>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Laudo de Capacidade T&#233;cnica</p><p class="ss-done">Conclu&#237;do</p></td>
+          </tr>
+        </table>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Juntada de Documentos</p><p class="ss-done">Conclu&#237;do</p></td>
+          </tr>
+        </table>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-next">5</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Acompanhamento SINARM-CAC</p><p class="ss-next">Em an&#225;lise pela Pol&#237;cia Federal</p></td>
+          </tr>
+        </table>
+      </div>
+    </td>
+  </tr>
+
+  <tr><td class="ftr"><p class="fcopy">&#169; 2026 CAC 360. Todos os direitos reservados.</p></td></tr>
+
+</table>
+</td></tr>
+</table>
+</center>
 </body>
 </html>
-
-

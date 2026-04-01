@@ -59,9 +59,9 @@ export default function PortalMeusDados() {
     if (client) {
       setForm({
         name: client.name || "",
-        birthDate: client.birthDate || "",
+        birthDate: client.birthDate?.slice(0, 10) || "",
         identityNumber: client.identityNumber || "",
-        identityIssueDate: client.identityIssueDate || "",
+        identityIssueDate: client.identityIssueDate?.slice(0, 10) || "",
         identityIssuer: client.identityIssuer || "",
         identityUf: client.identityUf || "",
         gender: client.gender || "",

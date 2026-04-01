@@ -36,6 +36,9 @@ const META: Record<string, { title: string; subject: string }> = {
   'sinarm_em_analise':      { title: 'Status Sinarm: Em Análise',          subject: 'Seu Processo CAC está em Análise - {{nome}}' },
   'sinarm_aguardando_gru':  { title: 'Status Sinarm: Aguardando Baixa GRU',subject: 'Aguardando Baixa do Pagamento (GRU) - {{nome}}' },
   'sinarm_restituido':      { title: 'Status Sinarm: Processo Restituído', subject: 'Ação Necessária: Processo CAC Restituído - {{nome}}' },
+  'sinarm_deferido':        { title: 'Status Sinarm: CR Aprovado',         subject: 'Parabéns! Seu CR foi Aprovado - {{nome}}' },
+  'sinarm_indeferido':      { title: 'Status Sinarm: Processo Indeferido', subject: 'Resultado do seu Processo CAC - {{nome}}' },
+  'psicotecnico_agendado':  { title: 'Agendamento Avaliação Psicológica', subject: 'Agendamento Psicológico Confirmado - {{nome}}' },
 };
 
 // ─── Mapa trigger name → template key ───────────────────────────────────────
@@ -52,8 +55,9 @@ const TRIGGER_TEMPLATE_MAP: Record<string, string> = {
   'Aguardando Baixa GRU':              'sinarm_aguardando_gru',
   'Processo em Análise':               'sinarm_em_analise',
   'Processo Restituído':               'sinarm_restituido',
-  'Processo Indeferido':               'sinarm_restituido',
-  // 'Processo Deferido' não possui template padrão no seed atual
+  'Processo Indeferido':               'sinarm_indeferido',
+  'Processo Deferido':                 'sinarm_deferido',
+  'Agendamento Avaliação Psicológica': 'psicotecnico_agendado',
 };
 
 /**
