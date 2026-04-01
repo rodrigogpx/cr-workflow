@@ -101,6 +101,9 @@ jspm_packages/
 tmp/
 temp/
 
+# Claude local worktrees
+.claude/worktrees/
+
 # Database
 *.db
 *.sqlite
