@@ -12,7 +12,4 @@ export default defineConfig({
   dbCredentials: {
     url: connectionString,
   },
-  // Excluir views/tabelas criadas por extensões do PostgreSQL (pg_stat_statements)
-  // que o Railway adiciona ao schema public.
-  tablesFilter: ["!pg_stat*", "!pg_statio*"],
 });

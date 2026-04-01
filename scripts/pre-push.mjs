@@ -163,6 +163,34 @@ for (const c of constraints) {
   }
 }
 
+// ── Diagnóstico: mostrar estado real do DB para investigação ──────────────
+console.log('[pre-push] === DIAGNÓSTICO: estado dos constraints na tabela clients ===');
+try {
+  const pgConstraints = await sql`
+    SELECT c.conname, c.contype, 
+           array_agg(a.attname ORDER BY array_position(c.conkey, a.attnum)) as columns
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+    WHERE t.relname = 'clients' AND c.contype IN ('u', 'p')
+    GROUP BY c.conname, c.contype
+    ORDER BY c.conname`;
+  for (const r of pgConstraints) {
+    console.log(`  pg_constraint: ${r.conname} type=${r.contype} cols=[${r.columns}]`);
+  }
+
+  const pgIndexes = await sql`
+    SELECT indexname, indexdef FROM pg_indexes
+    WHERE schemaname = 'public' AND tablename = 'clients'
+    ORDER BY indexname`;
+  for (const r of pgIndexes) {
+    console.log(`  pg_indexes: ${r.indexname} → ${r.indexdef}`);
+  }
+} catch (e) {
+  console.warn('[pre-push] Erro no diagnóstico:', e.message);
+}
+console.log('[pre-push] === FIM DIAGNÓSTICO ===');
+
 await sql.end();
 console.log(`[pre-push] Etapa 1 concluída — ok:${ok} pulados:${skipped} falhas:${failed} / ${constraints.length} total`);
 
@@ -176,14 +204,15 @@ const drizzle = spawn('drizzle-kit', ['push', '--force'], {
   env: { ...process.env },
 });
 
-// Enviar Enter a cada 100ms para auto-responder prompts interativos do hanji.
-// hanji requer raw TTY que não existe no Railway — o \n via pipe funciona em
-// algumas versões mas é frágil. Frequência alta maximiza chances de acertar.
+// Enviar \r + \n a cada 500ms para auto-responder prompts do hanji.
+// hanji requer \r (carriage return) além de \n — só \n não funciona.
+// 500ms é o intervalo que funcionava no deploy original.
 const keepEntering = setInterval(() => {
   try {
+    drizzle.stdin.write('\r');
     drizzle.stdin.write('\n');
   } catch { /* stdin fechado, ignorar */ }
-}, 100);
+}, 500);
 
 // Timeout de segurança: se drizzle-kit travar em prompt, matar o processo.
 // O schema já foi aplicado pelos constraints da Etapa 1 + statements anteriores.
