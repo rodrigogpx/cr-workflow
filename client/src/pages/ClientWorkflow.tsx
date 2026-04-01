@@ -381,6 +381,8 @@ export default function ClientWorkflow() {
     handleSubmit,
     control,
     reset,
+    watch,
+    setValue,
     formState: { errors, isDirty },
   } = useForm<UpdateClientInput>({
     resolver: zodResolver(updateClientSchema),
@@ -405,6 +407,15 @@ export default function ClientWorkflow() {
         otherProfession: client.otherProfession || '',
         registrationNumber: client.registrationNumber || '',
         currentActivities: client.currentActivities || '',
+        apostilamentoActivities: (() => {
+          try {
+            const parsed = JSON.parse((client as any).apostilamentoActivities || '[]');
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })(),
+        hasSecondCollectionAddress: !!(client as any).hasSecondCollectionAddress,
         phone2: client.phone2 || '',
         motherName: client.motherName || '',
         fatherName: client.fatherName || '',
@@ -458,6 +469,15 @@ export default function ClientWorkflow() {
         otherProfession: client.otherProfession || '',
         registrationNumber: client.registrationNumber || '',
         currentActivities: client.currentActivities || '',
+        apostilamentoActivities: (() => {
+          try {
+            const parsed = JSON.parse((client as any).apostilamentoActivities || '[]');
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })(),
+        hasSecondCollectionAddress: !!(client as any).hasSecondCollectionAddress,
         phone2: client.phone2 || '',
         motherName: client.motherName || '',
         fatherName: client.fatherName || '',
@@ -489,6 +509,8 @@ export default function ClientWorkflow() {
       });
     }
   }, [client, clientId, reset]);
+
+  const selectedApostilamentoActivities = (watch("apostilamentoActivities") as string[] | undefined) || [];
 
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
     onSuccess: (data: any, variables: any) => {
@@ -562,10 +584,11 @@ export default function ClientWorkflow() {
 
       toast.info("Preparando download...");
       const zip = new JSZip();
+      let enxovalData: any = null;
 
       // Buscar PDF com dados do cadastro
       try {
-        const enxovalData = await trpc.documents.downloadEnxoval.query({ clientId: Number(clientId) });
+        enxovalData = await trpc.documents.downloadEnxoval.query({ clientId: Number(clientId) });
         if (enxovalData.clientDataPdf) {
           const pdfBytes = Uint8Array.from(atob(enxovalData.clientDataPdf), c => c.charCodeAt(0));
           zip.file('00-Dados-do-Cadastro.pdf', pdfBytes);
@@ -574,7 +597,18 @@ export default function ClientWorkflow() {
         console.error('Erro ao gerar PDF do cadastro:', pdfError);
       }
 
-      for (const doc of latestStepDocs) {
+      const backendDocs = Array.isArray(enxovalData?.documents) ? enxovalData.documents : [];
+      const combinedDocs = [...latestStepDocs, ...backendDocs];
+      const latestCombinedByKey = new Map<string, any>();
+      for (const doc of combinedDocs) {
+        const key = doc.subTaskId ? `subtask:${doc.subTaskId}` : `file:${doc.fileUrl || doc.fileName}`;
+        const current = latestCombinedByKey.get(key);
+        if (!current || new Date(doc.createdAt).getTime() > new Date(current.createdAt).getTime()) {
+          latestCombinedByKey.set(key, doc);
+        }
+      }
+
+      for (const doc of Array.from(latestCombinedByKey.values())) {
         try {
           const docResponse = await fetch(doc.fileUrl);
           const blob = await docResponse.blob();
@@ -1290,6 +1324,40 @@ export default function ClientWorkflow() {
                               />
                               {errors.currentActivities && <p className="text-xs text-red-500 mt-1">{errors.currentActivities.message}</p>}
                             </div>
+                          </div>
+
+                          <div className="rounded-md border border-teal-200 bg-teal-50/50 p-4 space-y-3">
+                            <div className="text-xs font-semibold text-teal-900 uppercase tracking-wide">Atividades para Apostilamento</div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                              {[
+                                { value: 'atirador', label: 'Atirador' },
+                                { value: 'cacador', label: 'Caçador' },
+                                { value: 'colecionador', label: 'Colecionador' },
+                              ].map((opt) => (
+                                <label key={opt.value} className="flex items-center gap-2 text-sm text-slate-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedApostilamentoActivities.includes(opt.value)}
+                                    onChange={(e: any) => {
+                                      const next = e.target.checked
+                                        ? [...selectedApostilamentoActivities, opt.value]
+                                        : selectedApostilamentoActivities.filter((v) => v !== opt.value);
+                                      setValue('apostilamentoActivities', next as any, { shouldDirty: true });
+                                    }}
+                                  />
+                                  {opt.label}
+                                </label>
+                              ))}
+                            </div>
+
+                            <label className="flex items-center gap-2 text-sm text-slate-700">
+                              <input
+                                type="checkbox"
+                                checked={!!watch('hasSecondCollectionAddress')}
+                                onChange={(e: any) => setValue('hasSecondCollectionAddress', e.target.checked, { shouldDirty: true })}
+                              />
+                              Possui segundo endereço de acervo
+                            </label>
                           </div>
 
                           <div className="pt-4 border-t border-yellow-200 space-y-4">

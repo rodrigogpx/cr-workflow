@@ -40,6 +40,125 @@ async function getTenantDbOrNull(ctx: TrpcContext) {
   return null;
 }
 
+type ApostilamentoActivity = 'atirador' | 'cacador' | 'colecionador';
+
+const DISPENSADO_PREFIX = '[DISPENSADO] ';
+
+const BASE_DOCUMENTS = [
+  'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
+  'Certidão de Antecedente Criminal Justiça Federal',
+  'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
+  'Documento de Identificação Pessoal',
+  'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
+  'Comprovante de Residência Fixa',
+  'Comprovante de Ocupação Lícita',
+  'Certidão de Antecedente Criminal Justiça Estadual',
+  'Declaração de Segurança do Acervo',
+  'Certidão de Antecedente Criminal Justiça Militar',
+  'Certidão de Antecedente Criminal Justiça Eleitoral',
+];
+
+const ATIRADOR_DOCUMENTS = [
+  'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
+  'Comprovante de filiação a entidade de tiro desportivo',
+];
+
+const CACADOR_DOCUMENTS = [
+  'Comprovante de filiação a entidade de caça',
+  'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
+];
+
+const SECOND_ADDRESS_DOCUMENT = 'Comprovante de Segundo Endereço';
+
+function parseApostilamentoActivities(value: unknown): ApostilamentoActivity[] {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is ApostilamentoActivity => ['atirador', 'cacador', 'colecionador'].includes(String(v)));
+  }
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((v): v is ApostilamentoActivity => ['atirador', 'cacador', 'colecionador'].includes(String(v)));
+      }
+    } catch {
+      // ignore invalid legacy payloads
+    }
+  }
+  return [];
+}
+
+function buildRequiredJuntadaDocuments(activities: ApostilamentoActivity[], hasSecondCollectionAddress: boolean): string[] {
+  const set = new Set<string>(BASE_DOCUMENTS);
+  if (activities.includes('atirador')) {
+    for (const d of ATIRADOR_DOCUMENTS) set.add(d);
+  }
+  if (activities.includes('cacador')) {
+    for (const d of CACADOR_DOCUMENTS) set.add(d);
+  }
+  if (hasSecondCollectionAddress) {
+    set.add(SECOND_ADDRESS_DOCUMENT);
+  }
+  return Array.from(set);
+}
+
+function stripDispensadoPrefix(label: string): string {
+  return label.startsWith(DISPENSADO_PREFIX) ? label.slice(DISPENSADO_PREFIX.length) : label;
+}
+
+async function syncJuntadaSubTasksForClient(
+  activeDb: any,
+  clientId: number,
+  requiredDocuments: string[],
+) {
+  const stepRowsRaw = await activeDb.execute(
+    sql`SELECT id FROM "workflowSteps" WHERE "clientId" = ${clientId} AND "stepId" = 'juntada-documento' LIMIT 1`,
+  );
+  const stepRows: any[] = Array.isArray(stepRowsRaw) ? stepRowsRaw : ((stepRowsRaw as any).rows ?? []);
+  if (stepRows.length === 0) return;
+
+  const workflowStepId = stepRows[0].id as number;
+  const requiredSet = new Set(requiredDocuments);
+
+  const subTasksRaw = await activeDb.execute(
+    sql`SELECT id, "subTaskId", label, completed FROM "subTasks" WHERE "workflowStepId" = ${workflowStepId} ORDER BY id ASC`,
+  );
+  const subTasks: any[] = Array.isArray(subTasksRaw) ? subTasksRaw : ((subTasksRaw as any).rows ?? []);
+
+  const existingByBaseLabel = new Map<string, any>();
+  for (const st of subTasks) {
+    const baseLabel = stripDispensadoPrefix(String(st.label ?? ''));
+    if (!existingByBaseLabel.has(baseLabel)) {
+      existingByBaseLabel.set(baseLabel, st);
+    }
+  }
+
+  for (const st of subTasks) {
+    const baseLabel = stripDispensadoPrefix(String(st.label ?? ''));
+    const shouldBeRequired = requiredSet.has(baseLabel);
+    const currentlyDispensed = String(st.label ?? '').startsWith(DISPENSADO_PREFIX);
+
+    if (shouldBeRequired && currentlyDispensed) {
+      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${baseLabel} WHERE id = ${st.id}`);
+    }
+
+    if (!shouldBeRequired && !currentlyDispensed) {
+      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${DISPENSADO_PREFIX + baseLabel} WHERE id = ${st.id}`);
+    }
+  }
+
+  let nextIndex = subTasks.length + 1;
+  for (const doc of requiredDocuments) {
+    if (existingByBaseLabel.has(doc)) continue;
+    await db.upsertSubTaskToDb(activeDb, {
+      workflowStepId,
+      subTaskId: `doc-${String(nextIndex).padStart(2, '0')}`,
+      label: doc,
+      completed: false,
+    });
+    nextIndex++;
+  }
+}
+
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -481,16 +600,23 @@ export const appRouter = router({
           }
         }
 
+        const apostilamentoActivities = parseApostilamentoActivities(input.apostilamentoActivities);
+        const hasSecondCollectionAddress = Boolean(input.hasSecondCollectionAddress);
+
         let clientId: number;
         try {
           clientId = tenantDb
             ? await db.createClientToDb(tenantDb, {
                 ...input,
+                apostilamentoActivities,
+                hasSecondCollectionAddress,
                 operatorId,
                 tenantId: ctx.tenant?.id,
               })
             : await db.createClient({
                 ...input,
+                apostilamentoActivities,
+                hasSecondCollectionAddress,
                 operatorId,
                 tenantId: ctx.tenant?.id,
               });
@@ -542,26 +668,12 @@ export const appRouter = router({
                   completed: false,
                 });
 
-            // Se for a etapa "Juntada de Documento", criar as 16 subtarefas (documentos)
+            // Se for a etapa "Juntada de Documento", criar subtarefas dinâmicas de documentos
             if (step.stepId === 'juntada-documento') {
-              const documents = [
-                'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
-                'Certidão de Antecedente Criminal Justiça Federal',
-                'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
-                'Documento de Identificação Pessoal',
-                'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
-                'Comprovante de Residência Fixa',
-                'Comprovante de Ocupação Lícita',
-                'Comprovante de filiação a entidade de caça',
-                'Comprovante de Segundo Endereço',
-                'Certidão de Antecedente Criminal Justiça Estadual',
-                'Declaração de Segurança do Acervo',
-                'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
-                'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
-                'Comprovante de filiação a entidade de tiro desportivo',
-                'Certidão de Antecedente Criminal Justiça Militar',
-                'Certidão de Antecedente Criminal Justiça Eleitoral',
-              ];
+              const documents = buildRequiredJuntadaDocuments(
+                apostilamentoActivities,
+                hasSecondCollectionAddress,
+              );
 
               for (let i = 0; i < documents.length; i++) {
                 if (tenantDb) {
@@ -753,10 +865,39 @@ export const appRouter = router({
             }
             
             const { id, ...updateData } = input;
+            const parsedActivities = parseApostilamentoActivities(updateData.apostilamentoActivities);
+            const normalizedUpdateData: Record<string, any> = {
+              ...updateData,
+              ...(updateData.apostilamentoActivities !== undefined
+                ? { apostilamentoActivities: JSON.stringify(parsedActivities) }
+                : {}),
+            };
+
             if (tenantDb) {
-              await db.updateClientToDb(tenantDb, id, updateData);
+              await db.updateClientToDb(tenantDb, id, normalizedUpdateData);
             } else {
-              await db.updateClient(id, updateData);
+              await db.updateClient(id, normalizedUpdateData);
+            }
+
+            if (
+              updateData.apostilamentoActivities !== undefined ||
+              updateData.hasSecondCollectionAddress !== undefined
+            ) {
+              const effectiveActivities = updateData.apostilamentoActivities !== undefined
+                ? parsedActivities
+                : parseApostilamentoActivities((client as any).apostilamentoActivities);
+              const effectiveHasSecondAddress = updateData.hasSecondCollectionAddress !== undefined
+                ? Boolean(updateData.hasSecondCollectionAddress)
+                : Boolean((client as any).hasSecondCollectionAddress);
+              const requiredDocuments = buildRequiredJuntadaDocuments(
+                effectiveActivities,
+                effectiveHasSecondAddress,
+              );
+
+              const activeDb = tenantDb || await db.getDb();
+              if (activeDb) {
+                await syncJuntadaSubTasksForClient(activeDb, id, requiredDocuments);
+              }
             }
 
             // Log audit entry for client update
@@ -768,7 +909,7 @@ export const appRouter = router({
                 action: 'UPDATE',
                 entity: 'CLIENT',
                 entityId: id,
-                details: JSON.stringify({ updatedFields: Object.keys(updateData) }),
+                details: JSON.stringify({ updatedFields: Object.keys(normalizedUpdateData) }),
                 ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
               });
             }
@@ -1704,6 +1845,20 @@ export const appRouter = router({
         const docs = tenantDb
           ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
           : await db.getDocumentsByClient(input.clientId);
+
+        const pendingDocs = tenantDb
+          ? await db.getPendingDocumentsByClient(tenantDb, input.clientId, ctx.tenant?.id ?? null)
+          : await db.getPendingDocumentsByClient(await db.getDb() as any, input.clientId, ctx.tenant?.id ?? null);
+
+        const portalDocsForEnxoval = (pendingDocs || [])
+          .filter((p: any) => p?.status !== 'linked')
+          .map((p: any) => ({
+            id: `pending-${p.id}`,
+            fileName: p.fileName,
+            fileUrl: p.fileUrl,
+            mimeType: p.mimeType,
+            createdAt: p.uploadedAt ?? p.createdAt,
+          }));
         
         // Gerar PDF com dados do cadastro
         const { generateClientDataPDF } = await import('./generate-pdf');
@@ -1713,13 +1868,16 @@ export const appRouter = router({
         return {
           clientName: client.name,
           clientDataPdf: pdfBase64,
-          documents: docs.map(d => ({
-            id: d.id,
-            fileName: d.fileName,
-            fileUrl: d.fileUrl,
-            mimeType: d.mimeType,
-            createdAt: d.createdAt,
-          })),
+          documents: [
+            ...docs.map(d => ({
+              id: d.id,
+              fileName: d.fileName,
+              fileUrl: d.fileUrl,
+              mimeType: d.mimeType,
+              createdAt: d.createdAt,
+            })),
+            ...portalDocsForEnxoval,
+          ],
         };
       }),
 
