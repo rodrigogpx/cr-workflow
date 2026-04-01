@@ -12,6 +12,8 @@ export default defineConfig({
   dbCredentials: {
     url: connectionString,
   },
+  // Excluir views/tabelas criadas por extensões do PostgreSQL no Railway
+  tablesFilter: ["!pg_stat*", "!pg_statio*"],
   extensionsFilters: ["postgis"],
   entities: {
     roles: false,
