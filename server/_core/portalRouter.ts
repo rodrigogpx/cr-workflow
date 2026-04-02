@@ -747,6 +747,8 @@ export function registerPortalRoutes(app: Express) {
           FROM "workflowSteps" ws
           LEFT JOIN "subTasks" st ON st."workflowStepId" = ws.id
           WHERE ws."clientId" = ${client.id}
+            AND COALESCE(ws."stepId", '') <> 'boas-vindas'
+            AND LOWER(COALESCE(ws."stepTitle", '')) NOT LIKE '%central de mensagens%'
           GROUP BY ws.id
           ORDER BY ws.id
         `

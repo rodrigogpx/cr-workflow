@@ -1204,7 +1204,15 @@ function PlanTenantsContent({
           return (
             <button
               key={t.id}
-              onClick={(e) => { e.stopPropagation(); onSelectTenant(Number(t.id)); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const parsedId = Number(t.id);
+                if (!Number.isInteger(parsedId) || parsedId <= 0) {
+                  toast.error("Não foi possível abrir o detalhamento deste tenant.");
+                  return;
+                }
+                onSelectTenant(parsedId);
+              }}
               className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white hover:border-[#123A63]/30 hover:bg-[#123A63]/5 transition-all group text-left shadow-sm"
             >
               <div className="min-w-0 flex-1">
@@ -1238,16 +1246,47 @@ function TenantDetailContent({
   tenantId: number | null;
   onClose: () => void;
 }) {
-  const { data, isLoading } = (trpc as any).billing.tenantDetail.useQuery(
-    { tenantId: tenantId! },
-    { enabled: tenantId != null }
+  const safeTenantId = Number.isInteger(tenantId) ? Number(tenantId) : null;
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = (trpc as any).billing.tenantDetail.useQuery(
+    { tenantId: safeTenantId ?? 0 },
+    { enabled: safeTenantId != null, retry: false }
   );
 
   return (
     <div className="flex flex-col h-full">
-      {isLoading || !data ? (
+      {safeTenantId == null ? (
+        <div className="flex items-center justify-center h-full px-6">
+          <p className="text-sm text-gray-500 text-center">
+            Selecione um tenant para ver os detalhes financeiros.
+          </p>
+        </div>
+      ) : isLoading ? (
         <div className="flex items-center justify-center h-full">
           <Loader2 className="h-8 w-8 animate-spin text-[#123A63]" />
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center h-full px-6 gap-3">
+          <p className="text-sm text-gray-600 text-center">
+            Não foi possível carregar o detalhamento financeiro deste tenant.
+          </p>
+          <p className="text-xs text-gray-400 text-center">
+            {String((error as any)?.message || "Erro inesperado")}
+          </p>
+          <Button size="sm" variant="outline" onClick={() => refetch()}>
+            Tentar novamente
+          </Button>
+        </div>
+      ) : !data ? (
+        <div className="flex items-center justify-center h-full px-6">
+          <p className="text-sm text-gray-500 text-center">
+            Nenhum dado financeiro encontrado para este tenant.
+          </p>
         </div>
       ) : (
         <>
