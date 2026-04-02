@@ -3116,6 +3116,38 @@ export async function getPendingDocumentsByClient(
   return extractRows(result);
 }
 
+/** Retorna quantidade de documentos pendentes de triagem por cliente */
+export async function getPendingTriageCountsByClients(
+  db: ReturnType<typeof drizzle>,
+  clientIds: number[],
+  tenantId?: number | null
+): Promise<Array<{ clientId: number; pendingCount: number }>> {
+  if (!clientIds || clientIds.length === 0) return [];
+
+  const conditions: any[] = [
+    eq(clientPendingDocuments.status, 'pending'),
+    inArray(clientPendingDocuments.clientId, clientIds),
+  ];
+
+  if (tenantId != null) {
+    conditions.push(
+      or(
+        eq(clientPendingDocuments.tenantId, tenantId),
+        isNull(clientPendingDocuments.tenantId)
+      )
+    );
+  }
+
+  return await db
+    .select({
+      clientId: clientPendingDocuments.clientId,
+      pendingCount: sql<number>`COUNT(*)::int`,
+    })
+    .from(clientPendingDocuments)
+    .where(and(...conditions))
+    .groupBy(clientPendingDocuments.clientId);
+}
+
 /** Lista documentos pendentes de triagem de um tenant (para operador) */
 export async function getPendingDocumentsForTriage(
   db: ReturnType<typeof drizzle>,

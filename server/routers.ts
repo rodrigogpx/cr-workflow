@@ -448,6 +448,18 @@ export const appRouter = router({
         }
 
         const safeClients: any[] = Array.isArray(clients) ? clients : [];
+        const clientIds: number[] = safeClients
+          .map((c: any) => c.id)
+          .filter((id: any): id is number => typeof id === 'number');
+
+        const mainDb = tenantDb ? null : await db.getDb();
+        const pendingTriageCounts = tenantDb
+          ? await db.getPendingTriageCountsByClients(tenantDb, clientIds, tenantId)
+          : (mainDb ? await db.getPendingTriageCountsByClients(mainDb, clientIds, tenantId) : []);
+
+        const pendingTriageMap = new Map<number, number>(
+          (pendingTriageCounts || []).map((row: any) => [row.clientId, Number(row.pendingCount) || 0])
+        );
 
         const assignedUserIds: number[] = safeClients
           .map((c: any) => c.operatorId)
@@ -515,6 +527,7 @@ export const appRouter = router({
             const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
             const sinarmStatus: string | null = sinarmStep?.sinarmStatus || null;
             const protocolNumber: string | null = sinarmStep?.protocolNumber || null;
+            const pendingTriageCount = pendingTriageMap.get(client.id) ?? 0;
             
             return {
               ...client,
@@ -526,6 +539,8 @@ export const appRouter = router({
               completedPhases,
               sinarmStatus,
               protocolNumber,
+              pendingTriageCount,
+              hasPendingTriage: pendingTriageCount > 0,
               assignedOperator: client.operatorId ? (() => {
                 const u = assignedUserMap.get(client.operatorId);
                 return u ? { id: u.id, name: u.name, email: u.email } : null;
