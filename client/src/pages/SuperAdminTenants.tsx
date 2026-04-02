@@ -354,22 +354,6 @@ export default function SuperAdminTenants() {
     onError: (err) => toast.error(err.message || "Erro ao excluir tenant permanentemente"),
   });
 
-  const clearMocks = trpc.tenants.clearMocks.useMutation({
-    onSuccess: (res) => {
-      toast.success(`Mocks limpos: ${res.tenants} tenants de mock removidos`);
-      utils.tenants.list.invalidate();
-    },
-    onError: (err) => toast.error(err.message || "Erro ao limpar mocks"),
-  });
-
-  const seedMocks = trpc.tenants.seedMocks.useMutation({
-    onSuccess: (res) => {
-      toast.success(`Seed concluído: ${res.tenants} tenants, ${res.users} usuários, ${res.clients} clientes`);
-      utils.tenants.list.invalidate();
-    },
-    onError: (err) => toast.error(err.message || "Erro ao rodar seed"),
-  });
-
   const [impersonatePassword, setImpersonatePassword] = useState("");
   const [impersonatingTenantId, setImpersonatingTenantId] = useState<number | null>(null);
 
@@ -606,37 +590,6 @@ export default function SuperAdminTenants() {
             />
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (!confirm("Tem certeza que deseja limpar todos os dados de tenants/usuários/clientes de mock?")) {
-                  return;
-                }
-                clearMocks.mutate();
-              }}
-              disabled={clearMocks.isLoading || seedMocks.isLoading}
-              className="flex items-center gap-2 border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"
-            >
-              {clearMocks.isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <AlertCircle className="h-4 w-4" />
-              )}
-              Limpar mocks
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => seedMocks.mutate()}
-              disabled={seedMocks.isLoading}
-              className="flex items-center gap-2 border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-            >
-              {seedMocks.isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Database className="h-4 w-4" />
-              )}
-              Rodar seed mock
-            </Button>
             {isFetching && <Loader className="h-4 w-4 animate-spin text-gray-500" />}
             <Button onClick={() => setShowCreateModal(true)} className="bg-purple-600 text-white shadow-lg shadow-purple-900/30 hover:bg-purple-500">
               <Plus className="h-4 w-4 mr-2" />

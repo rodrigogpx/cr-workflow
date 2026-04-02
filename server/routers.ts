@@ -2847,24 +2847,6 @@ export const appRouter = router({
 
   // Platform Admin / Tenants Management
   tenants: router({
-    // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
-    seedMocks: platformSuperAdminProcedure.mutation(async ({ ctx }: { ctx: TrpcContext }) => {
-      try {
-        const result = await db.seedMockTenants();
-        invalidateTenantCache();
-        return { success: true, ...result };
-      } catch (error: any) {
-        console.error("[ERROR] Seed mock tenants failed", {
-          actorId: ctx.platformAdmin.id,
-          error: error?.message || String(error),
-        });
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: error?.message || "Falha ao executar seed de tenants mock",
-        });
-      }
-    }),
-
     // Listar todos os tenants
     list: platformAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantsList = await db.getAllTenants();
