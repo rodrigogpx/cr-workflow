@@ -501,12 +501,18 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
     
     console.log(`[EmailTrigger] Processing event="${event}" client=${client.id} (${client.name}) tenant=${tenantId || 'none'}`);
     
-    // Fetch tenant settings to get logo (already saved as base64 data URI)
+    // Fetch tenant settings to get logo and name (already saved as base64 data URI)
     const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
     const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
-    
+
+    // Injeta nome do clube no extraData para substituição de {{nome_clube}}
+    const enrichedExtraData: Record<string, any> = {
+      nome_clube: tenantSettings?.name || 'CAC 360',
+      ...extraData,
+    };
+
     const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
-    
+
     // Get active triggers for this event
     const triggers = tenantDb
       ? await db.getActiveTriggersByEventFromDb(tenantDb, event, tenantId)
@@ -546,8 +552,8 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
         }
         
         // Render template with client data (logo is already base64 from database)
-        const renderedSubject = renderTemplate(template.subject, client, extraData, emailLogoUrl);
-        const renderedContent = renderTemplate(template.content, client, extraData, emailLogoUrl);
+        const renderedSubject = renderTemplate(template.subject, client, enrichedExtraData, emailLogoUrl);
+        const renderedContent = renderTemplate(template.content, client, enrichedExtraData, emailLogoUrl);
         
         // Check if this is a reminder template and we have a scheduled date
         if (templateLink.isForReminder && scheduledDate && trigger.sendBeforeHours) {
