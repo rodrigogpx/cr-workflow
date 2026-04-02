@@ -845,10 +845,31 @@ export const appRouter = router({
             ? await db.getClientByIdFromDb(tenantDb, clientId)
             : await db.getClientById(clientId);
           if (newClient) {
+            // Construir link do portal para {{link_portal}} no template welcome.
+            // O token de convite já foi criado acima; apenas lemos o valor.
+            let _welcomePortalLink = '';
+            try {
+              const _rawDomain = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+              const _portalBase = ctx.tenant?.domain
+                ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
+                : (_rawDomain ? `https://${_rawDomain}` : process.env.APP_URL || '');
+              const _pdb = tenantDb || await db.getDb();
+              if (_pdb) {
+                const _prows: any = await _pdb.execute(
+                  sql`SELECT "token" FROM "clientInviteTokens" WHERE "clientId" = ${clientId} ORDER BY "createdAt" DESC LIMIT 1`
+                );
+                const _tokenArr: any[] = Array.isArray(_prows) ? _prows : (_prows?.rows ?? []);
+                if (_tokenArr[0]?.token) {
+                  _welcomePortalLink = `${_portalBase}/portal/acesso?t=${_tokenArr[0].token}`;
+                }
+              }
+            } catch { /* non-fatal — email é enviado mesmo sem link */ }
+
             await triggerEmails('CLIENT_CREATED', {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client: newClient,
+              extraData: _welcomePortalLink ? { link_portal: _welcomePortalLink } : undefined,
             });
           }
         } catch (triggerError) {

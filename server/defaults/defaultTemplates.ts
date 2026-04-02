@@ -24,7 +24,7 @@ export const defaultEmailTemplates = rawTemplates.map(t => {
   let title = t.title;
   switch(t.templateKey) {
     // ── Fluxo principal do processo CR ──────────────────────────────────────
-    case 'welcome':                subject = 'Bem-vindo(a) à {{nome_clube}} - {{nome}}';            title = 'Boas Vindas';                    break;
+    case 'welcome':                subject = 'Bem-vindo(a) ao CAC 360, {{nome}}! Seu portal está pronto.'; title = 'Boas Vindas';                    break;
     case 'cadastro_concluido':     subject = 'Seu cadastro foi concluído - {{nome}}';               title = 'Cadastro Concluído';             break;
     case 'juntada_documentos':     subject = 'Conclusão da Juntada de Documentos - {{nome}}';       title = 'Juntada de Documentos';          break;
     case 'psicotecnico':           subject = 'Encaminhamento para Avaliação Psicológica - {{nome}}'; title = 'Encaminhamento Psicotécnico';    break;

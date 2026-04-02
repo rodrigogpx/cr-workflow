@@ -24,7 +24,7 @@ const KEY_MAP: Record<string, string> = {
 // Subjects e títulos padrão por chave normalizada.
 // Usados quando o template do banco não tem subject/title definido.
 const META: Record<string, { title: string; subject: string }> = {
-  'welcome':                { title: 'Boas Vindas',                        subject: 'Bem-vindo(a) à {{nome_clube}} - {{nome}}' },
+  'welcome':                { title: 'Boas Vindas',                        subject: 'Bem-vindo(a) ao CAC 360, {{nome}}! Seu portal está pronto.' },
   'cadastro_concluido':     { title: 'Cadastro Concluído',                 subject: 'Seu cadastro foi concluído - {{nome}}' },
   'juntada_documentos':     { title: 'Juntada de Documentos',              subject: 'Conclusão da Juntada de Documentos - {{nome}}' },
   'psicotecnico':           { title: 'Encaminhamento Psicotécnico',        subject: 'Encaminhamento para Avaliação Psicológica - {{nome}}' },
