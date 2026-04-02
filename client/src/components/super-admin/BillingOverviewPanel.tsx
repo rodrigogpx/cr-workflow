@@ -1158,6 +1158,13 @@ const INVOICE_STATUS_COLOR: Record<string, string> = {
 const SLIDE1_W = 60; // vw
 const SLIDE2_W = 45; // vw
 
+function normalizeTenantId(value: unknown): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  const normalized = Math.trunc(parsed);
+  return normalized > 0 ? normalized : null;
+}
+
 // ─── Conteúdo do Slide 1 — lista de tenants de um plano ──────────────────────
 function PlanTenantsContent({
   plan,
@@ -1167,7 +1174,7 @@ function PlanTenantsContent({
 }: {
   plan: { planName: string; planSlug: string; count: number; tenants: any[] } | null;
   onClose: () => void;
-  onSelectTenant: (id: number) => void;
+  onSelectTenant: (tenant: any) => void;
   hasDeeper: boolean;
 }) {
   if (!plan) return null;
@@ -1206,12 +1213,7 @@ function PlanTenantsContent({
               key={t.id}
               onClick={(e) => {
                 e.stopPropagation();
-                const parsedId = Number(t.id);
-                if (!Number.isInteger(parsedId) || parsedId <= 0) {
-                  toast.error("Não foi possível abrir o detalhamento deste tenant.");
-                  return;
-                }
-                onSelectTenant(parsedId);
+                onSelectTenant(t);
               }}
               className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white hover:border-[#123A63]/30 hover:bg-[#123A63]/5 transition-all group text-left shadow-sm"
             >
@@ -1241,12 +1243,14 @@ function PlanTenantsContent({
 // ─── Conteúdo do Slide 2 — detalhe financeiro do tenant ──────────────────────
 function TenantDetailContent({
   tenantId,
+  tenantLabel,
   onClose,
 }: {
   tenantId: number | null;
+  tenantLabel?: string;
   onClose: () => void;
 }) {
-  const safeTenantId = Number.isInteger(tenantId) ? Number(tenantId) : null;
+  const safeTenantId = normalizeTenantId(tenantId);
   const {
     data,
     isLoading,
@@ -1263,7 +1267,9 @@ function TenantDetailContent({
       {safeTenantId == null ? (
         <div className="flex items-center justify-center h-full px-6">
           <p className="text-sm text-gray-500 text-center">
-            Selecione um tenant para ver os detalhes financeiros.
+            {tenantLabel
+              ? `Não foi possível identificar o tenant "${tenantLabel}" para carregar o histórico financeiro.`
+              : "Selecione um tenant para ver os detalhes financeiros."}
           </p>
         </div>
       ) : isLoading ? (
@@ -1295,9 +1301,9 @@ function TenantDetailContent({
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <h2 className="text-base font-semibold text-white truncate">
-                  {data.tenant?.name ?? "—"}
+                  {data.tenant?.name ?? tenantLabel ?? "—"}
                 </h2>
-                <p className="text-xs text-blue-200 mt-0.5">{data.tenant?.slug}</p>
+                <p className="text-xs text-blue-200 mt-0.5">{data.tenant?.slug ?? ""}</p>
 
                 {/* Status adimplente + tempo como cliente */}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1449,13 +1455,25 @@ function ClientsByPlanReport() {
   const [selectedPlan, setSelectedPlan] = useState<{
     planName: string; planSlug: string; count: number; tenants: any[];
   } | null>(null);
-  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<{ id: number | null; name: string } | null>(null);
 
   const slide1Open = selectedPlan != null;
-  const slide2Open = selectedTenantId != null;
+  const slide2Open = selectedTenant != null;
 
-  const closeAll   = () => { setSelectedPlan(null); setSelectedTenantId(null); };
-  const closeSlide2 = () => setSelectedTenantId(null);
+  const closeAll   = () => { setSelectedPlan(null); setSelectedTenant(null); };
+  const closeSlide2 = () => setSelectedTenant(null);
+
+  const openTenantDetail = (tenant: any) => {
+    const tenantId = normalizeTenantId(tenant?.id ?? tenant?.tenantId);
+    setSelectedTenant({
+      id: tenantId,
+      name: String(tenant?.name ?? "Tenant"),
+    });
+
+    if (tenantId == null) {
+      toast.error("Não foi possível identificar o tenant selecionado.");
+    }
+  };
 
   const planStats = (enrichedTenants as any[]).reduce((acc: any, tenant: any) => {
     const planSlug = tenant.planSlug || "sem-plano";
@@ -1512,7 +1530,7 @@ function ClientsByPlanReport() {
             return (
               <button
                 key={idx}
-                onClick={() => { setSelectedTenantId(null); setSelectedPlan(stat); }}
+                onClick={() => { setSelectedTenant(null); setSelectedPlan(stat); }}
                 className="text-left w-full group"
               >
                 <Card className="border-l-4 border-l-[#123A63] hover:shadow-md hover:border-[#F37321] transition-all cursor-pointer h-full">
@@ -1686,7 +1704,7 @@ function ClientsByPlanReport() {
             <PlanTenantsContent
               plan={selectedPlan}
               onClose={closeAll}
-              onSelectTenant={(id) => setSelectedTenantId(id)}
+              onSelectTenant={openTenantDetail}
               hasDeeper={slide2Open}
             />
           </div>
@@ -1708,7 +1726,8 @@ function ClientsByPlanReport() {
             }}
           >
             <TenantDetailContent
-              tenantId={selectedTenantId}
+              tenantId={selectedTenant?.id ?? null}
+              tenantLabel={selectedTenant?.name}
               onClose={closeSlide2}
             />
           </div>

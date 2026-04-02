@@ -296,6 +296,7 @@ export default function SuperAdminTenants() {
   });
 
   const { data: tenants = [], isLoading: isLoadingTenants, isFetching } = trpc.tenants.list.useQuery();
+  const { data: planDefinitions = [] } = (trpc as any).billing.listPlans.useQuery();
 
   const createTenant = trpc.tenants.create.useMutation({
     onSuccess: () => {
@@ -800,11 +801,37 @@ export default function SuperAdminTenants() {
                       id="plan"
                       className="w-full p-2 border rounded-md"
                       value={newTenant.plan}
-                      onChange={(e) => setNewTenant({ ...newTenant, plan: e.target.value as any })}
+                      onChange={(e) => {
+                        const slug = e.target.value;
+                        const plan = (planDefinitions as any[]).find((p: any) => p.slug === slug);
+                        setNewTenant({
+                          ...newTenant,
+                          plan: slug as any,
+                          ...(plan ? {
+                            maxUsers: plan.maxUsers,
+                            maxClients: plan.maxClients,
+                            featureWorkflowCR: plan.featureWorkflowCR ?? true,
+                            featureApostilamento: plan.featureApostilamento ?? false,
+                            featureRenovacao: plan.featureRenovacao ?? false,
+                            featureInsumos: plan.featureInsumos ?? false,
+                            featureIAT: plan.featureIAT ?? false,
+                          } : {}),
+                        });
+                      }}
                     >
-                      <option value="starter">Starter</option>
-                      <option value="professional">Professional</option>
-                      <option value="enterprise">Enterprise</option>
+                      {(planDefinitions as any[]).length > 0
+                        ? (planDefinitions as any[])
+                            .filter((p: any) => p.isActive !== false)
+                            .sort((a: any, b: any) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+                            .map((p: any) => (
+                              <option key={p.slug} value={p.slug}>{p.name}</option>
+                            ))
+                        : <>
+                            <option value="starter">Starter</option>
+                            <option value="professional">Professional</option>
+                            <option value="enterprise">Enterprise</option>
+                          </>
+                      }
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -826,6 +853,12 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                 </div>
+                {(planDefinitions as any[]).find((p: any) => p.slug === newTenant.plan) && (() => {
+                  const pd = (planDefinitions as any[]).find((p: any) => p.slug === newTenant.plan);
+                  return pd?.description ? (
+                    <p className="text-xs text-gray-500">{pd.description}</p>
+                  ) : null;
+                })()}
               </div>
 
               {/* Features */}
@@ -988,11 +1021,37 @@ export default function SuperAdminTenants() {
                   <select
                     className="w-full p-2 border rounded-md"
                     value={editingTenant.plan}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, plan: e.target.value as Tenant["plan"] })}
+                    onChange={(e) => {
+                      const slug = e.target.value;
+                      const plan = (planDefinitions as any[]).find((p: any) => p.slug === slug);
+                      setEditingTenant({
+                        ...editingTenant,
+                        plan: slug as Tenant["plan"],
+                        ...(plan ? {
+                          maxUsers: plan.maxUsers,
+                          maxClients: plan.maxClients,
+                          featureWorkflowCR: plan.featureWorkflowCR ?? true,
+                          featureApostilamento: plan.featureApostilamento ?? false,
+                          featureRenovacao: plan.featureRenovacao ?? false,
+                          featureInsumos: plan.featureInsumos ?? false,
+                          featureIAT: plan.featureIAT ?? false,
+                        } : {}),
+                      });
+                    }}
                   >
-                    <option value="starter">Starter</option>
-                    <option value="professional">Professional</option>
-                    <option value="enterprise">Enterprise</option>
+                    {(planDefinitions as any[]).length > 0
+                      ? (planDefinitions as any[])
+                          .filter((p: any) => p.isActive !== false)
+                          .sort((a: any, b: any) => a.displayOrder - b.displayOrder)
+                          .map((p: any) => (
+                            <option key={p.slug} value={p.slug}>{p.name}</option>
+                          ))
+                      : <>
+                          <option value="starter">Starter</option>
+                          <option value="professional">Professional</option>
+                          <option value="enterprise">Enterprise</option>
+                        </>
+                    }
                   </select>
                 </div>
                 <div className="space-y-2">
