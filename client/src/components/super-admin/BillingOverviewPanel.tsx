@@ -1596,9 +1596,10 @@ function ClientsByPlanReport() {
         </Card>
       </div>
 
-      {/* ── CASCADING PANELS — renderizados via portal no document.body
-           para garantir position:fixed relativo ao viewport, independente
-           de qualquer ancestor com transform/overflow/contain ── */}
+      {/* ── CASCADING PANELS — renderizados via portal no document.documentElement
+           (elemento <html>) em vez de document.body porque o Radix SheetContent
+           aplica overflow:hidden no body enquanto aberto, o que bloqueia
+           position:fixed dos slides. O <html> não recebe esse overflow:hidden. ── */}
       {typeof window !== "undefined" && createPortal(
         <>
           {/* Backdrop */}
@@ -1712,7 +1713,7 @@ function ClientsByPlanReport() {
             />
           </div>
         </>,
-        document.body
+        document.documentElement
       )}
     </>
   );
