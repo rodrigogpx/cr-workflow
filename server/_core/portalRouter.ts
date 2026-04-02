@@ -762,6 +762,85 @@ export function registerPortalRoutes(app: Express) {
   });
 
   /**
+   * GET /api/portal/mensagens
+   * Feed unificado de mensagens do cliente (rejeições documentais + comentários SINARM)
+   */
+  app.get("/api/portal/mensagens", requirePortalSession as any, async (req: any, res: Response) => {
+    try {
+      const client = req.portalClient;
+      const activeDb = req.portalDb;
+      const tenantId: number | null = (req.portalTenantId as number | null) ?? (client.tenantId as number | null) ?? null;
+      const { sql } = await import("drizzle-orm");
+
+      const rejectedRowsRaw = await activeDb.execute(sql`
+        SELECT
+          pd.id,
+          pd."fileName",
+          pd."rejectionReason",
+          COALESCE(pd."reviewedAt", pd."uploadedAt", pd."createdAt") AS "createdAt"
+        FROM "clientPendingDocuments" pd
+        WHERE pd."clientId" = ${client.id}
+          AND pd.status = 'rejected'
+          AND COALESCE(NULLIF(TRIM(pd."rejectionReason"), ''), NULL) IS NOT NULL
+          ${tenantId != null ? sql`AND (pd."tenantId" = ${tenantId} OR pd."tenantId" IS NULL)` : sql``}
+        ORDER BY COALESCE(pd."reviewedAt", pd."uploadedAt", pd."createdAt") DESC
+        LIMIT 100
+      `);
+      const rejectedRows = Array.isArray(rejectedRowsRaw) ? rejectedRowsRaw : (rejectedRowsRaw as any).rows || [];
+
+      const sinarmStepRaw = await activeDb.execute(sql`
+        SELECT ws.id
+        FROM "workflowSteps" ws
+        WHERE ws."clientId" = ${client.id}
+          AND (
+            ws."stepId" = 'acompanhamento-sinarm'
+            OR ws."stepId" = 'acompanhamento-sinarm-cac'
+            OR LOWER(COALESCE(ws."stepTitle", '')) LIKE '%sinarm%'
+          )
+        ORDER BY ws.id DESC
+        LIMIT 1
+      `);
+      const sinarmStepArr = Array.isArray(sinarmStepRaw) ? sinarmStepRaw : (sinarmStepRaw as any).rows || [];
+      const sinarmStepId: number | null = sinarmStepArr[0]?.id ?? null;
+
+      const sinarmComments = sinarmStepId
+        ? await db.getSinarmCommentsByWorkflowStepIdFromDb(activeDb, sinarmStepId, tenantId ?? undefined)
+        : [];
+
+      const rejectedMessages = rejectedRows.map((row: any) => ({
+        id: `doc-${row.id}`,
+        type: 'document_rejection' as const,
+        title: 'Documento rejeitado na triagem',
+        body: String(row.rejectionReason || ''),
+        createdAt: row.createdAt,
+        meta: {
+          fileName: row.fileName,
+        },
+      }));
+
+      const sinarmMessages = (sinarmComments || []).map((row: any) => ({
+        id: `sinarm-${row.id}`,
+        type: 'sinarm_comment' as const,
+        title: 'Atualização do acompanhamento SINARM-CAC',
+        body: String(row.comment || ''),
+        createdAt: row.createdAt,
+        meta: {
+          sinarmStatus: row.newStatus,
+          authorName: row.createdByName,
+        },
+      }));
+
+      const messages = [...rejectedMessages, ...sinarmMessages]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      return res.json({ messages });
+    } catch (err) {
+      console.error("[Portal] Erro ao buscar mensagens:", err);
+      return res.status(500).json({ error: "Erro ao buscar mensagens." });
+    }
+  });
+
+  /**
    * GET /api/portal/documentos
    * Retorna a lista de subtarefas de juntada de documentos com status dos docs enviados
    */

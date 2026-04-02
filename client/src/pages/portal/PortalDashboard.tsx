@@ -1,13 +1,28 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import PortalLayout from "./PortalLayout";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, CheckCircle2, LogOut, ChevronRight, Clock, GitBranch, FileText, MessageSquare } from "lucide-react";
+import { ClipboardList, CheckCircle2, LogOut, ChevronRight, GitBranch, FileText, MessageSquare } from "lucide-react";
 import { usePortalAuth } from "./usePortalAuth";
+
+type PortalMessage = {
+  id: string;
+  type: "document_rejection" | "sinarm_comment";
+  title: string;
+  body: string;
+  createdAt: string;
+  meta?: {
+    fileName?: string;
+    sinarmStatus?: string;
+    authorName?: string;
+  };
+};
 
 export default function PortalDashboard() {
   const [, navigate] = useLocation();
   const { client, lgpdAccepted, cadastroCompleto, loading, logout } = usePortalAuth();
+  const [messages, setMessages] = useState<PortalMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !client) navigate("/portal/login");
@@ -16,6 +31,42 @@ export default function PortalDashboard() {
   useEffect(() => {
     if (!loading && client && !lgpdAccepted) navigate("/portal/lgpd");
   }, [loading, client, lgpdAccepted, navigate]);
+
+  useEffect(() => {
+    if (!client) return;
+
+    let cancelled = false;
+    setMessagesLoading(true);
+
+    fetch("/api/portal/mensagens", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { messages: [] }))
+      .then((data) => {
+        if (!cancelled) setMessages(Array.isArray(data?.messages) ? data.messages : []);
+      })
+      .catch(() => {
+        if (!cancelled) setMessages([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMessagesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
+
+  function formatDateTime(value: string) {
+    if (!value) return "";
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return "";
+    return dt.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
 
   async function handleLogout() {
     await logout();
@@ -91,16 +142,53 @@ export default function PortalDashboard() {
               <p className="text-xs text-gray-500 mt-0.5">Status da juntada de documentos</p>
             </button>
 
-            {/* Mensagens — Em breve */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 opacity-50 cursor-not-allowed">
+            {/* Mensagens */}
+            <div className="bg-white rounded-xl border border-emerald-100 shadow-sm p-5">
               <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <MessageSquare className="h-5 w-5 text-gray-400" />
+                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5 text-emerald-600" />
                 </div>
-                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Em breve</span>
+                <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
+                  {messages.length} {messages.length === 1 ? "mensagem" : "mensagens"}
+                </span>
               </div>
-              <h3 className="font-semibold text-gray-600 text-sm">Mensagens</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Canal direto com o clube</p>
+              <h3 className="font-semibold text-gray-800 text-sm">Mensagens</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Rejeições de documentos e atualizações SINARM-CAC</p>
+
+              <div className="mt-3 space-y-2.5">
+                {messagesLoading && (
+                  <p className="text-xs text-gray-500">Carregando mensagens...</p>
+                )}
+
+                {!messagesLoading && messages.length === 0 && (
+                  <p className="text-xs text-gray-500">Sem mensagens no momento.</p>
+                )}
+
+                {!messagesLoading && messages.slice(0, 2).map((msg) => (
+                  <div key={msg.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                          msg.type === "document_rejection"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        {msg.type === "document_rejection" ? "Documento rejeitado" : "SINARM-CAC"}
+                      </span>
+                      <span className="text-[11px] text-gray-400">{formatDateTime(msg.createdAt)}</span>
+                    </div>
+                    <p className="text-xs font-medium text-gray-700 mt-1">{msg.title}</p>
+                    {msg.meta?.fileName && (
+                      <p className="text-[11px] text-gray-500 mt-0.5">Arquivo: {msg.meta.fileName}</p>
+                    )}
+                    {msg.meta?.sinarmStatus && (
+                      <p className="text-[11px] text-gray-500 mt-0.5">Status: {msg.meta.sinarmStatus}</p>
+                    )}
+                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{msg.body}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
