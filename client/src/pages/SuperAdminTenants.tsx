@@ -128,10 +128,12 @@ function ModuleCard({
   mod,
   enabled,
   onToggle,
+  readonly = false,
 }: {
   mod: (typeof MODULE_DEFINITIONS)[number];
   enabled: boolean;
   onToggle: () => void;
+  readonly?: boolean;
 }) {
   const colors = MODULE_COLOR_MAP[mod.color];
   const Icon = mod.icon;
@@ -139,12 +141,14 @@ function ModuleCard({
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onClick={readonly ? undefined : onToggle}
+      disabled={readonly}
       className={[
-        "relative w-full text-left rounded-xl border-2 p-4 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400",
+        "relative w-full text-left rounded-xl border-2 p-4 transition-all duration-150 focus:outline-none",
+        readonly ? "cursor-default opacity-80" : "focus-visible:ring-2 focus-visible:ring-purple-400",
         enabled
           ? colors.enabled + " shadow-sm"
-          : "border-gray-200 bg-white " + colors.hover,
+          : "border-gray-200 bg-white " + (readonly ? "" : colors.hover),
       ].join(" ")}
     >
       {/* Ícone + check */}
@@ -835,21 +839,31 @@ export default function SuperAdminTenants() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxUsers">Máx. Usuários</Label>
+                    <Label htmlFor="maxUsers" className="flex items-center gap-1">
+                      Máx. Usuários
+                      <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                    </Label>
                     <Input
                       id="maxUsers"
                       type="number"
                       value={newTenant.maxUsers}
-                      onChange={(e) => setNewTenant({ ...newTenant, maxUsers: parseInt(e.target.value) })}
+                      readOnly
+                      disabled
+                      className="bg-gray-50 text-gray-500 cursor-default"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxClients">Máx. Clientes</Label>
+                    <Label htmlFor="maxClients" className="flex items-center gap-1">
+                      Máx. Clientes
+                      <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                    </Label>
                     <Input
                       id="maxClients"
                       type="number"
                       value={newTenant.maxClients}
-                      onChange={(e) => setNewTenant({ ...newTenant, maxClients: parseInt(e.target.value) })}
+                      readOnly
+                      disabled
+                      className="bg-gray-50 text-gray-500 cursor-default"
                     />
                   </div>
                 </div>
@@ -864,8 +878,8 @@ export default function SuperAdminTenants() {
               {/* Features */}
               <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
                 <div>
-                  <h4 className="font-semibold text-gray-800">Módulos Habilitados</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">Clique em um módulo para habilitar ou desabilitar</p>
+                  <h4 className="font-semibold text-gray-800">Módulos Incluídos no Plano</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Módulos definidos pelo plano selecionado</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {MODULE_DEFINITIONS.map((mod) => (
@@ -873,7 +887,8 @@ export default function SuperAdminTenants() {
                       key={mod.key}
                       mod={mod}
                       enabled={!!newTenant[mod.key]}
-                      onToggle={() => setNewTenant({ ...newTenant, [mod.key]: !newTenant[mod.key] })}
+                      onToggle={() => {}}
+                      readonly
                     />
                   ))}
                 </div>
@@ -1055,27 +1070,37 @@ export default function SuperAdminTenants() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Máx. Usuários</Label>
+                  <Label className="flex items-center gap-1">
+                    Máx. Usuários
+                    <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                  </Label>
                   <Input
                     type="number"
                     value={editingTenant.maxUsers}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, maxUsers: parseInt(e.target.value) })}
+                    readOnly
+                    disabled
+                    className="bg-gray-50 text-gray-500 cursor-default"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Máx. Clientes</Label>
+                  <Label className="flex items-center gap-1">
+                    Máx. Clientes
+                    <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                  </Label>
                   <Input
                     type="number"
                     value={editingTenant.maxClients}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, maxClients: parseInt(e.target.value) })}
+                    readOnly
+                    disabled
+                    className="bg-gray-50 text-gray-500 cursor-default"
                   />
                 </div>
               </div>
 
               <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
                 <div>
-                  <h4 className="font-semibold text-gray-800">Módulos Habilitados</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">Clique em um módulo para habilitar ou desabilitar</p>
+                  <h4 className="font-semibold text-gray-800">Módulos Incluídos no Plano</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Módulos definidos pelo plano selecionado</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {MODULE_DEFINITIONS.map((mod) => (
@@ -1083,7 +1108,8 @@ export default function SuperAdminTenants() {
                       key={mod.key}
                       mod={mod}
                       enabled={!!editingTenant[mod.key]}
-                      onToggle={() => setEditingTenant({ ...editingTenant, [mod.key]: !editingTenant[mod.key] })}
+                      onToggle={() => {}}
+                      readonly
                     />
                   ))}
                 </div>
