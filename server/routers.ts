@@ -774,11 +774,17 @@ export const appRouter = router({
               result = result.replace(/{{email}}/g, input.email || '');
               result = result.replace(/{{cpf}}/g, input.cpf || '');
               result = result.replace(/{{telefone}}/g, input.phone || '');
-              // Variável {{logo}} - renderiza como inline attachment (CID)
+              // Variável {{logo}} — CID inline se tenant tiver logo; fallback logo CAC 360
+              const _logoFallback =
+                `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">` +
+                `<tr><td style="background-color:#123A63;border-radius:6px;padding:10px 28px;text-align:center;">` +
+                `<span style="font-family:'Arial Black',Arial,sans-serif;font-size:24px;font-weight:900;color:#ffffff;letter-spacing:2px;">CAC&#160;</span>` +
+                `<span style="font-family:'Arial Black',Arial,sans-serif;font-size:24px;font-weight:900;color:#28a745;letter-spacing:2px;">360</span>` +
+                `</td></tr></table>`;
               if (emailLogoUrl) {
                 result = result.replace(/{{logo}}/g, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
               } else {
-                result = result.replace(/{{logo}}/g, '');
+                result = result.replace(/{{logo}}/g, _logoFallback);
               }
               // Variável {{link_portal}} — botão de acesso ao portal
               result = result.replace(/{{link_portal}}/g, portalLink

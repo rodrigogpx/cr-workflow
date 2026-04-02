@@ -701,11 +701,21 @@ function renderTemplate(template: string, client: Client, extraData?: Record<str
   // Date placeholder
   rendered = rendered.replace(/\{\{data\}\}/gi, new Date().toLocaleDateString('pt-BR'));
   
-  // Logo placeholder - renders as inline attachment (CID) if logo is configured
+  // Logo placeholder — CID inline se tenant tiver logo; caso contrário, logo
+  // texto da plataforma CAC 360 (compatível com todos os clientes de email).
+  const CAC360_LOGO_FALLBACK =
+    `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">` +
+    `<tr><td style="background-color:#123A63;border-radius:6px;padding:10px 28px;text-align:center;">` +
+    `<span style="font-family:'Arial Black',Arial,sans-serif;font-size:24px;font-weight:900;` +
+    `color:#ffffff;letter-spacing:2px;text-decoration:none;">CAC&#160;</span>` +
+    `<span style="font-family:'Arial Black',Arial,sans-serif;font-size:24px;font-weight:900;` +
+    `color:#28a745;letter-spacing:2px;text-decoration:none;">360</span>` +
+    `</td></tr></table>`;
+
   if (emailLogoUrl) {
     rendered = rendered.replace(/\{\{logo\}\}/gi, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
   } else {
-    rendered = rendered.replace(/\{\{logo\}\}/gi, '');
+    rendered = rendered.replace(/\{\{logo\}\}/gi, CAC360_LOGO_FALLBACK);
   }
   
   return rendered;
