@@ -41,6 +41,7 @@ import {
   BarChart3,
   Download,
   ChevronRight,
+  ChevronDown,
   Calendar,
   History,
   ShieldCheck,
@@ -1150,13 +1151,8 @@ const INVOICE_STATUS_COLOR: Record<string, string> = {
   cancelled: "text-gray-400",
 };
 
-// ─── Widths das camadas da cascata ────────────────────────────────────────────
-// Gestão Financeira (painel principal) ≈ 75 vw (sidebar ocupa ~25 vw)
-// Slide 1 — lista de tenants do plano : 60 vw  (75 - 15)
-// Slide 2 — detalhe financeiro do tenant: 45 vw  (60 - 15)
-// Resultado visual (ambos abertos): | 40vw main | 15vw slide1 | 45vw slide2 |
+// ─── Width do slide de tenants ─────────────────────────────────────────────────
 const SLIDE1_W = 60; // vw
-const SLIDE2_W = 45; // vw
 
 function normalizeTenantId(value: unknown): number | null {
   const parsed = Number(value);
@@ -1165,19 +1161,169 @@ function normalizeTenantId(value: unknown): number | null {
   return normalized > 0 ? normalized : null;
 }
 
-// ─── Conteúdo do Slide 1 — lista de tenants de um plano ──────────────────────
+// ─── Detalhe financeiro inline (expandido dentro do card do tenant) ──────────
+function TenantDetailInline({ tenantId }: { tenantId: number }) {
+  const safeTenantId = normalizeTenantId(tenantId);
+  const { data, isLoading, isError, error, refetch } = (trpc as any).billing.tenantDetail.useQuery(
+    { tenantId: safeTenantId ?? 0 },
+    { enabled: safeTenantId != null, retry: false }
+  );
+
+  if (safeTenantId == null) return <p className="text-xs text-gray-400 py-2">Não foi possível identificar este tenant.</p>;
+  if (isLoading) return <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-[#123A63]" /></div>;
+  if (isError) return (
+    <div className="py-3 space-y-1.5 text-center">
+      <p className="text-xs text-gray-500">Erro ao carregar detalhes.</p>
+      <p className="text-[0.65rem] text-gray-400">{String((error as any)?.message || "Erro inesperado")}</p>
+      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => refetch()}>Tentar novamente</Button>
+    </div>
+  );
+  if (!data) return <p className="text-xs text-gray-400 py-2 text-center">Nenhum dado financeiro encontrado.</p>;
+
+  return (
+    <div className="space-y-3 pt-3">
+      {/* Status + tempo como cliente */}
+      <div className="flex flex-wrap items-center gap-2">
+        {data.isAdimplente ? (
+          <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 border border-green-200 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold">
+            <ShieldCheck className="h-3 w-3" /> Adimplente
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 border border-red-200 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold">
+            <ShieldAlert className="h-3 w-3" /> Inadimplente
+          </span>
+        )}
+        <span className="text-gray-500 text-[0.65rem] flex items-center gap-1">
+          <Calendar className="h-3 w-3" />
+          Cliente há {data.clientSinceDays != null ? durationLabel(data.clientSinceDays) : "—"}
+        </span>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-[#123A63]/5 rounded-lg p-2.5">
+          <p className="text-[0.6rem] text-gray-500 uppercase tracking-wide mb-0.5">Total Faturado</p>
+          <p className="text-sm font-bold text-[#123A63]">{formatBRL(data.totalPaidBRL)}</p>
+        </div>
+        <div className="bg-[#123A63]/5 rounded-lg p-2.5">
+          <p className="text-[0.6rem] text-gray-500 uppercase tracking-wide mb-0.5">Faturas</p>
+          <div className="flex items-end gap-1">
+            <p className="text-sm font-bold text-[#123A63]">{data.invoices.length}</p>
+            <p className="text-[0.6rem] text-gray-500 mb-0.5">total</p>
+          </div>
+          <div className="flex flex-wrap gap-1 mt-0.5 text-[0.55rem]">
+            <span className="text-green-600">{data.invoices.filter((i: any) => i.status === "paid").length} pagas</span>
+            {data.invoices.filter((i: any) => i.status === "overdue").length > 0 && (
+              <span className="text-red-500 font-semibold">{data.invoices.filter((i: any) => i.status === "overdue").length} vencidas</span>
+            )}
+            {data.invoices.filter((i: any) => i.status === "pending").length > 0 && (
+              <span className="text-yellow-600">{data.invoices.filter((i: any) => i.status === "pending").length} pendentes</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Plano atual */}
+      {data.subscriptions.filter((s: any) => ["active","trialing"].includes(s.status)).slice(0,1).map((sub: any) => (
+        <div key={sub.id} className="border border-[#123A63]/20 rounded-lg p-2.5">
+          <p className="text-[0.6rem] font-semibold text-[#123A63] uppercase tracking-wide mb-1.5 flex items-center gap-1">
+            <Layers className="h-3 w-3" /> Plano Atual
+          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-900 text-xs">{sub.planName}</p>
+              <p className="text-[0.65rem] text-gray-500 mt-0.5">
+                Desde {new Date(sub.startDate).toLocaleDateString("pt-BR")}
+                {sub.endDate && ` · até ${new Date(sub.endDate).toLocaleDateString("pt-BR")}`}
+              </p>
+            </div>
+            <div className="text-right">
+              <span className={`text-[0.6rem] px-1.5 py-0.5 rounded-full font-medium ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}>
+                {STATUS_SUB[sub.status]?.label ?? sub.status}
+              </span>
+              <p className="text-[0.6rem] text-gray-500 mt-0.5">{durationLabel(sub.durationDays)} no plano</p>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* Histórico de planos */}
+      {data.subscriptions.length > 0 && (
+        <div>
+          <p className="text-[0.6rem] font-semibold text-gray-700 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+            <History className="h-3 w-3" /> Histórico de Planos
+          </p>
+          <div className="space-y-1">
+            {data.subscriptions.map((sub: any, idx: number) => (
+              <div key={sub.id} className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-gray-50 border border-gray-100">
+                <div className="flex items-center gap-2">
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${idx === 0 ? "bg-[#123A63]" : "bg-gray-300"}`} />
+                  <div>
+                    <p className="text-xs font-medium text-gray-800">{sub.planName}</p>
+                    <p className="text-[0.6rem] text-gray-400">
+                      {new Date(sub.startDate).toLocaleDateString("pt-BR")}
+                      {sub.endDate ? ` → ${new Date(sub.endDate).toLocaleDateString("pt-BR")}` : " → atual"}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[0.6rem] font-semibold text-gray-700">{durationLabel(sub.durationDays)}</p>
+                  <span className={`text-[0.55rem] px-1 py-0.5 rounded-full ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}>
+                    {STATUS_SUB[sub.status]?.label ?? sub.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Últimas faturas */}
+      {data.invoices.length > 0 && (
+        <div>
+          <p className="text-[0.6rem] font-semibold text-gray-700 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+            <Receipt className="h-3 w-3" /> Últimas Faturas
+          </p>
+          <div className="space-y-1">
+            {data.invoices.slice(0, 8).map((inv: any) => (
+              <div key={inv.id} className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-gray-50 border border-gray-100">
+                <p className="text-[0.65rem] text-gray-500">
+                  {inv.periodStart ? new Date(inv.periodStart).toLocaleDateString("pt-BR", { month: "short", year: "numeric" }) : `Fatura #${inv.id}`}
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[0.65rem] font-medium ${INVOICE_STATUS_COLOR[inv.status] ?? "text-gray-500"}`}>
+                    {inv.status === "paid" ? "Paga" : inv.status === "pending" ? "Pendente" : inv.status === "overdue" ? "Vencida" : inv.status}
+                  </span>
+                  <span className="text-xs font-semibold text-gray-900">{formatBRL(inv.totalBRL)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.subscriptions.length === 0 && data.invoices.length === 0 && (
+        <p className="text-xs text-gray-400 text-center py-4">Nenhum histórico financeiro encontrado.</p>
+      )}
+    </div>
+  );
+}
+
+// ─── Conteúdo do Slide — lista de tenants com cards expansíveis ──────────────
 function PlanTenantsContent({
   plan,
   onClose,
-  onSelectTenant,
-  hasDeeper,
 }: {
   plan: { planName: string; planSlug: string; count: number; tenants: any[] } | null;
   onClose: () => void;
-  onSelectTenant: (tenant: any) => void;
-  hasDeeper: boolean;
 }) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
   if (!plan) return null;
+
+  const toggleTenant = (id: number) => {
+    setExpandedId((prev: number | null) => (prev === id ? null : id));
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -1190,8 +1336,7 @@ function PlanTenantsContent({
               <h2 className="text-base font-semibold">{plan.planName}</h2>
             </div>
             <p className="text-xs text-blue-200">
-              {plan.count} tenant{plan.count !== 1 ? "s" : ""} neste plano
-              {hasDeeper ? " — clique em outro tenant para trocar" : " — clique para ver detalhes financeiros"}
+              {plan.count} tenant{plan.count !== 1 ? "s" : ""} neste plano — clique para ver detalhes financeiros
             </p>
           </div>
           <button
@@ -1204,246 +1349,62 @@ function PlanTenantsContent({
         </div>
       </div>
 
-      {/* Lista de tenants */}
+      {/* Lista de tenants com expand/collapse */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
         {plan.tenants.map((t: any) => {
           const ss = STATUS_SUB[t.subStatus ?? t.subscriptionStatus ?? ""] ?? null;
+          const isExpanded = expandedId === t.id;
+          const tenantId = normalizeTenantId(t.id);
+
           return (
-            <button
+            <div
               key={t.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectTenant(t);
-              }}
-              className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white hover:border-[#123A63]/30 hover:bg-[#123A63]/5 transition-all group text-left shadow-sm"
+              className={`rounded-xl border transition-all shadow-sm ${
+                isExpanded
+                  ? "border-[#123A63]/30 bg-white ring-1 ring-[#123A63]/10"
+                  : "border-gray-100 bg-white hover:border-[#123A63]/30 hover:bg-[#123A63]/5"
+              }`}
             >
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-gray-900 truncate text-sm">{t.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{t.slug}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0 ml-3">
-                {ss && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ss.color}`}>
-                    {ss.label}
-                  </span>
-                )}
-                <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-[#123A63] transition-colors" />
-              </div>
-            </button>
+              <button
+                onClick={() => toggleTenant(t.id)}
+                className="w-full flex items-center justify-between p-4 text-left group"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-gray-900 truncate text-sm">{t.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{t.slug}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  {ss && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ss.color}`}>
+                      {ss.label}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+                      isExpanded ? "rotate-180 text-[#123A63]" : "group-hover:text-[#123A63]"
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Conteúdo expandido */}
+              {isExpanded && tenantId != null && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                  <TenantDetailInline tenantId={tenantId} />
+                </div>
+              )}
+              {isExpanded && tenantId == null && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                  <p className="text-xs text-gray-400 py-2">Não foi possível identificar este tenant.</p>
+                </div>
+              )}
+            </div>
           );
         })}
         {plan.tenants.length === 0 && (
           <p className="text-sm text-gray-400 text-center py-12">Nenhum tenant neste plano.</p>
         )}
       </div>
-    </div>
-  );
-}
-
-// ─── Conteúdo do Slide 2 — detalhe financeiro do tenant ──────────────────────
-function TenantDetailContent({
-  tenantId,
-  tenantLabel,
-  onClose,
-}: {
-  tenantId: number | null;
-  tenantLabel?: string;
-  onClose: () => void;
-}) {
-  const safeTenantId = normalizeTenantId(tenantId);
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = (trpc as any).billing.tenantDetail.useQuery(
-    { tenantId: safeTenantId ?? 0 },
-    { enabled: safeTenantId != null, retry: false }
-  );
-
-  return (
-    <div className="flex flex-col h-full">
-      {safeTenantId == null ? (
-        <div className="flex items-center justify-center h-full px-6">
-          <p className="text-sm text-gray-500 text-center">
-            {tenantLabel
-              ? `Não foi possível identificar o tenant "${tenantLabel}" para carregar o histórico financeiro.`
-              : "Selecione um tenant para ver os detalhes financeiros."}
-          </p>
-        </div>
-      ) : isLoading ? (
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-8 w-8 animate-spin text-[#123A63]" />
-        </div>
-      ) : isError ? (
-        <div className="flex flex-col items-center justify-center h-full px-6 gap-3">
-          <p className="text-sm text-gray-600 text-center">
-            Não foi possível carregar o detalhamento financeiro deste tenant.
-          </p>
-          <p className="text-xs text-gray-400 text-center">
-            {String((error as any)?.message || "Erro inesperado")}
-          </p>
-          <Button size="sm" variant="outline" onClick={() => refetch()}>
-            Tentar novamente
-          </Button>
-        </div>
-      ) : !data ? (
-        <div className="flex items-center justify-center h-full px-6">
-          <p className="text-sm text-gray-500 text-center">
-            Nenhum dado financeiro encontrado para este tenant.
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* Header */}
-          <div className="bg-[#123A63] px-6 py-5 text-white flex-shrink-0">
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base font-semibold text-white truncate">
-                  {data.tenant?.name ?? tenantLabel ?? "—"}
-                </h2>
-                <p className="text-xs text-blue-200 mt-0.5">{data.tenant?.slug ?? ""}</p>
-
-                {/* Status adimplente + tempo como cliente */}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {data.isAdimplente ? (
-                    <span className="inline-flex items-center gap-1.5 bg-green-500/20 text-green-200 border border-green-400/40 rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                      <ShieldCheck className="h-3 w-3" /> Adimplente
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 bg-red-500/20 text-red-200 border border-red-400/40 rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                      <ShieldAlert className="h-3 w-3" /> Inadimplente
-                    </span>
-                  )}
-                  <span className="text-blue-200 text-xs flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Cliente há {data.clientSinceDays != null ? durationLabel(data.clientSinceDays) : "—"}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="text-blue-200 hover:text-white transition-colors p-1 rounded ml-3 flex-shrink-0"
-                aria-label="Fechar"
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-            {/* KPIs */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#123A63]/5 rounded-xl p-3">
-                <p className="text-[0.65rem] text-gray-500 uppercase tracking-wide mb-1">Total Faturado</p>
-                <p className="text-lg font-bold text-[#123A63]">{formatBRL(data.totalPaidBRL)}</p>
-                <p className="text-[0.6rem] text-gray-400 mt-0.5">faturas pagas</p>
-              </div>
-              <div className="bg-[#123A63]/5 rounded-xl p-3">
-                <p className="text-[0.65rem] text-gray-500 uppercase tracking-wide mb-1">Faturas</p>
-                <div className="flex items-end gap-1.5">
-                  <p className="text-lg font-bold text-[#123A63]">{data.invoices.length}</p>
-                  <p className="text-xs text-gray-500 mb-0.5">total</p>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-0.5 text-[0.6rem]">
-                  <span className="text-green-600">{data.invoices.filter((i: any) => i.status === "paid").length} pagas</span>
-                  {data.invoices.filter((i: any) => i.status === "overdue").length > 0 && (
-                    <span className="text-red-500 font-semibold">{data.invoices.filter((i: any) => i.status === "overdue").length} vencidas</span>
-                  )}
-                  {data.invoices.filter((i: any) => i.status === "pending").length > 0 && (
-                    <span className="text-yellow-600">{data.invoices.filter((i: any) => i.status === "pending").length} pendentes</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Plano atual */}
-            {data.subscriptions.filter((s: any) => ["active","trialing"].includes(s.status)).slice(0,1).map((sub: any) => (
-              <div key={sub.id} className="border border-[#123A63]/20 rounded-xl p-3.5">
-                <p className="text-xs font-semibold text-[#123A63] uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5" /> Plano Atual
-                </p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">{sub.planName}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Desde {new Date(sub.startDate).toLocaleDateString("pt-BR")}
-                      {sub.endDate && ` · até ${new Date(sub.endDate).toLocaleDateString("pt-BR")}`}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}>
-                      {STATUS_SUB[sub.status]?.label ?? sub.status}
-                    </span>
-                    <p className="text-xs text-gray-500 mt-1">{durationLabel(sub.durationDays)} no plano</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Histórico de planos */}
-            {data.subscriptions.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
-                  <History className="h-3.5 w-3.5" /> Histórico de Planos
-                </p>
-                <div className="space-y-1.5">
-                  {data.subscriptions.map((sub: any, idx: number) => (
-                    <div key={sub.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 border border-gray-100">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${idx === 0 ? "bg-[#123A63]" : "bg-gray-300"}`} />
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{sub.planName}</p>
-                          <p className="text-xs text-gray-400">
-                            {new Date(sub.startDate).toLocaleDateString("pt-BR")}
-                            {sub.endDate ? ` → ${new Date(sub.endDate).toLocaleDateString("pt-BR")}` : " → atual"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs font-semibold text-gray-700">{durationLabel(sub.durationDays)}</p>
-                        <span className={`text-[0.6rem] px-1.5 py-0.5 rounded-full ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}>
-                          {STATUS_SUB[sub.status]?.label ?? sub.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Últimas faturas */}
-            {data.invoices.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
-                  <Receipt className="h-3.5 w-3.5" /> Últimas Faturas
-                </p>
-                <div className="space-y-1.5">
-                  {data.invoices.slice(0, 8).map((inv: any) => (
-                    <div key={inv.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 border border-gray-100 text-sm">
-                      <p className="text-xs text-gray-500">
-                        {inv.periodStart ? new Date(inv.periodStart).toLocaleDateString("pt-BR", { month: "short", year: "numeric" }) : `Fatura #${inv.id}`}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs font-medium ${INVOICE_STATUS_COLOR[inv.status] ?? "text-gray-500"}`}>
-                          {inv.status === "paid" ? "Paga" : inv.status === "pending" ? "Pendente" : inv.status === "overdue" ? "Vencida" : inv.status}
-                        </span>
-                        <span className="text-sm font-semibold text-gray-900">{formatBRL(inv.totalBRL)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {data.subscriptions.length === 0 && data.invoices.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-8">Nenhum histórico financeiro encontrado.</p>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -1455,25 +1416,9 @@ function ClientsByPlanReport() {
   const [selectedPlan, setSelectedPlan] = useState<{
     planName: string; planSlug: string; count: number; tenants: any[];
   } | null>(null);
-  const [selectedTenant, setSelectedTenant] = useState<{ id: number | null; name: string } | null>(null);
 
   const slide1Open = selectedPlan != null;
-  const slide2Open = selectedTenant != null;
-
-  const closeAll   = () => { setSelectedPlan(null); setSelectedTenant(null); };
-  const closeSlide2 = () => setSelectedTenant(null);
-
-  const openTenantDetail = (tenant: any) => {
-    const tenantId = normalizeTenantId(tenant?.id ?? tenant?.tenantId);
-    setSelectedTenant({
-      id: tenantId,
-      name: String(tenant?.name ?? "Tenant"),
-    });
-
-    if (tenantId == null) {
-      toast.error("Não foi possível identificar o tenant selecionado.");
-    }
-  };
+  const closeAll = () => setSelectedPlan(null);
 
   const planStats = (enrichedTenants as any[]).reduce((acc: any, tenant: any) => {
     const planSlug = tenant.planSlug || "sem-plano";
@@ -1530,7 +1475,7 @@ function ClientsByPlanReport() {
             return (
               <button
                 key={idx}
-                onClick={() => { setSelectedTenant(null); setSelectedPlan(stat); }}
+                onClick={() => setSelectedPlan(stat)}
                 className="text-left w-full group"
               >
                 <Card className="border-l-4 border-l-[#123A63] hover:shadow-md hover:border-[#F37321] transition-all cursor-pointer h-full">
@@ -1622,7 +1567,7 @@ function ClientsByPlanReport() {
         <>
           {/* Backdrop */}
           <div
-            onClick={(e) => { if (e.target === e.currentTarget) closeAll(); }}
+            onClick={(e: any) => { if (e.target === e.currentTarget) closeAll(); }}
             style={{
               position: "fixed",
               inset: 0,
@@ -1650,85 +1595,9 @@ function ClientsByPlanReport() {
               transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
             }}
           >
-            {/* Strip overlay: aparece quando Slide2 está aberto,
-                cobrindo os 15vw visíveis com overlay clicável para voltar */}
-            <div
-              onClick={slide2Open ? closeSlide2 : undefined}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: `${SLIDE1_W - SLIDE2_W}vw`,
-                height: "100%",
-                zIndex: 10,
-                background: slide2Open ? "rgba(0,0,0,0.32)" : "transparent",
-                backdropFilter: slide2Open ? "blur(1px)" : "none",
-                cursor: slide2Open ? "pointer" : "default",
-                pointerEvents: slide2Open ? "auto" : "none",
-                transition: "background 0.3s",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-              }}
-            >
-              {slide2Open && (
-                <>
-                  <div style={{
-                    background: "rgba(255,255,255,0.18)",
-                    borderRadius: "50%",
-                    padding: "8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}>
-                    <ChevronRight
-                      style={{ width: 20, height: 20, color: "white", transform: "rotate(180deg)" }}
-                    />
-                  </div>
-                  <span style={{
-                    fontSize: "0.6rem",
-                    color: "white",
-                    fontWeight: 600,
-                    textAlign: "center",
-                    lineHeight: 1.4,
-                    letterSpacing: "0.02em",
-                  }}>
-                    Voltar à<br />lista
-                  </span>
-                </>
-              )}
-            </div>
-
             <PlanTenantsContent
               plan={selectedPlan}
               onClose={closeAll}
-              onSelectTenant={openTenantDetail}
-              hasDeeper={slide2Open}
-            />
-          </div>
-
-          {/* ── Slide 2 — Detalhe financeiro do tenant (45 vw) ── */}
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              right: 0,
-              height: "100vh",
-              width: `${SLIDE2_W}vw`,
-              zIndex: 1002,
-              background: "white",
-              overflow: "hidden",
-              boxShadow: "-6px 0 32px rgba(0,0,0,0.22)",
-              transform: slide2Open ? "translateX(0)" : "translateX(105%)",
-              transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
-            }}
-          >
-            <TenantDetailContent
-              tenantId={selectedTenant?.id ?? null}
-              tenantLabel={selectedTenant?.name}
-              onClose={closeSlide2}
             />
           </div>
         </>,
