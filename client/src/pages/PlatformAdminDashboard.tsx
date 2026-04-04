@@ -57,7 +57,9 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function PlatformAdminDashboard() {
   const [, setLocation] = useLocation();
-  const { admin, role, isSuperAdmin, logout } = usePlatformAuth();
+  const { admin, role, isSuperAdmin, logout } = usePlatformAuth({
+    redirectOnUnauthenticated: true
+  });
 
   const [tenantsOpen, setTenantsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
