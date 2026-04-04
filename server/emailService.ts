@@ -239,7 +239,7 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
 }
 
 /**
- * Send email via Manus Gateway (HTTP) - contorna restrições SMTP do Railway
+ * Send email via HTTP Gateway - contorna restrições SMTP do Railway
  */
 async function sendEmailViaPostmanGpx(
   options: {
@@ -365,7 +365,7 @@ export async function fetchImageAsBase64(imageUrl: string): Promise<string | nul
 }
 
 /**
- * Send a test email - usa Gateway Manus (Railway) ou SMTP direto (local)
+ * Send a test email - usa HTTP Gateway (Railway) ou SMTP direto (local)
  */
 export async function sendTestEmailWithSettings(settings: {
   host: string;

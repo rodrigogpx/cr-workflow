@@ -15,7 +15,6 @@ services:
       - VITE_ANALYTICS_ENDPOINT=
       - VITE_ANALYTICS_WEBSITE_ID=
       # Variáveis de Autenticação (substitua pelos valores corretos)
-      - VITE_OAUTH_PORTAL_URL=https://auth.manus.br
       - VITE_APP_ID=seu-app-id-aqui
       - COOKIE_SECRET=a-very-secure-and-random-secret-for-dev
     volumes:
