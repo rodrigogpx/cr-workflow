@@ -55,20 +55,20 @@ export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
 
     field('Nome Completo', (client as any).name || '');
     field('CPF', (client as any).cpf || '');
-    field('RG', (client as any).rg || '');
+    field('RG', (client as any).identityNumber || '');
     field('Data de Nascimento', (client as any).birthDate
       ? new Date((client as any).birthDate).toLocaleDateString('pt-BR') : '');
     field('Sexo', (client as any).gender || '');
-    field('Naturalidade', (client as any).naturalidade || '');
+    field('Naturalidade', (client as any).birthPlace || '');
     field('Estado Civil', (client as any).maritalStatus || '');
     field('Profissão', (client as any).profession || '');
     doc.moveDown(0.3);
     field('Endereço', [
-      (client as any).street, (client as any).number,
+      (client as any).address, (client as any).addressNumber,
       (client as any).complement, (client as any).neighborhood,
-      (client as any).city, (client as any).state
+      (client as any).city, (client as any).residenceUf
     ].filter(Boolean).join(', '));
-    field('CEP', (client as any).zipCode || '');
+    field('CEP', (client as any).cep || '');
     field('Telefone', (client as any).phone || '');
     field('E-mail', (client as any).email || '');
 
@@ -95,11 +95,14 @@ export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
 
     const cursivePath = getCursiveFontPath();
     if (cursivePath) {
-      doc.font(cursivePath).fontSize(26).fillColor('#123A63').text('CAC 360', { align: 'center' });
-      doc.font('Helvetica');
+      try {
+        doc.font(cursivePath).fontSize(26).fillColor('#123A63').text('CAC 360', { align: 'center' });
+        doc.font('Helvetica');
+      } catch {
+        doc.fontSize(20).fillColor('#123A63').text('CAC 360', { align: 'center' });
+      }
     } else {
-      doc.font('Helvetica-Oblique').fontSize(20).fillColor('#123A63').text('CAC 360', { align: 'center' });
-      doc.font('Helvetica');
+      doc.fontSize(20).fillColor('#123A63').text('CAC 360', { align: 'center' });
     }
     doc.moveDown(0.3);
     doc.moveTo(200, doc.y).lineTo(440, doc.y).lineWidth(0.5).stroke('#000000');
@@ -249,11 +252,11 @@ export function generateClientDataPDF(client: Client): Promise<Buffer> {
     doc.fontSize(11).fillColor('#000000');
     doc.text(`Nome Completo: ${client.name || '-'}`);
     doc.text(`CPF: ${client.cpf || '-'}`);
-    doc.text(`RG: ${(client as any).rg || '-'}`);
+    doc.text(`RG: ${(client as any).identityNumber || '-'}`);
     doc.text(`Data de Nascimento: ${client.birthDate ? new Date(client.birthDate).toLocaleDateString('pt-BR') : '-'}`);
     doc.text(`Sexo: ${(client as any).gender || '-'}`);
-    doc.text(`Naturalidade: ${(client as any).naturalidade || '-'}`);
-    doc.text(`Nacionalidade: ${(client as any).nacionalidade || '-'}`);
+    doc.text(`Naturalidade: ${(client as any).birthPlace || '-'}`);
+    doc.text(`Nacionalidade: ${(client as any).birthCountry || '-'}`);
     doc.text(`Estado Civil: ${(client as any).maritalStatus || '-'}`);
     doc.text(`Profissão: ${(client as any).profession || '-'}`);
     doc.moveDown(1);
@@ -276,13 +279,13 @@ export function generateClientDataPDF(client: Client): Promise<Buffer> {
     doc.moveDown(0.5);
     
     doc.fontSize(11).fillColor('#000000');
-    doc.text(`Logradouro: ${(client as any).street || '-'}`);
-    doc.text(`Número: ${(client as any).number || '-'}`);
+    doc.text(`Logradouro: ${(client as any).address || '-'}`);
+    doc.text(`Número: ${(client as any).addressNumber || '-'}`);
     doc.text(`Complemento: ${(client as any).complement || '-'}`);
     doc.text(`Bairro: ${(client as any).neighborhood || '-'}`);
     doc.text(`Cidade: ${(client as any).city || '-'}`);
-    doc.text(`Estado: ${(client as any).state || '-'}`);
-    doc.text(`CEP: ${(client as any).zipCode || '-'}`);
+    doc.text(`Estado: ${(client as any).residenceUf || '-'}`);
+    doc.text(`CEP: ${(client as any).cep || '-'}`);
     doc.moveDown(1);
 
     // Filiação
