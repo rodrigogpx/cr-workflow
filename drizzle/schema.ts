@@ -108,6 +108,9 @@ export const workflowSteps = pgTable("workflowSteps", {
   sinarmStatus: varchar("sinarmStatus", { length: 50 }),
   sinarmOpenDate: timestamp("sinarmOpenDate"),
   protocolNumber: varchar("protocolNumber", { length: 100 }),
+  // Campos para encaminhamento de avaliação psicológica
+  referralSentAt: timestamp("referralSentAt", { withTimezone: false }),
+  referralType: varchar("referralType", { length: 20 }),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
 });

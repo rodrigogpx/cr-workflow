@@ -40,7 +40,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { updateClientSchema, type UpdateClientInput, formatCPF, formatPhone, formatCEP, isValidCPF } from "@shared/validations";
-import { DocumentUpload } from "@/components/DocumentUpload";
+import { PsychReferralPanel } from "@/components/PsychReferralPanel";
 import { EmailPreview } from "@/components/EmailPreview";
 import { UploadModal } from "@/components/UploadModal";
 import { Input } from "@/components/ui/input";
@@ -1087,12 +1087,14 @@ export default function ClientWorkflow() {
                     </div>
                     )}
 
-                    {/* Upload de Documentos - Encaminhamento Avaliação Psicológica */}
+                    {/* Encaminhamento Avaliação Psicológica */}
                     {isPsychEvaluationForwardStep && (
-                      <DocumentUpload 
-                        clientId={Number(clientId)} 
-                        stepId={step.id} 
-                        stepTitle={step.stepTitle || "Encaminhamento de Avaliação Psicológica"} 
+                      <PsychReferralPanel
+                        clientId={Number(clientId)}
+                        stepId={step.id}
+                        referralSentAt={step.referralSentAt}
+                        referralType={step.referralType}
+                        onSuccess={() => refetch()}
                       />
                     )}
 

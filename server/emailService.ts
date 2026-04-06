@@ -728,6 +728,62 @@ function renderTemplate(template: string, client: Client, extraData?: Record<str
 }
 
 /**
+ * Build HTML email for psychological evaluation referral (standard or custom)
+ */
+export function buildPsychReferralEmailHtml(
+  clientName: string,
+  type: 'standard' | 'custom',
+  dateStr: string,
+): string {
+  const intro = type === 'standard'
+    ? `Segue em anexo o seu <strong>Encaminhamento para Avaliação Psicológica</strong> emitido pela plataforma CAC 360.`
+    : `Segue em anexo o <strong>encaminhamento personalizado</strong> para Avaliação Psicológica, encaminhado pelo seu gestor de processo, junto com sua ficha de dados cadastrais.`;
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr><td style="padding:32px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" align="center"
+             style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);max-width:600px;width:100%;">
+        <!-- Header -->
+        <tr>
+          <td style="background-color:#123A63;padding:28px 32px;text-align:center;">
+            <span style="font-family:'Arial Black',Arial,sans-serif;font-size:26px;font-weight:900;color:#ffffff;letter-spacing:2px;">CAC&#160;</span><span style="font-family:'Arial Black',Arial,sans-serif;font-size:26px;font-weight:900;color:#4ade80;letter-spacing:2px;">360</span>
+            <p style="margin:8px 0 0;color:#cbd5e1;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Gestão de Workflow CR</p>
+          </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+          <td style="padding:32px 32px 24px;">
+            <p style="margin:0 0 16px;font-size:16px;color:#1e293b;">Olá, <strong>${clientName}</strong>!</p>
+            <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.7;">${intro}</p>
+            <div style="background:#f0f9ff;border-left:4px solid #0ea5e9;padding:16px 20px;border-radius:0 6px 6px 0;margin-bottom:20px;">
+              <p style="margin:0;font-size:13px;color:#0369a1;font-weight:bold;">⚠️ Importante</p>
+              <p style="margin:6px 0 0;font-size:13px;color:#0369a1;line-height:1.6;">
+                Apresente este encaminhamento ao profissional de psicologia no dia da sua avaliação.<br>
+                O documento tem validade de <strong>90 dias</strong> a partir da data de emissão.
+              </p>
+            </div>
+            <p style="margin:0 0 8px;font-size:13px;color:#64748b;">Após a realização da avaliação, encaminhe o laudo de aptidão psicológica para a sua equipe CAC 360 para dar prosseguimento ao processo.</p>
+            <p style="margin:24px 0 0;font-size:13px;color:#94a3b8;">Emitido em: ${dateStr}</p>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f8fafc;padding:20px 32px;border-top:1px solid #e2e8f0;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#94a3b8;">CAC 360 — Plataforma de Gestão CR &bull; <a href="https://www.cac360.com.br" style="color:#123A63;text-decoration:none;">www.cac360.com.br</a></p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
  * Process pending scheduled emails (should be called periodically)
  */
 export async function processScheduledEmails(tenantDb?: any): Promise<number> {

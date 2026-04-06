@@ -438,6 +438,10 @@ export async function ensureMissingTables() {
     await db.execute(sql`ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "issueDate" timestamp;`);
     await db.execute(sql`ALTER TABLE "clientPendingDocuments" ADD COLUMN IF NOT EXISTS "issueDate" timestamp;`);
 
+    // Add psych referral tracking columns to workflowSteps
+    await db.execute(sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "referralSentAt" timestamp;`);
+    await db.execute(sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "referralType" varchar(20);`);
+
     // Migrate CPF unique constraint: UNIQUE(cpf) -> UNIQUE(tenantId, cpf) for tenant isolation
     try {
       await db.execute(sql`ALTER TABLE "clients" DROP CONSTRAINT IF EXISTS "clients_cpf_unique";`);
