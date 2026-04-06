@@ -300,7 +300,7 @@ export default function SuperAdminTenants() {
   });
 
   const { data: tenants = [], isLoading: isLoadingTenants, isFetching } = trpc.tenants.list.useQuery();
-  const { data: planDefinitions = [] } = (trpc as any).billing.listPlans.useQuery();
+  const { data: planDefinitions = [] } = trpc.plans.list.useQuery();
 
   const createTenant = trpc.tenants.create.useMutation({
     onSuccess: () => {
