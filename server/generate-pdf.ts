@@ -39,7 +39,7 @@ export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
 
     doc.fontSize(10).fillColor('#000000');
     const field = (label: string, value: string) => {
-      doc.font('Helvetica-Bold').text(`${label}: `, { continued: true }).font('Helvetica').text(value || '—');
+      doc.text(`${label}: ${value || '—'}`);
     };
 
     field('Nome Completo', (client as any).name || '');
