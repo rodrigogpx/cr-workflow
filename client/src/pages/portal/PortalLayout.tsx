@@ -1,5 +1,6 @@
 import React from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Home } from "lucide-react";
+import { Link } from "wouter";
 
 interface PortalLayoutProps {
   children?: React.ReactNode;
@@ -30,10 +31,16 @@ export default function PortalLayout({ children, title, loading }: PortalLayoutP
             className="h-8 w-auto"
             onError={(e) => (e.currentTarget.style.display = "none")}
           />
-          <div>
+          <div className="flex-1">
             <h1 className="font-bold text-white text-lg leading-none">Portal do Associado</h1>
             <p className="text-xs text-purple-200">Área exclusiva do cliente</p>
           </div>
+          <Link href="/portal">
+            <a className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-medium transition-colors">
+              <Home className="h-3.5 w-3.5" />
+              Início
+            </a>
+          </Link>
         </div>
       </header>
 
