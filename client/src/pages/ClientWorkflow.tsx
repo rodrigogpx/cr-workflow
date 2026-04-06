@@ -511,6 +511,8 @@ export default function ClientWorkflow() {
   }, [client, clientId, reset]);
 
   const selectedApostilamentoActivities = (watch("apostilamentoActivities") as string[] | undefined) || [];
+  const watchRequestType = (watch("requestType") as string) || '';
+  const isConcessao = watchRequestType.toLowerCase() === 'concessão' || watchRequestType.toLowerCase() === 'concessao';
 
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
     onSuccess: (data: any, variables: any) => {
@@ -1385,6 +1387,7 @@ export default function ClientWorkflow() {
                                 />
                                 {errors.requestType && <p className="text-xs text-red-500 mt-1">{errors.requestType.message}</p>}
                               </div>
+                              {!isConcessao && (
                               <div>
                                 <Label htmlFor="cacNumber" className="text-sm font-medium text-teal-600">Nº CAC</Label>
                                 <Input
@@ -1394,6 +1397,8 @@ export default function ClientWorkflow() {
                                 />
                                 {errors.cacNumber && <p className="text-xs text-red-500 mt-1">{errors.cacNumber.message}</p>}
                               </div>
+                              )}
+                              {!isConcessao && (
                               <div>
                                 <Label htmlFor="cacCategory" className="text-sm font-medium text-teal-600">Categoria CAC</Label>
                                 <Input
@@ -1403,9 +1408,11 @@ export default function ClientWorkflow() {
                                 />
                                 {errors.cacCategory && <p className="text-xs text-red-500 mt-1">{errors.cacCategory.message}</p>}
                               </div>
+                              )}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {!isConcessao && (
                               <div>
                                 <Label htmlFor="previousCrNumber" className="text-sm font-medium text-teal-600">Nº CR Anterior (se houver)</Label>
                                 <Input
@@ -1415,6 +1422,7 @@ export default function ClientWorkflow() {
                                 />
                                 {errors.previousCrNumber && <p className="text-xs text-red-500 mt-1">{errors.previousCrNumber.message}</p>}
                               </div>
+                              )}
                               <div>
                                 <Label htmlFor="psychReportValidity" className="text-sm font-medium text-teal-600">Validade Laudo Psicológico</Label>
                                 <Input
@@ -1606,6 +1614,7 @@ export default function ClientWorkflow() {
                             </div>
                           </div>
 
+                          {watch('hasSecondCollectionAddress') && (<>
                           <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">Segundo Endereço do Acervo</div>
 
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1708,6 +1717,7 @@ export default function ClientWorkflow() {
                               {errors.acervoLongitude && <p className="text-xs text-red-500 mt-1">{errors.acervoLongitude.message}</p>}
                             </div>
                           </div>
+                          </>)}
 
                           {/* Botão Salvar */}
                           <Button
