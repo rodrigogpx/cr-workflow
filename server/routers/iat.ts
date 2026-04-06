@@ -3,8 +3,8 @@ import { router, adminProcedure, iatProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getTenantDb } from "../config/tenant.config";
 import { getDb } from "../db";
-import { iatInstructors, iatCourses, iatExams, iatSchedules, iatCourseClasses, iatClassEnrollments, clients } from "../../drizzle/schema";
-import { eq, and, desc, sql, count } from "drizzle-orm";
+import { iatInstructors, iatCourses, iatExams, iatSchedules, iatCourseClasses, iatClassEnrollments, iatClassSessions, iatAttendance, clients } from "../../drizzle/schema";
+import { eq, and, desc, sql, count, asc } from "drizzle-orm";
 
 async function getIatDb(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
@@ -653,6 +653,191 @@ const enrollmentRouter = router({
     }),
 });
 
+// ─── Sessions ────────────────────────────────────────────────────────────────
+
+const sessionRouter = router({
+  list: iatProcedure
+    .input(z.object({ classId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      const sessions = await db
+        .select()
+        .from(iatClassSessions)
+        .where(and(eq(iatClassSessions.classId, input.classId), eq(iatClassSessions.tenantId, tenantId)))
+        .orderBy(asc(iatClassSessions.sessionNumber));
+      return sessions;
+    }),
+
+  create: adminProcedure
+    .input(z.object({
+      classId: z.number(),
+      sessionNumber: z.number().min(1).default(1),
+      title: z.string().optional(),
+      scheduledDate: z.string().optional(),
+      scheduledTime: z.string().optional(),
+      durationMinutes: z.number().default(60),
+      location: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      const { scheduledDate, ...rest } = input;
+      const [created] = await db
+        .insert(iatClassSessions)
+        .values({
+          tenantId,
+          ...rest,
+          scheduledDate: scheduledDate ?? null,
+          status: "agendada",
+        })
+        .returning();
+      return created;
+    }),
+
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      sessionNumber: z.number().optional(),
+      title: z.string().optional(),
+      scheduledDate: z.string().optional().nullable(),
+      scheduledTime: z.string().optional().nullable(),
+      durationMinutes: z.number().optional(),
+      location: z.string().optional().nullable(),
+      status: z.enum(["agendada", "realizada", "cancelada"]).optional(),
+      notes: z.string().optional().nullable(),
+      attendanceRecorded: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      const { id, scheduledDate, ...rest } = input;
+      const [updated] = await db
+        .update(iatClassSessions)
+        .set({
+          ...rest,
+          ...(scheduledDate !== undefined ? { scheduledDate } : {}),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(iatClassSessions.id, id), eq(iatClassSessions.tenantId, tenantId)))
+        .returning();
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Sessão não encontrada" });
+      return updated;
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      // Cascade: delete attendance records first
+      await db.delete(iatAttendance)
+        .where(and(eq(iatAttendance.sessionId, input.id), eq(iatAttendance.tenantId, tenantId)));
+      await db.delete(iatClassSessions)
+        .where(and(eq(iatClassSessions.id, input.id), eq(iatClassSessions.tenantId, tenantId)));
+      return { success: true };
+    }),
+});
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+
+const attendanceRouter = router({
+  /** List all attendance records for a session, joined with enrollment+client info */
+  listBySession: iatProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      const rows = await db
+        .select({
+          id: iatAttendance.id,
+          sessionId: iatAttendance.sessionId,
+          enrollmentId: iatAttendance.enrollmentId,
+          status: iatAttendance.status,
+          notes: iatAttendance.notes,
+          recordedAt: iatAttendance.recordedAt,
+          clientId: clients.id,
+          clientName: clients.name,
+          clientCpf: clients.cpf,
+        })
+        .from(iatAttendance)
+        .innerJoin(iatClassEnrollments, eq(iatAttendance.enrollmentId, iatClassEnrollments.id))
+        .innerJoin(clients, eq(iatClassEnrollments.clientId, clients.id))
+        .where(and(eq(iatAttendance.sessionId, input.sessionId), eq(iatAttendance.tenantId, tenantId)));
+      return rows;
+    }),
+
+  /** List attendance for all sessions of a class, keyed by enrollmentId */
+  listByClass: iatProcedure
+    .input(z.object({ classId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      // Get all sessions for the class
+      const sessions = await db
+        .select({ id: iatClassSessions.id })
+        .from(iatClassSessions)
+        .where(and(eq(iatClassSessions.classId, input.classId), eq(iatClassSessions.tenantId, tenantId)));
+
+      if (sessions.length === 0) return [];
+
+      const sessionIds = sessions.map(s => s.id);
+      const rows = await db
+        .select()
+        .from(iatAttendance)
+        .where(
+          and(
+            eq(iatAttendance.tenantId, tenantId),
+            sql`${iatAttendance.sessionId} = ANY(ARRAY[${sql.join(sessionIds.map(id => sql`${id}`), sql`, `)}]::int[])`
+          )
+        );
+      return rows;
+    }),
+
+  /** Upsert attendance records in batch (optimistic update pattern) */
+  record: adminProcedure
+    .input(z.object({
+      records: z.array(z.object({
+        sessionId: z.number(),
+        enrollmentId: z.number(),
+        status: z.enum(["pendente", "presente", "ausente", "justificado"]),
+        notes: z.string().optional().nullable(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getIatDb(ctx);
+      const tenantId = getTenantId(ctx);
+      const userId = (ctx as any)?.user?.id ?? null;
+
+      for (const rec of input.records) {
+        await db.execute(sql`
+          INSERT INTO "iat_attendance" ("tenantId", "sessionId", "enrollmentId", "status", "notes", "recordedAt", "recordedBy")
+          VALUES (${tenantId}, ${rec.sessionId}, ${rec.enrollmentId}, ${rec.status}, ${rec.notes ?? null}, now(), ${userId})
+          ON CONFLICT ("sessionId", "enrollmentId")
+          DO UPDATE SET
+            "status"     = EXCLUDED."status",
+            "notes"      = EXCLUDED."notes",
+            "recordedAt" = now(),
+            "recordedBy" = EXCLUDED."recordedBy"
+        `);
+      }
+
+      // Mark session as attendance recorded if any record was saved with non-pendente status
+      if (input.records.length > 0) {
+        const sessionId = input.records[0].sessionId;
+        const hasRealRecord = input.records.some(r => r.status !== "pendente");
+        if (hasRealRecord) {
+          await db.update(iatClassSessions)
+            .set({ attendanceRecorded: true, updatedAt: new Date() })
+            .where(and(eq(iatClassSessions.id, sessionId), eq(iatClassSessions.tenantId, tenantId)));
+        }
+      }
+
+      return { success: true, count: input.records.length };
+    }),
+});
+
 // ─── IAT Root Router ─────────────────────────────────────────────────────────
 
 export const iatRouter = router({
@@ -662,4 +847,6 @@ export const iatRouter = router({
   schedules: scheduleRouter,
   classes: classRouter,
   enrollments: enrollmentRouter,
+  sessions: sessionRouter,
+  attendance: attendanceRouter,
 });

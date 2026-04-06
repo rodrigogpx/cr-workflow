@@ -833,6 +833,71 @@ export const iatClassEnrollmentsRelations = relations(iatClassEnrollments, ({ on
 
 /**
  * ============================================
+ * IAT CLASS SESSIONS (Sessões de Turma)
+ * Cada turma pode ter múltiplas sessões/aulas
+ * ============================================
+ */
+export const iatClassSessions = pgTable("iat_class_sessions", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  classId: integer("classId").notNull(),
+  sessionNumber: integer("sessionNumber").notNull().default(1),
+  title: varchar("title", { length: 255 }),
+  scheduledDate: date("scheduledDate"),
+  scheduledTime: varchar("scheduledTime", { length: 5 }),
+  durationMinutes: integer("durationMinutes").default(60),
+  location: text("location"),
+  status: varchar("status", { length: 20 }).notNull().default("agendada"), // agendada | realizada | cancelada
+  notes: text("notes"),
+  attendanceRecorded: boolean("attendanceRecorded").notNull().default(false),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type IatClassSession = typeof iatClassSessions.$inferSelect;
+export type InsertIatClassSession = typeof iatClassSessions.$inferInsert;
+
+export const iatClassSessionsRelations = relations(iatClassSessions, ({ one, many }: any) => ({
+  courseClass: one(iatCourseClasses, {
+    fields: [iatClassSessions.classId],
+    references: [iatCourseClasses.id],
+  }),
+  attendance: many(iatAttendance),
+}));
+
+/**
+ * ============================================
+ * IAT ATTENDANCE (Frequência por Sessão)
+ * Registro de presença: aluno × sessão
+ * ============================================
+ */
+export const iatAttendance = pgTable("iat_attendance", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  sessionId: integer("sessionId").notNull(),
+  enrollmentId: integer("enrollmentId").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pendente"), // pendente | presente | ausente | justificado
+  notes: text("notes"),
+  recordedAt: timestamp("recordedAt", { withTimezone: false }).defaultNow(),
+  recordedBy: integer("recordedBy"),
+});
+
+export type IatAttendance = typeof iatAttendance.$inferSelect;
+export type InsertIatAttendance = typeof iatAttendance.$inferInsert;
+
+export const iatAttendanceRelations = relations(iatAttendance, ({ one }: any) => ({
+  session: one(iatClassSessions, {
+    fields: [iatAttendance.sessionId],
+    references: [iatClassSessions.id],
+  }),
+  enrollment: one(iatClassEnrollments, {
+    fields: [iatAttendance.enrollmentId],
+    references: [iatClassEnrollments.id],
+  }),
+}));
+
+/**
+ * ============================================
  * Portal do Cliente — Tokens de Convite
  * Gerado ao criar cliente; usado para primeiro acesso
  * ============================================
@@ -952,10 +1017,4 @@ export const leads = pgTable("leads", {
   status: varchar("status", { length: 30 }).notNull().default("new"),
   // new | contacted | demo_scheduled | converted | lost
   source: varchar("source", { length: 50 }).default("landing"),
-  ipAddress: varchar("ipAddress", { length: 45 }),
-  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
-});
-
-export type Lead = typeof leads.$inferSelect;
-export type InsertLead = typeof leads.$inferInsert;
+  ipAddress: 

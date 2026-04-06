@@ -442,6 +442,53 @@ export async function ensureMissingTables() {
     await db.execute(sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "referralSentAt" timestamp;`);
     await db.execute(sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "referralType" varchar(20);`);
 
+    // ── IAT Phase 1: Sessões de Turma ─────────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_class_sessions" (
+        "id"                  serial PRIMARY KEY,
+        "tenantId"            integer NOT NULL,
+        "classId"             integer NOT NULL,
+        "sessionNumber"       integer NOT NULL DEFAULT 1,
+        "title"               varchar(255),
+        "scheduledDate"       date,
+        "scheduledTime"       varchar(5),
+        "durationMinutes"     integer DEFAULT 60,
+        "location"            text,
+        "status"              varchar(20) NOT NULL DEFAULT 'agendada',
+        "notes"               text,
+        "attendanceRecorded"  boolean NOT NULL DEFAULT false,
+        "createdAt"           timestamp DEFAULT now() NOT NULL,
+        "updatedAt"           timestamp DEFAULT now() NOT NULL
+      );
+    `);
+
+    // ── IAT Phase 1: Frequência por Sessão ────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_attendance" (
+        "id"           serial PRIMARY KEY,
+        "tenantId"     integer NOT NULL,
+        "sessionId"    integer NOT NULL,
+        "enrollmentId" integer NOT NULL,
+        "status"       varchar(20) NOT NULL DEFAULT 'pendente',
+        "notes"        text,
+        "recordedAt"   timestamp DEFAULT now(),
+        "recordedBy"   integer
+      );
+    `);
+
+    await db.execute(sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'iat_attendance_session_enrollment_unique'
+        ) THEN
+          ALTER TABLE "iat_attendance"
+            ADD CONSTRAINT "iat_attendance_session_enrollment_unique"
+            UNIQUE ("sessionId", "enrollmentId");
+        END IF;
+      END $$;
+    `);
+
     // Migrate CPF unique constraint: UNIQUE(cpf) -> UNIQUE(tenantId, cpf) for tenant isolation
     try {
       await db.execute(sql`ALTER TABLE "clients" DROP CONSTRAINT IF EXISTS "clients_cpf_unique";`);
@@ -511,18 +558,4 @@ export async function ensureMissingTables() {
           const userRows = Array.isArray(userResult) ? userResult : (userResult as any)?.rows ?? [];
           if (!userRows || userRows.length === 0) {
             await db.execute(sql`
-              INSERT INTO "users" ("email", "hashedPassword", "name", "role", "perfil", "createdAt", "updatedAt")
-              VALUES (${email}, ${hashedPassword}, 'Administrador', 'admin', 'admin', now(), now());
-            `);
-          } else {
-            await db.execute(sql`UPDATE "users" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`);
-          }
-        }
-      }
-    } catch (adminErr) {
-      console.error("[Migration] Error ensuring platform admins:", adminErr);
-    }
-  } catch (error) {
-    console.error("[Migration] Error creating tables:", error);
-  }
-}
+              INSERT INTO "users" ("email", "hashedPassword", "name"
