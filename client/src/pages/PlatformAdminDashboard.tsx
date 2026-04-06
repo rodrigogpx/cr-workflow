@@ -57,7 +57,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function PlatformAdminDashboard() {
   const [, setLocation] = useLocation();
-  const { admin, role, isSuperAdmin, logout } = usePlatformAuth({
+  const { admin, role, isSuperAdmin, logout, loading } = usePlatformAuth({
     redirectOnUnauthenticated: true
   });
 
@@ -131,6 +131,9 @@ export default function PlatformAdminDashboard() {
       visible: true,
     },
   ].filter((item) => item.visible);
+
+  // Block render while authenticating or when unauthenticated (redirect pending)
+  if (loading || !admin) return null;
 
   return (
     <div className="min-h-screen relative bg-gray-950">
