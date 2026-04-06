@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Avalia&#231;&#227;o Psicol&#243;gica Conclu&#237;da</title>
+  <title>Cadastro Conclu&#237;do</title>
   <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
   <style type="text/css">
     body,table,td,p,a,li{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
@@ -13,16 +13,17 @@
     body{margin:0!important;padding:0!important;width:100%!important;background-color:#F9FAFB}
     .wrap{max-width:600px;margin:0 auto;background-color:#ffffff}
     .hdr{background-color:#ffffff;padding:28px 40px;text-align:center;border-bottom:3px solid #123A63}
-    .hero{background-color:#166534;padding:40px;text-align:center}
-    .icon{background-color:#22c55e;color:#ffffff;font-size:28px;width:64px;height:64px;line-height:64px;text-align:center;border-radius:50%;margin:0 auto 18px auto;font-family:Arial,sans-serif}
+    .hero{background-color:#123A63;padding:40px;text-align:center}
+    .icon{background-color:#28a745;color:#ffffff;font-size:28px;width:64px;height:64px;line-height:64px;text-align:center;border-radius:50%;margin:0 auto 18px auto;font-family:Arial,sans-serif}
     .htitle{font-family:'Arial Black',Arial,sans-serif;font-size:22px;color:#ffffff;margin:0 0 10px 0;text-transform:uppercase;letter-spacing:1px}
-    .hsub{font-family:Arial,sans-serif;font-size:14px;color:#BBF7D0;margin:0;line-height:1.6}
+    .hsub{font-family:Arial,sans-serif;font-size:14px;color:#CBD5E1;margin:0;line-height:1.6}
     .dvd{height:3px;background-color:#F1F5F9}
     .body{background-color:#ffffff;padding:36px 40px}
     .stitle{font-family:'Arial Black',Arial,sans-serif;font-size:16px;color:#123A63;margin:0 0 18px 0;text-transform:uppercase;letter-spacing:0.5px}
     .ptxt{font-family:Arial,sans-serif;font-size:14px;color:#374151;line-height:1.7;margin:0 0 20px 0}
     .pbar-wrap{background-color:#F9FAFB;border-radius:8px;padding:20px;margin:18px 0}
     .pbar-bg{background-color:#E5E7EB;border-radius:10px;height:16px;width:100%;margin-bottom:8px}
+    .pbar-fill{background-color:#28a745;border-radius:10px;height:16px}
     .ptxt-sm{font-family:Arial,sans-serif;font-size:12px;color:#6B7280;text-align:center;margin:0}
     .steps-wrap{background-color:#F9FAFB;border-radius:8px;padding:20px;margin:18px 0}
     .bd{color:#ffffff;font-family:'Arial Black',Arial,sans-serif;font-size:13px;font-weight:bold;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;display:inline-block}
@@ -33,8 +34,8 @@
     .ss-done{font-family:Arial,sans-serif;font-size:11px;color:#28a745;margin:2px 0 0 0}
     .ss-next{font-family:Arial,sans-serif;font-size:11px;color:#123A63;font-weight:bold;margin:2px 0 0 0}
     .ss-pend{font-family:Arial,sans-serif;font-size:11px;color:#9CA3AF;margin:2px 0 0 0}
-    .ibox{background-color:#F0FDF4;border-left:4px solid #22c55e;border-radius:0 6px 6px 0;padding:16px 18px;margin:20px 0}
-    .ibox p{font-family:Arial,sans-serif;font-size:13px;color:#14532d;margin:0;line-height:1.6}
+    .ibox{background-color:#EFF6FF;border-left:4px solid #28a745;border-radius:0 6px 6px 0;padding:16px 18px;margin:20px 0}
+    .ibox p{font-family:Arial,sans-serif;font-size:13px;color:#1E3A5F;margin:0;line-height:1.6}
     .ftr{background-color:#F9FAFB;padding:24px 40px;text-align:center;border-top:1px solid #E5E7EB}
     .fcopy{font-family:Arial,sans-serif;font-size:11px;color:#9CA3AF;margin:0}
     @media screen and (max-width:600px){
@@ -55,8 +56,8 @@
   <tr>
     <td class="hero">
       <div class="icon">&#10003;</div>
-      <h1 class="htitle">Etapa 2 Conclu&#237;da!<br><span style="color:#86efac;">Avalia&#231;&#227;o Psicol&#243;gica</span></h1>
-      <p class="hsub">{{nome}}, sua avalia&#231;&#227;o psicol&#243;gica foi aprovada com sucesso. Vamos para a pr&#243;xima etapa!</p>
+      <h1 class="htitle">Cadastro Conclu&#237;do!<br><span style="color:#28a745;">{{nome}}</span></h1>
+      <p class="hsub">Seus dados foram verificados e seu cadastro est&#225; completo. A pr&#243;xima etapa do seu processo CR j&#225; foi iniciada.</p>
     </td>
   </tr>
 
@@ -64,55 +65,60 @@
 
   <tr>
     <td class="body">
-      <h2 class="stitle">Progresso do seu Certificado de Registro</h2>
+      <h2 class="stitle">Cadastro Revisado e Aprovado</h2>
 
-      <p class="ptxt">Parab&#233;ns! O laudo de aptid&#227;o psicol&#243;gica foi recebido e registrado com sucesso. Voc&#234; est&#225; avan&#231;ando muito bem no processo.</p>
+      <p class="ptxt">Ol&#225;, <strong>{{nome}}</strong>. Informamos que a equipe do clube revisou e confirmou seus dados cadastrais. Todas as informa&#231;&#245;es necess&#225;rias para o in&#237;cio do processo de Certificado de Registro (CR) est&#227;o corretas.</p>
 
       <div class="ibox">
-        <p><strong>Pr&#243;xima etapa:</strong> Agora ser&#225; realizado o <strong>Laudo de Capacidade T&#233;cnica</strong> &#8212; o exame pr&#225;tico de tiro para comprovar aptid&#227;o t&#233;cnica no manuseio de arma de fogo. Aguarde o contato do clube para agendamento.</p>
+        <p><strong>Pr&#243;xima etapa:</strong> Em breve a secretaria entrar&#225; em contato com voc&#234; para dar andamento &#224; <strong>Avalia&#231;&#227;o Psicol&#243;gica</strong>, etapa obrigat&#243;ria para a obten&#231;&#227;o do CR.</p>
       </div>
+
+      <p class="ptxt">Fique atento ao seu telefone e e-mail. Nossa equipe enviar&#225; o documento de encaminhamento e as instru&#231;&#245;es para agendamento com o psic&#243;logo credenciado pelo Ex&#233;rcito Brasileiro.</p>
 
       <div class="pbar-wrap">
-        <div class="pbar-bg"><div style="background-color:#28a745;border-radius:10px;height:16px;width:40%"></div></div>
-        <p class="ptxt-sm">2 de 5 etapas conclu&#237;das (40%)</p>
+        <div class="pbar-bg"><div class="pbar-fill" style="width:15%"></div></div>
+        <p class="ptxt-sm">Etapa 1 de 5 conclu&#237;da (15%)</p>
       </div>
 
+      <!-- Etapas do processo -->
       <div class="steps-wrap">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
-          <tr>
-            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
-            <td valign="middle" style="padding-left:10px"><p class="sn">Cadastro</p><p class="ss-done">Conclu&#237;do</p></td>
-          </tr>
-        </table>
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
-          <tr>
-            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
-            <td valign="middle" style="padding-left:10px"><p class="sn">Avalia&#231;&#227;o Psicol&#243;gica</p><p class="ss-done">Conclu&#237;do</p></td>
-          </tr>
-        </table>
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
-          <tr>
-            <td width="42" valign="middle"><div class="bd bd-next">3</div></td>
-            <td valign="middle" style="padding-left:10px"><p class="sn">Laudo de Capacidade T&#233;cnica</p><p class="ss-next">Pr&#243;xima etapa</p></td>
-          </tr>
-        </table>
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
-          <tr>
-            <td width="42" valign="middle"><div class="bd bd-pend">4</div></td>
-            <td valign="middle" style="padding-left:10px"><p class="sn" style="color:#9CA3AF">Juntada de Documentos</p><p class="ss-pend">Pendente</p></td>
-          </tr>
-        </table>
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
           <tr>
-            <td width="42" valign="middle"><div class="bd bd-pend">5</div></td>
-            <td valign="middle" style="padding-left:10px"><p class="sn" style="color:#9CA3AF">Acompanhamento SINARM-CAC</p><p class="ss-pend">Pendente</p></td>
+            <td width="42" valign="top"><span class="bd bd-done">&#10003;</span></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Cadastro</p><p class="ss-done">Conclu&#237;do &#8212; dados verificados</p></td>
+          </tr>
+          <tr><td colspan="2" style="height:12px"></td></tr>
+          <tr>
+            <td width="42" valign="top"><span class="bd bd-next">2</span></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Avalia&#231;&#227;o Psicol&#243;gica</p><p class="ss-next">Pr&#243;xima etapa &#8212; aguardando encaminhamento</p></td>
+          </tr>
+          <tr><td colspan="2" style="height:12px"></td></tr>
+          <tr>
+            <td width="42" valign="top"><span class="bd bd-pend">3</span></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Laudo T&#233;cnico</p><p class="ss-pend">Pendente</p></td>
+          </tr>
+          <tr><td colspan="2" style="height:12px"></td></tr>
+          <tr>
+            <td width="42" valign="top"><span class="bd bd-pend">4</span></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Juntada de Documentos</p><p class="ss-pend">Pendente</p></td>
+          </tr>
+          <tr><td colspan="2" style="height:12px"></td></tr>
+          <tr>
+            <td width="42" valign="top"><span class="bd bd-pend">5</span></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Acompanhamento Sinarm</p><p class="ss-pend">Pendente</p></td>
           </tr>
         </table>
       </div>
+
     </td>
   </tr>
 
-  <tr><td class="ftr"><p class="fcopy">&#169; 2026 CAC 360. Todos os direitos reservados.</p></td></tr>
+  <tr>
+    <td class="ftr">
+      <p class="fcopy">Este e-mail foi enviado automaticamente pelo sistema CAC 360.<br>Em caso de d&#250;vidas, entre em contato com a secretaria do clube.</p>
+      <p class="fcopy" style="margin-top:6px">{{data}}</p>
+    </td>
+  </tr>
 
 </table>
 </td></tr>

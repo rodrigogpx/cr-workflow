@@ -12,4 +12,11 @@ export default defineConfig({
   dbCredentials: {
     url: connectionString,
   },
+  // Excluir views criadas pela extensão pg_stat_statements no Railway.
+  // IMPORTANTE: usar UM pattern negativo. Dois patterns negativos com OR
+  // não excluem nada (cada tabela matcha pelo menos um).
+  tablesFilter: ["!pg_stat*"],
+  entities: {
+    roles: false,
+  },
 });

@@ -1,408 +1,122 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>{{assunto}}</title>
-    <!--[if mso]>
-    <noscript>
-        <xml>
-            <o:OfficeDocumentSettings>
-                <o:PixelsPerInch>96</o:PixelsPerInch>
-            </o:OfficeDocumentSettings>
-        </xml>
-    </noscript>
-    <![endif]-->
-    <style type="text/css">
-        /* Reset styles */
-        body, table, td, p, a, li, blockquote {
-            -webkit-text-size-adjust: 100%;
-            -ms-text-size-adjust: 100%;
-        }
-        table, td {
-            mso-table-lspace: 0pt;
-            mso-table-rspace: 0pt;
-        }
-        img {
-            -ms-interpolation-mode: bicubic;
-            border: 0;
-            height: auto;
-            line-height: 100%;
-            outline: none;
-            text-decoration: none;
-        }
-        body {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            background-color: #F9FAFB;
-        }
-        
-        /* Custom styles */
-        .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-        }
-        .header {
-            background-color: #ffffff;
-            padding: 30px 40px;
-            text-align: center;
-            border-bottom: 3px solid #123A63;
-        }
-        .hero-section {
-            background-color: #123A63;
-            padding: 40px 40px;
-            text-align: center;
-        }
-        .success-icon {
-            background-color: #28a745;
-            color: #ffffff;
-            font-size: 36px;
-            width: 70px;
-            height: 70px;
-            line-height: 70px;
-            text-align: center;
-            border-radius: 50%;
-            margin: 0 auto 20px auto;
-        }
-        .hero-title {
-            font-family: 'Arial Black', Arial, sans-serif;
-            font-size: 24px;
-            color: #ffffff;
-            margin: 0 0 15px 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .hero-subtitle {
-            font-family: Arial, sans-serif;
-            font-size: 16px;
-            color: #E5E7EB;
-            margin: 0;
-            line-height: 1.6;
-        }
-        .content-section {
-            background-color: #ffffff;
-            padding: 40px;
-        }
-        .section-title {
-            font-family: 'Arial Black', Arial, sans-serif;
-            font-size: 18px;
-            color: #123A63;
-            margin: 0 0 20px 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .intro-text {
-            font-family: Arial, sans-serif;
-            font-size: 15px;
-            color: #e0e0e0;
-            line-height: 1.7;
-            margin: 0 0 25px 0;
-        }
-        .progress-container {
-            background-color: #F9FAFB;
-            border-radius: 8px;
-            padding: 25px;
-            margin: 25px 0;
-        }
-        .progress-bar-bg {
-            background-color: #E5E7EB; color: #374151;;
-            border-radius: 10px;
-            height: 20px;
-            width: 100%;
-            margin-bottom: 15px;
-        }
-        .progress-bar-fill {
-            background-color: #28a745;
-            border-radius: 10px;
-            height: 20px;
-            width: 80%;
-        }
-        .progress-text {
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #6B7280;
-            text-align: center;
-            margin: 0;
-        }
-        .steps-container {
-            background-color: #F9FAFB;
-            border-radius: 8px;
-            padding: 25px;
-            margin: 25px 0;
-        }
-        .step-badge-completed {
-            background-color: #28a745;
-            color: #ffffff;
-            font-family: 'Arial Black', Arial, sans-serif;
-            font-size: 16px;
-            font-weight: bold;
-            width: 36px;
-            height: 36px;
-            line-height: 36px;
-            text-align: center;
-            border-radius: 50%;
-        }
-        .step-badge-pending {
-            background-color: #555555;
-            color: #ffffff;
-            font-family: 'Arial Black', Arial, sans-serif;
-            font-size: 16px;
-            font-weight: bold;
-            width: 36px;
-            height: 36px;
-            line-height: 36px;
-            text-align: center;
-            border-radius: 50%;
-        }
-        .step-badge-next {
-            background-color: #123A63;
-            color: #ffffff;
-            font-family: 'Arial Black', Arial, sans-serif;
-            font-size: 16px;
-            font-weight: bold;
-            width: 36px;
-            height: 36px;
-            line-height: 36px;
-            text-align: center;
-            border-radius: 50%;
-        }
-        .step-title {
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            font-weight: bold;
-            color: #ffffff;
-            margin: 0;
-        }
-        .step-title-pending {
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            font-weight: bold;
-            color: #888888;
-            margin: 0;
-        }
-        .step-status {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            color: #28a745;
-            margin: 3px 0 0 0;
-        }
-        .step-status-next {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            color: #123A63;
-            margin: 3px 0 0 0;
-        }
-        .step-status-pending {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            color: #666666;
-            margin: 3px 0 0 0;
-        }
-        .info-box {
-            background-color: #F9FAFB;
-            border-left: 4px solid #28a745;
-            padding: 20px;
-            margin: 25px 0;
-        }
-        .info-box p {
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #E5E7EB;
-            margin: 0;
-            line-height: 1.6;
-        }
-        .footer {
-            background-color: #ffffff;
-            padding: 30px 40px;
-            text-align: center;
-            border-top: 1px solid #333333;
-        }
-        .footer-info {
-            font-family: Arial, sans-serif;
-            font-size: 13px;
-            color: #888888;
-            line-height: 1.8;
-            margin: 0 0 15px 0;
-        }
-        .footer-contact a {
-            color: #123A63;
-            text-decoration: none;
-        }
-        .social-links {
-            margin: 20px 0;
-        }
-        .social-link {
-            display: inline-block;
-            width: 36px;
-            height: 36px;
-            line-height: 36px;
-            background-color: #123A63;
-            color: #ffffff !important;
-            text-decoration: none;
-            border-radius: 50%;
-            margin: 0 5px;
-            font-size: 14px;
-        }
-        .divider {
-            height: 1px;
-            background-color: #E5E7EB; color: #374151;;
-            margin: 0;
-        }
-        
-        /* Responsive */
-        @media screen and (max-width: 600px) {
-            .email-container {
-                width: 100% !important;
-            }
-            .header, .hero-section, .content-section, .footer {
-                padding: 25px 20px !important;
-            }
-            .hero-title {
-                font-size: 20px !important;
-            }
-            .section-title {
-                font-size: 16px !important;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Juntada de Documentos Conclu&#237;da</title>
+  <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+  <style type="text/css">
+    body,table,td,p,a,li{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
+    table,td{mso-table-lspace:0pt;mso-table-rspace:0pt}
+    img{-ms-interpolation-mode:bicubic;border:0;height:auto;line-height:100%;outline:none;text-decoration:none}
+    body{margin:0!important;padding:0!important;width:100%!important;background-color:#F9FAFB}
+    .wrap{max-width:600px;margin:0 auto;background-color:#ffffff}
+    .hdr{background-color:#ffffff;padding:28px 40px;text-align:center;border-bottom:3px solid #123A63}
+    .hero{background-color:#166534;padding:40px;text-align:center}
+    .icon{background-color:#22c55e;color:#ffffff;font-size:28px;width:64px;height:64px;line-height:64px;text-align:center;border-radius:50%;margin:0 auto 18px auto;font-family:Arial,sans-serif}
+    .htitle{font-family:'Arial Black',Arial,sans-serif;font-size:22px;color:#ffffff;margin:0 0 10px 0;text-transform:uppercase;letter-spacing:1px}
+    .hsub{font-family:Arial,sans-serif;font-size:14px;color:#BBF7D0;margin:0;line-height:1.6}
+    .dvd{height:3px;background-color:#F1F5F9}
+    .body{background-color:#ffffff;padding:36px 40px}
+    .stitle{font-family:'Arial Black',Arial,sans-serif;font-size:16px;color:#123A63;margin:0 0 18px 0;text-transform:uppercase;letter-spacing:0.5px}
+    .ptxt{font-family:Arial,sans-serif;font-size:14px;color:#374151;line-height:1.7;margin:0 0 20px 0}
+    .pbar-wrap{background-color:#F9FAFB;border-radius:8px;padding:20px;margin:18px 0}
+    .pbar-bg{background-color:#E5E7EB;border-radius:10px;height:16px;width:100%;margin-bottom:8px}
+    .ptxt-sm{font-family:Arial,sans-serif;font-size:12px;color:#6B7280;text-align:center;margin:0}
+    .steps-wrap{background-color:#F9FAFB;border-radius:8px;padding:20px;margin:18px 0}
+    .bd{color:#ffffff;font-family:'Arial Black',Arial,sans-serif;font-size:13px;font-weight:bold;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;display:inline-block}
+    .bd-done{background-color:#28a745}
+    .bd-next{background-color:#123A63}
+    .bd-pend{background-color:#9CA3AF}
+    .sn{font-family:Arial,sans-serif;font-size:13px;font-weight:bold;color:#1F2937;margin:0}
+    .ss-done{font-family:Arial,sans-serif;font-size:11px;color:#28a745;margin:2px 0 0 0}
+    .ss-next{font-family:Arial,sans-serif;font-size:11px;color:#123A63;font-weight:bold;margin:2px 0 0 0}
+    .ss-pend{font-family:Arial,sans-serif;font-size:11px;color:#9CA3AF;margin:2px 0 0 0}
+    .ibox{background-color:#F0FDF4;border-left:4px solid #22c55e;border-radius:0 6px 6px 0;padding:16px 18px;margin:20px 0}
+    .ibox p{font-family:Arial,sans-serif;font-size:13px;color:#14532d;margin:0;line-height:1.6}
+    .ftr{background-color:#F9FAFB;padding:24px 40px;text-align:center;border-top:1px solid #E5E7EB}
+    .fcopy{font-family:Arial,sans-serif;font-size:11px;color:#9CA3AF;margin:0}
+    @media screen and (max-width:600px){
+      .wrap{width:100%!important}
+      .hdr,.hero,.body,.ftr{padding:22px 18px!important}
+      .htitle{font-size:18px!important}
+    }
+  </style>
 </head>
 <body>
-    <center>
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #F9FAFB;">
-            <tr>
-                <td>
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="email-container" align="center">
-                        
-                        <!-- Header with Logo -->
-                        <tr>
-                            <td class="header"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td align="center">{{logo}}</td></tr></table></td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        
-                        <!-- Hero Section -->
-                        <tr>
-                            <td class="hero-section">
-                                <div class="success-icon">âœ“</div>
-                                <h1 class="hero-title">Etapa 4 ConcluÃ­da!<br><span style="color: #28a745;">Juntada de Documentos</span></h1>
-                                <p class="hero-subtitle">Todos os documentos necessÃ¡rios foram recebidos e validados com sucesso. Estamos quase lÃ¡!</p>
-                            </td>
-                        </tr>
-                        
-                        <!-- Divider -->
-                        <tr>
-                            <td class="divider"></td>
-                        </tr>
-                        
-                        <!-- Content Section -->
-                        <tr>
-                            <td class="content-section">
-                                <h2 class="section-title">Progresso do seu Certificado de Registro</h2>
-                                
-                                <!-- Progress Bar -->
-                                <div class="progress-container">
-                                    <div class="progress-bar-bg">
-                                        <div class="progress-bar-fill"></div>
-                                    </div>
-                                    <p class="progress-text">4 de 5 etapas concluÃ­das (80%)</p>
-                                </div>
-                                
-                                <!-- Steps Status -->
-                                <div class="steps-container">
-                                    <!-- Step 1 - Completed -->
-                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 15px;">
-                                        <tr>
-                                            <td width="46" valign="middle">
-                                                <div class="step-badge-completed">âœ“</div>
-                                            </td>
-                                            <td valign="middle" style="padding-left: 12px;">
-                                                <p class="step-title">Cadastro</p>
-                                                <p class="step-status">ConcluÃ­do</p>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    
-                                    <!-- Step 2 - Completed -->
-                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 15px;">
-                                        <tr>
-                                            <td width="46" valign="middle">
-                                                <div class="step-badge-completed">âœ“</div>
-                                            </td>
-                                            <td valign="middle" style="padding-left: 12px;">
-                                                <p class="step-title">AvaliaÃ§Ã£o PsicolÃ³gica</p>
-                                                <p class="step-status">ConcluÃ­do</p>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    
-                                    <!-- Step 3 - Completed -->
-                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 15px;">
-                                        <tr>
-                                            <td width="46" valign="middle">
-                                                <div class="step-badge-completed">âœ“</div>
-                                            </td>
-                                            <td valign="middle" style="padding-left: 12px;">
-                                                <p class="step-title">Laudo de Capacidade TÃ©cnica</p>
-                                                <p class="step-status">ConcluÃ­do</p>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    
-                                    <!-- Step 4 - Completed -->
-                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 15px;">
-                                        <tr>
-                                            <td width="46" valign="middle">
-                                                <div class="step-badge-completed">âœ“</div>
-                                            </td>
-                                            <td valign="middle" style="padding-left: 12px;">
-                                                <p class="step-title">Juntada de Documentos</p>
-                                                <p class="step-status">ConcluÃ­do</p>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    
-                                    <!-- Step 5 - Next -->
-                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                                        <tr>
-                                            <td width="46" valign="middle">
-                                                <div class="step-badge-next">5</div>
-                                            </td>
-                                            <td valign="middle" style="padding-left: 12px;">
-                                                <p class="step-title">SubmissÃ£o ao SINARM-CAC</p>
-                                                <p class="step-status-next">PrÃ³xima etapa</p>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                </div>
-                                
-                                <!-- Info Box -->
-                                <div class="info-box">
-                                    <p><strong style="color: #ffffff;">PrÃ³ximo passo:</strong> Nossa equipe irÃ¡ realizar a submissÃ£o da sua solicitaÃ§Ã£o Ã  PolÃ­cia Federal atravÃ©s do sistema SINARM-CAC. VocÃª serÃ¡ notificado por e-mail assim que o processo for concluÃ­do!</p>
-                                </div>
-                            </td>
-                        </tr>
-                        
-  
-                                </table>
-         
-                                
-                                <p style="font-family: Arial, sans-serif; font-size: 11px; color: #666666; margin-top: 25px;">
-                                    Â© 2026 CAC 360 - ACR Digital. Todos os direitos reservados.
-                                </p>
-                            </td>
-                        </tr>
-                        
-                    </table>
-                </td>
-            </tr>
+<center>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#F9FAFB">
+<tr><td>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="wrap" align="center">
+
+  <tr><td class="hdr"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td align="center">{{logo}}</td></tr></table></td></tr>
+
+  <tr>
+    <td class="hero">
+      <div class="icon">&#10003;</div>
+      <h1 class="htitle">Etapa 4 Conclu&#237;da!<br><span style="color:#86efac;">Documenta&#231;&#227;o Completa</span></h1>
+      <p class="hsub">{{nome}}, todos os documentos necess&#225;rios foram reunidos e verificados com sucesso.</p>
+    </td>
+  </tr>
+
+  <tr><td class="dvd"></td></tr>
+
+  <tr>
+    <td class="body">
+      <h2 class="stitle">Progresso do seu Certificado de Registro</h2>
+
+      <p class="ptxt">Todos os documentos exigidos para a obten&#231;&#227;o do seu Certificado de Registro (CR) foram coletados e conferidos pela nossa equipe. Estamos quase l&#225;!</p>
+
+      <div class="ibox">
+        <p><strong>&#218;ltima etapa:</strong> O seu processo ser&#225; agora encaminhado ao <strong>despachante</strong> para submiss&#227;o ao SINARM-CAC. Voc&#234; ser&#225; informado sobre cada atualiza&#231;&#227;o do status do seu processo.</p>
+      </div>
+
+      <div class="pbar-wrap">
+        <div class="pbar-bg"><div style="background-color:#28a745;border-radius:10px;height:16px;width:80%"></div></div>
+        <p class="ptxt-sm">4 de 5 etapas conclu&#237;das (80%)</p>
+      </div>
+
+      <div class="steps-wrap">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Cadastro</p><p class="ss-done">Conclu&#237;do</p></td>
+          </tr>
         </table>
-    </center>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Avalia&#231;&#227;o Psicol&#243;gica</p><p class="ss-done">Conclu&#237;do</p></td>
+          </tr>
+        </table>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Laudo de Capacidade T&#233;cnica</p><p class="ss-done">Conclu&#237;do</p></td>
+          </tr>
+        </table>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:12px">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-done">&#10003;</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Juntada de Documentos</p><p class="ss-done">Conclu&#237;do</p></td>
+          </tr>
+        </table>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+          <tr>
+            <td width="42" valign="middle"><div class="bd bd-next">5</div></td>
+            <td valign="middle" style="padding-left:10px"><p class="sn">Acompanhamento SINARM-CAC</p><p class="ss-next">Pr&#243;xima etapa</p></td>
+          </tr>
+        </table>
+      </div>
+    </td>
+  </tr>
+
+  <tr><td class="ftr"><p class="fcopy">&#169; 2026 CAC 360. Todos os direitos reservados.</p></td></tr>
+
+</table>
+</td></tr>
+</table>
+</center>
 </body>
 </html>
-
-
-

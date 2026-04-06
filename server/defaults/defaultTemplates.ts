@@ -24,7 +24,7 @@ export const defaultEmailTemplates = rawTemplates.map(t => {
   let title = t.title;
   switch(t.templateKey) {
     // ── Fluxo principal do processo CR ──────────────────────────────────────
-    case 'welcome':                subject = 'Bem-vindo(a) à {{nome_clube}} - {{nome}}';            title = 'Boas Vindas';                    break;
+    case 'welcome':                subject = 'Bem-vindo(a) ao CAC 360, {{nome}}! Seu portal está pronto.'; title = 'Boas Vindas';                    break;
     case 'cadastro_concluido':     subject = 'Seu cadastro foi concluído - {{nome}}';               title = 'Cadastro Concluído';             break;
     case 'juntada_documentos':     subject = 'Conclusão da Juntada de Documentos - {{nome}}';       title = 'Juntada de Documentos';          break;
     case 'psicotecnico':           subject = 'Encaminhamento para Avaliação Psicológica - {{nome}}'; title = 'Encaminhamento Psicotécnico';    break;
@@ -37,6 +37,9 @@ export const defaultEmailTemplates = rawTemplates.map(t => {
     case 'sinarm_em_analise':      subject = 'Seu Processo CAC está em Análise - {{nome}}';         title = 'Status Sinarm: Em Análise';         break;
     case 'sinarm_aguardando_gru':  subject = 'Aguardando Baixa do Pagamento (GRU) - {{nome}}';      title = 'Status Sinarm: Aguardando Baixa GRU'; break;
     case 'sinarm_restituido':      subject = 'Ação Necessária: Processo CAC Restituído - {{nome}}'; title = 'Status Sinarm: Processo Restituído';  break;
+    case 'sinarm_deferido':        subject = 'Parabéns! Seu CR foi Aprovado - {{nome}}';            title = 'Status Sinarm: CR Aprovado';            break;
+    case 'sinarm_indeferido':      subject = 'Resultado do seu Processo CAC - {{nome}}';            title = 'Status Sinarm: Processo Indeferido';    break;
+    case 'psicotecnico_agendado':  subject = 'Agendamento Psicológico Confirmado - {{nome}}';      title = 'Agendamento Avaliação Psicológica';     break;
   }
   const rawContent = Buffer.from(t.contentB64, 'base64').toString('utf8');
   return {

@@ -24,7 +24,7 @@ const KEY_MAP: Record<string, string> = {
 // Subjects e títulos padrão por chave normalizada.
 // Usados quando o template do banco não tem subject/title definido.
 const META: Record<string, { title: string; subject: string }> = {
-  'welcome':                { title: 'Boas Vindas',                        subject: 'Bem-vindo(a) à {{nome_clube}} - {{nome}}' },
+  'welcome':                { title: 'Boas Vindas',                        subject: 'Bem-vindo(a) ao CAC 360, {{nome}}! Seu portal está pronto.' },
   'cadastro_concluido':     { title: 'Cadastro Concluído',                 subject: 'Seu cadastro foi concluído - {{nome}}' },
   'juntada_documentos':     { title: 'Juntada de Documentos',              subject: 'Conclusão da Juntada de Documentos - {{nome}}' },
   'psicotecnico':           { title: 'Encaminhamento Psicotécnico',        subject: 'Encaminhamento para Avaliação Psicológica - {{nome}}' },
@@ -36,24 +36,30 @@ const META: Record<string, { title: string; subject: string }> = {
   'sinarm_em_analise':      { title: 'Status Sinarm: Em Análise',          subject: 'Seu Processo CAC está em Análise - {{nome}}' },
   'sinarm_aguardando_gru':  { title: 'Status Sinarm: Aguardando Baixa GRU',subject: 'Aguardando Baixa do Pagamento (GRU) - {{nome}}' },
   'sinarm_restituido':      { title: 'Status Sinarm: Processo Restituído', subject: 'Ação Necessária: Processo CAC Restituído - {{nome}}' },
+  'sinarm_deferido':        { title: 'Status Sinarm: CR Aprovado',         subject: 'Parabéns! Seu CR foi Aprovado - {{nome}}' },
+  'sinarm_indeferido':      { title: 'Status Sinarm: Processo Indeferido', subject: 'Resultado do seu Processo CAC - {{nome}}' },
+  'psicotecnico_agendado':  { title: 'Agendamento Avaliação Psicológica', subject: 'Agendamento Psicológico Confirmado - {{nome}}' },
 };
 
 // ─── Mapa trigger name → template key ───────────────────────────────────────
 // As chaves correspondem exatamente às templateKey normalizadas acima.
 const TRIGGER_TEMPLATE_MAP: Record<string, string> = {
   'Boas Vindas':                       'welcome',
+  'Cadastro Concluído':                'cadastro_concluido',
   'Conclusão Juntada de Documentos':   'juntada_documentos',
   'Encaminhamento Psicotécnico':       'psicotecnico',
   'Avaliação Psicológica Concluída':   'psicotecnico_concluido',
   'Agendamento Laudo Técnico':         'laudo_tecnico',
   'Lembrete Agendamento Laudo Técnico':'laudo_tecnico',     // compartilha template base; diferenciado por sendBeforeHours
   'Laudo Técnico Concluído':           'laudo_tecnico_concluido',
-  'Processo Solicitado no Sinarm':     'sinarm_solicitado',
+  'Processo Iniciado no Sinarm':        'sinarm_iniciado',
+  'Processo Solicitado no Sinarm':      'sinarm_solicitado',
   'Aguardando Baixa GRU':              'sinarm_aguardando_gru',
   'Processo em Análise':               'sinarm_em_analise',
   'Processo Restituído':               'sinarm_restituido',
-  'Processo Indeferido':               'sinarm_restituido',
-  // 'Processo Deferido' não possui template padrão no seed atual
+  'Processo Indeferido':               'sinarm_indeferido',
+  'Processo Deferido':                 'sinarm_deferido',
+  'Agendamento Avaliação Psicológica': 'psicotecnico_agendado',
 };
 
 /**

@@ -199,6 +199,9 @@ export const createClientSchema = z.object({
   phone: phoneSchema,
   email: emailSchema,
   operatorId: z.number().optional(),
+  apostilamentoActivities: z.array(z.enum(["atirador", "cacador", "colecionador"]))
+    .optional(),
+  hasSecondCollectionAddress: z.boolean().optional(),
 });
 
 // Schema de Atualização de Cliente
@@ -223,6 +226,9 @@ export const updateClientSchema = z.object({
   otherProfession: z.string().optional(),
   registrationNumber: z.string().optional(),
   currentActivities: z.string().optional(),
+  apostilamentoActivities: z.array(z.enum(["atirador", "cacador", "colecionador"]))
+    .optional(),
+  hasSecondCollectionAddress: z.boolean().optional(),
   phone2: phoneOptionalSchema,
   motherName: z.string().optional(),
   fatherName: z.string().optional(),

@@ -128,10 +128,12 @@ function ModuleCard({
   mod,
   enabled,
   onToggle,
+  readonly = false,
 }: {
   mod: (typeof MODULE_DEFINITIONS)[number];
   enabled: boolean;
   onToggle: () => void;
+  readonly?: boolean;
 }) {
   const colors = MODULE_COLOR_MAP[mod.color];
   const Icon = mod.icon;
@@ -139,12 +141,14 @@ function ModuleCard({
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onClick={readonly ? undefined : onToggle}
+      disabled={readonly}
       className={[
-        "relative w-full text-left rounded-xl border-2 p-4 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400",
+        "relative w-full text-left rounded-xl border-2 p-4 transition-all duration-150 focus:outline-none",
+        readonly ? "cursor-default opacity-80" : "focus-visible:ring-2 focus-visible:ring-purple-400",
         enabled
           ? colors.enabled + " shadow-sm"
-          : "border-gray-200 bg-white " + colors.hover,
+          : "border-gray-200 bg-white " + (readonly ? "" : colors.hover),
       ].join(" ")}
     >
       {/* Ícone + check */}
@@ -296,6 +300,7 @@ export default function SuperAdminTenants() {
   });
 
   const { data: tenants = [], isLoading: isLoadingTenants, isFetching } = trpc.tenants.list.useQuery();
+  const { data: planDefinitions = [] } = (trpc as any).billing.listPlans.useQuery();
 
   const createTenant = trpc.tenants.create.useMutation({
     onSuccess: () => {
@@ -352,22 +357,6 @@ export default function SuperAdminTenants() {
       utils.tenants.list.invalidate();
     },
     onError: (err) => toast.error(err.message || "Erro ao excluir tenant permanentemente"),
-  });
-
-  const clearMocks = trpc.tenants.clearMocks.useMutation({
-    onSuccess: (res) => {
-      toast.success(`Mocks limpos: ${res.tenants} tenants de mock removidos`);
-      utils.tenants.list.invalidate();
-    },
-    onError: (err) => toast.error(err.message || "Erro ao limpar mocks"),
-  });
-
-  const seedMocks = trpc.tenants.seedMocks.useMutation({
-    onSuccess: (res) => {
-      toast.success(`Seed concluído: ${res.tenants} tenants, ${res.users} usuários, ${res.clients} clientes`);
-      utils.tenants.list.invalidate();
-    },
-    onError: (err) => toast.error(err.message || "Erro ao rodar seed"),
   });
 
   const [impersonatePassword, setImpersonatePassword] = useState("");
@@ -606,37 +595,6 @@ export default function SuperAdminTenants() {
             />
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (!confirm("Tem certeza que deseja limpar todos os dados de tenants/usuários/clientes de mock?")) {
-                  return;
-                }
-                clearMocks.mutate();
-              }}
-              disabled={clearMocks.isLoading || seedMocks.isLoading}
-              className="flex items-center gap-2 border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"
-            >
-              {clearMocks.isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <AlertCircle className="h-4 w-4" />
-              )}
-              Limpar mocks
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => seedMocks.mutate()}
-              disabled={seedMocks.isLoading}
-              className="flex items-center gap-2 border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-            >
-              {seedMocks.isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Database className="h-4 w-4" />
-              )}
-              Rodar seed mock
-            </Button>
             {isFetching && <Loader className="h-4 w-4 animate-spin text-gray-500" />}
             <Button onClick={() => setShowCreateModal(true)} className="bg-purple-600 text-white shadow-lg shadow-purple-900/30 hover:bg-purple-500">
               <Plus className="h-4 w-4 mr-2" />
@@ -847,39 +805,81 @@ export default function SuperAdminTenants() {
                       id="plan"
                       className="w-full p-2 border rounded-md"
                       value={newTenant.plan}
-                      onChange={(e) => setNewTenant({ ...newTenant, plan: e.target.value as any })}
+                      onChange={(e) => {
+                        const slug = e.target.value;
+                        const plan = (planDefinitions as any[]).find((p: any) => p.slug === slug);
+                        setNewTenant({
+                          ...newTenant,
+                          plan: slug as any,
+                          ...(plan ? {
+                            maxUsers: plan.maxUsers,
+                            maxClients: plan.maxClients,
+                            featureWorkflowCR: plan.featureWorkflowCR ?? true,
+                            featureApostilamento: plan.featureApostilamento ?? false,
+                            featureRenovacao: plan.featureRenovacao ?? false,
+                            featureInsumos: plan.featureInsumos ?? false,
+                            featureIAT: plan.featureIAT ?? false,
+                          } : {}),
+                        });
+                      }}
                     >
-                      <option value="starter">Starter</option>
-                      <option value="professional">Professional</option>
-                      <option value="enterprise">Enterprise</option>
+                      {(planDefinitions as any[]).length > 0
+                        ? (planDefinitions as any[])
+                            .filter((p: any) => p.isActive !== false)
+                            .sort((a: any, b: any) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+                            .map((p: any) => (
+                              <option key={p.slug} value={p.slug}>{p.name}</option>
+                            ))
+                        : <>
+                            <option value="starter">Starter</option>
+                            <option value="professional">Professional</option>
+                            <option value="enterprise">Enterprise</option>
+                          </>
+                      }
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxUsers">Máx. Usuários</Label>
+                    <Label htmlFor="maxUsers" className="flex items-center gap-1">
+                      Máx. Usuários
+                      <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                    </Label>
                     <Input
                       id="maxUsers"
                       type="number"
                       value={newTenant.maxUsers}
-                      onChange={(e) => setNewTenant({ ...newTenant, maxUsers: parseInt(e.target.value) })}
+                      readOnly
+                      disabled
+                      className="bg-gray-50 text-gray-500 cursor-default"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxClients">Máx. Clientes</Label>
+                    <Label htmlFor="maxClients" className="flex items-center gap-1">
+                      Máx. Clientes
+                      <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                    </Label>
                     <Input
                       id="maxClients"
                       type="number"
                       value={newTenant.maxClients}
-                      onChange={(e) => setNewTenant({ ...newTenant, maxClients: parseInt(e.target.value) })}
+                      readOnly
+                      disabled
+                      className="bg-gray-50 text-gray-500 cursor-default"
                     />
                   </div>
                 </div>
+                {(planDefinitions as any[]).find((p: any) => p.slug === newTenant.plan) && (() => {
+                  const pd = (planDefinitions as any[]).find((p: any) => p.slug === newTenant.plan);
+                  return pd?.description ? (
+                    <p className="text-xs text-gray-500">{pd.description}</p>
+                  ) : null;
+                })()}
               </div>
 
               {/* Features */}
               <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
                 <div>
-                  <h4 className="font-semibold text-gray-800">Módulos Habilitados</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">Clique em um módulo para habilitar ou desabilitar</p>
+                  <h4 className="font-semibold text-gray-800">Módulos Incluídos no Plano</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Módulos definidos pelo plano selecionado</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {MODULE_DEFINITIONS.map((mod) => (
@@ -887,7 +887,8 @@ export default function SuperAdminTenants() {
                       key={mod.key}
                       mod={mod}
                       enabled={!!newTenant[mod.key]}
-                      onToggle={() => setNewTenant({ ...newTenant, [mod.key]: !newTenant[mod.key] })}
+                      onToggle={() => {}}
+                      readonly
                     />
                   ))}
                 </div>
@@ -1035,35 +1036,71 @@ export default function SuperAdminTenants() {
                   <select
                     className="w-full p-2 border rounded-md"
                     value={editingTenant.plan}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, plan: e.target.value as Tenant["plan"] })}
+                    onChange={(e) => {
+                      const slug = e.target.value;
+                      const plan = (planDefinitions as any[]).find((p: any) => p.slug === slug);
+                      setEditingTenant({
+                        ...editingTenant,
+                        plan: slug as Tenant["plan"],
+                        ...(plan ? {
+                          maxUsers: plan.maxUsers,
+                          maxClients: plan.maxClients,
+                          featureWorkflowCR: plan.featureWorkflowCR ?? true,
+                          featureApostilamento: plan.featureApostilamento ?? false,
+                          featureRenovacao: plan.featureRenovacao ?? false,
+                          featureInsumos: plan.featureInsumos ?? false,
+                          featureIAT: plan.featureIAT ?? false,
+                        } : {}),
+                      });
+                    }}
                   >
-                    <option value="starter">Starter</option>
-                    <option value="professional">Professional</option>
-                    <option value="enterprise">Enterprise</option>
+                    {(planDefinitions as any[]).length > 0
+                      ? (planDefinitions as any[])
+                          .filter((p: any) => p.isActive !== false)
+                          .sort((a: any, b: any) => a.displayOrder - b.displayOrder)
+                          .map((p: any) => (
+                            <option key={p.slug} value={p.slug}>{p.name}</option>
+                          ))
+                      : <>
+                          <option value="starter">Starter</option>
+                          <option value="professional">Professional</option>
+                          <option value="enterprise">Enterprise</option>
+                        </>
+                    }
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Máx. Usuários</Label>
+                  <Label className="flex items-center gap-1">
+                    Máx. Usuários
+                    <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                  </Label>
                   <Input
                     type="number"
                     value={editingTenant.maxUsers}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, maxUsers: parseInt(e.target.value) })}
+                    readOnly
+                    disabled
+                    className="bg-gray-50 text-gray-500 cursor-default"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Máx. Clientes</Label>
+                  <Label className="flex items-center gap-1">
+                    Máx. Clientes
+                    <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                  </Label>
                   <Input
                     type="number"
                     value={editingTenant.maxClients}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, maxClients: parseInt(e.target.value) })}
+                    readOnly
+                    disabled
+                    className="bg-gray-50 text-gray-500 cursor-default"
                   />
                 </div>
               </div>
 
               <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
                 <div>
-                  <h4 className="font-semibold text-gray-800">Módulos Habilitados</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">Clique em um módulo para habilitar ou desabilitar</p>
+                  <h4 className="font-semibold text-gray-800">Módulos Incluídos no Plano</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Módulos definidos pelo plano selecionado</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {MODULE_DEFINITIONS.map((mod) => (
@@ -1071,7 +1108,8 @@ export default function SuperAdminTenants() {
                       key={mod.key}
                       mod={mod}
                       enabled={!!editingTenant[mod.key]}
-                      onToggle={() => setEditingTenant({ ...editingTenant, [mod.key]: !editingTenant[mod.key] })}
+                      onToggle={() => {}}
+                      readonly
                     />
                   ))}
                 </div>

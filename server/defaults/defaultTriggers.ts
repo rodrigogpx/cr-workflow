@@ -24,6 +24,13 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
     isActive: true
   },
   {
+    name: 'Cadastro Concluído',
+    triggerEvent: 'STEP_COMPLETED:1',
+    recipientType: 'client',
+    sendImmediate: true,
+    isActive: true
+  },
+  {
     name: 'Conclusão Juntada de Documentos',
     triggerEvent: 'STEP_COMPLETED:2',
     recipientType: 'client',
@@ -67,6 +74,13 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
     isActive: true
   },
   {
+    name: 'Processo Iniciado no Sinarm',
+    triggerEvent: 'SINARM_STATUS:Iniciado',
+    recipientType: 'client',
+    sendImmediate: true,
+    isActive: true
+  },
+  {
     name: 'Processo Solicitado no Sinarm',
     triggerEvent: 'SINARM_STATUS:Solicitado',
     recipientType: 'client',
@@ -104,6 +118,13 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
   {
     name: 'Processo Indeferido',
     triggerEvent: 'SINARM_STATUS:Indeferido',
+    recipientType: 'client',
+    sendImmediate: true,
+    isActive: true
+  },
+  {
+    name: 'Agendamento Avaliação Psicológica',
+    triggerEvent: 'SCHEDULE_PSYCH_CREATED',
     recipientType: 'client',
     sendImmediate: true,
     isActive: true

@@ -49,6 +49,8 @@ import {
   lgpdConsents,
   InsertLgpdConsent,
   clientPortalActivityLog,
+  clientPendingDocuments,
+  leads,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { encryptSecret } from "./config/crypto.util";
@@ -80,7 +82,7 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       "id" serial PRIMARY KEY NOT NULL,
       "tenantId" integer,
       "name" text,
-      "email" varchar(320) NOT NULL UNIQUE,
+      "email" varchar(320) NOT NULL,
       "hashedPassword" text NOT NULL,
       "role" varchar(20),
       "approved" boolean DEFAULT true,
@@ -95,7 +97,7 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       "id" serial PRIMARY KEY NOT NULL,
       "tenantId" integer,
       "name" varchar(255) NOT NULL,
-      "cpf" varchar(14) NOT NULL UNIQUE,
+      "cpf" varchar(14) NOT NULL,
       "phone" varchar(20) NOT NULL,
       "email" varchar(320) NOT NULL,
       "operatorId" integer NOT NULL,
@@ -300,6 +302,21 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       "ipAddress" varchar(45),
       "createdAt" timestamp DEFAULT now() NOT NULL
     )`,
+    sql`CREATE TABLE IF NOT EXISTS "clientPendingDocuments" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "clientId" integer NOT NULL,
+      "tenantId" integer,
+      "fileName" varchar(255) NOT NULL,
+      "fileUrl" text NOT NULL,
+      "mimeType" varchar(100),
+      "fileSize" integer,
+      "status" varchar(20) NOT NULL DEFAULT 'pending',
+      "linkedSubTaskId" integer,
+      "rejectionReason" text,
+      "uploadedAt" timestamp NOT NULL DEFAULT now(),
+      "reviewedAt" timestamp,
+      "createdAt" timestamp NOT NULL DEFAULT now()
+    )`,
   ];
   for (const stmt of portalStatements) {
     try {
@@ -337,6 +354,8 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "otherProfession" varchar(255)`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "registrationNumber" varchar(100)`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "currentActivities" text`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "apostilamentoActivities" text`,
+    sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "hasSecondCollectionAddress" boolean DEFAULT false`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "phone2" varchar(20)`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "motherName" varchar(255)`,
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "fatherName" varchar(255)`,
@@ -369,6 +388,10 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
     sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "acervoLongitude" varchar(50)`,
     sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
     sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "approved" boolean DEFAULT true`,
+    // sinarmCommentsHistory — tenantId necessário para filtro de segurança multi-tenant
+    sql`ALTER TABLE "sinarmCommentsHistory" ADD COLUMN IF NOT EXISTS "tenantId" integer`,
+    sql`ALTER TABLE "planDefinitions" ALTER COLUMN "maxStorageGB" TYPE numeric(10,2)`,
+    sql`ALTER TABLE "tenants" ALTER COLUMN "maxStorageGB" TYPE numeric(10,2)`,
   ];
   let ok = 0, skipped = 0;
   for (const alter of alterations) {
@@ -379,6 +402,18 @@ export async function ensureSchemaColumns(db: ReturnType<typeof drizzle>, dbKey:
       skipped++;
       console.warn('[Schema] column alter skipped:', error?.message || error);
     }
+  }
+
+  // Backfill defensivo: inferir hasSecondCollectionAddress pelos campos já existentes.
+  try {
+    await db.execute(sql`
+      UPDATE "clients"
+      SET "hasSecondCollectionAddress" = true
+      WHERE COALESCE("hasSecondCollectionAddress", false) = false
+        AND COALESCE(NULLIF(TRIM("acervoAddress"), ''), NULLIF(TRIM("acervoCep"), '')) IS NOT NULL
+    `);
+  } catch (error: any) {
+    console.warn('[Schema] hasSecondCollectionAddress backfill skipped:', error?.message || error);
   }
 }
 
@@ -690,9 +725,13 @@ export async function upsertUserToDb(
 
 async function insertClientRaw(dbInstance: ReturnType<typeof drizzle>, client: InsertClient) {
   try {
+    const apostilamentoActivities = Array.isArray((client as any).apostilamentoActivities)
+      ? JSON.stringify((client as any).apostilamentoActivities)
+      : ((client as any).apostilamentoActivities ?? '[]');
+
     const result = await dbInstance.execute(
-      sql`INSERT INTO "clients" ("tenantId", "name", "cpf", "phone", "email", "operatorId")
-          VALUES (${client.tenantId ?? null}, ${client.name}, ${client.cpf}, ${client.phone}, ${client.email}, ${client.operatorId})
+      sql`INSERT INTO "clients" ("tenantId", "name", "cpf", "phone", "email", "operatorId", "apostilamentoActivities", "hasSecondCollectionAddress")
+          VALUES (${client.tenantId ?? null}, ${client.name}, ${client.cpf}, ${client.phone}, ${client.email}, ${client.operatorId}, ${apostilamentoActivities}, ${(client as any).hasSecondCollectionAddress ?? false})
           RETURNING "id"`
     );
     const rows = extractRows(result);
@@ -1235,6 +1274,7 @@ export async function deleteUserFromDb(tenantDb: ReturnType<typeof drizzle>, use
 
 // Tenant SMTP settings - stored directly in tenants table
 export interface TenantSmtpSettings {
+  name: string | null;
   emailMethod: 'smtp' | 'gateway' | null;
   smtpHost: string | null;
   smtpPort: number | null;
@@ -1252,6 +1292,7 @@ export async function getTenantSmtpSettings(tenantId: number): Promise<TenantSmt
 
   const [tenant] = await db
     .select({
+      name: tenants.name,
       emailMethod: tenants.emailMethod,
       smtpHost: tenants.smtpHost,
       smtpPort: tenants.smtpPort,
@@ -2071,171 +2112,6 @@ export async function getAuditLogsFromDb(
   };
 }
 
-// ===========================================
-// SEED MOCK TENANTS/USERS/CLIENTS
-// ===========================================
- const defaultMockTenantDbConfig = (() => {
-   const rawUrl = process.env.MOCK_TENANT_DATABASE_URL || process.env.DATABASE_URL;
-   if (!rawUrl) return null;
- 
-   try {
-     const url = new URL(rawUrl);
-     const dbName = (url.pathname || "").replace(/^\//, "");
-     return {
-       dbHost: url.hostname,
-       dbPort: Number(url.port || 5432),
-       dbName,
-       dbUser: decodeURIComponent(url.username || ""),
-       dbPassword: decodeURIComponent(url.password || ""),
-     };
-   } catch {
-     return null;
-   }
- })();
-
-const mockTenants = [
-  {
-    slug: "clube",
-    name: "Clube Exemplo",
-    dbHost: defaultMockTenantDbConfig?.dbHost ?? "localhost",
-    dbPort: defaultMockTenantDbConfig?.dbPort ?? 5432,
-    dbName: defaultMockTenantDbConfig?.dbName ?? "cac360_clube",
-    dbUser: defaultMockTenantDbConfig?.dbUser ?? "clube_user",
-    dbPassword: defaultMockTenantDbConfig?.dbPassword ?? "clube_pass",
-    primaryColor: "#1a5c00",
-    secondaryColor: "#4d9702",
-    featureWorkflowCR: true,
-    featureApostilamento: true,
-    featureRenovacao: true,
-    featureInsumos: false,
-    plan: "professional" as const,
-    subscriptionStatus: "active" as const,
-    subscriptionExpiresAt: null,
-    maxUsers: 20,
-    maxClients: 1000,
-    maxStorageGB: 100,
-    isActive: true,
-  }
-] as const;
-
-export async function clearMockTenants() {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const mockSlugs = mockTenants.map((m) => m.slug);
-
-  await db.delete(clients).where(like(clients.email, "%@example.com"));
-  await db.delete(users).where(like(users.email, "%@example.com"));
-  await db.delete(tenants).where(inArray(tenants.slug, mockSlugs));
-
-  return { tenants: mockSlugs.length };
-}
-
-export async function seedMockTenants() {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const mocks = mockTenants;
-
-  // Limpar dados mockados anteriores (emails @example.com e tenants de mock)
-  const mockSlugs = mocks.map((m) => m.slug);
-  await db.delete(clients).where(like(clients.email, "%@example.com"));
-  await db.delete(users).where(like(users.email, "%@example.com"));
-  await db.delete(tenants).where(inArray(tenants.slug, mockSlugs));
-
-  // Inserir tenants (usa encryptSecret na camada createTenant)
-  const tenantIds: Record<string, number> = {};
-  for (const t of mocks) {
-    const tenantId = await createTenant({
-      ...t,
-      dbPassword: t.dbPassword,
-    });
-    tenantIds[t.slug] = tenantId;
-  }
-
-  // Seed platform users (2 admins + 3 operadores por tenant)
-  const passwordHash = bcrypt.hashSync("123456", 10);
-  const tenantUserIds: Record<string, { admins: number[]; operators: number[] }> = {};
-
-  for (const t of mocks) {
-    const admins: number[] = [];
-    const operators: number[] = [];
-
-    for (let i = 1; i <= 2; i++) {
-      const email = `${t.slug}.admin${i}@example.com`;
-      const [inserted] = await db
-        .insert(users)
-        .values({
-          tenantId: tenantIds[t.slug],
-          name: `${t.name} Admin ${i}`,
-          email,
-          hashedPassword: passwordHash,
-          role: "admin",
-        })
-        .onConflictDoNothing()
-        .returning({ id: users.id });
-      if (inserted?.id) admins.push(inserted.id);
-    }
-
-    for (let i = 1; i <= 8; i++) {
-      const email = `${t.slug}.op${i}@example.com`;
-      const [inserted] = await db
-        .insert(users)
-        .values({
-          tenantId: tenantIds[t.slug],
-          name: `${t.name} Operador ${i}`,
-          email,
-          hashedPassword: passwordHash,
-          role: "operator",
-        })
-        .onConflictDoNothing()
-        .returning({ id: users.id });
-      if (inserted?.id) operators.push(inserted.id);
-    }
-
-    tenantUserIds[t.slug] = { admins, operators };
-  }
-
-  // Seed clients (150 por tenant)
-  let clientsInserted = 0;
-  let tenantIndex = 0;
-  for (const t of mocks) {
-    tenantIndex++;
-    const { operators } = tenantUserIds[t.slug];
-    if (!operators || operators.length === 0) continue;
-
-    for (let i = 1; i <= 150; i++) {
-      // CPF único por tenant: prefixo baseado no índice do tenant
-      const cpf = `${String(tenantIndex).padStart(3, "0")}${String(i).padStart(3, "0")}${String(tenantIndex).padStart(4, "0")}${String(i).padStart(2, "0")}`;
-      const email = `${t.slug}.cliente${i}@example.com`;
-
-      await db
-        .insert(clients)
-        .values({
-          tenantId: tenantIds[t.slug],
-          name: `Cliente ${i} - ${t.name}`,
-          cpf,
-          phone: `11999${String(i).padStart(4, "0")}`,
-          email,
-          operatorId: operators[(i - 1) % operators.length],
-          address: "Rua Exemplo",
-          addressNumber: `${100 + i}`,
-          neighborhood: "Centro",
-          city: "São Paulo",
-          cep: "01000-000",
-        })
-        .onConflictDoNothing();
-      clientsInserted += 1;
-    }
-  }
-
-  return {
-    tenants: mocks.length,
-    users: Object.values(tenantUserIds).reduce((acc, v) => acc + v.admins.length + v.operators.length, 0),
-    clients: clientsInserted,
-  };
-}
-
 // ============================================
 // EMAIL TRIGGERS FUNCTIONS
 // ============================================
@@ -2559,12 +2435,6 @@ export async function getActiveSubscription(tenantId: number) {
   return sub || null;
 }
 
-export async function getSubscriptionsByTenant(tenantId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  return await db.select().from(subscriptions).where(eq(subscriptions.tenantId, tenantId)).orderBy(desc(subscriptions.startDate));
-}
-
 export async function createSubscription(sub: InsertSubscription) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -2617,6 +2487,20 @@ export async function getInvoicesByTenant(tenantId: number) {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(invoices).where(eq(invoices.tenantId, tenantId)).orderBy(desc(invoices.createdAt));
+}
+
+export async function getSubscriptionsByTenant(tenantId: number): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.execute(
+    sql`SELECT s.*, pd.name AS "planName", pd.slug AS "planSlug"
+        FROM "subscriptions" s
+        LEFT JOIN "planDefinitions" pd ON pd.id = s."planId"
+        WHERE s."tenantId" = ${tenantId}
+        ORDER BY s."startDate" DESC`
+  );
+  const rows = (result as any)?.rows ?? result;
+  return Array.isArray(rows) ? rows : [];
 }
 
 export async function getAllInvoices(status?: string) {
@@ -2710,15 +2594,19 @@ export async function createClientInviteToken(
   tenantId?: number | null
 ): Promise<string> {
   const token = crypto.randomBytes(32).toString("hex"); // 64 chars
-  const expiresAt = new Date(Date.now() + INVITE_TOKEN_DAYS * 24 * 60 * 60 * 1000);
-  await db.execute(sql`
-    INSERT INTO "clientInviteTokens" ("clientId", "tenantId", "token", "expiresAt", "createdAt")
-    VALUES (${clientId}, ${tenantId ?? null}, ${token}, ${expiresAt}, now())
-    ON CONFLICT ("token") DO UPDATE
-      SET "token" = EXCLUDED."token",
-          "activatedAt" = NULL,
-          "expiresAt" = EXCLUDED."expiresAt"
-  `);
+  // ISO 8601 garante compatibilidade com postgres.js (evita problemas com Date.toString() locale)
+  const expiresAt = new Date(Date.now() + INVITE_TOKEN_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  // Remove token anterior do cliente (se existir) e insere novo
+  await db.execute(sql`DELETE FROM "clientInviteTokens" WHERE "clientId" = ${clientId}`);
+  try {
+    await db.execute(sql`
+      INSERT INTO "clientInviteTokens" ("clientId", "tenantId", "token", "expiresAt", "createdAt")
+      VALUES (${clientId}, ${tenantId ?? null}, ${token}, ${expiresAt}::timestamp, now())
+    `);
+  } catch (err: any) {
+    console.error('[createClientInviteToken] INSERT falhou:', err?.message ?? err);
+    throw err;
+  }
   return token;
 }
 
@@ -2779,12 +2667,13 @@ export async function createPortalSession(
   userAgent?: string
 ): Promise<string> {
   const sessionToken = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + PORTAL_SESSION_DAYS * 24 * 60 * 60 * 1000);
+  // ISO 8601 garante compatibilidade com postgres.js
+  const expiresAt = new Date(Date.now() + PORTAL_SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   await db.execute(sql`
     INSERT INTO "clientPortalSessions"
       ("clientId", "tenantId", "sessionToken", "ipAddress", "userAgent", "lastSeenAt", "expiresAt", "createdAt")
     VALUES
-      (${clientId}, ${tenantId ?? null}, ${sessionToken}, ${ipAddress ?? null}, ${userAgent ?? null}, now(), ${expiresAt}, now())
+      (${clientId}, ${tenantId ?? null}, ${sessionToken}, ${ipAddress ?? null}, ${userAgent ?? null}, now(), ${expiresAt}::timestamp, now())
   `);
   return sessionToken;
 }
@@ -2888,6 +2777,15 @@ export async function updateClientFromPortal(
     neighborhood?: string;
     city?: string;
     residenceUf?: string;
+    apostilamentoActivities?: string;
+    hasSecondCollectionAddress?: boolean;
+    acervoCep?: string;
+    acervoAddress?: string;
+    acervoAddressNumber?: string;
+    acervoNeighborhood?: string;
+    acervoCity?: string;
+    acervoUf?: string;
+    acervoComplement?: string;
   }
 ) {
   // Construir update usando drizzle set() para tipagem segura
@@ -2912,6 +2810,15 @@ export async function updateClientFromPortal(
   if (data.neighborhood !== undefined) setData.neighborhood = data.neighborhood;
   if (data.city !== undefined) setData.city = data.city;
   if (data.residenceUf !== undefined) setData.residenceUf = data.residenceUf;
+  if (data.apostilamentoActivities !== undefined) setData.apostilamentoActivities = data.apostilamentoActivities;
+  if (data.hasSecondCollectionAddress !== undefined) setData.hasSecondCollectionAddress = data.hasSecondCollectionAddress;
+  if (data.acervoCep !== undefined) setData.acervoCep = data.acervoCep;
+  if (data.acervoAddress !== undefined) setData.acervoAddress = data.acervoAddress;
+  if (data.acervoAddressNumber !== undefined) setData.acervoAddressNumber = data.acervoAddressNumber;
+  if (data.acervoNeighborhood !== undefined) setData.acervoNeighborhood = data.acervoNeighborhood;
+  if (data.acervoCity !== undefined) setData.acervoCity = data.acervoCity;
+  if (data.acervoUf !== undefined) setData.acervoUf = data.acervoUf;
+  if (data.acervoComplement !== undefined) setData.acervoComplement = data.acervoComplement;
   setData.updatedAt = new Date();
 
   if (Object.keys(setData).length <= 1) return; // só updatedAt, nada para salvar
@@ -2923,6 +2830,78 @@ export async function updateClientFromPortal(
   await db.update(clients).set(setData).where(whereClause);
 }
 
+// ============================================
+// BILLING — Funções para cron jobs
+// ============================================
+
+/** Subscriptions ativas com renovação em até dueInDays dias */
+export async function getActiveSubscriptionsDueSoon(dueInDays: number): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const cutoff = new Date(Date.now() + dueInDays * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const result = await db.execute(sql`
+    SELECT s.*, t.name AS "tenantName", t.id AS "tenantIdVal"
+    FROM "subscriptions" s
+    INNER JOIN "tenants" t ON t.id = s."tenantId"
+    WHERE s.status = 'active'
+      AND s."currentPeriodEnd" <= ${cutoff}
+      AND s."currentPeriodEnd" >= ${now}
+  `);
+  return extractRows(result);
+}
+
+/** Subscriptions ativas com currentPeriodEnd no passado (inadimplentes) */
+export async function getExpiredSubscriptions(): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const now = new Date();
+  const result = await db.execute(sql`
+    SELECT s.*, t.name AS "tenantName", t.id AS "tenantIdVal"
+    FROM "subscriptions" s
+    INNER JOIN "tenants" t ON t.id = s."tenantId"
+    WHERE s.status = 'active' AND s."currentPeriodEnd" < ${now}
+  `);
+  return extractRows(result);
+}
+
+/** Cria fatura se ainda não existir para o mês de referência. Retorna true se criada. */
+export async function createInvoiceIfNotExists(
+  tenantId: number,
+  subscriptionId: number,
+  periodRef: string,
+  amountCents: number
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const existing = await db.execute(sql`
+    SELECT id FROM "invoices"
+    WHERE "tenantId" = ${tenantId}
+      AND "subscriptionId" = ${subscriptionId}
+      AND "periodRef" = ${periodRef}
+    LIMIT 1
+  `);
+  if (extractRows(existing).length > 0) return false;
+  await db.execute(sql`
+    INSERT INTO "invoices" ("tenantId", "subscriptionId", "periodRef", "amountCents", "status", "createdAt")
+    VALUES (${tenantId}, ${subscriptionId}, ${periodRef}, ${amountCents}, 'pending', now())
+  `);
+  return true;
+}
+
+/** Suspende tenant (isActive = false) e subscription (status = suspended) */
+export async function suspendTenantSubscription(
+  tenantId: number,
+  subscriptionId: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await Promise.all([
+    db.execute(sql`UPDATE "tenants" SET "isActive" = false WHERE id = ${tenantId}`),
+    db.execute(sql`UPDATE "subscriptions" SET status = 'suspended' WHERE id = ${subscriptionId}`),
+  ]);
+}
+
 /** Regenera token de convite (reenvio manual pelo operador) */
 export async function regenerateClientInviteToken(
   db: ReturnType<typeof drizzle>,
@@ -2930,4 +2909,177 @@ export async function regenerateClientInviteToken(
   tenantId?: number | null
 ): Promise<string> {
   return createClientInviteToken(db, clientId, tenantId);
+}
+
+// ============================================
+// PORTAL — Documentos Pendentes de Triagem
+// ============================================
+
+/** Cria registro de documento pendente enviado pelo cliente via portal */
+export async function createPendingDocument(
+  db: ReturnType<typeof drizzle>,
+  data: {
+    clientId: number;
+    tenantId?: number | null;
+    fileName: string;
+    fileUrl: string;
+    mimeType?: string | null;
+    fileSize?: number | null;
+  }
+): Promise<number> {
+  const result = await db.execute(sql`
+    INSERT INTO "clientPendingDocuments"
+      ("clientId", "tenantId", "fileName", "fileUrl", "mimeType", "fileSize", "status", "uploadedAt", "createdAt")
+    VALUES
+      (${data.clientId}, ${data.tenantId ?? null}, ${data.fileName}, ${data.fileUrl},
+       ${data.mimeType ?? null}, ${data.fileSize ?? null}, 'pending', now(), now())
+    RETURNING id
+  `);
+  return extractRows(result)[0]?.id ?? 0;
+}
+
+/** Lista documentos enviados por um cliente (para o próprio cliente ver no portal) */
+export async function getPendingDocumentsByClient(
+  db: ReturnType<typeof drizzle>,
+  clientId: number,
+  tenantId?: number | null
+): Promise<any[]> {
+  const result = await db.execute(sql`
+    SELECT * FROM "clientPendingDocuments"
+    WHERE "clientId" = ${clientId}
+    ${tenantId != null ? sql`AND "tenantId" = ${tenantId}` : sql``}
+    ORDER BY "uploadedAt" DESC
+  `);
+  return extractRows(result);
+}
+
+/** Retorna quantidade de documentos pendentes de triagem por cliente */
+export async function getPendingTriageCountsByClients(
+  db: ReturnType<typeof drizzle>,
+  clientIds: number[],
+  tenantId?: number | null
+): Promise<Array<{ clientId: number; pendingCount: number }>> {
+  if (!clientIds || clientIds.length === 0) return [];
+
+  const conditions: any[] = [
+    eq(clientPendingDocuments.status, 'pending'),
+    inArray(clientPendingDocuments.clientId, clientIds),
+  ];
+
+  if (tenantId != null) {
+    conditions.push(
+      or(
+        eq(clientPendingDocuments.tenantId, tenantId),
+        isNull(clientPendingDocuments.tenantId)
+      )
+    );
+  }
+
+  return await db
+    .select({
+      clientId: clientPendingDocuments.clientId,
+      pendingCount: sql<number>`COUNT(*)::int`,
+    })
+    .from(clientPendingDocuments)
+    .where(and(...conditions))
+    .groupBy(clientPendingDocuments.clientId);
+}
+
+/** Lista documentos pendentes de triagem de um tenant (para operador) */
+export async function getPendingDocumentsForTriage(
+  db: ReturnType<typeof drizzle>,
+  clientId?: number | null,
+  tenantId?: number | null
+): Promise<any[]> {
+  const result = await db.execute(sql`
+    SELECT pd.*,
+           COALESCE(c.name, 'Cliente') AS "clientName",
+           c.email AS "clientEmail"
+    FROM "clientPendingDocuments" pd
+    LEFT JOIN "clients" c ON c.id = pd."clientId"
+    WHERE pd.status = 'pending'
+    ${clientId != null ? sql`AND pd."clientId" = ${clientId}` : sql``}
+    ${tenantId != null && clientId == null ? sql`AND (pd."tenantId" = ${tenantId} OR pd."tenantId" IS NULL)` : sql``}
+    ORDER BY pd."uploadedAt" ASC
+  `);
+  return extractRows(result);
+}
+
+/** Atualiza status de documento pendente após triagem */
+export async function updatePendingDocumentStatus(
+  db: ReturnType<typeof drizzle>,
+  docId: number,
+  status: "approved" | "rejected" | "linked",
+  opts?: { linkedSubTaskId?: number; rejectionReason?: string }
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE "clientPendingDocuments"
+    SET status = ${status},
+        "reviewedAt" = now(),
+        "linkedSubTaskId" = ${opts?.linkedSubTaskId ?? null},
+        "rejectionReason" = ${opts?.rejectionReason ?? null}
+    WHERE id = ${docId}
+  `);
+}
+
+// ============================================
+// MARKETING — Leads
+// ============================================
+
+/** Salva lead capturado pelo formulário público da landing page */
+export async function createLead(data: {
+  name: string;
+  clubName?: string;
+  email: string;
+  whatsapp?: string;
+  message?: string;
+  ipAddress?: string;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.execute(sql`
+    INSERT INTO "leads" ("name", "clubName", "email", "whatsapp", "message", "status", "source", "ipAddress", "createdAt", "updatedAt")
+    VALUES (${data.name}, ${data.clubName ?? null}, ${data.email}, ${data.whatsapp ?? null},
+            ${data.message ?? null}, 'new', 'landing', ${data.ipAddress ?? null}, now(), now())
+    RETURNING id
+  `);
+  return extractRows(result)[0]?.id ?? 0;
+}
+
+/** Garante que as tabelas de portal e leads existem (idempotente) */
+export async function ensurePortalAndMarketingTables(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "clientPendingDocuments" (
+      id SERIAL PRIMARY KEY,
+      "clientId" INTEGER NOT NULL,
+      "tenantId" INTEGER,
+      "fileName" VARCHAR(255) NOT NULL,
+      "fileUrl" TEXT NOT NULL,
+      "mimeType" VARCHAR(100),
+      "fileSize" INTEGER,
+      "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
+      "linkedSubTaskId" INTEGER,
+      "rejectionReason" TEXT,
+      "uploadedAt" TIMESTAMP NOT NULL DEFAULT now(),
+      "reviewedAt" TIMESTAMP,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "leads" (
+      id SERIAL PRIMARY KEY,
+      "name" VARCHAR(255) NOT NULL,
+      "clubName" VARCHAR(255),
+      "email" VARCHAR(320) NOT NULL,
+      "whatsapp" VARCHAR(20),
+      "message" TEXT,
+      "status" VARCHAR(30) NOT NULL DEFAULT 'new',
+      "source" VARCHAR(50) DEFAULT 'landing',
+      "ipAddress" VARCHAR(45),
+      "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
 }

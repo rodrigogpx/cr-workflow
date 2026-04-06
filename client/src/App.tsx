@@ -38,6 +38,7 @@ const PortalLgpd = lazy(() => import("./pages/portal/PortalLgpd"));
 const PortalMeusDados = lazy(() => import("./pages/portal/PortalMeusDados"));
 const PortalMeuProcesso = lazy(() => import("./pages/portal/PortalMeuProcesso"));
 const PortalDocumentos = lazy(() => import("./pages/portal/PortalDocumentos"));
+const Landing = lazy(() => import("./pages/Landing"));
 
 function getBackgroundForPath(path: string) {
   // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
@@ -151,6 +152,9 @@ function Router() {
         </div>
       }>
       <Switch>
+        {/* Landing page pública de marketing */}
+        <Route path="/landing" component={Landing} />
+
         {/* Portal do Cliente — área pública separada, sem auth de admin */}
         <Route path="/portal/acesso" component={PortalAcesso} />
         <Route path="/portal/login" component={PortalLogin} />

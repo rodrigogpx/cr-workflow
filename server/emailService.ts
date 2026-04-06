@@ -239,7 +239,7 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
 }
 
 /**
- * Send email via Manus Gateway (HTTP) - contorna restrições SMTP do Railway
+ * Send email via HTTP Gateway - contorna restrições SMTP do Railway
  */
 async function sendEmailViaPostmanGpx(
   options: {
@@ -365,7 +365,7 @@ export async function fetchImageAsBase64(imageUrl: string): Promise<string | nul
 }
 
 /**
- * Send a test email - usa Gateway Manus (Railway) ou SMTP direto (local)
+ * Send a test email - usa HTTP Gateway (Railway) ou SMTP direto (local)
  */
 export async function sendTestEmailWithSettings(settings: {
   host: string;
@@ -501,12 +501,18 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
     
     console.log(`[EmailTrigger] Processing event="${event}" client=${client.id} (${client.name}) tenant=${tenantId || 'none'}`);
     
-    // Fetch tenant settings to get logo (already saved as base64 data URI)
+    // Fetch tenant settings to get logo and name (already saved as base64 data URI)
     const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
     const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
-    
+
+    // Injeta nome do clube no extraData para substituição de {{nome_clube}}
+    const enrichedExtraData: Record<string, any> = {
+      nome_clube: tenantSettings?.name || 'CAC 360',
+      ...extraData,
+    };
+
     const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
-    
+
     // Get active triggers for this event
     const triggers = tenantDb
       ? await db.getActiveTriggersByEventFromDb(tenantDb, event, tenantId)
@@ -546,8 +552,8 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
         }
         
         // Render template with client data (logo is already base64 from database)
-        const renderedSubject = renderTemplate(template.subject, client, extraData, emailLogoUrl);
-        const renderedContent = renderTemplate(template.content, client, extraData, emailLogoUrl);
+        const renderedSubject = renderTemplate(template.subject, client, enrichedExtraData, emailLogoUrl);
+        const renderedContent = renderTemplate(template.content, client, enrichedExtraData, emailLogoUrl);
         
         // Check if this is a reminder template and we have a scheduled date
         if (templateLink.isForReminder && scheduledDate && trigger.sendBeforeHours) {
@@ -701,11 +707,21 @@ function renderTemplate(template: string, client: Client, extraData?: Record<str
   // Date placeholder
   rendered = rendered.replace(/\{\{data\}\}/gi, new Date().toLocaleDateString('pt-BR'));
   
-  // Logo placeholder - renders as inline attachment (CID) if logo is configured
+  // Logo placeholder — CID inline se tenant tiver logo; caso contrário, logo
+  // texto da plataforma CAC 360 (compatível com todos os clientes de email).
+  const CAC360_LOGO_FALLBACK =
+    `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">` +
+    `<tr><td style="background-color:#123A63;border-radius:6px;padding:10px 28px;text-align:center;">` +
+    `<span style="font-family:'Arial Black',Arial,sans-serif;font-size:24px;font-weight:900;` +
+    `color:#ffffff;letter-spacing:2px;text-decoration:none;">CAC&#160;</span>` +
+    `<span style="font-family:'Arial Black',Arial,sans-serif;font-size:24px;font-weight:900;` +
+    `color:#28a745;letter-spacing:2px;text-decoration:none;">360</span>` +
+    `</td></tr></table>`;
+
   if (emailLogoUrl) {
     rendered = rendered.replace(/\{\{logo\}\}/gi, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
   } else {
-    rendered = rendered.replace(/\{\{logo\}\}/gi, '');
+    rendered = rendered.replace(/\{\{logo\}\}/gi, CAC360_LOGO_FALLBACK);
   }
   
   return rendered;

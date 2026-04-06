@@ -22,10 +22,15 @@ const UF_LIST = [
 ];
 
 const STEPS = ["Identificação", "Contato", "Endereço", "Confirmação"];
+const APOSTILAMENTO_OPTIONS = [
+  { value: "atirador", label: "Atirador" },
+  { value: "cacador", label: "Caçador" },
+  { value: "colecionador", label: "Colecionador" },
+] as const;
 
 export default function PortalMeusDados() {
   const [, navigate] = useLocation();
-  const { client, lgpdAccepted, loading, refetch } = usePortalAuth();
+  const { client, lgpdAccepted, loading, refetch, canEditApostilamentoInPortal } = usePortalAuth();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -52,6 +57,15 @@ export default function PortalMeusDados() {
     neighborhood: "",
     city: "",
     residenceUf: "",
+    apostilamentoActivities: [] as string[],
+    hasSecondCollectionAddress: false,
+    acervoCep: "",
+    acervoAddress: "",
+    acervoAddressNumber: "",
+    acervoNeighborhood: "",
+    acervoCity: "",
+    acervoUf: "",
+    acervoComplement: "",
   });
 
   // Preencher form com dados existentes do cliente
@@ -59,9 +73,9 @@ export default function PortalMeusDados() {
     if (client) {
       setForm({
         name: client.name || "",
-        birthDate: client.birthDate || "",
+        birthDate: client.birthDate?.slice(0, 10) || "",
         identityNumber: client.identityNumber || "",
-        identityIssueDate: client.identityIssueDate || "",
+        identityIssueDate: client.identityIssueDate?.slice(0, 10) || "",
         identityIssuer: client.identityIssuer || "",
         identityUf: client.identityUf || "",
         gender: client.gender || "",
@@ -78,6 +92,15 @@ export default function PortalMeusDados() {
         neighborhood: client.neighborhood || "",
         city: client.city || "",
         residenceUf: client.residenceUf || "",
+        apostilamentoActivities: client.apostilamentoActivities || [],
+        hasSecondCollectionAddress: !!client.hasSecondCollectionAddress,
+        acervoCep: client.acervoCep || "",
+        acervoAddress: client.acervoAddress || "",
+        acervoAddressNumber: client.acervoAddressNumber || "",
+        acervoNeighborhood: client.acervoNeighborhood || "",
+        acervoCity: client.acervoCity || "",
+        acervoUf: client.acervoUf || "",
+        acervoComplement: client.acervoComplement || "",
       });
     }
   }, [client]);
@@ -90,8 +113,17 @@ export default function PortalMeusDados() {
     if (!loading && client && !lgpdAccepted) navigate("/portal/lgpd");
   }, [loading, client, lgpdAccepted, navigate]);
 
-  function setField(key: string, value: string) {
+  function setField(key: string, value: any) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function toggleActivity(value: string) {
+    setForm((f) => {
+      const next = f.apostilamentoActivities.includes(value)
+        ? f.apostilamentoActivities.filter((v) => v !== value)
+        : [...f.apostilamentoActivities, value];
+      return { ...f, apostilamentoActivities: next };
+    });
   }
 
   async function fetchCep(cep: string) {
@@ -363,6 +395,36 @@ export default function PortalMeusDados() {
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-800 mb-4">Endereço Residencial</h3>
 
+            <div className="p-4 rounded-lg border border-purple-200 bg-purple-50/40 space-y-3">
+              <div className="text-sm font-semibold text-purple-900">Atividades para apostilamento</div>
+              {!canEditApostilamentoInPortal && (
+                <p className="text-xs text-amber-700">Após o primeiro cadastro, esta seção só pode ser alterada no módulo interno.</p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {APOSTILAMENTO_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="flex items-center gap-2 text-sm text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={form.apostilamentoActivities.includes(opt.value)}
+                      onChange={() => toggleActivity(opt.value)}
+                      disabled={!canEditApostilamentoInPortal}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-gray-800">
+                <input
+                  type="checkbox"
+                  checked={form.hasSecondCollectionAddress}
+                  onChange={(e) => setField("hasSecondCollectionAddress", e.target.checked)}
+                  disabled={!canEditApostilamentoInPortal}
+                />
+                Possui segundo endereço de acervo
+              </label>
+            </div>
+
             <div>
               <Label>CEP *</Label>
               <div className="flex gap-2 items-center">
@@ -441,6 +503,79 @@ export default function PortalMeusDados() {
                 </SelectContent>
               </Select>
             </div>
+
+            {form.hasSecondCollectionAddress && (
+              <div className="space-y-4 p-4 rounded-lg border border-amber-200 bg-amber-50/40">
+                <div className="text-sm font-semibold text-amber-900">Segundo endereço de acervo</div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>CEP</Label>
+                    <Input
+                      value={form.acervoCep}
+                      onChange={(e) => setField("acervoCep", formatCep(e.target.value))}
+                      disabled={!canEditApostilamentoInPortal}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Logradouro</Label>
+                    <Input
+                      value={form.acervoAddress}
+                      onChange={(e) => setField("acervoAddress", e.target.value)}
+                      disabled={!canEditApostilamentoInPortal}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Número</Label>
+                    <Input
+                      value={form.acervoAddressNumber}
+                      onChange={(e) => setField("acervoAddressNumber", e.target.value)}
+                      disabled={!canEditApostilamentoInPortal}
+                    />
+                  </div>
+                  <div>
+                    <Label>Bairro</Label>
+                    <Input
+                      value={form.acervoNeighborhood}
+                      onChange={(e) => setField("acervoNeighborhood", e.target.value)}
+                      disabled={!canEditApostilamentoInPortal}
+                    />
+                  </div>
+                  <div>
+                    <Label>Cidade</Label>
+                    <Input
+                      value={form.acervoCity}
+                      onChange={(e) => setField("acervoCity", e.target.value)}
+                      disabled={!canEditApostilamentoInPortal}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>UF</Label>
+                    <Select value={form.acervoUf} onValueChange={(v) => setField("acervoUf", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UF_LIST.map((uf) => (
+                          <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Complemento</Label>
+                    <Input
+                      value={form.acervoComplement}
+                      onChange={(e) => setField("acervoComplement", e.target.value)}
+                      disabled={!canEditApostilamentoInPortal}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

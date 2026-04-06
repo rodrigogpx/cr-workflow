@@ -33,6 +33,108 @@ function parseCookies(req: Request): Record<string, string> {
   return cookies;
 }
 
+function parsePortalActivities(value: unknown): Array<'atirador' | 'cacador' | 'colecionador'> {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is 'atirador' | 'cacador' | 'colecionador' =>
+      ['atirador', 'cacador', 'colecionador'].includes(String(v))
+    );
+  }
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((v): v is 'atirador' | 'cacador' | 'colecionador' =>
+          ['atirador', 'cacador', 'colecionador'].includes(String(v))
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return [];
+}
+
+const DISPENSADO_PREFIX = '[DISPENSADO] ';
+
+function buildPortalRequiredDocuments(
+  activities: Array<'atirador' | 'cacador' | 'colecionador'>,
+  hasSecondCollectionAddress: boolean,
+): string[] {
+  const docs = new Set<string>([
+    'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
+    'Certidão de Antecedente Criminal Justiça Federal',
+    'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
+    'Documento de Identificação Pessoal',
+    'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
+    'Comprovante de Residência Fixa',
+    'Comprovante de Ocupação Lícita',
+    'Certidão de Antecedente Criminal Justiça Estadual',
+    'Declaração de Segurança do Acervo',
+    'Certidão de Antecedente Criminal Justiça Militar',
+    'Certidão de Antecedente Criminal Justiça Eleitoral',
+  ]);
+
+  if (activities.includes('atirador')) {
+    docs.add('Declaração com compromisso de comprovar a habitualidade na forma da norma vigente');
+    docs.add('Comprovante de filiação a entidade de tiro desportivo');
+  }
+  if (activities.includes('cacador')) {
+    docs.add('Comprovante de filiação a entidade de caça');
+    docs.add('Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama');
+  }
+  if (hasSecondCollectionAddress) {
+    docs.add('Comprovante de Segundo Endereço');
+  }
+
+  return Array.from(docs);
+}
+
+function stripDispensadoPrefix(label: string): string {
+  return label.startsWith(DISPENSADO_PREFIX) ? label.slice(DISPENSADO_PREFIX.length) : label;
+}
+
+async function syncPortalJuntadaSubTasks(activeDb: any, clientId: number, requiredDocuments: string[]) {
+  const { sql } = await import('drizzle-orm');
+  const stepRows = await activeDb.execute(
+    sql`SELECT id FROM "workflowSteps" WHERE "clientId" = ${clientId} AND "stepId" = 'juntada-documento' LIMIT 1`
+  );
+  const steps = Array.isArray(stepRows) ? stepRows : (stepRows as any).rows || [];
+  if (steps.length === 0) return;
+
+  const workflowStepId = steps[0].id;
+  const subTaskRows = await activeDb.execute(
+    sql`SELECT id, label FROM "subTasks" WHERE "workflowStepId" = ${workflowStepId} ORDER BY id ASC`
+  );
+  const subTasks = Array.isArray(subTaskRows) ? subTaskRows : (subTaskRows as any).rows || [];
+  const requiredSet = new Set(requiredDocuments);
+
+  const existing = new Set<string>();
+  for (const st of subTasks) {
+    const baseLabel = stripDispensadoPrefix(String(st.label ?? ''));
+    existing.add(baseLabel);
+    const shouldBeRequired = requiredSet.has(baseLabel);
+    const isDispensed = String(st.label ?? '').startsWith(DISPENSADO_PREFIX);
+
+    if (shouldBeRequired && isDispensed) {
+      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${baseLabel} WHERE id = ${st.id}`);
+    } else if (!shouldBeRequired && !isDispensed) {
+      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${DISPENSADO_PREFIX + baseLabel} WHERE id = ${st.id}`);
+    }
+  }
+
+  let idx = subTasks.length + 1;
+  for (const doc of requiredDocuments) {
+    if (existing.has(doc)) continue;
+    await db.upsertSubTaskToDb(activeDb, {
+      workflowStepId,
+      subTaskId: `doc-${String(idx).padStart(2, '0')}`,
+      label: doc,
+      completed: false,
+    });
+    idx++;
+  }
+}
+
 function getPortalCookie(req: Request): string | undefined {
   // Support both cookie-parser (req.cookies) and manual parsing
   return (req as any).cookies?.[PORTAL_COOKIE] ?? parseCookies(req)[PORTAL_COOKIE];
@@ -298,6 +400,14 @@ export function registerPortalRoutes(app: Express) {
 
       const lgpdConsent = await db.getLgpdConsent(activeDb, client.id);
 
+      // Verificar se a etapa "cadastro" está marcada como concluída
+      const { sql } = await import("drizzle-orm");
+      const cadastroRows = await activeDb.execute(
+        sql`SELECT completed FROM "workflowSteps" WHERE "clientId" = ${client.id} AND "stepId" = 'cadastro' LIMIT 1`
+      );
+      const cadastroArr = Array.isArray(cadastroRows) ? cadastroRows : (cadastroRows as any).rows || [];
+      const cadastroCompleto = cadastroArr.length > 0 && !!cadastroArr[0].completed;
+
       return res.json({
         client: {
           id: client.id,
@@ -323,9 +433,20 @@ export function registerPortalRoutes(app: Express) {
           neighborhood: client.neighborhood,
           city: client.city,
           residenceUf: client.residenceUf,
+          apostilamentoActivities: parsePortalActivities(client.apostilamentoActivities),
+          hasSecondCollectionAddress: !!client.hasSecondCollectionAddress,
+          acervoCep: client.acervoCep,
+          acervoAddress: client.acervoAddress,
+          acervoAddressNumber: client.acervoAddressNumber,
+          acervoNeighborhood: client.acervoNeighborhood,
+          acervoCity: client.acervoCity,
+          acervoUf: client.acervoUf,
+          acervoComplement: client.acervoComplement,
         },
         lgpdAccepted: !!lgpdConsent,
         lgpdAcceptedAt: lgpdConsent?.acceptedAt ?? null,
+        cadastroCompleto,
+        canEditApostilamentoInPortal: !cadastroCompleto,
       });
     } catch (err) {
       console.error("[Portal] Erro ao buscar dados:", err);
@@ -357,12 +478,54 @@ export function registerPortalRoutes(app: Express) {
         "neighborhood", "city", "residenceUf",
       ];
 
-      const data: Record<string, string> = {};
+      // Restringir edição das opções de apostilamento após conclusão do primeiro cadastro.
+      const { sql } = await import("drizzle-orm");
+      const cadastroRows = await activeDb.execute(
+        sql`SELECT completed FROM "workflowSteps" WHERE "clientId" = ${client.id} AND "stepId" = 'cadastro' LIMIT 1`
+      );
+      const cadastroArr = Array.isArray(cadastroRows) ? cadastroRows : (cadastroRows as any).rows || [];
+      const cadastroCompleto = cadastroArr.length > 0 && !!cadastroArr[0].completed;
+
+      if (!cadastroCompleto) {
+        allowed.push(
+          "apostilamentoActivities",
+          "hasSecondCollectionAddress",
+          "acervoCep",
+          "acervoAddress",
+          "acervoAddressNumber",
+          "acervoNeighborhood",
+          "acervoCity",
+          "acervoUf",
+          "acervoComplement",
+        );
+      }
+
+      const data: Record<string, any> = {};
       for (const key of allowed) {
-        if (req.body[key] !== undefined) data[key] = req.body[key];
+        if (req.body[key] !== undefined) {
+          if (key === "apostilamentoActivities") {
+            data[key] = JSON.stringify(parsePortalActivities(req.body[key]));
+          } else if (key === "hasSecondCollectionAddress") {
+            data[key] = Boolean(req.body[key]);
+          } else {
+            data[key] = req.body[key];
+          }
+        }
       }
 
       await db.updateClientFromPortal(activeDb, client.id, tenantId, data);
+
+      if (data.apostilamentoActivities !== undefined || data.hasSecondCollectionAddress !== undefined) {
+        const activities = data.apostilamentoActivities !== undefined
+          ? parsePortalActivities(data.apostilamentoActivities)
+          : parsePortalActivities((client as any).apostilamentoActivities);
+        const hasSecondCollectionAddress = data.hasSecondCollectionAddress !== undefined
+          ? Boolean(data.hasSecondCollectionAddress)
+          : Boolean((client as any).hasSecondCollectionAddress);
+        const requiredDocuments = buildPortalRequiredDocuments(activities, hasSecondCollectionAddress);
+        await syncPortalJuntadaSubTasks(activeDb, client.id, requiredDocuments);
+      }
+
       await db.logPortalActivity(activeDb, client.id, tenantId, "UPDATE_DATA", { fields: Object.keys(data) }, getClientIp(req));
 
       // Notificar operador que cliente preencheu dados
@@ -462,6 +625,101 @@ export function registerPortalRoutes(app: Express) {
   });
 
   /**
+   * GET /api/portal/lgpd/documento
+   * Retorna o Termo de Consentimento LGPD como página HTML formatada para visualização/impressão.
+   * Rota pública (sem autenticação) — apenas exibe o texto do termo.
+   */
+  app.get("/api/portal/lgpd/documento", (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Termo de Consentimento — LGPD</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; line-height: 1.7; color: #222; background: #fff; padding: 48px 60px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+    h2 { font-size: 13px; font-weight: 600; color: #333; margin-top: 20px; margin-bottom: 6px; }
+    p { margin-bottom: 10px; }
+    ul { padding-left: 20px; margin-bottom: 10px; }
+    ul li { margin-bottom: 4px; }
+    .header { border-bottom: 2px solid #123A63; padding-bottom: 16px; margin-bottom: 24px; }
+    .header .subtitle { color: #555; font-size: 12px; margin-top: 2px; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #888; }
+    @media print {
+      body { padding: 20px 30px; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="background:#123A63;color:#fff;padding:10px 16px;margin:-48px -60px 32px;font-size:12px;display:flex;align-items:center;gap:12px;">
+    <span>📄 Termo de Consentimento LGPD — CAC 360</span>
+    <button onclick="window.print()" style="margin-left:auto;background:#F37321;color:#fff;border:none;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;">Imprimir / Salvar como PDF</button>
+  </div>
+
+  <div class="header">
+    <h1>Termo de Consentimento para Tratamento de Dados Pessoais</h1>
+    <p class="subtitle">Lei nº 13.709/2018 — Lei Geral de Proteção de Dados Pessoais (LGPD) · Versão 1.0 · Vigente a partir de 2026</p>
+  </div>
+
+  <p>Ao utilizar este portal, você concorda com o tratamento dos seus dados pessoais pela entidade responsável
+  (doravante denominada "Clube" ou "Controlador"), nos termos descritos abaixo.</p>
+
+  <h2>1. Dados Coletados</h2>
+  <p>Nome completo, CPF, RG, data de nascimento, endereço residencial, telefone, email, profissão, e
+  documentos relacionados ao processo de obtenção do Certificado de Registro (CR) junto ao Exército Brasileiro.</p>
+
+  <h2>2. Finalidade do Tratamento</h2>
+  <p>Os dados coletados serão utilizados exclusivamente para:</p>
+  <ul>
+    <li>Gestão do processo de obtenção do CR CAC (Certificado de Registro para Caçadores, Atiradores e Colecionadores);</li>
+    <li>Comunicação sobre o andamento do processo;</li>
+    <li>Cumprimento de obrigações legais perante o Exército Brasileiro e demais órgãos;</li>
+    <li>Emissão de documentos e certidões relacionadas ao processo.</li>
+  </ul>
+
+  <h2>3. Base Legal</h2>
+  <p>O tratamento dos dados se fundamenta no art. 7º, incisos II (execução de contrato) e V
+  (execução de políticas públicas), da Lei nº 13.709/2018 (LGPD).</p>
+
+  <h2>4. Compartilhamento de Dados</h2>
+  <p>Seus dados poderão ser compartilhados com:</p>
+  <ul>
+    <li>Exército Brasileiro (para fins de registro e controle);</li>
+    <li>Polícia Federal (verificação de antecedentes);</li>
+    <li>Órgãos estaduais e federais competentes, conforme exigência legal.</li>
+  </ul>
+  <p>Não compartilhamos seus dados com terceiros para fins comerciais.</p>
+
+  <h2>5. Prazo de Retenção</h2>
+  <p>Seus dados serão mantidos pelo período necessário ao cumprimento das finalidades acima e das obrigações
+  legais, podendo ser retidos por até 5 (cinco) anos após o encerramento do processo, conforme determinação legal.</p>
+
+  <h2>6. Seus Direitos (Art. 18 da LGPD)</h2>
+  <p>Você tem direito a:</p>
+  <ul>
+    <li>Confirmar a existência de tratamento;</li>
+    <li>Acessar seus dados;</li>
+    <li>Corrigir dados incompletos, inexatos ou desatualizados;</li>
+    <li>Solicitar a anonimização, bloqueio ou eliminação de dados desnecessários;</li>
+    <li>Revogar este consentimento a qualquer momento, mediante solicitação ao clube.</li>
+  </ul>
+
+  <h2>7. Contato do Controlador</h2>
+  <p>Para exercer seus direitos ou esclarecer dúvidas sobre o tratamento de dados, entre em contato
+  diretamente com a secretaria do clube.</p>
+
+  <div class="footer">
+    Versão 1.0 — Vigente a partir de 2026. Este documento foi gerado automaticamente pelo sistema CAC 360.
+  </div>
+</body>
+</html>`);
+  });
+
+  /**
    * GET /api/portal/meu-processo
    * Retorna os workflow steps do cliente com sub-tarefas
    */
@@ -489,6 +747,8 @@ export function registerPortalRoutes(app: Express) {
           FROM "workflowSteps" ws
           LEFT JOIN "subTasks" st ON st."workflowStepId" = ws.id
           WHERE ws."clientId" = ${client.id}
+            AND COALESCE(ws."stepId", '') <> 'boas-vindas'
+            AND LOWER(COALESCE(ws."stepTitle", '')) NOT LIKE '%central de mensagens%'
           GROUP BY ws.id
           ORDER BY ws.id
         `
@@ -500,6 +760,85 @@ export function registerPortalRoutes(app: Express) {
     } catch (err) {
       console.error("[Portal] Erro ao buscar processo:", err);
       return res.status(500).json({ error: "Erro ao buscar processo." });
+    }
+  });
+
+  /**
+   * GET /api/portal/mensagens
+   * Feed unificado de mensagens do cliente (rejeições documentais + comentários SINARM)
+   */
+  app.get("/api/portal/mensagens", requirePortalSession as any, async (req: any, res: Response) => {
+    try {
+      const client = req.portalClient;
+      const activeDb = req.portalDb;
+      const tenantId: number | null = (req.portalTenantId as number | null) ?? (client.tenantId as number | null) ?? null;
+      const { sql } = await import("drizzle-orm");
+
+      const rejectedRowsRaw = await activeDb.execute(sql`
+        SELECT
+          pd.id,
+          pd."fileName",
+          pd."rejectionReason",
+          COALESCE(pd."reviewedAt", pd."uploadedAt", pd."createdAt") AS "createdAt"
+        FROM "clientPendingDocuments" pd
+        WHERE pd."clientId" = ${client.id}
+          AND pd.status = 'rejected'
+          AND COALESCE(NULLIF(TRIM(pd."rejectionReason"), ''), NULL) IS NOT NULL
+          ${tenantId != null ? sql`AND (pd."tenantId" = ${tenantId} OR pd."tenantId" IS NULL)` : sql``}
+        ORDER BY COALESCE(pd."reviewedAt", pd."uploadedAt", pd."createdAt") DESC
+        LIMIT 100
+      `);
+      const rejectedRows = Array.isArray(rejectedRowsRaw) ? rejectedRowsRaw : (rejectedRowsRaw as any).rows || [];
+
+      const sinarmStepRaw = await activeDb.execute(sql`
+        SELECT ws.id
+        FROM "workflowSteps" ws
+        WHERE ws."clientId" = ${client.id}
+          AND (
+            ws."stepId" = 'acompanhamento-sinarm'
+            OR ws."stepId" = 'acompanhamento-sinarm-cac'
+            OR LOWER(COALESCE(ws."stepTitle", '')) LIKE '%sinarm%'
+          )
+        ORDER BY ws.id DESC
+        LIMIT 1
+      `);
+      const sinarmStepArr = Array.isArray(sinarmStepRaw) ? sinarmStepRaw : (sinarmStepRaw as any).rows || [];
+      const sinarmStepId: number | null = sinarmStepArr[0]?.id ?? null;
+
+      const sinarmComments = sinarmStepId
+        ? await db.getSinarmCommentsByWorkflowStepIdFromDb(activeDb, sinarmStepId, tenantId ?? undefined)
+        : [];
+
+      const rejectedMessages = rejectedRows.map((row: any) => ({
+        id: `doc-${row.id}`,
+        type: 'document_rejection' as const,
+        title: 'Documento rejeitado na triagem',
+        body: String(row.rejectionReason || ''),
+        createdAt: row.createdAt,
+        meta: {
+          fileName: row.fileName,
+        },
+      }));
+
+      const sinarmMessages = (sinarmComments || []).map((row: any) => ({
+        id: `sinarm-${row.id}`,
+        type: 'sinarm_comment' as const,
+        title: 'Atualização do acompanhamento SINARM-CAC',
+        body: String(row.comment || ''),
+        createdAt: row.createdAt,
+        meta: {
+          sinarmStatus: row.newStatus,
+          authorName: row.createdByName,
+        },
+      }));
+
+      const messages = [...rejectedMessages, ...sinarmMessages]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      return res.json({ messages });
+    } catch (err) {
+      console.error("[Portal] Erro ao buscar mensagens:", err);
+      return res.status(500).json({ error: "Erro ao buscar mensagens." });
     }
   });
 
@@ -581,4 +920,119 @@ export function registerPortalRoutes(app: Express) {
       return res.status(500).json({ error: "Erro ao buscar documentos." });
     }
   });
+
+  // ─── Upload de documento pelo cliente ───────────────────────────────────────
+  // POST /api/portal/documentos/upload
+  app.post("/api/portal/documentos/upload", requirePortalSession as any, async (req: any, res: Response) => {
+    const client   = req.portalClient;
+    const activeDb = req.portalDb;
+    // Usar tenantId do hostname quando disponível; caso contrário usar o tenantId do próprio cliente
+    // (necessário quando o portal é acessado pelo domínio principal, ex: hml.cac360.com.br,
+    //  onde o subdomain 'hml' é excluído da resolução de tenant)
+    const tenantId: number | null = (req.portalTenantId as number | null) ?? (client.tenantId as number | null) ?? null;
+    try {
+      const { fileName, fileData, mimeType, fileSize } = req.body ?? {};
+      if (!fileName || !fileData) {
+        return res.status(400).json({ error: "fileName e fileData são obrigatórios." });
+      }
+
+      const ALLOWED_MIMES = [
+        "application/pdf", "image/jpeg", "image/png", "image/webp",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+      if (mimeType && !ALLOWED_MIMES.includes(mimeType)) {
+        return res.status(400).json({ error: "Tipo de arquivo não permitido." });
+      }
+      if (fileSize && fileSize > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "Arquivo muito grande. Máximo: 10 MB." });
+      }
+
+      // Decodificar base64 (aceita data URL ou base64 puro)
+      const base64 = String(fileData).includes(",") ? String(fileData).split(",")[1] : String(fileData);
+      const buffer = Buffer.from(base64, "base64");
+
+      // Reutiliza saveClientDocumentFile com validação de path traversal
+      const { saveClientDocumentFile } = await import("../fileStorage");
+      const stored = await saveClientDocumentFile({
+        clientId: client.id,
+        tenantId: tenantId ?? undefined,
+        fileName,
+        buffer,
+      });
+
+      const pendingDocId = await db.createPendingDocument(activeDb, {
+        clientId: client.id,
+        tenantId: tenantId ?? null,
+        fileName: stored.key.split("/").pop() ?? fileName,
+        fileUrl: stored.publicPath,
+        mimeType: mimeType ?? null,
+        fileSize: stored.size,
+      });
+
+      await db.logPortalActivity(activeDb, client.id, tenantId, "document_upload", { fileName }, getClientIp(req));
+
+      // Notificar operador (fire-and-forget)
+      notifyOperatorOfUpload(activeDb, client.id, tenantId ?? null, fileName).catch(() => {});
+
+      return res.json({ success: true, pendingDocId, fileUrl: stored.publicPath });
+    } catch (err) {
+      console.error("[Portal] Erro no upload:", err);
+      return res.status(500).json({ error: "Erro ao salvar documento." });
+    }
+  });
+
+  // GET /api/portal/documentos/fila — documentos enviados pelo cliente com status de triagem
+  app.get("/api/portal/documentos/fila", requirePortalSession as any, async (req: any, res: Response) => {
+    const client   = req.portalClient;
+    const activeDb = req.portalDb;
+    const tenantId = req.portalTenantId as number | null;
+    try {
+      const docs = await db.getPendingDocumentsByClient(activeDb, client.id, tenantId);
+      return res.json({ documents: docs });
+    } catch (err) {
+      console.error("[Portal] Erro ao listar fila:", err);
+      return res.status(500).json({ error: "Erro ao buscar documentos." });
+    }
+  });
+}
+
+// ─── Notificação ao operador quando cliente envia documento ──────────────────
+async function notifyOperatorOfUpload(
+  tenantDb: any,
+  clientId: number,
+  tenantId: number | null,
+  fileName: string
+): Promise<void> {
+  try {
+    const { sql } = await import("drizzle-orm");
+    const opRows = await tenantDb.execute(sql`
+      SELECT u.email, u.name AS "operatorName", c.name AS "clientName", c.email AS "clientEmail"
+      FROM "users" u
+      INNER JOIN "clients" c ON c."operatorId" = u.id
+      WHERE c.id = ${clientId}
+      LIMIT 1
+    `);
+    const arr = Array.isArray(opRows) ? opRows : (opRows as any).rows ?? [];
+    if (!arr[0]?.email) return;
+    const { email, operatorName, clientName } = arr[0];
+    const { sendEmail } = await import("../emailService");
+    await sendEmail({
+      to: email,
+      subject: `[CAC 360] Novo documento enviado pelo cliente`,
+      html: `<div style="font-family:sans-serif;max-width:600px">
+        <h3 style="color:#7c3aed">Novo documento para triagem</h3>
+        <p>Olá <strong>${operatorName ?? ""}</strong>,</p>
+        <p>O cliente <strong>${clientName}</strong> enviou o arquivo
+           <strong>${fileName}</strong> pelo portal e aguarda triagem.</p>
+        <p><a href="/client/${clientId}"
+           style="background:#7c3aed;color:#fff;padding:8px 16px;border-radius:4px;text-decoration:none">
+           Abrir workflow
+        </a></p>
+        <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
+      </div>`,
+    } as any).catch((e: any) => console.error("[Portal] Email op upload:", e));
+  } catch (e) {
+    console.error("[Portal] notifyOperatorOfUpload:", e);
+  }
 }

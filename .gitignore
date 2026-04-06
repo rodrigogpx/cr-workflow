@@ -101,6 +101,12 @@ jspm_packages/
 tmp/
 temp/
 
+# Claude local worktrees
+.claude/worktrees/
+
+# Manus platform (legacy)
+.manus/
+
 # Database
 *.db
 *.sqlite

@@ -57,7 +57,9 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function PlatformAdminDashboard() {
   const [, setLocation] = useLocation();
-  const { admin, role, isSuperAdmin, logout } = usePlatformAuth();
+  const { admin, role, isSuperAdmin, logout } = usePlatformAuth({
+    redirectOnUnauthenticated: true
+  });
 
   const [tenantsOpen, setTenantsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -422,6 +424,8 @@ export default function PlatformAdminDashboard() {
       <Sheet open={billingOpen} onOpenChange={setBillingOpen}>
         <SheetContent
           side="right"
+          onInteractOutside={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
           className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-green-900/80 [&>button]:rounded-md [&>button]:p-1"
         >
           <BillingOverviewPanel />

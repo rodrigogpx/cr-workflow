@@ -40,6 +40,125 @@ async function getTenantDbOrNull(ctx: TrpcContext) {
   return null;
 }
 
+type ApostilamentoActivity = 'atirador' | 'cacador' | 'colecionador';
+
+const DISPENSADO_PREFIX = '[DISPENSADO] ';
+
+const BASE_DOCUMENTS = [
+  'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
+  'Certidão de Antecedente Criminal Justiça Federal',
+  'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
+  'Documento de Identificação Pessoal',
+  'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
+  'Comprovante de Residência Fixa',
+  'Comprovante de Ocupação Lícita',
+  'Certidão de Antecedente Criminal Justiça Estadual',
+  'Declaração de Segurança do Acervo',
+  'Certidão de Antecedente Criminal Justiça Militar',
+  'Certidão de Antecedente Criminal Justiça Eleitoral',
+];
+
+const ATIRADOR_DOCUMENTS = [
+  'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
+  'Comprovante de filiação a entidade de tiro desportivo',
+];
+
+const CACADOR_DOCUMENTS = [
+  'Comprovante de filiação a entidade de caça',
+  'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
+];
+
+const SECOND_ADDRESS_DOCUMENT = 'Comprovante de Segundo Endereço';
+
+function parseApostilamentoActivities(value: unknown): ApostilamentoActivity[] {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is ApostilamentoActivity => ['atirador', 'cacador', 'colecionador'].includes(String(v)));
+  }
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((v): v is ApostilamentoActivity => ['atirador', 'cacador', 'colecionador'].includes(String(v)));
+      }
+    } catch {
+      // ignore invalid legacy payloads
+    }
+  }
+  return [];
+}
+
+function buildRequiredJuntadaDocuments(activities: ApostilamentoActivity[], hasSecondCollectionAddress: boolean): string[] {
+  const set = new Set<string>(BASE_DOCUMENTS);
+  if (activities.includes('atirador')) {
+    for (const d of ATIRADOR_DOCUMENTS) set.add(d);
+  }
+  if (activities.includes('cacador')) {
+    for (const d of CACADOR_DOCUMENTS) set.add(d);
+  }
+  if (hasSecondCollectionAddress) {
+    set.add(SECOND_ADDRESS_DOCUMENT);
+  }
+  return Array.from(set);
+}
+
+function stripDispensadoPrefix(label: string): string {
+  return label.startsWith(DISPENSADO_PREFIX) ? label.slice(DISPENSADO_PREFIX.length) : label;
+}
+
+async function syncJuntadaSubTasksForClient(
+  activeDb: any,
+  clientId: number,
+  requiredDocuments: string[],
+) {
+  const stepRowsRaw = await activeDb.execute(
+    sql`SELECT id FROM "workflowSteps" WHERE "clientId" = ${clientId} AND "stepId" = 'juntada-documento' LIMIT 1`,
+  );
+  const stepRows: any[] = Array.isArray(stepRowsRaw) ? stepRowsRaw : ((stepRowsRaw as any).rows ?? []);
+  if (stepRows.length === 0) return;
+
+  const workflowStepId = stepRows[0].id as number;
+  const requiredSet = new Set(requiredDocuments);
+
+  const subTasksRaw = await activeDb.execute(
+    sql`SELECT id, "subTaskId", label, completed FROM "subTasks" WHERE "workflowStepId" = ${workflowStepId} ORDER BY id ASC`,
+  );
+  const subTasks: any[] = Array.isArray(subTasksRaw) ? subTasksRaw : ((subTasksRaw as any).rows ?? []);
+
+  const existingByBaseLabel = new Map<string, any>();
+  for (const st of subTasks) {
+    const baseLabel = stripDispensadoPrefix(String(st.label ?? ''));
+    if (!existingByBaseLabel.has(baseLabel)) {
+      existingByBaseLabel.set(baseLabel, st);
+    }
+  }
+
+  for (const st of subTasks) {
+    const baseLabel = stripDispensadoPrefix(String(st.label ?? ''));
+    const shouldBeRequired = requiredSet.has(baseLabel);
+    const currentlyDispensed = String(st.label ?? '').startsWith(DISPENSADO_PREFIX);
+
+    if (shouldBeRequired && currentlyDispensed) {
+      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${baseLabel} WHERE id = ${st.id}`);
+    }
+
+    if (!shouldBeRequired && !currentlyDispensed) {
+      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${DISPENSADO_PREFIX + baseLabel} WHERE id = ${st.id}`);
+    }
+  }
+
+  let nextIndex = subTasks.length + 1;
+  for (const doc of requiredDocuments) {
+    if (existingByBaseLabel.has(doc)) continue;
+    await db.upsertSubTaskToDb(activeDb, {
+      workflowStepId,
+      subTaskId: `doc-${String(nextIndex).padStart(2, '0')}`,
+      label: doc,
+      completed: false,
+    });
+    nextIndex++;
+  }
+}
+
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -329,6 +448,18 @@ export const appRouter = router({
         }
 
         const safeClients: any[] = Array.isArray(clients) ? clients : [];
+        const clientIds: number[] = safeClients
+          .map((c: any) => c.id)
+          .filter((id: any): id is number => typeof id === 'number');
+
+        const mainDb = tenantDb ? null : await db.getDb();
+        const pendingTriageCounts = tenantDb
+          ? await db.getPendingTriageCountsByClients(tenantDb, clientIds, tenantId)
+          : (mainDb ? await db.getPendingTriageCountsByClients(mainDb, clientIds, tenantId) : []);
+
+        const pendingTriageMap = new Map<number, number>(
+          (pendingTriageCounts || []).map((row: any) => [row.clientId, Number(row.pendingCount) || 0])
+        );
 
         const assignedUserIds: number[] = safeClients
           .map((c: any) => c.operatorId)
@@ -396,6 +527,7 @@ export const appRouter = router({
             const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
             const sinarmStatus: string | null = sinarmStep?.sinarmStatus || null;
             const protocolNumber: string | null = sinarmStep?.protocolNumber || null;
+            const pendingTriageCount = pendingTriageMap.get(client.id) ?? 0;
             
             return {
               ...client,
@@ -407,6 +539,8 @@ export const appRouter = router({
               completedPhases,
               sinarmStatus,
               protocolNumber,
+              pendingTriageCount,
+              hasPendingTriage: pendingTriageCount > 0,
               assignedOperator: client.operatorId ? (() => {
                 const u = assignedUserMap.get(client.operatorId);
                 return u ? { id: u.id, name: u.name, email: u.email } : null;
@@ -481,16 +615,23 @@ export const appRouter = router({
           }
         }
 
+        const apostilamentoActivities = parseApostilamentoActivities(input.apostilamentoActivities);
+        const hasSecondCollectionAddress = Boolean(input.hasSecondCollectionAddress);
+
         let clientId: number;
         try {
           clientId = tenantDb
             ? await db.createClientToDb(tenantDb, {
                 ...input,
+                apostilamentoActivities,
+                hasSecondCollectionAddress,
                 operatorId,
                 tenantId: ctx.tenant?.id,
               })
             : await db.createClient({
                 ...input,
+                apostilamentoActivities,
+                hasSecondCollectionAddress,
                 operatorId,
                 tenantId: ctx.tenant?.id,
               });
@@ -542,26 +683,12 @@ export const appRouter = router({
                   completed: false,
                 });
 
-            // Se for a etapa "Juntada de Documento", criar as 16 subtarefas (documentos)
+            // Se for a etapa "Juntada de Documento", criar subtarefas dinâmicas de documentos
             if (step.stepId === 'juntada-documento') {
-              const documents = [
-                'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
-                'Certidão de Antecedente Criminal Justiça Federal',
-                'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
-                'Documento de Identificação Pessoal',
-                'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
-                'Comprovante de Residência Fixa',
-                'Comprovante de Ocupação Lícita',
-                'Comprovante de filiação a entidade de caça',
-                'Comprovante de Segundo Endereço',
-                'Certidão de Antecedente Criminal Justiça Estadual',
-                'Declaração de Segurança do Acervo',
-                'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
-                'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
-                'Comprovante de filiação a entidade de tiro desportivo',
-                'Certidão de Antecedente Criminal Justiça Militar',
-                'Certidão de Antecedente Criminal Justiça Eleitoral',
-              ];
+              const documents = buildRequiredJuntadaDocuments(
+                apostilamentoActivities,
+                hasSecondCollectionAddress,
+              );
 
               for (let i = 0; i < documents.length; i++) {
                 if (tenantDb) {
@@ -619,9 +746,11 @@ export const appRouter = router({
             // Logo já está salva como base64 no banco
 
             // Variável {{link_portal}} — link de ativação do portal do cliente
+            // DOMAIN pode vir como "hml.cac360.com.br" ou "https://hml.cac360.com.br" — normalizar
+            const _rawDomain1 = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
             const portalBaseUrl = ctx.tenant?.domain
-              ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
-              : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+              ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
+              : (_rawDomain1 ? `https://${_rawDomain1}` : process.env.APP_URL || '');
 
             let portalLink = '';
             try {
@@ -645,11 +774,17 @@ export const appRouter = router({
               result = result.replace(/{{email}}/g, input.email || '');
               result = result.replace(/{{cpf}}/g, input.cpf || '');
               result = result.replace(/{{telefone}}/g, input.phone || '');
-              // Variável {{logo}} - renderiza como inline attachment (CID)
+              // Variável {{logo}} — CID inline se tenant tiver logo; fallback logo CAC 360
+              const _logoFallback =
+                `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">` +
+                `<tr><td style="background-color:#123A63;border-radius:6px;padding:10px 28px;text-align:center;">` +
+                `<span style="font-family:'Arial Black',Arial,sans-serif;font-size:24px;font-weight:900;color:#ffffff;letter-spacing:2px;">CAC&#160;</span>` +
+                `<span style="font-family:'Arial Black',Arial,sans-serif;font-size:24px;font-weight:900;color:#28a745;letter-spacing:2px;">360</span>` +
+                `</td></tr></table>`;
               if (emailLogoUrl) {
                 result = result.replace(/{{logo}}/g, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
               } else {
-                result = result.replace(/{{logo}}/g, '');
+                result = result.replace(/{{logo}}/g, _logoFallback);
               }
               // Variável {{link_portal}} — botão de acesso ao portal
               result = result.replace(/{{link_portal}}/g, portalLink
@@ -716,10 +851,31 @@ export const appRouter = router({
             ? await db.getClientByIdFromDb(tenantDb, clientId)
             : await db.getClientById(clientId);
           if (newClient) {
+            // Construir link do portal para {{link_portal}} no template welcome.
+            // O token de convite já foi criado acima; apenas lemos o valor.
+            let _welcomePortalLink = '';
+            try {
+              const _rawDomain = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+              const _portalBase = ctx.tenant?.domain
+                ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
+                : (_rawDomain ? `https://${_rawDomain}` : process.env.APP_URL || '');
+              const _pdb = tenantDb || await db.getDb();
+              if (_pdb) {
+                const _prows: any = await _pdb.execute(
+                  sql`SELECT "token" FROM "clientInviteTokens" WHERE "clientId" = ${clientId} ORDER BY "createdAt" DESC LIMIT 1`
+                );
+                const _tokenArr: any[] = Array.isArray(_prows) ? _prows : (_prows?.rows ?? []);
+                if (_tokenArr[0]?.token) {
+                  _welcomePortalLink = `${_portalBase}/portal/acesso?t=${_tokenArr[0].token}`;
+                }
+              }
+            } catch { /* non-fatal — email é enviado mesmo sem link */ }
+
             await triggerEmails('CLIENT_CREATED', {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client: newClient,
+              extraData: _welcomePortalLink ? { link_portal: _welcomePortalLink } : undefined,
             });
           }
         } catch (triggerError) {
@@ -751,10 +907,39 @@ export const appRouter = router({
             }
             
             const { id, ...updateData } = input;
+            const parsedActivities = parseApostilamentoActivities(updateData.apostilamentoActivities);
+            const normalizedUpdateData: Record<string, any> = {
+              ...updateData,
+              ...(updateData.apostilamentoActivities !== undefined
+                ? { apostilamentoActivities: JSON.stringify(parsedActivities) }
+                : {}),
+            };
+
             if (tenantDb) {
-              await db.updateClientToDb(tenantDb, id, updateData);
+              await db.updateClientToDb(tenantDb, id, normalizedUpdateData);
             } else {
-              await db.updateClient(id, updateData);
+              await db.updateClient(id, normalizedUpdateData);
+            }
+
+            if (
+              updateData.apostilamentoActivities !== undefined ||
+              updateData.hasSecondCollectionAddress !== undefined
+            ) {
+              const effectiveActivities = updateData.apostilamentoActivities !== undefined
+                ? parsedActivities
+                : parseApostilamentoActivities((client as any).apostilamentoActivities);
+              const effectiveHasSecondAddress = updateData.hasSecondCollectionAddress !== undefined
+                ? Boolean(updateData.hasSecondCollectionAddress)
+                : Boolean((client as any).hasSecondCollectionAddress);
+              const requiredDocuments = buildRequiredJuntadaDocuments(
+                effectiveActivities,
+                effectiveHasSecondAddress,
+              );
+
+              const activeDb = tenantDb || await db.getDb();
+              if (activeDb) {
+                await syncJuntadaSubTasksForClient(activeDb, id, requiredDocuments);
+              }
             }
 
             // Log audit entry for client update
@@ -766,7 +951,7 @@ export const appRouter = router({
                 action: 'UPDATE',
                 entity: 'CLIENT',
                 entityId: id,
-                details: JSON.stringify({ updatedFields: Object.keys(updateData) }),
+                details: JSON.stringify({ updatedFields: Object.keys(normalizedUpdateData) }),
                 ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
               });
             }
@@ -865,9 +1050,12 @@ export const appRouter = router({
         const newToken = await db.regenerateClientInviteToken(activeDb, input.clientId, ctx.tenant?.id);
 
         // Montar link do portal
+        // DOMAIN pode vir com ou sem protocolo — normalizar e não adicionar slug do tenant
+        // (o portal vive na raiz do domínio, não em subdomínio por tenant)
+        const _rawDomain2 = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
         const portalBaseUrl = ctx.tenant?.domain
-          ? `https://${ctx.tenant.slug}.${ctx.tenant.domain}`
-          : (process.env.DOMAIN ? `https://${ctx.tenant?.slug}.${process.env.DOMAIN}` : process.env.APP_URL || '');
+          ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
+          : (_rawDomain2 ? `https://${_rawDomain2}` : process.env.APP_URL || '');
         const portalLink = `${portalBaseUrl}/portal/acesso?t=${newToken}`;
 
         // Enviar email com o link
@@ -1699,6 +1887,20 @@ export const appRouter = router({
         const docs = tenantDb
           ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
           : await db.getDocumentsByClient(input.clientId);
+
+        const pendingDocs = tenantDb
+          ? await db.getPendingDocumentsByClient(tenantDb, input.clientId, ctx.tenant?.id ?? null)
+          : await db.getPendingDocumentsByClient(await db.getDb() as any, input.clientId, ctx.tenant?.id ?? null);
+
+        const portalDocsForEnxoval = (pendingDocs || [])
+          .filter((p: any) => p?.status !== 'linked')
+          .map((p: any) => ({
+            id: `pending-${p.id}`,
+            fileName: p.fileName,
+            fileUrl: p.fileUrl,
+            mimeType: p.mimeType,
+            createdAt: p.uploadedAt ?? p.createdAt,
+          }));
         
         // Gerar PDF com dados do cadastro
         const { generateClientDataPDF } = await import('./generate-pdf');
@@ -1708,13 +1910,16 @@ export const appRouter = router({
         return {
           clientName: client.name,
           clientDataPdf: pdfBase64,
-          documents: docs.map(d => ({
-            id: d.id,
-            fileName: d.fileName,
-            fileUrl: d.fileUrl,
-            mimeType: d.mimeType,
-            createdAt: d.createdAt,
-          })),
+          documents: [
+            ...docs.map(d => ({
+              id: d.id,
+              fileName: d.fileName,
+              fileUrl: d.fileUrl,
+              mimeType: d.mimeType,
+              createdAt: d.createdAt,
+            })),
+            ...portalDocsForEnxoval,
+          ],
         };
       }),
 
@@ -2642,24 +2847,6 @@ export const appRouter = router({
 
   // Platform Admin / Tenants Management
   tenants: router({
-    // Rodar seed de mocks (limpa e recria tenants/users/clients @example.com)
-    seedMocks: platformSuperAdminProcedure.mutation(async ({ ctx }: { ctx: TrpcContext }) => {
-      try {
-        const result = await db.seedMockTenants();
-        invalidateTenantCache();
-        return { success: true, ...result };
-      } catch (error: any) {
-        console.error("[ERROR] Seed mock tenants failed", {
-          actorId: ctx.platformAdmin.id,
-          error: error?.message || String(error),
-        });
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: error?.message || "Falha ao executar seed de tenants mock",
-        });
-      }
-    }),
-
     // Listar todos os tenants
     list: platformAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantsList = await db.getAllTenants();
@@ -3917,7 +4104,7 @@ export const appRouter = router({
         description: z.string().optional(),
         maxUsers: z.number().int().min(1).default(5),
         maxClients: z.number().int().min(1).default(100),
-        maxStorageGB: z.number().int().min(1).default(10),
+        maxStorageGB: z.number().min(0.1).default(10),
         featureWorkflowCR: z.boolean().default(true),
         featureApostilamento: z.boolean().default(false),
         featureRenovacao: z.boolean().default(false),
@@ -3943,7 +4130,7 @@ export const appRouter = router({
         description: z.string().optional(),
         maxUsers: z.number().int().min(1).optional(),
         maxClients: z.number().int().min(1).optional(),
-        maxStorageGB: z.number().int().min(1).optional(),
+        maxStorageGB: z.number().min(0.1).optional(),
         featureWorkflowCR: z.boolean().optional(),
         featureApostilamento: z.boolean().optional(),
         featureRenovacao: z.boolean().optional(),
@@ -4077,8 +4264,326 @@ export const appRouter = router({
       .query(async ({ input }: { input: any }) => {
         return await db.getUsageSnapshotsByTenant(input.tenantId, input.limit);
       }),
+
+    /** Lista tenants enriquecidos com plano ativo (para relatórios) */
+    tenantsWithPlans: platformAdminProcedure.query(async () => {
+      const platformDb = await db.getDb();
+      if (!platformDb) return [];
+      const rows = await platformDb.execute(sql`
+        SELECT t.*,
+               pd.name  AS "planName",
+               pd.slug  AS "planSlug",
+               s.status AS "subStatus"
+        FROM "tenants" t
+        LEFT JOIN LATERAL (
+          SELECT s2.* FROM "subscriptions" s2
+          WHERE s2."tenantId" = t.id
+          ORDER BY
+            CASE WHEN s2.status IN ('active','trialing') THEN 0 ELSE 1 END,
+            s2."startDate" DESC
+          LIMIT 1
+        ) s ON true
+        LEFT JOIN "planDefinitions" pd ON pd.id = s."planId"
+        WHERE t."isActive" = true
+        ORDER BY t."createdAt" DESC
+      `);
+      return (Array.isArray(rows) ? rows : (rows as any).rows ?? []) as any[];
+    }),
+
+    /** Detalhamento financeiro completo de um tenant */
+    tenantDetail: platformAdminProcedure
+      .input(z.object({ tenantId: z.number().int() }))
+      .query(async ({ input }: { input: any }) => {
+        const [tenant, subs, invs, allPlans] = await Promise.all([
+          db.getTenantById(input.tenantId),
+          db.getSubscriptionsByTenant(input.tenantId),
+          db.getInvoicesByTenant(input.tenantId),
+          db.getAllPlanDefinitions(),
+        ]);
+        const planMap = new Map(allPlans.map((p: any) => [p.id, p]));
+        const now = Date.now();
+        const enrichedSubs = subs.map((sub: any) => {
+          const plan = planMap.get(sub.planId) as any;
+          const start = new Date(sub.startDate).getTime();
+          const end = sub.endDate ? new Date(sub.endDate).getTime() : now;
+          const days = Math.max(0, Math.round((end - start) / 86_400_000));
+          return {
+            ...sub,
+            planName: plan?.name ?? `Plano #${sub.planId}`,
+            planSlug: plan?.slug ?? null,
+            durationDays: days,
+          };
+        });
+        const totalPaidBRL = invs
+          .filter((i: any) => i.status === 'paid')
+          .reduce((s: number, i: any) => s + (i.totalBRL ?? 0), 0);
+        const hasOverdue = invs.some((i: any) => i.status === 'overdue');
+        const clientSinceDays = tenant?.createdAt
+          ? Math.round((now - new Date(tenant.createdAt).getTime()) / 86_400_000)
+          : null;
+        return {
+          tenant: tenant ?? null,
+          subscriptions: enrichedSubs,
+          invoices: invs,
+          totalPaidBRL,
+          hasOverdue,
+          isAdimplente: !hasOverdue,
+          clientSinceDays,
+        };
+      }),
+
+    // ── Planos de assinatura ──────────────────────────────────────────────────
+    listPlans: platformAdminProcedure.query(async () => {
+      return await db.getAllPlanDefinitions();
+    }),
+
+    createPlan: platformAdminProcedure
+      .input(z.object({
+        slug: z.string().min(1).max(50),
+        name: z.string().min(1).max(100),
+        description: z.string().optional(),
+        priceMonthlyBRL: z.number().int().min(0).default(0),
+        priceYearlyBRL: z.number().int().min(0).default(0),
+        maxUsers: z.number().int().min(1).default(5),
+        maxClients: z.number().int().min(1).default(100),
+        maxStorageGB: z.number().min(0.1).default(10),
+        trialDays: z.number().int().min(0).default(14),
+        isPublic: z.boolean().default(true),
+        displayOrder: z.number().int().default(0),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        return await db.createPlanDefinition({
+          slug: input.slug,
+          name: input.name,
+          description: input.description ?? null,
+          priceMonthlyBRL: input.priceMonthlyBRL,
+          priceYearlyBRL: input.priceYearlyBRL,
+          maxUsers: input.maxUsers,
+          maxClients: input.maxClients,
+          maxStorageGB: input.maxStorageGB,
+          trialDays: input.trialDays,
+          isActive: true,
+          isPublic: input.isPublic,
+          displayOrder: input.displayOrder,
+        });
+      }),
+
+    updatePlan: platformAdminProcedure
+      .input(z.object({
+        id: z.number().int(),
+        name: z.string().min(1).max(100).optional(),
+        description: z.string().optional(),
+        priceMonthlyBRL: z.number().int().min(0).optional(),
+        priceYearlyBRL: z.number().int().min(0).optional(),
+        maxUsers: z.number().int().min(1).optional(),
+        maxClients: z.number().int().min(1).optional(),
+        maxStorageGB: z.number().min(0.1).optional(),
+        trialDays: z.number().int().min(0).optional(),
+        isPublic: z.boolean().optional(),
+        displayOrder: z.number().int().optional(),
+      }))
+      .mutation(async ({ input }: { input: any }) => {
+        const { id, ...updates } = input;
+        await db.updatePlanDefinition(id, updates);
+        return { success: true };
+      }),
+
+    deletePlan: platformAdminProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(async ({ input }: { input: any }) => {
+        await db.deletePlanDefinition(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ── Triagem de documentos enviados pelo portal do cliente ──────────────────
+  pendingDocuments: router({
+    /** Lista documentos pendentes de triagem (filtrável por clientId) */
+    list: protectedProcedure
+      .input(z.object({ clientId: z.number().int().optional() }))
+      .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        // ctx.db não existe no TrpcContext — usar getTenantDbOrNull com fallback à platform DB
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await db.getDb();
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+        return await db.getPendingDocumentsForTriage(
+          activeDb,
+          input.clientId ?? null,
+          ctx.tenant?.id ?? null
+        );
+      }),
+
+    /** Aprova documento — notifica cliente por email.
+     *  Se subTaskId fornecido, vincula também à juntada oficial (status "linked"). */
+    approve: protectedProcedure
+      .input(z.object({
+        docId:       z.number().int(),
+        subTaskId:   z.number().int().optional(),
+        fileName:    z.string().optional(),
+        newFileName: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await db.getDb();
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+
+        if (input.subTaskId) {
+          // Buscar dados do documento para obter fileUrl, mimeType etc.
+          const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
+          const doc = docRows.find((d: any) => d.id === input.docId);
+          if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+
+          const finalFileName = (input.newFileName?.trim() || input.fileName || doc.fileName).trim();
+          const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
+          const uploadedBy = ctx.user?.id ?? 0;
+
+          // Inserir na juntada oficial
+          await activeDb.execute(sql`
+            INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileKey", "fileUrl", "mimeType", "fileSize", "uploadedBy", "createdAt")
+            VALUES (${input.subTaskId}, ${doc.clientId}, ${finalFileName}, ${fileKey}, ${doc.fileUrl},
+                    ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, ${uploadedBy}, now())
+          `);
+
+          // Marcar como vinculado (aprovação implícita)
+          await db.updatePendingDocumentStatus(activeDb, input.docId, "linked", {
+            linkedSubTaskId: input.subTaskId,
+          });
+        } else {
+          await db.updatePendingDocumentStatus(activeDb, input.docId, "approved");
+        }
+
+        notifyClientOfDocumentDecision(ctx, input.docId, "approved").catch(() => {});
+        return { success: true };
+      }),
+
+    /** Rejeita documento com motivo opcional — notifica cliente */
+    reject: protectedProcedure
+      .input(z.object({ docId: z.number().int(), reason: z.string().optional() }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await db.getDb();
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+        await db.updatePendingDocumentStatus(activeDb, input.docId, "rejected", {
+          rejectionReason: input.reason,
+        });
+        notifyClientOfDocumentDecision(ctx, input.docId, "rejected", input.reason).catch(() => {});
+        return { success: true };
+      }),
+
+    /** Vincula documento a uma subTarefa existente (insere na juntada oficial) */
+    linkToSubTask: protectedProcedure
+      .input(z.object({
+        docId: z.number().int(),
+        subTaskId: z.number().int(),
+        fileName: z.string(),
+        newFileName: z.string().optional(), // nome final do arquivo (renomeado pelo operador)
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const activeDb = tenantDb || await db.getDb();
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+
+        // Buscar dados do documento pendente (sem filtro de tenantId para encontrar por id)
+        const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
+        const doc = docRows.find((d: any) => d.id === input.docId);
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+
+        // Nome final: renomeado pelo operador ou nome original
+        const finalFileName = (input.newFileName?.trim() || input.fileName).trim();
+
+        // fileKey: derivar do fileUrl removendo o prefixo /files/
+        const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
+
+        // uploadedBy: operador logado
+        const uploadedBy = ctx.user?.id ?? 0;
+
+        // Inserir na juntada oficial (todos campos obrigatórios)
+        await activeDb.execute(sql`
+          INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileKey", "fileUrl", "mimeType", "fileSize", "uploadedBy", "createdAt")
+          VALUES (${input.subTaskId}, ${doc.clientId}, ${finalFileName}, ${fileKey}, ${doc.fileUrl},
+                  ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, ${uploadedBy}, now())
+        `);
+
+        // Marcar como vinculado
+        await db.updatePendingDocumentStatus(activeDb, input.docId, "linked", {
+          linkedSubTaskId: input.subTaskId,
+        });
+
+        return { success: true };
+      }),
+  }),
+  platform: router({
+    settings: router({
+      getAll: platformAdminProcedure.query(async () => {
+        return await db.getPlatformSettings();
+      }),
+      bulkSet: platformAdminProcedure
+        .input(z.record(z.string(), z.string()))
+        .mutation(async ({ input }: { input: any }) => {
+          for (const [key, value] of Object.entries(input)) {
+            await db.setPlatformSetting(key, String(value));
+          }
+          return { success: true };
+        }),
+    }),
+    runCron: platformAdminProcedure
+      .input(z.object({ job: z.enum(["daily", "suspension"]) }))
+      .mutation(async ({ input }: { input: any }) => {
+        const { startCronJobs: _unused, ...cronModule } = await import("./cron");
+        if (input.job === "daily") {
+          await (cronModule as any).runDailyJobNow?.() ?? Promise.resolve();
+        } else {
+          await (cronModule as any).runSuspensionJobNow?.() ?? Promise.resolve();
+        }
+        return { success: true, message: `Job '${input.job}' executado.` };
+      }),
   }),
 });
+
+/** Notifica cliente sobre decisão de triagem do documento */
+async function notifyClientOfDocumentDecision(
+  ctx: TrpcContext,
+  docId: number,
+  decision: "approved" | "rejected",
+  reason?: string
+): Promise<void> {
+  try {
+    const tenantDb = await getTenantDbOrNull(ctx);
+    const activeDb = tenantDb || await db.getDb();
+    if (!activeDb) return;
+    const docRows = await activeDb.execute(sql`
+      SELECT pd.*, c.name AS "clientName", c.email AS "clientEmail", pd."fileName"
+      FROM "clientPendingDocuments" pd
+      INNER JOIN "clients" c ON c.id = pd."clientId"
+      WHERE pd.id = ${docId} LIMIT 1
+    `);
+    const arr = Array.isArray(docRows) ? docRows : (docRows as any).rows ?? [];
+    if (!arr[0]?.clientEmail) return;
+    const { clientName, clientEmail, fileName } = arr[0];
+    const isApproved = decision === "approved";
+    await sendEmail({
+      to: clientEmail,
+      subject: isApproved ? `[CAC 360] Documento aprovado!` : `[CAC 360] Documento não aprovado`,
+      html: isApproved
+        ? `<div style="font-family:sans-serif;max-width:600px">
+            <h3 style="color:#16a34a">Documento aprovado! ✓</h3>
+            <p>Olá <strong>${clientName}</strong>,</p>
+            <p>Seu documento <strong>${fileName ?? ""}</strong> foi aprovado pela equipe do clube.</p>
+            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
+          </div>`
+        : `<div style="font-family:sans-serif;max-width:600px">
+            <h3 style="color:#dc2626">Documento não aprovado</h3>
+            <p>Olá <strong>${clientName}</strong>,</p>
+            <p>Seu documento <strong>${fileName ?? ""}</strong> não foi aprovado.</p>
+            ${reason ? `<p><strong>Motivo:</strong> ${reason}</p>` : ""}
+            <p>Acesse o portal e envie o documento corrigido.</p>
+            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
+          </div>`,
+    } as any).catch((e: any) => console.error("[PendingDocs] Email cliente:", e));
+  } catch (e) {
+    console.error("[PendingDocs] notifyClientOfDocumentDecision:", e);
+  }
+}
 
 export type AppRouter = typeof appRouter;
 

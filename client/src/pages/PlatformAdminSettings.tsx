@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Settings, Mail, Building2, UserCircle, KeyRound, ChevronRight, Cog } from "lucide-react";
 import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
+import PlatformAutomationConfig from "./PlatformAutomationConfig";
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: 'Super Admin',
@@ -137,34 +138,13 @@ export default function PlatformAdminSettings() {
           </div>
         </div>
 
-        {/* Configurações Futuras */}
+        {/* Automação e Email */}
         <div>
           <h2 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-4 flex items-center gap-2">
             <Cog className="h-3.5 w-3.5" />
-            Configurações Globais
-            <Badge variant="outline" className="text-[0.6rem] border-amber-500/40 text-amber-300 ml-2">
-              Em breve
-            </Badge>
+            Automação e Email
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { label: "Compliance", desc: "Prazos e regras globais", icon: "📋" },
-              { label: "Integrações", desc: "Sistemas externos e APIs", icon: "🔗" },
-              { label: "Backup", desc: "Política de backup e retenção", icon: "💾" },
-            ].map((item) => (
-              <Card key={item.label} className="bg-white/5 backdrop-blur-sm border-white/10 border-dashed shadow-lg">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl opacity-30">{item.icon}</span>
-                    <div>
-                      <p className="text-sm font-medium text-white/30">{item.label}</p>
-                      <p className="text-xs text-white/20">{item.desc}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <PlatformAutomationConfig />
         </div>
       </div>
 

@@ -50,6 +50,8 @@ export const clients = pgTable("clients", {
   otherProfession: varchar("otherProfession", { length: 255 }),
   registrationNumber: varchar("registrationNumber", { length: 100 }),
   currentActivities: text("currentActivities"),
+  apostilamentoActivities: text("apostilamentoActivities"), // JSON string: ["atirador","cacador"]
+  hasSecondCollectionAddress: boolean("hasSecondCollectionAddress").default(false),
   phone2: varchar("phone2", { length: 20 }),
   motherName: varchar("motherName", { length: 255 }),
   fatherName: varchar("fatherName", { length: 255 }),
@@ -402,7 +404,7 @@ export const tenants = pgTable("tenants", {
   // Limits
   maxUsers: integer("maxUsers").default(10),
   maxClients: integer("maxClients").default(500),
-  maxStorageGB: integer("maxStorageGB").default(50),
+  maxStorageGB: numeric("maxStorageGB", { precision: 10, scale: 2 }).default("50"),
   // Subscription
   plan: varchar("plan", { length: 20 }).default("starter").$type<"starter" | "professional" | "enterprise">(),
   subscriptionStatus: varchar("subscriptionStatus", { length: 20 }).default("trial").$type<"active" | "suspended" | "trial" | "cancelled">(),
@@ -428,7 +430,7 @@ export const planDefinitions = pgTable("planDefinitions", {
   description: text("description"),
   maxUsers: integer("maxUsers").notNull().default(5),
   maxClients: integer("maxClients").notNull().default(100),
-  maxStorageGB: integer("maxStorageGB").notNull().default(10),
+  maxStorageGB: numeric("maxStorageGB", { precision: 10, scale: 2 }).notNull().default("10"),
   featureWorkflowCR: boolean("featureWorkflowCR").notNull().default(true),
   featureApostilamento: boolean("featureApostilamento").notNull().default(false),
   featureRenovacao: boolean("featureRenovacao").notNull().default(false),
@@ -902,3 +904,53 @@ export const clientPortalActivityLog = pgTable("clientPortalActivityLog", {
 });
 
 export type ClientPortalActivity = typeof clientPortalActivityLog.$inferSelect;
+
+/**
+ * ============================================
+ * Portal do Cliente — Documentos Pendentes de Triagem
+ * Arquivos enviados pelo cliente aguardando validação do operador
+ * ============================================
+ */
+export const clientPendingDocuments = pgTable("clientPendingDocuments", {
+  id: serial("id").primaryKey(),
+  clientId: integer("clientId").notNull(),
+  tenantId: integer("tenantId"),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  mimeType: varchar("mimeType", { length: 100 }),
+  fileSize: integer("fileSize"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  // pending | approved | rejected | linked
+  linkedSubTaskId: integer("linkedSubTaskId"),
+  rejectionReason: text("rejectionReason"),
+  uploadedAt: timestamp("uploadedAt", { withTimezone: false }).defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt", { withTimezone: false }),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type ClientPendingDocument = typeof clientPendingDocuments.$inferSelect;
+export type InsertClientPendingDocument = typeof clientPendingDocuments.$inferInsert;
+
+/**
+ * ============================================
+ * Marketing — Leads de demonstração
+ * Capturados pelo formulário público da landing page
+ * ============================================
+ */
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  clubName: varchar("clubName", { length: 255 }),
+  email: varchar("email", { length: 320 }).notNull(),
+  whatsapp: varchar("whatsapp", { length: 20 }),
+  message: text("message"),
+  status: varchar("status", { length: 30 }).notNull().default("new"),
+  // new | contacted | demo_scheduled | converted | lost
+  source: varchar("source", { length: 50 }).default("landing"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = typeof leads.$inferInsert;

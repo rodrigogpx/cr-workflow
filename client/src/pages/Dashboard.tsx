@@ -22,7 +22,7 @@ interface jsPDFWithPlugin extends jsPDF {
   autoTable: (options: any) => jsPDF;
 }
 
-type PhaseKey = 'all' | 'cadastro' | 'agendamento-psicotecnico' | 'agendamento-laudo' | 'juntada-documento' | 'concluido' | 'sem-protocolo' | 'solicitado' | 'aguardando-gru' | 'em-analise' | 'restituido' | 'deferido' | 'indeferido';
+type PhaseKey = 'all' | 'cadastro' | 'agendamento-psicotecnico' | 'agendamento-laudo' | 'juntada-documento' | 'concluido' | 'triagem-pendente' | 'sem-protocolo' | 'solicitado' | 'aguardando-gru' | 'em-analise' | 'restituido' | 'deferido' | 'indeferido';
 
 const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, colorClass: string }> = {
   'all': { title: 'Todos os Clientes', icon: Users, colorClass: 'text-blue-500' },
@@ -31,6 +31,7 @@ const PHASE_LABELS: Record<PhaseKey, { title: string, icon: React.ElementType, c
   'agendamento-laudo': { title: 'Laudo Técnico Pendente', icon: Clock, colorClass: 'text-indigo-500' },
   'juntada-documento': { title: 'Juntada de Documentos Pendente', icon: FileText, colorClass: 'text-pink-500' },
   'concluido': { title: 'Workflow Concluído', icon: CheckCircle2, colorClass: 'text-green-500' },
+  'triagem-pendente': { title: 'Triagem de Documentos Pendente', icon: Clock, colorClass: 'text-amber-500' },
   'sem-protocolo': { title: 'Aguardando Abertura do Processo', icon: FileText, colorClass: 'text-red-500' },
   'solicitado': { title: 'Solicitado', icon: FileText, colorClass: 'text-blue-500' },
   'aguardando-gru': { title: 'Aguardando Baixa GRU', icon: Clock, colorClass: 'text-yellow-600' },
@@ -189,6 +190,10 @@ export default function Dashboard() {
     // Para concluídos: mostrar clientes que realmente concluíram o workflow
     if (phase === 'concluido') {
       return baseFilteredClients.filter(c => c.currentPendingStep === 'concluido');
+    }
+
+    if (phase === 'triagem-pendente') {
+      return baseFilteredClients.filter(c => Number(c.pendingTriageCount || 0) > 0 || c.hasPendingTriage === true);
     }
     
     // Sem número de protocolo: todos os clientes sem protocolNumber cadastrado
@@ -462,7 +467,7 @@ export default function Dashboard() {
             {/* Seção Geral */}
             <section>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {['all', 'sem-protocolo', 'concluido'].map((phaseKey) => {
+                {['all', 'sem-protocolo', 'triagem-pendente'].map((phaseKey) => {
                   const phase = phaseKey as PhaseKey;
                   const phaseInfo = PHASE_LABELS[phase];
                   const Icon = phaseInfo.icon;

@@ -4,22 +4,24 @@ import PortalLayout from "./PortalLayout";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ScrollText, Loader2 } from "lucide-react";
+import { ScrollText, Loader2, ExternalLink } from "lucide-react";
 import { usePortalAuth } from "./usePortalAuth";
 
 export default function PortalLgpd() {
   const [, navigate] = useLocation();
-  const { client, lgpdAccepted, loading } = usePortalAuth();
+  const { client, lgpdAccepted, cadastroCompleto, loading } = usePortalAuth();
   const [scrolled, setScrolled] = useState(false);
   const [checked, setChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Se já aceitou, redirecionar para meus-dados
+  // Se já aceitou o LGPD: ir direto ao dashboard se cadastro já está completo, senão para meus-dados
   useEffect(() => {
-    if (!loading && lgpdAccepted) navigate("/portal/meus-dados");
-  }, [loading, lgpdAccepted, navigate]);
+    if (!loading && lgpdAccepted) {
+      navigate(cadastroCompleto ? "/portal" : "/portal/meus-dados");
+    }
+  }, [loading, lgpdAccepted, cadastroCompleto, navigate]);
 
   // Se não autenticado, redirecionar para login
   useEffect(() => {
@@ -46,7 +48,8 @@ export default function PortalLgpd() {
         body: JSON.stringify({ version: "1.0" }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Erro ao registrar consentimento.");
-      navigate("/portal/meus-dados");
+      // Após aceitar LGPD: se cadastro já concluído, ir ao dashboard; senão, preencher dados
+      navigate(cadastroCompleto ? "/portal" : "/portal/meus-dados");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -60,7 +63,16 @@ export default function PortalLgpd() {
         {/* Header do termo */}
         <div className="bg-purple-700 text-white px-6 py-4 flex items-center gap-3">
           <ScrollText className="h-5 w-5 flex-shrink-0" />
-          <p className="text-sm font-medium">Role até o final para habilitar o aceite</p>
+          <p className="text-sm font-medium flex-1">Role até o final para habilitar o aceite</p>
+          <a
+            href="/api/portal/lgpd/documento"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 text-xs text-purple-200 hover:text-white border border-purple-400 hover:border-white rounded-md px-2.5 py-1 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Ver em PDF
+          </a>
         </div>
 
         {/* Texto do termo — scrollável */}
