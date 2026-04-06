@@ -554,7 +554,7 @@ export default function ClientWorkflow() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadEnxovalMutation, setDownloadEnxovalMutation] = useState<{isPending: boolean}>({isPending: false});
 
-  const handleDownloadEnxoval = async (stepId: number) => {
+  const handleDownloadEnxoval = async (stepId: number, stepSubTaskIds: number[] = []) => {
     if (isDownloading) return;
     
     try {
@@ -562,7 +562,11 @@ export default function ClientWorkflow() {
       setDownloadEnxovalMutation({isPending: true});
       toast.info("Buscando documentos...");
 
-      const stepDocs = documents?.filter(doc => doc.workflowStepId === stepId) || [];
+      const subTaskIdSet = new Set(stepSubTaskIds);
+      const stepDocs = (documents || []).filter((doc: any) =>
+        doc.workflowStepId === stepId ||
+        (doc.subTaskId != null && subTaskIdSet.has(doc.subTaskId))
+      );
 
       const latestDocsByKey = new Map<string, any>();
       for (const doc of stepDocs) {
@@ -574,13 +578,6 @@ export default function ClientWorkflow() {
       }
 
       const latestStepDocs = Array.from(latestDocsByKey.values());
-      
-      if (!latestStepDocs || latestStepDocs.length === 0) {
-        toast.error("Nenhum documento encontrado");
-        setIsDownloading(false);
-        setDownloadEnxovalMutation({isPending: false});
-        return;
-      }
 
       toast.info("Preparando download...");
       const zip = new JSZip();
@@ -1073,7 +1070,7 @@ export default function ClientWorkflow() {
                         if (latestAllStepDocs.length > 0) {
                           return (
                             <div className="mt-4 pt-4 border-t border-gray-200">
-                              <Button onClick={() => handleDownloadEnxoval(step.id)} disabled={downloadEnxovalMutation.isPending} className="w-full">
+                              <Button onClick={() => handleDownloadEnxoval(step.id, step.subTasks?.map((st: any) => st.id) || [])} disabled={downloadEnxovalMutation.isPending} className="w-full">
                                 {downloadEnxovalMutation.isPending
                                   ? 'Gerando...'
                                   : `Enxoval (${latestAllStepDocs.length})`
