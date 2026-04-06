@@ -4,7 +4,7 @@ import PortalLayout from "./PortalLayout";
 import { usePortalAuth } from "./usePortalAuth";
 import {
   CheckCircle2, Circle, FileText, Eye,
-  Clock, AlertCircle, File, Upload, Info, ExternalLink, XCircle, Loader2
+  Clock, AlertCircle, File, Upload, Info, ExternalLink, XCircle, Loader2, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,12 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 function formatBytes(bytes: number): string {
   if (!bytes) return "";
@@ -137,6 +143,28 @@ export default function PortalDocumentos() {
   // --- new: uploaded docs queue ---
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
   const [queueLoading, setQueueLoading] = useState(true);
+
+  // --- sheet slide ---
+  type SheetFilter = "all" | "pending" | "approved";
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetFilter, setSheetFilter] = useState<SheetFilter>("all");
+
+  function openSheet(filter: SheetFilter) {
+    setSheetFilter(filter);
+    setSheetOpen(true);
+  }
+
+  const SHEET_TITLES: Record<SheetFilter, string> = {
+    all:      "Todos os documentos enviados",
+    pending:  "Documentos em análise",
+    approved: "Documentos aprovados",
+  };
+
+  const sheetDocs = uploadedDocs.filter(d => {
+    if (sheetFilter === "pending")  return d.status === "pending";
+    if (sheetFilter === "approved") return d.status === "approved" || d.status === "linked";
+    return true;
+  });
 
   // --- auth guards ---
   useEffect(() => {
@@ -343,38 +371,6 @@ export default function PortalDocumentos() {
         </CardContent>
       </Card>
 
-      {/* ── Uploaded Docs Queue ─────────────────────────────────── */}
-      {!queueLoading && uploadedDocs.length > 0 && (
-        <Card className="mb-6 border border-gray-200 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base text-[#123A63]">Meus Documentos Enviados</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {uploadedDocs.map(doc => {
-              const cfg = STATUS_CONFIG[doc.status] ?? STATUS_CONFIG.pending;
-              return (
-                <div key={doc.id} className="flex flex-col gap-1 bg-gray-50 rounded-lg px-3 py-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <File className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                    <span className="flex-1 truncate font-medium text-gray-700">{doc.fileName}</span>
-                    {doc.fileSize > 0 && (
-                      <span className="text-gray-400 flex-shrink-0">{formatBytes(doc.fileSize)}</span>
-                    )}
-                    <span className="text-gray-400 flex-shrink-0">{formatDateTime(doc.uploadedAt)}</span>
-                    <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full font-medium ${cfg.className}`}>
-                      {cfg.label}
-                    </span>
-                  </div>
-                  {doc.status === "rejected" && doc.rejectionReason && (
-                    <p className="text-red-500 italic pl-5">{doc.rejectionReason}</p>
-                  )}
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
-
       {/* ── Progress Bar ────────────────────────────────────────── */}
       {totalDocs > 0 && (
         <div className="mb-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
@@ -393,23 +389,78 @@ export default function PortalDocumentos() {
 
       {/* ── Summary Cards ───────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
+        <button
+          onClick={() => openSheet("all")}
+          className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm hover:border-gray-300 hover:shadow-md transition-all group"
+        >
           <p className="text-2xl font-bold text-gray-800">{uploadedDocs.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Enviados por mim</p>
-        </div>
-        <div className="bg-white border border-amber-100 rounded-xl p-4 text-center shadow-sm">
+          <ChevronRight className="h-3 w-3 text-gray-300 group-hover:text-gray-500 mx-auto mt-1 transition-colors" />
+        </button>
+        <button
+          onClick={() => openSheet("pending")}
+          className="bg-white border border-amber-100 rounded-xl p-4 text-center shadow-sm hover:border-amber-300 hover:shadow-md transition-all group"
+        >
           <p className="text-2xl font-bold text-amber-600">
-            {uploadedDocs.filter(d => d.status === "pending").length}
+            {uploadedDocs.filter((d: UploadedDoc) => d.status === "pending").length}
           </p>
           <p className="text-xs text-gray-500 mt-0.5">Em análise</p>
-        </div>
-        <div className="bg-white border border-green-100 rounded-xl p-4 text-center shadow-sm">
+          <ChevronRight className="h-3 w-3 text-amber-300 group-hover:text-amber-500 mx-auto mt-1 transition-colors" />
+        </button>
+        <button
+          onClick={() => openSheet("approved")}
+          className="bg-white border border-green-100 rounded-xl p-4 text-center shadow-sm hover:border-green-300 hover:shadow-md transition-all group"
+        >
           <p className="text-2xl font-bold text-green-600">
-            {uploadedDocs.filter(d => d.status === "approved" || d.status === "linked").length}
+            {uploadedDocs.filter((d: UploadedDoc) => d.status === "approved" || d.status === "linked").length}
           </p>
           <p className="text-xs text-gray-500 mt-0.5">Aprovados</p>
-        </div>
+          <ChevronRight className="h-3 w-3 text-green-300 group-hover:text-green-500 mx-auto mt-1 transition-colors" />
+        </button>
       </div>
+
+      {/* ── Sheet: lista filtrada de documentos ─────────────────── */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="flex items-center gap-2 text-[#123A63]">
+              <File className="h-4 w-4" />
+              {SHEET_TITLES[sheetFilter]}
+            </SheetTitle>
+          </SheetHeader>
+
+          {sheetDocs.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <File className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Nenhum documento nesta categoria.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {sheetDocs.map((doc: UploadedDoc) => {
+                const cfg = STATUS_CONFIG[doc.status] ?? STATUS_CONFIG.pending;
+                return (
+                  <div key={doc.id} className="flex flex-col gap-1 bg-gray-50 rounded-lg px-3 py-2.5 text-xs border border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <File className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                      <span className="flex-1 truncate font-medium text-gray-700">{doc.fileName}</span>
+                      <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full font-medium ${cfg.className}`}>
+                        {cfg.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 pl-5 text-gray-400">
+                      {doc.fileSize > 0 && <span>{formatBytes(doc.fileSize)}</span>}
+                      <span>{formatDateTime(doc.uploadedAt)}</span>
+                    </div>
+                    {doc.status === "rejected" && doc.rejectionReason && (
+                      <p className="text-red-500 italic pl-5 mt-0.5">{doc.rejectionReason}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
