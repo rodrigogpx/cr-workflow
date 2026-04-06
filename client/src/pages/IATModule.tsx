@@ -15,6 +15,7 @@ import { ArrowLeft, Plus, Pencil, Trash2, BookOpen, Users, GraduationCap, Clipbo
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import IATSessionsPanel from "@/components/iat/IATSessionsPanel";
+import IATCalendarView from "@/components/iat/IATCalendarView";
 
 type Instructor = { id: number; name: string; cpf?: string | null; crNumber?: string | null; phone?: string | null; email?: string | null; isPfAccredited: boolean; pfAccreditationNumber?: string | null; isActive: boolean; };
 type Course = { id: number; title: string; description?: string | null; workloadHours: number; courseType: string; institutionName?: string | null; completionDate?: string | null; isActive: boolean; };
@@ -281,6 +282,7 @@ export default function IATModule() {
             <TabsTrigger value="classes" className="flex items-center gap-1.5"><Layers className="h-3.5 w-3.5" />Turmas</TabsTrigger>
             <TabsTrigger value="exams" className="flex items-center gap-1.5"><ClipboardList className="h-3.5 w-3.5" />Exames</TabsTrigger>
             <TabsTrigger value="schedules" className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Agendamentos</TabsTrigger>
+            <TabsTrigger value="calendar" className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-primary" />Calendário</TabsTrigger>
           </TabsList>
 
           <TabsContent value="instructors" className="space-y-4 mt-4">
@@ -356,6 +358,15 @@ export default function IATModule() {
               ); })}
               {fSched.length === 0 && <p className="col-span-2 text-center py-10 text-muted-foreground text-sm">Nenhum agendamento cadastrado.</p>}
             </div>
+          </TabsContent>
+          <TabsContent value="calendar" className="mt-4">
+            <IATCalendarView
+              schedules={schedules}
+              classes={classes}
+              exams={exams}
+              instructors={instructors}
+              courses={courses}
+            />
           </TabsContent>
         </Tabs>
       </div>
