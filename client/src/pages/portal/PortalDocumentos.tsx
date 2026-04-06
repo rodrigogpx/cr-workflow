@@ -114,7 +114,7 @@ interface UploadedDoc {
 
 const STATUS_CONFIG: Record<UploadStatus, { label: string; className: string }> = {
   pending:  { label: "Aguardando análise", className: "bg-gray-100 text-gray-700" },
-  linked:   { label: "Em triagem",         className: "bg-blue-100 text-blue-700" },
+  linked:   { label: "Aprovado ✓",         className: "bg-green-100 text-green-700" },
   approved: { label: "Aprovado ✓",         className: "bg-green-100 text-green-700" },
   rejected: { label: "Rejeitado",          className: "bg-red-100 text-red-700" },
 };
@@ -175,7 +175,7 @@ export default function PortalDocumentos() {
   const approved = groups.filter(g => g.completed).length;
 
   // --- upload queue stats ---
-  const approvedCount = uploadedDocs.filter(d => d.status === "approved").length;
+  const approvedCount = uploadedDocs.filter(d => d.status === "approved" || d.status === "linked").length;
   const progressPct = totalDocs > 0 ? Math.round((approvedCount / totalDocs) * 100) : 0;
 
   // --- drag-and-drop handlers ---
@@ -399,13 +399,13 @@ export default function PortalDocumentos() {
         </div>
         <div className="bg-white border border-amber-100 rounded-xl p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-amber-600">
-            {uploadedDocs.filter(d => d.status === "pending" || d.status === "linked").length}
+            {uploadedDocs.filter(d => d.status === "pending").length}
           </p>
           <p className="text-xs text-gray-500 mt-0.5">Em análise</p>
         </div>
         <div className="bg-white border border-green-100 rounded-xl p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-green-600">
-            {uploadedDocs.filter(d => d.status === "approved").length}
+            {uploadedDocs.filter(d => d.status === "approved" || d.status === "linked").length}
           </p>
           <p className="text-xs text-gray-500 mt-0.5">Aprovados</p>
         </div>
