@@ -1,5 +1,16 @@
 import PDFDocument from 'pdfkit';
+import path from 'path';
+import fs from 'fs';
 import type { Client } from '../drizzle/schema';
+
+function getCursiveFontPath(): string | null {
+  const candidates = [
+    path.join(process.cwd(), 'server', 'fonts', 'DancingScript-Regular.ttf'),
+    path.join(__dirname, '..', 'server', 'fonts', 'DancingScript-Regular.ttf'),
+    path.join(__dirname, 'fonts', 'DancingScript-Regular.ttf'),
+  ];
+  return candidates.find(p => fs.existsSync(p)) ?? null;
+}
 
 export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
@@ -80,7 +91,17 @@ export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
 
     // Date & signature
     doc.fontSize(10).fillColor('#555555').text(`Emitido em: ${dateStr}`, { align: 'right' });
-    doc.moveDown(2.5);
+    doc.moveDown(2);
+
+    const cursivePath = getCursiveFontPath();
+    if (cursivePath) {
+      doc.font(cursivePath).fontSize(26).fillColor('#123A63').text('CAC 360', { align: 'center' });
+      doc.font('Helvetica');
+    } else {
+      doc.font('Helvetica-Oblique').fontSize(20).fillColor('#123A63').text('CAC 360', { align: 'center' });
+      doc.font('Helvetica');
+    }
+    doc.moveDown(0.3);
     doc.moveTo(200, doc.y).lineTo(440, doc.y).lineWidth(0.5).stroke('#000000');
     doc.moveDown(0.3);
     doc.fontSize(10).fillColor('#000000').text('Assinatura / Responsável CAC 360', { align: 'center' });
