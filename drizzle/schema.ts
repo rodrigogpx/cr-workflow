@@ -148,6 +148,7 @@ export const documents = pgTable("documents", {
   mimeType: varchar("mimeType", { length: 100 }),
   fileSize: integer("fileSize"),
   uploadedBy: integer("uploadedBy").notNull(),
+  issueDate: timestamp("issueDate", { withTimezone: false }),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
 });
 
@@ -925,6 +926,7 @@ export const clientPendingDocuments = pgTable("clientPendingDocuments", {
   rejectionReason: text("rejectionReason"),
   uploadedAt: timestamp("uploadedAt", { withTimezone: false }).defaultNow().notNull(),
   reviewedAt: timestamp("reviewedAt", { withTimezone: false }),
+  issueDate: timestamp("issueDate", { withTimezone: false }),
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
 });
 

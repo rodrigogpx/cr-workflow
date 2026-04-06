@@ -3010,14 +3010,15 @@ export async function updatePendingDocumentStatus(
   db: ReturnType<typeof drizzle>,
   docId: number,
   status: "approved" | "rejected" | "linked",
-  opts?: { linkedSubTaskId?: number; rejectionReason?: string }
+  opts?: { linkedSubTaskId?: number; rejectionReason?: string; issueDate?: string | null }
 ): Promise<void> {
   await db.execute(sql`
     UPDATE "clientPendingDocuments"
     SET status = ${status},
         "reviewedAt" = now(),
         "linkedSubTaskId" = ${opts?.linkedSubTaskId ?? null},
-        "rejectionReason" = ${opts?.rejectionReason ?? null}
+        "rejectionReason" = ${opts?.rejectionReason ?? null},
+        "issueDate" = ${opts?.issueDate ? sql`${opts.issueDate}::timestamp` : sql`NULL`}
     WHERE id = ${docId}
   `);
 }

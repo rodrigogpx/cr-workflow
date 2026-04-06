@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import {
   FileText, CheckCircle2, XCircle, Eye,
-  ChevronDown, ChevronUp, Loader2, Pencil,
+  ChevronDown, ChevronUp, Loader2, Pencil, CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,20 +53,25 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
   const [rejectDialog, setRejectDialog] = useState<{ docId: number; fileName: string } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  // ── Aprovar (com vínculo opcional) ────────────────────────────────────────
+  // ── Aprovar (com vínculo obrigatório) ────────────────────────────────────
   const [approveDialog, setApproveDialog] = useState<{ docId: number; fileName: string } | null>(null);
   const [linkSubTask, setLinkSubTask] = useState("");
+  const [linkError, setLinkError] = useState(false);
   const [renameFile, setRenameFile] = useState(false);
   const [newFileName, setNewFileName] = useState("");
+  const [issueDate, setIssueDate] = useState("");
 
   function resetApproveState() {
     setLinkSubTask("");
+    setLinkError(false);
     setRenameFile(false);
     setNewFileName("");
+    setIssueDate("");
   }
 
   function handleSubTaskChange(value: string) {
     setLinkSubTask(value);
+    setLinkError(false);
     const st = subTasks.find(s => String(s.id) === value);
     if (st && renameFile) {
       const ext = approveDialog?.fileName.includes(".")
@@ -93,15 +98,16 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
 
   function handleApprove() {
     if (!approveDialog) return;
+    if (!linkSubTask) {
+      setLinkError(true);
+      return;
+    }
     approveMut.mutate({
       docId: approveDialog.docId,
-      ...(linkSubTask
-        ? {
-            subTaskId: Number(linkSubTask),
-            fileName: approveDialog.fileName,
-            newFileName: renameFile && newFileName.trim() ? newFileName.trim() : undefined,
-          }
-        : {}),
+      subTaskId: Number(linkSubTask),
+      fileName: approveDialog.fileName,
+      newFileName: renameFile && newFileName.trim() ? newFileName.trim() : undefined,
+      issueDate: issueDate || undefined,
     });
   }
 
@@ -200,15 +206,15 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
         )}
       </div>
 
-      {/* Dialog — Aprovar (com vínculo opcional) */}
-      <Dialog open={!!approveDialog} onOpenChange={open => {
+      {/* Dialog — Aprovar e vincular */}
+      <Dialog open={!!approveDialog} onOpenChange={(open: boolean) => {
         if (!open) { setApproveDialog(null); resetApproveState(); }
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-green-600" />
-              Aprovar documento
+              Aprovar e vincular documento
             </DialogTitle>
           </DialogHeader>
 
@@ -217,61 +223,80 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
             <span className="font-medium text-gray-700">{approveDialog?.fileName}</span>
           </div>
 
-          {/* Vínculo opcional à juntada */}
-          {subTasks.length > 0 && (
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-600">
-                  Vincular a um tipo de documento <span className="text-gray-400 font-normal">(opcional)</span>
-                </Label>
-                <Select value={linkSubTask} onValueChange={handleSubTaskChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar tipo de documento na juntada" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">— Não vincular —</SelectItem>
-                    {subTasks.map(st => (
-                      <SelectItem key={st.id} value={String(st.id)}>
-                        {st.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Opção de renomear, só se tiver subtask selecionada */}
-              {linkSubTask && (
-                <div className="border border-green-100 rounded-xl bg-green-50/60 p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="rename-check-approve"
-                      checked={renameFile}
-                      onCheckedChange={(v) => handleRenameToggle(!!v)}
-                    />
-                    <label
-                      htmlFor="rename-check-approve"
-                      className="text-sm text-gray-700 cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Pencil className="h-3.5 w-3.5 text-green-600" />
-                      Renomear arquivo para o tipo do documento
-                    </label>
-                  </div>
-                  {renameFile && (
-                    <div className="space-y-1">
-                      <Label className="text-xs text-gray-500">Nome final do arquivo</Label>
-                      <Input
-                        value={newFileName}
-                        onChange={e => setNewFileName(e.target.value)}
-                        placeholder="Ex: Certidão de Antecedentes.pdf"
-                        className="text-sm h-8"
-                      />
-                      <p className="text-[0.65rem] text-gray-400">A extensão original será preservada se não alterada.</p>
-                    </div>
-                  )}
-                </div>
+          <div className="space-y-4">
+            {/* Vínculo obrigatório à juntada */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-gray-700">
+                Tipo de documento na juntada <span className="text-red-500">*</span>
+              </Label>
+              <Select value={linkSubTask} onValueChange={handleSubTaskChange}>
+                <SelectTrigger className={linkError ? "border-red-400 focus:ring-red-300" : ""}>
+                  <SelectValue placeholder="Selecionar tipo de documento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subTasks.map(st => (
+                    <SelectItem key={st.id} value={String(st.id)}>
+                      {st.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {linkError && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  É obrigatório vincular o documento a um tipo antes de aprovar.
+                </p>
               )}
             </div>
-          )}
+
+            {/* Data de emissão */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5 text-gray-400" />
+                Data de emissão <span className="text-gray-400 font-normal">(opcional)</span>
+              </Label>
+              <Input
+                type="date"
+                value={issueDate}
+                onChange={(e: any) => setIssueDate(e.target.value)}
+                className="text-sm h-8"
+              />
+              <p className="text-[0.65rem] text-gray-400">
+                Utilizada futuramente para alertas de vencimento do documento.
+              </p>
+            </div>
+
+            {/* Opção de renomear */}
+            {linkSubTask && (
+              <div className="border border-green-100 rounded-xl bg-green-50/60 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="rename-check-approve"
+                    checked={renameFile}
+                    onCheckedChange={(v: any) => handleRenameToggle(!!v)}
+                  />
+                  <label
+                    htmlFor="rename-check-approve"
+                    className="text-sm text-gray-700 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-green-600" />
+                    Renomear arquivo para o tipo do documento
+                  </label>
+                </div>
+                {renameFile && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-500">Nome final do arquivo</Label>
+                    <Input
+                      value={newFileName}
+                      onChange={(e: any) => setNewFileName(e.target.value)}
+                      placeholder="Ex: Certidão de Antecedentes.pdf"
+                      className="text-sm h-8"
+                    />
+                    <p className="text-[0.65rem] text-gray-400">A extensão original será preservada se não alterada.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => { setApproveDialog(null); resetApproveState(); }}>
@@ -284,7 +309,7 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
             >
               {approveMut.isPending
                 ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <><CheckCircle2 className="w-4 h-4 mr-1.5" />Aprovar</>}
+                : <><CheckCircle2 className="w-4 h-4 mr-1.5" />Aprovar e vincular</>}
             </Button>
           </DialogFooter>
         </DialogContent>
