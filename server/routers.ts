@@ -4413,44 +4413,43 @@ export const appRouter = router({
         );
       }),
 
-    /** Aprova documento — notifica cliente por email.
-     *  Se subTaskId fornecido, vincula também à juntada oficial (status "linked"). */
+    /** Aprova e vincula documento à juntada oficial — notifica cliente por email. */
     approve: protectedProcedure
       .input(z.object({
         docId:       z.number().int(),
-        subTaskId:   z.number().int().optional(),
+        subTaskId:   z.number().int(),
         fileName:    z.string().optional(),
         newFileName: z.string().optional(),
+        issueDate:   z.string().optional(), // ISO date string "YYYY-MM-DD"
       }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const activeDb = tenantDb || await db.getDb();
         if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
 
-        if (input.subTaskId) {
-          // Buscar dados do documento para obter fileUrl, mimeType etc.
-          const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
-          const doc = docRows.find((d: any) => d.id === input.docId);
-          if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+        // Buscar dados do documento para obter fileUrl, mimeType etc.
+        const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
+        const doc = docRows.find((d: any) => d.id === input.docId);
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
 
-          const finalFileName = (input.newFileName?.trim() || input.fileName || doc.fileName).trim();
-          const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
-          const uploadedBy = ctx.user?.id ?? 0;
+        const finalFileName = (input.newFileName?.trim() || input.fileName || doc.fileName).trim();
+        const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
+        const uploadedBy = ctx.user?.id ?? 0;
+        const issueDate = input.issueDate ?? null;
 
-          // Inserir na juntada oficial
-          await activeDb.execute(sql`
-            INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileKey", "fileUrl", "mimeType", "fileSize", "uploadedBy", "createdAt")
-            VALUES (${input.subTaskId}, ${doc.clientId}, ${finalFileName}, ${fileKey}, ${doc.fileUrl},
-                    ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, ${uploadedBy}, now())
-          `);
+        // Inserir na juntada oficial (com data de emissão se fornecida)
+        await activeDb.execute(sql`
+          INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileKey", "fileUrl", "mimeType", "fileSize", "uploadedBy", "issueDate", "createdAt")
+          VALUES (${input.subTaskId}, ${doc.clientId}, ${finalFileName}, ${fileKey}, ${doc.fileUrl},
+                  ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, ${uploadedBy},
+                  ${issueDate ? sql`${issueDate}::timestamp` : sql`NULL`}, now())
+        `);
 
-          // Marcar como vinculado (aprovação implícita)
-          await db.updatePendingDocumentStatus(activeDb, input.docId, "linked", {
-            linkedSubTaskId: input.subTaskId,
-          });
-        } else {
-          await db.updatePendingDocumentStatus(activeDb, input.docId, "approved");
-        }
+        // Marcar como vinculado com data de emissão
+        await db.updatePendingDocumentStatus(activeDb, input.docId, "linked", {
+          linkedSubTaskId: input.subTaskId,
+          issueDate,
+        });
 
         notifyClientOfDocumentDecision(ctx, input.docId, "approved").catch(() => {});
         return { success: true };

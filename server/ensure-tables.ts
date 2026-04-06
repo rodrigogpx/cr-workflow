@@ -434,6 +434,10 @@ export async function ensureMissingTables() {
       ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "protocolNumber" varchar(100);
     `);
 
+    // Add issueDate to documents and clientPendingDocuments
+    await db.execute(sql`ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "issueDate" timestamp;`);
+    await db.execute(sql`ALTER TABLE "clientPendingDocuments" ADD COLUMN IF NOT EXISTS "issueDate" timestamp;`);
+
     // Migrate CPF unique constraint: UNIQUE(cpf) -> UNIQUE(tenantId, cpf) for tenant isolation
     try {
       await db.execute(sql`ALTER TABLE "clients" DROP CONSTRAINT IF EXISTS "clients_cpf_unique";`);
