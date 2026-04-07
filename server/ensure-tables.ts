@@ -558,4 +558,18 @@ export async function ensureMissingTables() {
           const userRows = Array.isArray(userResult) ? userResult : (userResult as any)?.rows ?? [];
           if (!userRows || userRows.length === 0) {
             await db.execute(sql`
-              INSERT INTO "users" ("email", "hashedPassword", "name"
+              INSERT INTO "users" ("email", "hashedPassword", "name", "role", "perfil", "createdAt", "updatedAt")
+              VALUES (${email}, ${hashedPassword}, 'Administrador', 'admin', 'admin', now(), now());
+            `);
+          } else {
+            await db.execute(sql`UPDATE "users" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`);
+          }
+        }
+      }
+    } catch (adminErr) {
+      console.error("[Migration] Error ensuring platform admins:", adminErr);
+    }
+  } catch (error) {
+    console.error("[Migration] Error creating tables:", error);
+  }
+}
