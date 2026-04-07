@@ -1017,4 +1017,10 @@ export const leads = pgTable("leads", {
   status: varchar("status", { length: 30 }).notNull().default("new"),
   // new | contacted | demo_scheduled | converted | lost
   source: varchar("source", { length: 50 }).default("landing"),
-  ipAddress: 
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = typeof leads.$inferInsert; 

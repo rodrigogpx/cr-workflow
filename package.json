@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build:client": "NODE_OPTIONS='--max-old-space-size=4096' vite build",
+    "build:client": "NODE_OPTIONS='--max-old-space-size=3072' vite build",
     "build:server": "esbuild server/_core/index.ts --platform=node --bundle --format=cjs --outfile=dist/index.cjs --packages=bundle --external:better-sqlite3 --external:mysql2 --external:postgres --external:bcryptjs --external:vite --external:lightningcss --external:@tailwindcss/oxide --external:@babel/core --external:esbuild --external:pdfkit",
     "build": "pnpm build:client && pnpm build:server",
     "start": "NODE_ENV=production node dist/index.cjs",
