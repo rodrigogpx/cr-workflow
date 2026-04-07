@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS, SESSION_MAX_AGE_MS } from "@shared/const";
+import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS, SESSION_MAX_AGE_MS, PLATFORM_SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure, platformSuperAdminProcedure, platformAdminOrSuperProcedure } from "./_core/trpc";
@@ -205,15 +205,16 @@ export const appRouter = router({
         }
         const admin = await db.createPlatformAdmin({ ...input, role: 'superadmin' });
         // Fazer login automático após bootstrap
+        // Session cookie (sem maxAge) → apagado ao fechar o browser; JWT expira em 8h
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
-          expiresInMs: SESSION_MAX_AGE_MS,
+          expiresInMs: PLATFORM_SESSION_MAX_AGE_MS,
           isPlatformAdmin: true,
         });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
           ...cookieOptions,
-          maxAge: SESSION_MAX_AGE_MS,
+          // Sem maxAge → session cookie (apagado quando o browser fecha)
           path: '/',
           httpOnly: true,
           sameSite: 'lax',
@@ -235,16 +236,17 @@ export const appRouter = router({
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
 
+        // Session cookie (sem maxAge) → apagado ao fechar o browser; JWT expira em 8h
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
-          expiresInMs: SESSION_MAX_AGE_MS,
+          expiresInMs: PLATFORM_SESSION_MAX_AGE_MS,
           isPlatformAdmin: true,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
           ...cookieOptions,
-          maxAge: SESSION_MAX_AGE_MS,
+          // Sem maxAge → session cookie (apagado quando o browser fecha)
           path: "/",
           httpOnly: true,
           sameSite: "lax",
@@ -291,16 +293,17 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Usuário sem tenant associado. Contate o administrador.' });
         }
 
+        // Session cookie (sem maxAge) → apagado ao fechar o browser; JWT expira em 8h
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
           name: user.name || "",
-          expiresInMs: SESSION_MAX_AGE_MS,
+          expiresInMs: PLATFORM_SESSION_MAX_AGE_MS,
           tenantSlug,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, {
           ...cookieOptions,
-          maxAge: SESSION_MAX_AGE_MS,
+          // Sem maxAge → session cookie (apagado quando o browser fecha)
           path: "/",
           httpOnly: true,
           sameSite: "lax",
