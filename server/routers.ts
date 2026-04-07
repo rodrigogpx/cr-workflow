@@ -1,11 +1,11 @@
 /// <reference types="node" />
-import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS, SESSION_MAX_AGE_MS } from "@shared/const";
+import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS, SESSION_MAX_AGE_MS, PLATFORM_SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure, platformSuperAdminProcedure, platformAdminOrSuperProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
-import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64, buildInlineLogoAttachment, buildPsychReferralEmailHtml } from "./emailService";
+import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64, buildInlineLogoAttachment } from "./emailService";
 import * as db from "./db";
 import { invalidateTenantCache, getTenantConfig, getTenantDb } from "./config/tenant.config";
 import { storagePut } from "./storage";
@@ -205,15 +205,16 @@ export const appRouter = router({
         }
         const admin = await db.createPlatformAdmin({ ...input, role: 'superadmin' });
         // Fazer login automático após bootstrap
+        // Session cookie (sem maxAge) → apagado ao fechar o browser; JWT expira em 8h
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
-          expiresInMs: SESSION_MAX_AGE_MS,
+          expiresInMs: PLATFORM_SESSION_MAX_AGE_MS,
           isPlatformAdmin: true,
         });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
           ...cookieOptions,
-          maxAge: SESSION_MAX_AGE_MS,
+          // Sem maxAge → session cookie (apagado quando o browser fecha)
           path: '/',
           httpOnly: true,
           sameSite: 'lax',
@@ -235,16 +236,17 @@ export const appRouter = router({
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
 
+        // Session cookie (sem maxAge) → apagado ao fechar o browser; JWT expira em 8h
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
-          expiresInMs: SESSION_MAX_AGE_MS,
+          expiresInMs: PLATFORM_SESSION_MAX_AGE_MS,
           isPlatformAdmin: true,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
           ...cookieOptions,
-          maxAge: SESSION_MAX_AGE_MS,
+          // Sem maxAge → session cookie (apagado quando o browser fecha)
           path: "/",
           httpOnly: true,
           sameSite: "lax",
@@ -291,16 +293,17 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Usuário sem tenant associado. Contate o administrador.' });
         }
 
+        // Session cookie (sem maxAge) → apagado ao fechar o browser; JWT expira em 8h
         const sessionToken = await sdk.createSessionToken(user.id.toString(), {
           name: user.name || "",
-          expiresInMs: SESSION_MAX_AGE_MS,
+          expiresInMs: PLATFORM_SESSION_MAX_AGE_MS,
           tenantSlug,
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, {
           ...cookieOptions,
-          maxAge: SESSION_MAX_AGE_MS,
+          // Sem maxAge → session cookie (apagado quando o browser fecha)
           path: "/",
           httpOnly: true,
           sameSite: "lax",
@@ -1563,70 +1566,6 @@ export const appRouter = router({
         const result = await storagePut(fileName, pdfBuffer, 'application/pdf');
         
         return { url: result.url, fileName };
-      }),
-
-    sendPsychReferral: protectedProcedure
-      .input(z.object({
-        clientId:  z.number().int(),
-        stepId:    z.number().int(),
-        type:      z.enum(['standard', 'custom']),
-        fileData:  z.string().optional(), // base64 data URI — only for custom
-        fileName:  z.string().optional(), // only for custom
-      }))
-      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-        const tenantDb = await getTenantDbOrNull(ctx);
-        const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponível.' });
-
-        // Buscar cliente
-        const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
-          : await db.getClientById(input.clientId);
-        if (!client) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado.' });
-
-        const { generatePsychReferralPDF, generateClientDataPDF } = await import('./generate-pdf');
-        const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-        const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
-
-        if (input.type === 'standard') {
-          // Gerar PDF de encaminhamento padrão CAC360
-          const pdfBuf = await generatePsychReferralPDF(client as any);
-          attachments.push({ filename: 'encaminhamento-avaliacao-psicologica.pdf', content: pdfBuf, contentType: 'application/pdf' });
-        } else {
-          // Encaminhamento personalizado: salvar arquivo e anexar
-          if (!input.fileData || !input.fileName) {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Arquivo obrigatório para encaminhamento personalizado.' });
-          }
-          // Decodificar base64
-          const base64Match = input.fileData.match(/^data:([^;]+);base64,(.+)$/);
-          if (!base64Match) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Formato de arquivo inválido.' });
-          const mimeType  = base64Match[1];
-          const fileBuffer = Buffer.from(base64Match[2], 'base64');
-          attachments.push({ filename: input.fileName, content: fileBuffer, contentType: mimeType });
-          // Anexar também a ficha de dados do cliente
-          const clientDataPdf = await generateClientDataPDF(client as any);
-          attachments.push({ filename: 'ficha-cadastral.pdf', content: clientDataPdf, contentType: 'application/pdf' });
-        }
-
-        // Enviar email ao cliente
-        const html = buildPsychReferralEmailHtml(client.name, input.type, dateStr);
-        await sendEmail({
-          to: client.email,
-          subject: 'Encaminhamento para Avaliação Psicológica — CAC 360',
-          html,
-          attachments,
-          tenantDb: tenantDb ?? undefined,
-          tenantId: ctx.tenant?.id,
-        });
-
-        // Registrar envio na etapa
-        await activeDb.execute(sql`
-          UPDATE "workflowSteps"
-          SET "referralSentAt" = now(), "referralType" = ${input.type}, "updatedAt" = now()
-          WHERE id = ${input.stepId}
-        `);
-
-        return { success: true };
       }),
 
     updateScheduling: protectedProcedure
@@ -4652,3 +4591,4 @@ export type AppRouter = typeof appRouter;
 
 
 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
