@@ -38,7 +38,7 @@ RUN set -eux; \
 
 # Copiar código-fonte completo
 # ARG abaixo invalida o cache desta layer a cada rebuild
-ARG REBUILD_AT=20260407b
+ARG REBUILD_AT=20260407c
 COPY . .
 
 # Build do frontend
@@ -77,7 +77,7 @@ RUN set -eux; \
 
 # Copiar código-fonte completo
 # ARG abaixo invalida o cache desta layer a cada rebuild
-ARG REBUILD_AT=20260407b
+ARG REBUILD_AT=20260407c
 COPY . .
 
 # Baixar fonte cursiva para assinatura nos PDFs

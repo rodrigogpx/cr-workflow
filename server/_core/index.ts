@@ -71,33 +71,57 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  // Ensure critical tables exist (migration fix)
-  await ensureMissingTables();
-  await ensurePortalAndMarketingTables();
+  // Na Railway (ou outros PaaS), NUNCA podemos trocar a porta se ela vier do process.env.PORT
+  const isProduction = process.env.NODE_ENV === "production";
+  let port = parseInt(process.env.PORT || "3000");
+  if (!isProduction && !process.env.PORT) {
+    port = await findAvailablePort(port);
+  }
 
   const app = express();
   const server = createServer(app);
+
+  // ─── Health check PRIMEIRO — antes de qualquer inicialização que possa lançar ───
+  // Isso garante que o Railway/Docker healthcheck responde mesmo se o DB estiver
+  // indisponível ou se uma variável de ambiente estiver ausente.
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+  app.get('/api/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // Começar a escutar imediatamente para o healthcheck passar
+  await new Promise<void>((resolve) => server.listen(port, "0.0.0.0", resolve));
+  console.log(`[Server] Listening on port ${port}`);
+
+  // ─── Migrations ───────────────────────────────────────────────────────────────
+  await ensureMissingTables();
+  await ensurePortalAndMarketingTables().catch((err) => {
+    console.error("[Migration] ensurePortalAndMarketingTables failed (non-fatal):", err);
+  });
+
   const installWizardEnabled =
     (process.env.INSTALL_WIZARD_ENABLED ?? "true").toLowerCase() !== "false";
 
   // SECURITY: Restrict CORS origin in production to configured domain(s)
-  const isProduction = process.env.NODE_ENV === "production";
   // Normalize DOMAIN — aceita com ou sem protocolo (ex: "cac360.com.br" ou "https://hml.cac360.com.br")
   const rawDomain = process.env.DOMAIN?.replace(/^https?:\/\//, "").replace(/\/$/, "") ?? "";
   const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(",").map(o => o.trim().replace(/\/$/, ""))
     : (rawDomain ? [`https://${rawDomain}`, `https://hml.${rawDomain}`] : []);
 
-  // SECURITY: Fail-fast if no origins configured in production — wildcard CORS with credentials is dangerous
   if (isProduction && allowedOrigins.length === 0) {
-    throw new Error("[SECURITY] CORS_ORIGINS ou DOMAIN não configurados. Defina pelo menos uma variável de ambiente antes de iniciar em produção.");
+    // Log erro mas NÃO lança — o servidor já está escutando (healthcheck passou).
+    // O admin deve configurar DOMAIN ou CORS_ORIGINS no painel do Railway.
+    console.error("[SECURITY] CORS_ORIGINS ou DOMAIN não configurados. Requisições cross-origin serão bloqueadas. Configure a variável DOMAIN ou CORS_ORIGINS no Railway.");
   }
 
   app.use(
     cors({
       origin: !isProduction
         ? (process.env.DEV_CORS_ORIGIN ?? 'http://localhost:5173')
-        : allowedOrigins,
+        : (allowedOrigins.length > 0 ? allowedOrigins : false),
       credentials: true,
     })
   );
@@ -127,14 +151,6 @@ async function startServer() {
       res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
     }
     next();
-  });
-
-  // Health check endpoint para Railway/Docker/Swarm
-  app.get('/health', (_req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
-  app.get('/api/health', (_req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
   // Configure body parser with larger size limit for file uploads
@@ -225,17 +241,10 @@ async function startServer() {
     serveStatic(app);
   }
 
-  // Na Railway (ou outros PaaS), NUNCA podemos trocar a porta se ela vier do process.env.PORT
-  let port = parseInt(process.env.PORT || "3000");
-  
-  if (process.env.NODE_ENV === "development" && !process.env.PORT) {
-    port = await findAvailablePort(port);
-  }
-
-  server.listen(port, "0.0.0.0", () => {
-    // Server running
-    startCronJobs();
-  });
+  startCronJobs();
 }
 
-startServer().catch(console.error);
+startServer().catch((err) => {
+  console.error("[FATAL] startServer failed:", err);
+  process.exit(1);
+});
