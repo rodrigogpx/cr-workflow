@@ -37,6 +37,8 @@ RUN set -eux; \
     fi
 
 # Copiar código-fonte completo
+# ARG abaixo invalida o cache desta layer a cada rebuild
+ARG REBUILD_AT=20260407b
 COPY . .
 
 # Build do frontend
@@ -58,6 +60,7 @@ COPY patches ./patches
 
 # Instalar pnpm com versão fixada
 ARG PNPM_VERSION=10.15.1
+# cache-bust: 2026-04-07
 RUN npm install -g pnpm@${PNPM_VERSION} && npm cache clean --force
 
 # Instalar todas as dependências com fallback remoto
@@ -73,6 +76,8 @@ RUN set -eux; \
     fi
 
 # Copiar código-fonte completo
+# ARG abaixo invalida o cache desta layer a cada rebuild
+ARG REBUILD_AT=20260407b
 COPY . .
 
 # Baixar fonte cursiva para assinatura nos PDFs
