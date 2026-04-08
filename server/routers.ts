@@ -1644,6 +1644,112 @@ export const appRouter = router({
         
         return { success: true };
       }),
+
+    sendPsychReferral: protectedProcedure
+      .input(z.object({
+        clientId: z.number(),
+        stepId: z.number(),
+        type: z.enum(['standard', 'custom']),
+        fileData: z.string().optional(),   // data URI (custom mode)
+        fileName: z.string().optional(),   // original file name (custom mode)
+      }))
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          : await db.getClientById(input.clientId);
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+
+        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        }
+
+        const clientEmail = (client as any).email as string | undefined;
+        if (!clientEmail) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cliente não possui e-mail cadastrado' });
+        }
+
+        const currentStep = tenantDb
+          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
+          : await db.getWorkflowStepById(input.stepId);
+        if (!currentStep) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
+        }
+
+        const { buildPsychReferralEmailHtml } = await import('./emailService');
+        const { generatePsychReferralPDF } = await import('./generate-pdf');
+
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        const html = buildPsychReferralEmailHtml((client as any).name, input.type, dateStr);
+
+        const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
+
+        if (input.type === 'standard') {
+          // Generate the standard referral PDF
+          const pdfBuffer = await generatePsychReferralPDF(client as any);
+          attachments.push({
+            filename: 'encaminhamento-psicologico.pdf',
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          });
+        } else {
+          // Custom mode: attach the user-provided file
+          if (!input.fileData) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'fileData obrigatório para encaminhamento personalizado' });
+          }
+          const match = /^data:([^;]+);base64,(.+)$/i.exec(input.fileData);
+          if (!match?.[1] || !match?.[2]) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'fileData inválido' });
+          }
+          const customBuffer = Buffer.from(match[2], 'base64');
+          attachments.push({
+            filename: input.fileName || 'encaminhamento-personalizado.pdf',
+            content: customBuffer,
+            contentType: match[1],
+          });
+
+          // Also attach the standard referral PDF as the client registration sheet
+          try {
+            const registrationPdf = await generatePsychReferralPDF(client as any);
+            attachments.push({
+              filename: 'ficha-cadastral.pdf',
+              content: registrationPdf,
+              contentType: 'application/pdf',
+            });
+          } catch (pdfErr) {
+            console.warn('[sendPsychReferral] Could not generate registration PDF:', pdfErr);
+          }
+        }
+
+        await sendEmail({
+          to: clientEmail,
+          subject: 'Encaminhamento para Avaliação Psicológica — CAC 360',
+          html,
+          attachments,
+          tenantDb: tenantDb ?? undefined,
+          tenantId: ctx.tenant?.id,
+        });
+
+        // Record that the referral was sent on this step
+        const updatePayload: any = {
+          id: currentStep.id,
+          clientId: currentStep.clientId,
+          stepId: currentStep.stepId,
+          stepTitle: currentStep.stepTitle,
+          referralSentAt: new Date(),
+          referralType: input.type,
+        };
+        if (tenantDb) {
+          await db.upsertWorkflowStepToDb(tenantDb, updatePayload);
+        } else {
+          await db.upsertWorkflowStep(updatePayload);
+        }
+
+        return { success: true };
+      }),
   }),
 
   // Documents router
@@ -4488,105 +4594,4 @@ export const appRouter = router({
         if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
 
         // Buscar dados do documento pendente (sem filtro de tenantId para encontrar por id)
-        const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
-        const doc = docRows.find((d: any) => d.id === input.docId);
-        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
-
-        // Nome final: renomeado pelo operador ou nome original
-        const finalFileName = (input.newFileName?.trim() || input.fileName).trim();
-
-        // fileKey: derivar do fileUrl removendo o prefixo /files/
-        const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
-
-        // uploadedBy: operador logado
-        const uploadedBy = ctx.user?.id ?? 0;
-
-        // Inserir na juntada oficial (todos campos obrigatórios)
-        await activeDb.execute(sql`
-          INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileKey", "fileUrl", "mimeType", "fileSize", "uploadedBy", "createdAt")
-          VALUES (${input.subTaskId}, ${doc.clientId}, ${finalFileName}, ${fileKey}, ${doc.fileUrl},
-                  ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, ${uploadedBy}, now())
-        `);
-
-        // Marcar como vinculado
-        await db.updatePendingDocumentStatus(activeDb, input.docId, "linked", {
-          linkedSubTaskId: input.subTaskId,
-        });
-
-        return { success: true };
-      }),
-  }),
-  platform: router({
-    settings: router({
-      getAll: platformAdminProcedure.query(async () => {
-        return await db.getPlatformSettings();
-      }),
-      bulkSet: platformAdminProcedure
-        .input(z.record(z.string(), z.string()))
-        .mutation(async ({ input }: { input: any }) => {
-          for (const [key, value] of Object.entries(input)) {
-            await db.setPlatformSetting(key, String(value));
-          }
-          return { success: true };
-        }),
-    }),
-    runCron: platformAdminProcedure
-      .input(z.object({ job: z.enum(["daily", "suspension"]) }))
-      .mutation(async ({ input }: { input: any }) => {
-        const { startCronJobs: _unused, ...cronModule } = await import("./cron");
-        if (input.job === "daily") {
-          await (cronModule as any).runDailyJobNow?.() ?? Promise.resolve();
-        } else {
-          await (cronModule as any).runSuspensionJobNow?.() ?? Promise.resolve();
-        }
-        return { success: true, message: `Job '${input.job}' executado.` };
-      }),
-  }),
-});
-
-/** Notifica cliente sobre decisão de triagem do documento */
-async function notifyClientOfDocumentDecision(
-  ctx: TrpcContext,
-  docId: number,
-  decision: "approved" | "rejected",
-  reason?: string
-): Promise<void> {
-  try {
-    const tenantDb = await getTenantDbOrNull(ctx);
-    const activeDb = tenantDb || await db.getDb();
-    if (!activeDb) return;
-    const docRows = await activeDb.execute(sql`
-      SELECT pd.*, c.name AS "clientName", c.email AS "clientEmail", pd."fileName"
-      FROM "clientPendingDocuments" pd
-      INNER JOIN "clients" c ON c.id = pd."clientId"
-      WHERE pd.id = ${docId} LIMIT 1
-    `);
-    const arr = Array.isArray(docRows) ? docRows : (docRows as any).rows ?? [];
-    if (!arr[0]?.clientEmail) return;
-    const { clientName, clientEmail, fileName } = arr[0];
-    const isApproved = decision === "approved";
-    await sendEmail({
-      to: clientEmail,
-      subject: isApproved ? `[CAC 360] Documento aprovado!` : `[CAC 360] Documento não aprovado`,
-      html: isApproved
-        ? `<div style="font-family:sans-serif;max-width:600px">
-            <h3 style="color:#16a34a">Documento aprovado! ✓</h3>
-            <p>Olá <strong>${clientName}</strong>,</p>
-            <p>Seu documento <strong>${fileName ?? ""}</strong> foi aprovado pela equipe do clube.</p>
-            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
-          </div>`
-        : `<div style="font-family:sans-serif;max-width:600px">
-            <h3 style="color:#dc2626">Documento não aprovado</h3>
-            <p>Olá <strong>${clientName}</strong>,</p>
-            <p>Seu documento <strong>${fileName ?? ""}</strong> não foi aprovado.</p>
-            ${reason ? `<p><strong>Motivo:</strong> ${reason}</p>` : ""}
-            <p>Acesse o portal e envie o documento corrigido.</p>
-            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
-          </div>`,
-    } as any).catch((e: any) => console.error("[PendingDocs] Email cliente:", e));
-  } catch (e) {
-    console.error("[PendingDocs] notifyClientOfDocumentDecision:", e);
-  }
-}
-
-export type AppRouter = typeof appRouter;
+        const docRows = await db.getPendingDocumentsForTriage(act
