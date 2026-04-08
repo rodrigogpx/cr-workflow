@@ -1772,6 +1772,7 @@ export default function ClientWorkflow() {
                                 requiresScheduling={true}
                                 scheduledDate={step.scheduledDate}
                                 examinerName={step.examinerName}
+                                hideActions={true}
                               />
                             )}
                             
