@@ -339,6 +339,8 @@ export const appRouter = router({
       // SECURITY: Clear BOTH session cookies to fully invalidate tenant and platform admin sessions
       ctx.res.clearCookie(COOKIE_NAME, clearOpts);
       ctx.res.clearCookie(PLATFORM_COOKIE_NAME, clearOpts);
+      // Limpar também o cookie antigo (v1) para invalidar sessões legadas de 30 dias
+      ctx.res.clearCookie("platform_session_id", { ...clearOpts, domain: clearOpts.domain });
       return {
         success: true,
       } as const;

@@ -16,6 +16,7 @@ export function usePlatformAuth(options?: UsePlatformAuthOptions) {
   const meQuery = trpc.auth.platformMe.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    staleTime: 0, // Sempre re-valida ao montar — evita cache stale de sessões antigas
   });
 
   const logoutMutation = trpc.auth.logout.useMutation({
@@ -43,36 +44,38 @@ export function usePlatformAuth(options?: UsePlatformAuthOptions) {
   const state = useMemo(() => {
     const admin = meQuery.data ?? null;
     const role = (admin as any)?.role as PlatformAdminRole | null ?? null;
+    // isPending = sem dado em cache (mais conservador que isLoading no TanStack Query v5)
+    // isLoading = isPending && isFetching — pode ser false antes do fetch começar
     return {
       admin,
       role,
       isSuperAdmin: role === 'superadmin',
       isAdminOrSuper: role === 'superadmin' || role === 'admin',
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      loading: meQuery.isPending || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(admin),
     };
   }, [
     meQuery.data,
     meQuery.error,
-    meQuery.isLoading,
+    meQuery.isPending,
     logoutMutation.error,
     logoutMutation.isPending,
   ]);
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;
-    if (meQuery.isLoading || logoutMutation.isPending) return;
+    if (meQuery.isPending || logoutMutation.isPending) return;
     if (state.admin) return;
     if (typeof window === "undefined") return;
     if (window.location.pathname === redirectPath) return;
 
-    window.location.href = redirectPath;
+    window.location.replace(redirectPath); // replace evita histórico de navegação sujo
   }, [
     redirectOnUnauthenticated,
     redirectPath,
     logoutMutation.isPending,
-    meQuery.isLoading,
+    meQuery.isPending,
     state.admin,
   ]);
 
