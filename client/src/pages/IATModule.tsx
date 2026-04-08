@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, Trash2, BookOpen, Users, GraduationCap, ClipboardList, Shield, CheckCircle2, XCircle, Search, CalendarDays, MapPin, Layers, UserPlus, Eye } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import IATSessionsPanel from "@/components/iat/IATSessionsPanel";
+import IATCalendarView from "@/components/iat/IATCalendarView";
 
 type Instructor = { id: number; name: string; cpf?: string | null; crNumber?: string | null; phone?: string | null; email?: string | null; isPfAccredited: boolean; pfAccreditationNumber?: string | null; isActive: boolean; };
 type Course = { id: number; title: string; description?: string | null; workloadHours: number; courseType: string; institutionName?: string | null; completionDate?: string | null; isActive: boolean; };
@@ -192,6 +194,7 @@ export default function IATModule() {
   const [schedDlg, setSchedDlg] = useState<{ open: boolean; editing?: Schedule }>({ open: false });
   const [classDlg, setClassDlg] = useState<{ open: boolean; editing?: CourseClass }>({ open: false });
   const [enrollSheet, setEnrollSheet] = useState<{ open: boolean; classId: number; classTitle: string } | null>(null);
+  const [sessionsPanel, setSessionsPanel] = useState<{ open: boolean; classId: number; className: string } | null>(null);
   const [enrollSearch, setEnrollSearch] = useState("");
   const [selectedClients, setSelectedClients] = useState<number[]>([]);
 
@@ -279,6 +282,7 @@ export default function IATModule() {
             <TabsTrigger value="classes" className="flex items-center gap-1.5"><Layers className="h-3.5 w-3.5" />Turmas</TabsTrigger>
             <TabsTrigger value="exams" className="flex items-center gap-1.5"><ClipboardList className="h-3.5 w-3.5" />Exames</TabsTrigger>
             <TabsTrigger value="schedules" className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Agendamentos</TabsTrigger>
+            <TabsTrigger value="calendar" className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-primary" />Calendário</TabsTrigger>
           </TabsList>
 
           <TabsContent value="instructors" className="space-y-4 mt-4">
@@ -324,6 +328,7 @@ export default function IATModule() {
                         {cls.notes && <p className="text-xs text-muted-foreground line-clamp-2">{cls.notes}</p>}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Sessões e Frequência" onClick={() => setSessionsPanel({ open: true, classId: cls.id, className: cls.classNumber ? `Turma ${cls.classNumber}` : cls.title || "Turma" })}><CalendarDays className="h-3.5 w-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver alunos" onClick={() => setEnrollSheet({ open: true, classId: cls.id, classTitle: cls.classNumber ? `Turma ${cls.classNumber}` : cls.title || "Turma" })}><Eye className="h-3.5 w-3.5" /></Button>
                         {isAdmin && <><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setClassDlg({ open: true, editing: cls })}><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="icon" className="h-7 w-7 text-red-400" onClick={() => deleteClass.mutate({ id: cls.id })}><Trash2 className="h-3.5 w-3.5" /></Button></>}
                       </div>
@@ -353,6 +358,15 @@ export default function IATModule() {
               ); })}
               {fSched.length === 0 && <p className="col-span-2 text-center py-10 text-muted-foreground text-sm">Nenhum agendamento cadastrado.</p>}
             </div>
+          </TabsContent>
+          <TabsContent value="calendar" className="mt-4">
+            <IATCalendarView
+              schedules={schedules}
+              classes={classes}
+              exams={exams}
+              instructors={instructors}
+              courses={courses}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -444,6 +458,16 @@ export default function IATModule() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Sessions & Attendance Panel */}
+      {sessionsPanel && (
+        <IATSessionsPanel
+          classId={sessionsPanel.classId}
+          className={sessionsPanel.className}
+          open={sessionsPanel.open}
+          onOpenChange={(open) => { if (!open) setSessionsPanel(null); }}
+        />
+      )}
     </div>
   );
 }

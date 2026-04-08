@@ -40,7 +40,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { updateClientSchema, type UpdateClientInput, formatCPF, formatPhone, formatCEP, isValidCPF } from "@shared/validations";
-import { DocumentUpload } from "@/components/DocumentUpload";
+import { PsychReferralPanel } from "@/components/PsychReferralPanel";
 import { EmailPreview } from "@/components/EmailPreview";
 import { UploadModal } from "@/components/UploadModal";
 import { Input } from "@/components/ui/input";
@@ -511,6 +511,8 @@ export default function ClientWorkflow() {
   }, [client, clientId, reset]);
 
   const selectedApostilamentoActivities = (watch("apostilamentoActivities") as string[] | undefined) || [];
+  const watchRequestType = (watch("requestType") as string) || '';
+  const isConcessao = watchRequestType.toLowerCase() === 'concessão' || watchRequestType.toLowerCase() === 'concessao';
 
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
     onSuccess: (data: any, variables: any) => {
@@ -554,7 +556,7 @@ export default function ClientWorkflow() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadEnxovalMutation, setDownloadEnxovalMutation] = useState<{isPending: boolean}>({isPending: false});
 
-  const handleDownloadEnxoval = async (stepId: number) => {
+  const handleDownloadEnxoval = async (stepId: number, stepSubTaskIds: number[] = []) => {
     if (isDownloading) return;
     
     try {
@@ -562,7 +564,11 @@ export default function ClientWorkflow() {
       setDownloadEnxovalMutation({isPending: true});
       toast.info("Buscando documentos...");
 
-      const stepDocs = documents?.filter(doc => doc.workflowStepId === stepId) || [];
+      const subTaskIdSet = new Set(stepSubTaskIds);
+      const stepDocs = (documents || []).filter((doc: any) =>
+        doc.workflowStepId === stepId ||
+        (doc.subTaskId != null && subTaskIdSet.has(doc.subTaskId))
+      );
 
       const latestDocsByKey = new Map<string, any>();
       for (const doc of stepDocs) {
@@ -574,13 +580,6 @@ export default function ClientWorkflow() {
       }
 
       const latestStepDocs = Array.from(latestDocsByKey.values());
-      
-      if (!latestStepDocs || latestStepDocs.length === 0) {
-        toast.error("Nenhum documento encontrado");
-        setIsDownloading(false);
-        setDownloadEnxovalMutation({isPending: false});
-        return;
-      }
 
       toast.info("Preparando download...");
       const zip = new JSZip();
@@ -1073,7 +1072,7 @@ export default function ClientWorkflow() {
                         if (latestAllStepDocs.length > 0) {
                           return (
                             <div className="mt-4 pt-4 border-t border-gray-200">
-                              <Button onClick={() => handleDownloadEnxoval(step.id)} disabled={downloadEnxovalMutation.isPending} className="w-full">
+                              <Button onClick={() => handleDownloadEnxoval(step.id, step.subTasks?.map((st: any) => st.id) || [])} disabled={downloadEnxovalMutation.isPending} className="w-full">
                                 {downloadEnxovalMutation.isPending
                                   ? 'Gerando...'
                                   : `Enxoval (${latestAllStepDocs.length})`
@@ -1087,12 +1086,14 @@ export default function ClientWorkflow() {
                     </div>
                     )}
 
-                    {/* Upload de Documentos - Encaminhamento Avaliação Psicológica */}
+                    {/* Encaminhamento Avaliação Psicológica */}
                     {isPsychEvaluationForwardStep && (
-                      <DocumentUpload 
-                        clientId={Number(clientId)} 
-                        stepId={step.id} 
-                        stepTitle={step.stepTitle || "Encaminhamento de Avaliação Psicológica"} 
+                      <PsychReferralPanel
+                        clientId={Number(clientId)}
+                        stepId={step.id}
+                        referralSentAt={step.referralSentAt}
+                        referralType={step.referralType}
+                        onSuccess={() => refetch()}
                       />
                     )}
 
@@ -1386,6 +1387,7 @@ export default function ClientWorkflow() {
                                 />
                                 {errors.requestType && <p className="text-xs text-red-500 mt-1">{errors.requestType.message}</p>}
                               </div>
+                              {!isConcessao && (
                               <div>
                                 <Label htmlFor="cacNumber" className="text-sm font-medium text-teal-600">Nº CAC</Label>
                                 <Input
@@ -1395,6 +1397,8 @@ export default function ClientWorkflow() {
                                 />
                                 {errors.cacNumber && <p className="text-xs text-red-500 mt-1">{errors.cacNumber.message}</p>}
                               </div>
+                              )}
+                              {!isConcessao && (
                               <div>
                                 <Label htmlFor="cacCategory" className="text-sm font-medium text-teal-600">Categoria CAC</Label>
                                 <Input
@@ -1404,9 +1408,11 @@ export default function ClientWorkflow() {
                                 />
                                 {errors.cacCategory && <p className="text-xs text-red-500 mt-1">{errors.cacCategory.message}</p>}
                               </div>
+                              )}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {!isConcessao && (
                               <div>
                                 <Label htmlFor="previousCrNumber" className="text-sm font-medium text-teal-600">Nº CR Anterior (se houver)</Label>
                                 <Input
@@ -1416,6 +1422,7 @@ export default function ClientWorkflow() {
                                 />
                                 {errors.previousCrNumber && <p className="text-xs text-red-500 mt-1">{errors.previousCrNumber.message}</p>}
                               </div>
+                              )}
                               <div>
                                 <Label htmlFor="psychReportValidity" className="text-sm font-medium text-teal-600">Validade Laudo Psicológico</Label>
                                 <Input
@@ -1607,6 +1614,7 @@ export default function ClientWorkflow() {
                             </div>
                           </div>
 
+                          {watch('hasSecondCollectionAddress') && (<>
                           <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">Segundo Endereço do Acervo</div>
 
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1709,6 +1717,7 @@ export default function ClientWorkflow() {
                               {errors.acervoLongitude && <p className="text-xs text-red-500 mt-1">{errors.acervoLongitude.message}</p>}
                             </div>
                           </div>
+                          </>)}
 
                           {/* Botão Salvar */}
                           <Button

@@ -37,6 +37,8 @@ RUN set -eux; \
     fi
 
 # Copiar código-fonte completo
+# ARG abaixo invalida o cache desta layer a cada rebuild
+ARG REBUILD_AT=20260407c
 COPY . .
 
 # Build do frontend
@@ -58,6 +60,7 @@ COPY patches ./patches
 
 # Instalar pnpm com versão fixada
 ARG PNPM_VERSION=10.15.1
+# cache-bust: 2026-04-07
 RUN npm install -g pnpm@${PNPM_VERSION} && npm cache clean --force
 
 # Instalar todas as dependências com fallback remoto
@@ -73,7 +76,17 @@ RUN set -eux; \
     fi
 
 # Copiar código-fonte completo
+# ARG abaixo invalida o cache desta layer a cada rebuild
+ARG REBUILD_AT=20260407c
 COPY . .
+
+# Baixar fonte cursiva para assinatura nos PDFs
+RUN apk add --no-cache curl \
+    && mkdir -p /app/server/fonts \
+    && curl --retry 3 --retry-delay 2 -L \
+       "https://github.com/google/fonts/raw/main/ofl/dancingscript/static/DancingScript-Regular.ttf" \
+       -o /app/server/fonts/DancingScript-Regular.ttf \
+    || echo "[warn] DancingScript font download failed, PDFs will use fallback font"
 
 # Build do backend
 RUN pnpm run build:server
@@ -114,6 +127,9 @@ COPY drizzle ./drizzle
 COPY drizzle.config.ts ./drizzle.config.ts
 COPY email-templates ./email-templates
 COPY scripts ./scripts
+
+# Copiar fontes para os PDFs
+COPY --from=backend-builder /app/server/fonts ./server/fonts
 
 # Criar diretório para logs
 RUN mkdir -p /app/logs && chmod 755 /app/logs

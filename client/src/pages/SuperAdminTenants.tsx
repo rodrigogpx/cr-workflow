@@ -300,7 +300,7 @@ export default function SuperAdminTenants() {
   });
 
   const { data: tenants = [], isLoading: isLoadingTenants, isFetching } = trpc.tenants.list.useQuery();
-  const { data: planDefinitions = [] } = (trpc as any).billing.listPlans.useQuery();
+  const { data: planDefinitions = [] } = trpc.plans.list.useQuery();
 
   const createTenant = trpc.tenants.create.useMutation({
     onSuccess: () => {
@@ -878,8 +878,8 @@ export default function SuperAdminTenants() {
               {/* Features */}
               <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
                 <div>
-                  <h4 className="font-semibold text-gray-800">Módulos Incluídos no Plano</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">Módulos definidos pelo plano selecionado</p>
+                  <h4 className="font-semibold text-gray-800">Módulos Disponíveis</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Selecione os módulos ativos para este tenant</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {MODULE_DEFINITIONS.map((mod) => (
@@ -887,8 +887,7 @@ export default function SuperAdminTenants() {
                       key={mod.key}
                       mod={mod}
                       enabled={!!newTenant[mod.key]}
-                      onToggle={() => {}}
-                      readonly
+                      onToggle={() => setNewTenant({ ...newTenant, [mod.key]: !newTenant[mod.key] })}
                     />
                   ))}
                 </div>
@@ -1099,8 +1098,8 @@ export default function SuperAdminTenants() {
 
               <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
                 <div>
-                  <h4 className="font-semibold text-gray-800">Módulos Incluídos no Plano</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">Módulos definidos pelo plano selecionado</p>
+                  <h4 className="font-semibold text-gray-800">Módulos Disponíveis</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Selecione os módulos ativos para este tenant</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {MODULE_DEFINITIONS.map((mod) => (
@@ -1108,8 +1107,7 @@ export default function SuperAdminTenants() {
                       key={mod.key}
                       mod={mod}
                       enabled={!!editingTenant[mod.key]}
-                      onToggle={() => {}}
-                      readonly
+                      onToggle={() => setEditingTenant({ ...editingTenant, [mod.key]: !editingTenant[mod.key] })}
                     />
                   ))}
                 </div>

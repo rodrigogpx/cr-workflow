@@ -128,6 +128,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function PlatformAdminRoute({ children }: { children: React.ReactNode }) {
   const { admin, loading } = usePlatformAuth({ redirectOnUnauthenticated: true });
 
+  // loading = isPending (sem dado em cache) — mantém spinner até auth resolver
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -136,8 +137,10 @@ function PlatformAdminRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // usePlatformAuth já faz window.location.replace via useEffect,
+  // mas o return null garante que nenhum conteúdo seja renderizado enquanto redireciona
   if (!admin) {
-    return <Redirect to="/platform-admin/login" />;
+    return null;
   }
 
   return <>{children}</>;

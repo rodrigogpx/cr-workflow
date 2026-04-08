@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import PortalLayout from "./PortalLayout";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, CheckCircle2, LogOut, ChevronRight, GitBranch, FileText, MessageSquare } from "lucide-react";
+import { ClipboardList, CheckCircle2, LogOut, ChevronRight, GitBranch, FileText, MessageSquare, Clock, ArrowRight } from "lucide-react";
 import { usePortalAuth } from "./usePortalAuth";
 
 type PortalMessage = {
@@ -23,6 +23,7 @@ export default function PortalDashboard() {
   const { client, lgpdAccepted, cadastroCompleto, loading, logout } = usePortalAuth();
   const [messages, setMessages] = useState<PortalMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [steps, setSteps] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && !client) navigate("/portal/login");
@@ -31,6 +32,14 @@ export default function PortalDashboard() {
   useEffect(() => {
     if (!loading && client && !lgpdAccepted) navigate("/portal/lgpd");
   }, [loading, client, lgpdAccepted, navigate]);
+
+  useEffect(() => {
+    if (!client) return;
+    fetch("/api/portal/meu-processo", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { steps: [] })
+      .then(data => setSteps(Array.isArray(data?.steps) ? data.steps : []))
+      .catch(() => {});
+  }, [client]);
 
   useEffect(() => {
     if (!client) return;
@@ -94,6 +103,63 @@ export default function PortalDashboard() {
               <LogOut className="h-4 w-4 mr-1" /> Sair
             </Button>
           </div>
+
+          {/* Card: Próximo passo + progresso geral */}
+          {steps.length > 0 && (() => {
+            const totalSteps = steps.length;
+            const completedSteps = steps.filter((s: any) => s.completed).length;
+            const progressPct = Math.round((completedSteps / totalSteps) * 100);
+            const currentStep = steps.find((s: any) => !s.completed);
+            const allDone = completedSteps === totalSteps;
+
+            return (
+              <div className="bg-white rounded-xl border border-purple-200 shadow-sm p-5 space-y-4">
+                {/* Progresso geral */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Progresso geral</span>
+                    <span className="text-xs font-bold text-purple-700">{completedSteps}/{totalSteps} etapas</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                    <div
+                      className="bg-purple-500 h-2.5 rounded-full transition-all duration-500"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">{progressPct}% concluído</p>
+                </div>
+
+                {/* Etapa atual ou concluído */}
+                {allDone ? (
+                  <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                    <span className="font-medium">Processo concluído! Todas as etapas foram finalizadas.</span>
+                  </div>
+                ) : currentStep ? (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[11px] font-semibold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">● Etapa atual</span>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-gray-800">{currentStep.stepTitle}</p>
+                        <div className="flex items-center gap-1.5 mt-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                          <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="text-xs font-medium">Aguardando validação pelo operador</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => navigate("/portal/meu-processo")}
+                        className="flex-shrink-0 flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 font-medium mt-0.5"
+                      >
+                        Ver detalhes <ArrowRight className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()}
 
           {/* Cards de ação — 4 cards em grid 2x2 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
