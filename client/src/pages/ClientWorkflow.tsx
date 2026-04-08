@@ -1767,7 +1767,7 @@ export default function ClientWorkflow() {
                                 clientId={Number(clientId)}
                                 clientEmail={client.email || ""}
                                 clientName={client.name || "Cliente"}
-                                templateKey="agendamento_laudo"
+                                templateKey="laudo_tecnico"
                                 title="Enviar Confirmação de Agendamento"
                                 requiresScheduling={true}
                                 scheduledDate={step.scheduledDate}
