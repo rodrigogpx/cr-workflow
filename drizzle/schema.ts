@@ -1023,4 +1023,69 @@ export const leads = pgTable("leads", {
 });
 
 export type Lead = typeof leads.$inferSelect;
-export type InsertLead = typeof leads.$inferInsert; 
+export type InsertLead = typeof leads.$inferInsert;
+
+/**
+ * ============================================
+ * Compliance & Vencimentos — Documentos
+ * Repositório de documentos com validade (CR, GT, CRAF, Laudos, Certificados)
+ * ============================================
+ */
+export const complianceDocuments = pgTable("complianceDocuments", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  clientId: integer("clientId").notNull(),
+  documentType: varchar("documentType", { length: 50 }).notNull(),
+  // cr | gt | craf | laudo_tecnico | certificado_curso | outro
+  documentNumber: varchar("documentNumber", { length: 100 }),
+  issueDate: date("issueDate"),
+  expiryDate: date("expiryDate").notNull(),
+  sourceModule: varchar("sourceModule", { length: 50 }),
+  // workflow_cr | iat | manual
+  sourceId: integer("sourceId"),
+  fileUrl: text("fileUrl"),
+  fileName: varchar("fileName", { length: 255 }),
+  notes: text("notes"),
+  status: varchar("status", { length: 30 }).notNull().default("valido"),
+  // valido | vencido | pendente | renovado
+  notifiedAt: timestamp("notifiedAt", { withTimezone: false }),
+  notificationDays: integer("notificationDays").default(30),
+  createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type ComplianceDocument = typeof complianceDocuments.$inferSelect;
+export type InsertComplianceDocument = typeof complianceDocuments.$inferInsert;
+
+export const complianceDocumentsRelations = relations(complianceDocuments, ({ one }: any) => ({
+  client: one(clients, {
+    fields: [complianceDocuments.clientId],
+    references: [clients.id],
+  }),
+}));
+
+/**
+ * ============================================
+ * Compliance & Vencimentos — Alertas
+ * Histórico de notificações enviadas sobre vencimentos
+ * ============================================
+ */
+export const complianceAlerts = pgTable("complianceAlerts", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  documentId: integer("documentId").notNull(),
+  clientId: integer("clientId").notNull(),
+  alertType: varchar("alertType", { length: 30 }).notNull(),
+  // vencimento_proximo | vencido | renovacao_solicitada
+  daysUntilExpiry: integer("daysUntilExpiry"),
+  channel: varchar("channel", { length: 20 }).notNull(),
+  // email | dashboard | portal
+  sentAt: timestamp("sentAt", { withTimezone: false }).defaultNow().notNull(),
+  openedAt: timestamp("openedAt", { withTimezone: false }),
+  status: varchar("status", { length: 20 }).default("sent"),
+  // sent | delivered | opened | failed
+  errorMessage: text("errorMessage"),
+});
+
+export type ComplianceAlert = typeof complianceAlerts.$inferSelect;
+export type InsertComplianceAlert = typeof complianceAlerts.$inferInsert;

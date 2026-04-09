@@ -3084,3 +3084,331 @@ export async function ensurePortalAndMarketingTables(): Promise<void> {
     )
   `);
 }
+
+// ============================================
+// COMPLIANCE & VENCIMENTOS — Documentos
+// ============================================
+
+/** Cria um novo documento de compliance */
+export async function createComplianceDocument(
+  db: ReturnType<typeof drizzle>,
+  data: {
+    tenantId: number;
+    clientId: number;
+    documentType: string;
+    documentNumber?: string | null;
+    issueDate?: string | null;
+    expiryDate: string;
+    sourceModule?: string | null;
+    sourceId?: number | null;
+    fileUrl?: string | null;
+    fileName?: string | null;
+    notes?: string | null;
+    notificationDays?: number | null;
+  }
+): Promise<number> {
+  const result = await db.execute(sql`
+    INSERT INTO "complianceDocuments" (
+      "tenantId", "clientId", "documentType", "documentNumber", "issueDate",
+      "expiryDate", "sourceModule", "sourceId", "fileUrl", "fileName",
+      "notes", "status", "notificationDays", "createdAt", "updatedAt"
+    ) VALUES (
+      ${data.tenantId}, ${data.clientId}, ${data.documentType}, ${data.documentNumber ?? null},
+      ${data.issueDate ?? null}, ${data.expiryDate}, ${data.sourceModule ?? null},
+      ${data.sourceId ?? null}, ${data.fileUrl ?? null}, ${data.fileName ?? null},
+      ${data.notes ?? null}, 'valido', ${data.notificationDays ?? 30}, now(), now()
+    )
+    RETURNING id
+  `);
+  return extractRows(result)[0]?.id ?? 0;
+}
+
+/** Busca documentos de compliance por tenant com filtros opcionais */
+export async function getComplianceDocuments(
+  db: ReturnType<typeof drizzle>,
+  tenantId: number,
+  filters?: {
+    clientId?: number;
+    documentType?: string;
+    status?: string;
+    expiringBefore?: string;
+    expiringAfter?: string;
+  }
+): Promise<any[]> {
+  const result = await db.execute(sql`
+    SELECT 
+      cd.*,
+      c.name as "clientName",
+      c.cpf as "clientCpf"
+    FROM "complianceDocuments" cd
+    JOIN clients c ON c.id = cd."clientId"
+    WHERE cd."tenantId" = ${tenantId}
+      ${filters?.clientId ? sql`AND cd."clientId" = ${filters.clientId}` : sql``}
+      ${filters?.documentType ? sql`AND cd."documentType" = ${filters.documentType}` : sql``}
+      ${filters?.status ? sql`AND cd.status = ${filters.status}` : sql``}
+      ${filters?.expiringBefore ? sql`AND cd."expiryDate" <= ${filters.expiringBefore}::date` : sql``}
+      ${filters?.expiringAfter ? sql`AND cd."expiryDate" >= ${filters.expiringAfter}::date` : sql``}
+    ORDER BY cd."expiryDate" ASC, cd."createdAt" DESC
+  `);
+  return extractRows(result);
+}
+
+/** Busca um documento específico por ID */
+export async function getComplianceDocumentById(
+  db: ReturnType<typeof drizzle>,
+  id: number,
+  tenantId?: number | null
+): Promise<any | null> {
+  const result = await db.execute(sql`
+    SELECT 
+      cd.*,
+      c.name as "clientName",
+      c.cpf as "clientCpf"
+    FROM "complianceDocuments" cd
+    JOIN clients c ON c.id = cd."clientId"
+    WHERE cd.id = ${id}
+      ${tenantId ? sql`AND cd."tenantId" = ${tenantId}` : sql``}
+    LIMIT 1
+  `);
+  const rows = extractRows(result);
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/** Atualiza um documento de compliance */
+export async function updateComplianceDocument(
+  db: ReturnType<typeof drizzle>,
+  id: number,
+  data: {
+    documentNumber?: string | null;
+    issueDate?: string | null;
+    expiryDate?: string;
+    fileUrl?: string | null;
+    fileName?: string | null;
+    notes?: string | null;
+    status?: string;
+    notificationDays?: number | null;
+  },
+  tenantId?: number | null
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE "complianceDocuments"
+    SET 
+      "documentNumber" = ${data.documentNumber ?? null},
+      "issueDate" = ${data.issueDate ?? null},
+      "expiryDate" = ${data.expiryDate ?? sql`"expiryDate"`},
+      "fileUrl" = ${data.fileUrl ?? null},
+      "fileName" = ${data.fileName ?? null},
+      "notes" = ${data.notes ?? null},
+      status = ${data.status ?? sql`status`},
+      "notificationDays" = ${data.notificationDays ?? sql`"notificationDays"`},
+      "updatedAt" = now()
+    WHERE id = ${id}
+      ${tenantId ? sql`AND "tenantId" = ${tenantId}` : sql``}
+  `);
+}
+
+/** Remove um documento de compliance */
+export async function deleteComplianceDocument(
+  db: ReturnType<typeof drizzle>,
+  id: number,
+  tenantId?: number | null
+): Promise<void> {
+  await db.execute(sql`
+    DELETE FROM "complianceDocuments"
+    WHERE id = ${id}
+      ${tenantId ? sql`AND "tenantId" = ${tenantId}` : sql``}
+  `);
+}
+
+/** Marca um documento como renovado */
+export async function markComplianceDocumentAsRenewed(
+  db: ReturnType<typeof drizzle>,
+  id: number,
+  tenantId?: number | null
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE "complianceDocuments"
+    SET status = 'renovado', "updatedAt" = now()
+    WHERE id = ${id}
+      ${tenantId ? sql`AND "tenantId" = ${tenantId}` : sql``}
+  `);
+}
+
+/** Atualiza a data da última notificação */
+export async function updateComplianceDocumentNotifiedAt(
+  db: ReturnType<typeof drizzle>,
+  id: number,
+  tenantId?: number | null
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE "complianceDocuments"
+    SET "notifiedAt" = now(), "updatedAt" = now()
+    WHERE id = ${id}
+      ${tenantId ? sql`AND "tenantId" = ${tenantId}` : sql``}
+  `);
+}
+
+/** Busca documentos próximos ao vencimento */
+export async function getExpiringComplianceDocuments(
+  db: ReturnType<typeof drizzle>,
+  tenantId: number,
+  daysThreshold: number = 30
+): Promise<any[]> {
+  const result = await db.execute(sql`
+    SELECT 
+      cd.*,
+      c.name as "clientName",
+      c.cpf as "clientCpf",
+      c.email as "clientEmail"
+    FROM "complianceDocuments" cd
+    JOIN clients c ON c.id = cd."clientId"
+    WHERE cd."tenantId" = ${tenantId}
+      AND cd.status IN ('valido', 'pendente')
+      AND cd."expiryDate" <= (CURRENT_DATE + INTERVAL '${daysThreshold} days')
+    ORDER BY cd."expiryDate" ASC
+  `);
+  return extractRows(result);
+}
+
+/** Retorna estatísticas do dashboard de compliance */
+export async function getComplianceDashboardStats(
+  db: ReturnType<typeof drizzle>,
+  tenantId: number
+): Promise<{
+  total: number;
+  valid: number;
+  expired: number;
+  expiringSoon: number;
+  byType: Record<string, number>;
+}> {
+  const totalResult = await db.execute(sql`
+    SELECT COUNT(*) as count FROM "complianceDocuments" WHERE "tenantId" = ${tenantId}
+  `);
+  const validResult = await db.execute(sql`
+    SELECT COUNT(*) as count FROM "complianceDocuments" 
+    WHERE "tenantId" = ${tenantId} AND status = 'valido'
+  `);
+  const expiredResult = await db.execute(sql`
+    SELECT COUNT(*) as count FROM "complianceDocuments" 
+    WHERE "tenantId" = ${tenantId} AND (status = 'vencido' OR "expiryDate" < CURRENT_DATE)
+  `);
+  const expiringSoonResult = await db.execute(sql`
+    SELECT COUNT(*) as count FROM "complianceDocuments" 
+    WHERE "tenantId" = ${tenantId} 
+      AND status IN ('valido', 'pendente')
+      AND "expiryDate" BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '30 days')
+  `);
+  const byTypeResult = await db.execute(sql`
+    SELECT "documentType", COUNT(*) as count 
+    FROM "complianceDocuments" 
+    WHERE "tenantId" = ${tenantId}
+    GROUP BY "documentType"
+  `);
+
+  const byType: Record<string, number> = {};
+  extractRows(byTypeResult).forEach((row: any) => {
+    byType[row.documentType] = Number(row.count);
+  });
+
+  return {
+    total: Number(extractRows(totalResult)[0]?.count ?? 0),
+    valid: Number(extractRows(validResult)[0]?.count ?? 0),
+    expired: Number(extractRows(expiredResult)[0]?.count ?? 0),
+    expiringSoon: Number(extractRows(expiringSoonResult)[0]?.count ?? 0),
+    byType,
+  };
+}
+
+// ============================================
+// COMPLIANCE & VENCIMENTOS — Alertas
+// ============================================
+
+/** Cria um registro de alerta */
+export async function createComplianceAlert(
+  db: ReturnType<typeof drizzle>,
+  data: {
+    tenantId: number;
+    documentId: number;
+    clientId: number;
+    alertType: string;
+    daysUntilExpiry?: number | null;
+    channel: string;
+    status?: string;
+  }
+): Promise<number> {
+  const result = await db.execute(sql`
+    INSERT INTO "complianceAlerts" (
+      "tenantId", "documentId", "clientId", "alertType", "daysUntilExpiry",
+      channel, status, "sentAt"
+    ) VALUES (
+      ${data.tenantId}, ${data.documentId}, ${data.clientId}, ${data.alertType},
+      ${data.daysUntilExpiry ?? null}, ${data.channel}, ${data.status ?? 'sent'}, now()
+    )
+    RETURNING id
+  `);
+  return extractRows(result)[0]?.id ?? 0;
+}
+
+/** Busca alertas por tenant com filtros opcionais */
+export async function getComplianceAlerts(
+  db: ReturnType<typeof drizzle>,
+  tenantId: number,
+  filters?: {
+    documentId?: number;
+    clientId?: number;
+    alertType?: string;
+    status?: string;
+    limit?: number;
+  }
+): Promise<any[]> {
+  const result = await db.execute(sql`
+    SELECT 
+      ca.*,
+      c.name as "clientName",
+      c.cpf as "clientCpf",
+      cd."documentType",
+      cd."documentNumber",
+      cd."expiryDate"
+    FROM "complianceAlerts" ca
+    JOIN clients c ON c.id = ca."clientId"
+    JOIN "complianceDocuments" cd ON cd.id = ca."documentId"
+    WHERE ca."tenantId" = ${tenantId}
+      ${filters?.documentId ? sql`AND ca."documentId" = ${filters.documentId}` : sql``}
+      ${filters?.clientId ? sql`AND ca."clientId" = ${filters.clientId}` : sql``}
+      ${filters?.alertType ? sql`AND ca."alertType" = ${filters.alertType}` : sql``}
+      ${filters?.status ? sql`AND ca.status = ${filters.status}` : sql``}
+    ORDER BY ca."sentAt" DESC
+    ${filters?.limit ? sql`LIMIT ${filters.limit}` : sql``}
+  `);
+  return extractRows(result);
+}
+
+/** Marca um alerta como aberto (quando o usuário visualiza) */
+export async function markComplianceAlertAsOpened(
+  db: ReturnType<typeof drizzle>,
+  alertId: number,
+  tenantId?: number | null
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE "complianceAlerts"
+    SET "openedAt" = now(), status = 'opened'
+    WHERE id = ${alertId}
+      ${tenantId ? sql`AND "tenantId" = ${tenantId}` : sql``}
+  `);
+}
+
+/** Atualiza status de um alerta */
+export async function updateComplianceAlertStatus(
+  db: ReturnType<typeof drizzle>,
+  alertId: number,
+  status: string,
+  errorMessage?: string | null,
+  tenantId?: number | null
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE "complianceAlerts"
+    SET status = ${status}, "errorMessage" = ${errorMessage ?? null}
+    WHERE id = ${alertId}
+      ${tenantId ? sql`AND "tenantId" = ${tenantId}` : sql``}
+  `);
+}
