@@ -186,7 +186,7 @@ export default function IATModule() {
   const tenantSlug = useTenantSlug();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [tab, setTab] = useState("instructors");
+  const [tab, setTab] = useState("calendar");
   const [search, setSearch] = useState("");
   const [instrDlg, setInstrDlg] = useState<{ open: boolean; editing?: Instructor }>({ open: false });
   const [courseDlg, setCourseDlg] = useState<{ open: boolean; editing?: Course }>({ open: false });
@@ -277,12 +277,12 @@ export default function IATModule() {
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="bg-card/80 border border-white/10">
+            <TabsTrigger value="calendar" className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-primary" />Calendário</TabsTrigger>
             <TabsTrigger value="instructors" className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />Instrutores</TabsTrigger>
             <TabsTrigger value="courses" className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" />Cursos</TabsTrigger>
             <TabsTrigger value="classes" className="flex items-center gap-1.5"><Layers className="h-3.5 w-3.5" />Turmas</TabsTrigger>
             <TabsTrigger value="exams" className="flex items-center gap-1.5"><ClipboardList className="h-3.5 w-3.5" />Exames</TabsTrigger>
             <TabsTrigger value="schedules" className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Agendamentos</TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-primary" />Calendário</TabsTrigger>
           </TabsList>
 
           <TabsContent value="instructors" className="space-y-4 mt-4">
