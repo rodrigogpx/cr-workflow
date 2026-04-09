@@ -23,6 +23,9 @@ import { Buffer } from "node:buffer";
 async function getTenantDbOrNull(ctx: TrpcContext) {
   if (ctx?.tenantSlug && ctx?.tenant) {
     // No single-db mode, usar o platformDb diretamente (sem healthcheck que falha no Railway)
+    // NOTA: RLS (Row Level Security) NÃO está ativa nesta connection pool compartilhada.
+    // O isolamento depende dos filtros `WHERE tenantId = X` em cada query.
+    // Para ativar RLS, seria necessário usar transactions com set_config() por request.
     const isSingleDbMode = process.env.TENANT_DB_MODE === 'single' || process.env.NODE_ENV === 'production';
     if (isSingleDbMode) {
       const platformDb = await db.getDb();
@@ -577,7 +580,7 @@ export const appRouter = router({
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.id)
+          ? await db.getClientByIdFromDb(tenantDb, input.id, ctx.tenant?.id)
           : await db.getClientById(input.id);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -853,7 +856,7 @@ export const appRouter = router({
         // Trigger email automation for CLIENT_CREATED event
         try {
           const newClient = tenantDb
-            ? await db.getClientByIdFromDb(tenantDb, clientId)
+            ? await db.getClientByIdFromDb(tenantDb, clientId, ctx.tenant?.id)
             : await db.getClientById(clientId);
           if (newClient) {
             // Construir link do portal para {{link_portal}} no template welcome.
@@ -895,7 +898,7 @@ export const appRouter = router({
           .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
             const tenantDb = await getTenantDbOrNull(ctx);
             const client = tenantDb
-              ? await db.getClientByIdFromDb(tenantDb, input.id)
+              ? await db.getClientByIdFromDb(tenantDb, input.id, ctx.tenant?.id)
               : await db.getClientById(input.id);
             if (!client) {
               throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -969,7 +972,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.id)
+          ? await db.getClientByIdFromDb(tenantDb, input.id, ctx.tenant?.id)
           : await db.getClientById(input.id);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1002,7 +1005,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.id)
+          ? await db.getClientByIdFromDb(tenantDb, input.id, ctx.tenant?.id)
           : await db.getClientById(input.id);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1010,7 +1013,7 @@ export const appRouter = router({
         
         // Apenas admin pode deletar clientes
         if (tenantDb) {
-          await db.deleteClientFromDb(tenantDb, input.id);
+          await db.deleteClientFromDb(tenantDb, input.id, ctx.tenant?.id);
         } else {
           await db.deleteClient(input.id);
         }
@@ -1145,7 +1148,7 @@ export const appRouter = router({
         try {
           const tenantDb = await getTenantDbOrNull(ctx);
           const client = tenantDb
-            ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+            ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
             : await db.getClientById(input.clientId);
           if (!client) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1209,14 +1212,14 @@ export const appRouter = router({
         const tenantDb = await getTenantDbOrNull(ctx);
         // Buscar etapa atual
         const currentStep = tenantDb
-          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
+          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId, ctx.tenant?.id)
           : await db.getWorkflowStepById(input.stepId);
         if (!currentStep) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
         }
         
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, currentStep.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, currentStep.clientId, ctx.tenant?.id)
           : await db.getClientById(currentStep.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1484,7 +1487,7 @@ export const appRouter = router({
         const tenantDb = await getTenantDbOrNull(ctx);
 
         const step = tenantDb
-          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
+          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId, ctx.tenant?.id)
           : await db.getWorkflowStepById(input.stepId);
 
         if (!step) {
@@ -1492,7 +1495,7 @@ export const appRouter = router({
         }
 
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, step.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, step.clientId, ctx.tenant?.id)
           : await db.getClientById(step.clientId);
 
         if (!client) {
@@ -1524,7 +1527,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
           : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1549,7 +1552,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
           : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1580,7 +1583,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
           : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1592,7 +1595,7 @@ export const appRouter = router({
         }
         
         const currentStep = tenantDb
-          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
+          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId, ctx.tenant?.id)
           : await db.getWorkflowStepById(input.stepId);
         if (!currentStep) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
@@ -1656,7 +1659,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
           : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1672,7 +1675,7 @@ export const appRouter = router({
         }
 
         const currentStep = tenantDb
-          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
+          ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId, ctx.tenant?.id)
           : await db.getWorkflowStepById(input.stepId);
         if (!currentStep) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
@@ -1760,7 +1763,7 @@ export const appRouter = router({
         try {
           const tenantDb = await getTenantDbOrNull(ctx);
           const client = tenantDb
-            ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+            ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
             : await db.getClientById(input.clientId);
           if (!client) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1793,7 +1796,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
           : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1916,7 +1919,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const doc = tenantDb
-          ? await db.getDocumentByIdFromDb(tenantDb, input.id)
+          ? await db.getDocumentByIdFromDb(tenantDb, input.id, ctx.tenant?.id)
           : await db.getDocumentById(input.id);
         
         if (!doc) {
@@ -1924,7 +1927,7 @@ export const appRouter = router({
         }
         
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, doc.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, doc.clientId, ctx.tenant?.id)
           : await db.getClientById(doc.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -1972,7 +1975,7 @@ export const appRouter = router({
         }
 
         if (tenantDb) {
-          await db.deleteDocumentFromDb(tenantDb, input.id);
+          await db.deleteDocumentFromDb(tenantDb, input.id, ctx.tenant?.id);
         } else {
           await db.deleteDocument(input.id);
         }
@@ -1984,7 +1987,7 @@ export const appRouter = router({
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
           : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -2500,7 +2503,7 @@ export const appRouter = router({
 
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
           : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
@@ -2694,7 +2697,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const user = tenantDb
-          ? await db.getUserByIdFromDb(tenantDb, input.userId)
+          ? await db.getUserByIdFromDb(tenantDb, input.userId, ctx.tenant?.id)
           : await db.getUserById(input.userId);
         if (!user) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
@@ -2768,7 +2771,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const user = tenantDb
-          ? await db.getUserByIdFromDb(tenantDb, input.userId)
+          ? await db.getUserByIdFromDb(tenantDb, input.userId, ctx.tenant?.id)
           : await db.getUserById(input.userId);
         if (!user) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
@@ -2815,7 +2818,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const user = tenantDb
-          ? await db.getUserByIdFromDb(tenantDb, input.userId)
+          ? await db.getUserByIdFromDb(tenantDb, input.userId, ctx.tenant?.id)
           : await db.getUserById(input.userId);
         if (!user) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
@@ -2852,7 +2855,7 @@ export const appRouter = router({
         }
 
         const user = tenantDb
-          ? await db.getUserByIdFromDb(tenantDb, input.userId)
+          ? await db.getUserByIdFromDb(tenantDb, input.userId, ctx.tenant?.id)
           : await db.getUserById(input.userId);
         if (!user) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
@@ -2869,7 +2872,7 @@ export const appRouter = router({
         }
         
         if (tenantDb) {
-          await db.deleteUserFromDb(tenantDb, input.userId);
+          await db.deleteUserFromDb(tenantDb, input.userId, ctx.tenant?.id);
         } else {
           await db.deleteUser(input.userId);
         }
@@ -2933,14 +2936,14 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
-          ? await db.getClientByIdFromDb(tenantDb, input.clientId)
+          ? await db.getClientByIdFromDb(tenantDb, input.clientId, ctx.tenant?.id)
           : await db.getClientById(input.clientId);
         if (!client) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
 
         const operator = tenantDb
-          ? await db.getUserByIdFromDb(tenantDb, input.operatorId)
+          ? await db.getUserByIdFromDb(tenantDb, input.operatorId, ctx.tenant?.id)
           : await db.getUserById(input.operatorId);
         if (!operator) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Operador não encontrado' });
@@ -4594,74 +4597,4 @@ export const appRouter = router({
         if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
 
         // Buscar dados do documento pendente (sem filtro de tenantId para encontrar por id)
-        const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
-        const doc = docRows.find((d: any) => d.id === input.docId);
-        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
-
-        const finalFileName = (input.newFileName?.trim() || input.fileName || doc.fileName).trim();
-        const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
-        const uploadedBy = ctx.user?.id ?? 0;
-
-        // Inserir na juntada oficial
-        await activeDb.execute(sql`
-          INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileKey", "fileUrl", "mimeType", "fileSize", "uploadedBy", "createdAt")
-          VALUES (${input.subTaskId}, ${doc.clientId}, ${finalFileName}, ${fileKey}, ${doc.fileUrl},
-                  ${doc.mimeType ?? null}, ${doc.fileSize ?? null}, ${uploadedBy}, now())
-        `);
-
-        // Marcar como vinculado
-        await db.updatePendingDocumentStatus(activeDb, input.docId, "linked", {
-          linkedSubTaskId: input.subTaskId,
-        });
-
-        return { success: true };
-      }),
-  }),
-});
-
-/** Notifica cliente sobre decisão de triagem do documento */
-async function notifyClientOfDocumentDecision(
-  ctx: TrpcContext,
-  docId: number,
-  decision: "approved" | "rejected",
-  reason?: string
-): Promise<void> {
-  try {
-    const tenantDb = await getTenantDbOrNull(ctx);
-    const activeDb = tenantDb || await db.getDb();
-    if (!activeDb) return;
-    const docRows = await activeDb.execute(sql`
-      SELECT pd.*, c.name AS "clientName", c.email AS "clientEmail", pd."fileName"
-      FROM "clientPendingDocuments" pd
-      INNER JOIN "clients" c ON c.id = pd."clientId"
-      WHERE pd.id = ${docId} LIMIT 1
-    `);
-    const arr = Array.isArray(docRows) ? docRows : (docRows as any).rows ?? [];
-    if (!arr[0]?.clientEmail) return;
-    const { clientName, clientEmail, fileName } = arr[0];
-    const isApproved = decision === "approved";
-    await sendEmail({
-      to: clientEmail,
-      subject: isApproved ? `[CAC 360] Documento aprovado!` : `[CAC 360] Documento não aprovado`,
-      html: isApproved
-        ? `<div style="font-family:sans-serif;max-width:600px">
-            <h3 style="color:#16a34a">Documento aprovado! ✓</h3>
-            <p>Olá <strong>${clientName}</strong>,</p>
-            <p>Seu documento <strong>${fileName ?? ""}</strong> foi aprovado pela equipe do clube.</p>
-            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
-          </div>`
-        : `<div style="font-family:sans-serif;max-width:600px">
-            <h3 style="color:#dc2626">Documento não aprovado</h3>
-            <p>Olá <strong>${clientName}</strong>,</p>
-            <p>Seu documento <strong>${fileName ?? ""}</strong> não foi aprovado.</p>
-            ${reason ? `<p><strong>Motivo:</strong> ${reason}</p>` : ""}
-            <p>Acesse o portal e envie o documento corrigido.</p>
-            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
-          </div>`,
-    } as any).catch((e: any) => console.error("[PendingDocs] Email cliente:", e));
-  } catch (e) {
-    console.error("[PendingDocs] notifyClientOfDocumentDecision:", e);
-  }
-}
-
-export type AppRouter = typeof appRouter;
+        const docRows = await db.getPendingDocumentsForTriage(act

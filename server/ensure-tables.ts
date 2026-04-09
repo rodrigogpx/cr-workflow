@@ -161,11 +161,21 @@ export async function ensureMissingTables() {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "emailTriggerTemplates" (
         "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer,
         "triggerId" integer NOT NULL,
         "templateId" integer NOT NULL,
         "sendOrder" integer DEFAULT 1 NOT NULL,
         "isForReminder" boolean DEFAULT false NOT NULL
       );
+    `);
+    // Migração: adicionar tenantId se não existir (tabelas já criadas)
+    await db.execute(sql`ALTER TABLE "emailTriggerTemplates" ADD COLUMN IF NOT EXISTS "tenantId" integer;`);
+    // Preencher tenantId a partir do trigger pai
+    await db.execute(sql`
+      UPDATE "emailTriggerTemplates" ett
+      SET "tenantId" = et."tenantId"
+      FROM "emailTriggers" et
+      WHERE ett."triggerId" = et."id" AND ett."tenantId" IS NULL;
     `);
 
     // Email Scheduled

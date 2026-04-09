@@ -8,6 +8,13 @@ import { eq, and, desc, sql, count, asc } from "drizzle-orm";
 
 async function getIatDb(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
+    // Em single-db mode (produção), usar platformDb diretamente
+    const isSingleDbMode = process.env.TENANT_DB_MODE === 'single' || process.env.NODE_ENV === 'production';
+    if (isSingleDbMode) {
+      const platformDb = await getDb();
+      if (!platformDb) throw new TRPCError({ code: "FORBIDDEN", message: "Banco de dados não disponível" });
+      return platformDb;
+    }
     const tenantDb = await getTenantDb(ctx.tenant);
     if (!tenantDb) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Banco do tenant indisponível" });
@@ -18,7 +25,9 @@ async function getIatDb(ctx: any) {
 }
 
 function getTenantId(ctx: any): number {
-  return ctx?.tenant?.id ?? 0;
+  const id = ctx?.tenant?.id;
+  if (!id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant não identificado' });
+  return id;
 }
 
 // ─── Instructors ─────────────────────────────────────────────────────────────

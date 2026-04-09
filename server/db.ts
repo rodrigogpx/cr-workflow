@@ -833,11 +833,8 @@ export async function getAllClients() {
   return await db.select().from(clients).orderBy(desc(clients.createdAt));
 }
 
-export async function getAllClientsFromDb(tenantDb: ReturnType<typeof drizzle>, tenantId?: number) {
-  if (tenantId) {
-    return await tenantDb.select().from(clients).where(eq(clients.tenantId, tenantId)).orderBy(desc(clients.createdAt));
-  }
-  return await tenantDb.select().from(clients).orderBy(desc(clients.createdAt));
+export async function getAllClientsFromDb(tenantDb: ReturnType<typeof drizzle>, tenantId: number) {
+  return await tenantDb.select().from(clients).where(eq(clients.tenantId, tenantId)).orderBy(desc(clients.createdAt));
 }
 
 export async function getClientById(clientId: number) {
@@ -850,7 +847,11 @@ export async function getClientById(clientId: number) {
 
 export async function getClientByIdFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number, tenantId?: number) {
   const conditions = [eq(clients.id, clientId)];
+  // SECURITY: sempre filtrar por tenantId quando disponível (obrigatório em single-db mode)
   if (tenantId) conditions.push(eq(clients.tenantId, tenantId));
+  else if (process.env.TENANT_DB_MODE === 'single' || process.env.NODE_ENV === 'production') {
+    console.warn('[SECURITY] getClientByIdFromDb chamado sem tenantId em single-db mode — clientId:', clientId);
+  }
   const result = await tenantDb.select().from(clients).where(and(...conditions)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -887,11 +888,9 @@ export async function deleteClient(clientId: number) {
 }
 
 export async function deleteClientFromDb(tenantDb: ReturnType<typeof drizzle>, clientId: number, tenantId?: number) {
-  // SECURITY: Verify client belongs to tenant before cascading deletes
-  if (tenantId) {
-    const client = await getClientByIdFromDb(tenantDb, clientId, tenantId);
-    if (!client) throw new Error('Client not found or does not belong to this tenant');
-  }
+  // SECURITY: Verify client belongs to tenant before cascading deletes (obrigatório)
+  const client = await getClientByIdFromDb(tenantDb, clientId, tenantId);
+  if (!client) throw new Error('Client not found or does not belong to this tenant');
   await tenantDb.delete(documents).where(eq(documents.clientId, clientId));
   const clientWorkflowSteps = await tenantDb
     .select()

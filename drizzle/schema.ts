@@ -305,6 +305,7 @@ export type InsertEmailTrigger = typeof emailTriggers.$inferInsert;
  */
 export const emailTriggerTemplates = pgTable("emailTriggerTemplates", {
   id: serial("id").primaryKey(),
+  tenantId: integer("tenantId"),
   triggerId: integer("triggerId").notNull(),
   templateId: integer("templateId").notNull(),
   sendOrder: integer("sendOrder").default(1).notNull(),
