@@ -3083,3 +3083,102 @@ export async function ensurePortalAndMarketingTables(): Promise<void> {
     )
   `);
 }
+
+// ============================================
+// NOTIFICATIONS — Dashboard notification counts
+// ============================================
+
+/** Conta clientes com juntada de documentos pendentes para Workflow CR */
+export async function getWorkflowCRNotifications(
+  db: ReturnType<typeof drizzle>,
+  tenantId?: number | null
+): Promise<number> {
+  const result = await db.execute(sql`
+    SELECT COUNT(DISTINCT c.id) as count
+    FROM clients c
+    LEFT JOIN workflow_steps ws ON ws."clientId" = c.id AND ws."tenantId" = c."tenantId"
+    WHERE c."tenantId" = ${tenantId ?? null}
+      AND ws."stepId" = 2
+      AND ws.status != 'completed'
+  `);
+  return Number(extractRows(result)[0]?.count ?? 0);
+}
+
+/** Conta agendamentos/exames pendentes para IAT */
+export async function getIATNotifications(
+  db: ReturnType<typeof drizzle>,
+  tenantId?: number | null
+): Promise<number> {
+  const today = new Date().toISOString().split('T')[0];
+  // Agendamentos para hoje ou futuro próximo (próximos 7 dias)
+  const result = await db.execute(sql`
+    SELECT COUNT(*) as count
+    FROM iat_schedules
+    WHERE "tenantId" = ${tenantId ?? null}
+      AND "scheduledDate" >= ${today}::date
+      AND "scheduledDate" <= (${today}::date + INTERVAL '7 days')
+      AND status = 'scheduled'
+  `);
+  return Number(extractRows(result)[0]?.count ?? 0);
+}
+
+/** Conta documentos próximos ao vencimento para Compliance */
+export async function getComplianceNotifications(
+  db: ReturnType<typeof drizzle>,
+  tenantId?: number | null
+): Promise<number> {
+  const today = new Date().toISOString().split('T')[0];
+  // Documentos vencidos ou vencendo nos próximos 30 dias
+  const result = await db.execute(sql`
+    SELECT COUNT(*) as count
+    FROM compliance_documents
+    WHERE "tenantId" = ${tenantId ?? null}
+      AND status IN ('valido', 'pendente')
+      AND (
+        "expiryDate" < ${today}::date
+        OR "expiryDate" <= (${today}::date + INTERVAL '30 days')
+      )
+  `);
+  return Number(extractRows(result)[0]?.count ?? 0);
+}
+
+/** Conta documentos pendentes de triagem (upload do cliente) */
+export async function getPendingTriageNotifications(
+  db: ReturnType<typeof drizzle>,
+  tenantId?: number | null
+): Promise<number> {
+  const result = await db.execute(sql`
+    SELECT COUNT(*) as count
+    FROM "clientPendingDocuments"
+    WHERE "tenantId" = ${tenantId ?? null}
+      AND status = 'pending'
+  `);
+  return Number(extractRows(result)[0]?.count ?? 0);
+}
+
+/** Retorna todas as contagens de notificação para o dashboard */
+export async function getDashboardNotificationCounts(
+  db: ReturnType<typeof drizzle>,
+  tenantId?: number | null
+): Promise<{
+  workflowCR: number;
+  iat: number;
+  compliance: number;
+  pendingTriage: number;
+  total: number;
+}> {
+  const [workflowCR, iat, compliance, pendingTriage] = await Promise.all([
+    getWorkflowCRNotifications(db, tenantId),
+    getIATNotifications(db, tenantId),
+    getComplianceNotifications(db, tenantId),
+    getPendingTriageNotifications(db, tenantId),
+  ]);
+  
+  return {
+    workflowCR,
+    iat,
+    compliance,
+    pendingTriage,
+    total: workflowCR + iat + compliance + pendingTriage,
+  };
+}

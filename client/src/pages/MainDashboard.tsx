@@ -2,7 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { APP_LOGO } from "@/const";
-import { Target, Shield, BookOpen, RefreshCcw, Inbox, LogOut, Lock } from "lucide-react";
+import { Target, Shield, BookOpen, RefreshCcw, Inbox, LogOut, Lock, Bell } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { useEffectiveTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
@@ -10,6 +11,9 @@ export default function MainDashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   const tenantSlug = useEffectiveTenantSlug();
+
+  // Buscar contagens de notificação por módulo
+  const { data: notificationCounts } = trpc.notifications.getCounts.useQuery();
 
   const handleLogout = async () => {
     await logout();
@@ -92,8 +96,14 @@ export default function MainDashboard() {
           {/* Módulo CR Workflow */}
           <Card
             onClick={() => features.featureWorkflowCR && setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
-            className={`border-2 border-dashed ${features.featureWorkflowCR ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
+            className={`border-2 border-dashed ${features.featureWorkflowCR ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300 relative`}
           >
+            {/* Badge de notificação */}
+            {features.featureWorkflowCR && notificationCounts && notificationCounts.workflowCR > 0 && (
+              <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold shadow-lg animate-pulse">
+                <Bell className="h-3 w-3" />
+              </div>
+            )}
             <CardHeader className="space-y-2 pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureWorkflowCR && 'text-muted-foreground'}`}>
@@ -101,6 +111,11 @@ export default function MainDashboard() {
                     {features.featureWorkflowCR ? <Target className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                   </span>
                   Workflow CR
+                  {features.featureWorkflowCR && notificationCounts && notificationCounts.workflowCR > 0 && (
+                    <span className="ml-2 text-[0.65rem] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/40 font-semibold">
+                      {notificationCounts.workflowCR} pendente{notificationCounts.workflowCR > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </CardTitle>
                 {features.featureWorkflowCR ? (
                   <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
@@ -162,8 +177,14 @@ export default function MainDashboard() {
           {/* Módulo IAT */}
           <Card
             onClick={() => features.featureIAT && setLocation(buildTenantPath(tenantSlug, "/iat"))}
-            className={`border-2 border-dashed ${features.featureIAT ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
+            className={`border-2 border-dashed ${features.featureIAT ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300 relative`}
           >
+            {/* Badge de notificação */}
+            {features.featureIAT && notificationCounts && notificationCounts.iat > 0 && (
+              <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold shadow-lg animate-pulse">
+                <Bell className="h-3 w-3" />
+              </div>
+            )}
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureIAT && 'text-muted-foreground'}`}>
@@ -171,6 +192,11 @@ export default function MainDashboard() {
                     {features.featureIAT ? <BookOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                   </span>
                   IAT – Instrução de Armamento e Tiro
+                  {features.featureIAT && notificationCounts && notificationCounts.iat > 0 && (
+                    <span className="ml-2 text-[0.65rem] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/40 font-semibold">
+                      {notificationCounts.iat} agendamento{notificationCounts.iat > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </CardTitle>
                 {features.featureIAT ? (
                   <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
@@ -234,8 +260,14 @@ export default function MainDashboard() {
           {/* Módulo Compliance & Validade (Renovação) */}
           <Card
             onClick={() => features.featureRenovacao && setLocation(buildTenantPath(tenantSlug, "/compliance"))}
-            className={`border-2 border-dashed ${features.featureRenovacao ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
+            className={`border-2 border-dashed ${features.featureRenovacao ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300 relative`}
           >
+            {/* Badge de notificação */}
+            {features.featureRenovacao && notificationCounts && notificationCounts.compliance > 0 && (
+              <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold shadow-lg animate-pulse">
+                <Bell className="h-3 w-3" />
+              </div>
+            )}
             <CardHeader className="space-y-2 pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureRenovacao && 'text-muted-foreground'}`}>
@@ -243,6 +275,11 @@ export default function MainDashboard() {
                     {features.featureRenovacao ? <RefreshCcw className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                   </span>
                   Compliance &amp; Vencimentos
+                  {features.featureRenovacao && notificationCounts && notificationCounts.compliance > 0 && (
+                    <span className="ml-2 text-[0.65rem] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/40 font-semibold">
+                      {notificationCounts.compliance} vencimento{notificationCounts.compliance > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </CardTitle>
                 {features.featureRenovacao ? (
                   <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">

@@ -166,6 +166,27 @@ export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   iat: iatRouter,
+  
+  // Notifications router for dashboard notification counts
+  notifications: router({
+    getCounts: protectedProcedure
+      .query(async ({ ctx }: { ctx: TrpcContext }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id ?? null;
+        
+        if (tenantDb) {
+          return await db.getDashboardNotificationCounts(tenantDb, tenantId);
+        }
+        
+        // Fallback para modo legado (sem tenantDb)
+        const mainDb = await db.getDb();
+        if (!mainDb) {
+          return { workflowCR: 0, iat: 0, compliance: 0, pendingTriage: 0, total: 0 };
+        }
+        return await db.getDashboardNotificationCounts(mainDb, tenantId);
+      }),
+  }),
+  
   auth: router({
     me: publicProcedure.query(({ ctx }: { ctx: TrpcContext }) => {
       if (!ctx.user) return null;
