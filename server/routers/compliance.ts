@@ -1,13 +1,13 @@
-import { protectedProcedure, router } from "../_core/trpc";
+import { router, strictTenantProcedure } from "../_core/trpc";
 import { z } from "zod";
 import * as db from "../db";
 import { TRPCError } from "@trpc/server";
-import type { TrpcContext } from "../_core/context";
-import { getTenantDbOrNull } from "../config/tenant.config";
+import { complianceDocuments, complianceAlerts } from "../../drizzle/schema";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 
 export const complianceRouter = router({
   // Documentos
-  getDocuments: protectedProcedure
+  getDocuments: strictTenantProcedure
     .input(z.object({
       clientId: z.number().optional(),
       documentType: z.string().optional(),
@@ -15,34 +15,25 @@ export const complianceRouter = router({
       expiringBefore: z.string().optional(),
       expiringAfter: z.string().optional(),
     }))
-    .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+    .query(async ({ ctx, input }) => {
       const tenantId = ctx.tenant?.id;
-      if (!tenantId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant não identificado' });
-      
-      if (tenantDb) {
-        return await db.getComplianceDocuments(tenantDb, tenantId, input);
+      if (!tenantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant não encontrado" });
       }
-      const mainDb = await db.getDb();
-      if (!mainDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-      return await db.getComplianceDocuments(mainDb, tenantId, input);
+      return db.getComplianceDocuments(ctx.tenantDb, tenantId, input);
     }),
 
-  getDocumentById: protectedProcedure
+  getDocumentById: strictTenantProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+    .query(async ({ ctx, input }) => {
       const tenantId = ctx.tenant?.id;
-      
-      if (tenantDb) {
-        return await db.getComplianceDocumentById(tenantDb, input.id, tenantId);
+      if (!tenantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant não encontrado" });
       }
-      const mainDb = await db.getDb();
-      if (!mainDb) return null;
-      return await db.getComplianceDocumentById(mainDb, input.id, tenantId);
+      return db.getComplianceDocumentById(ctx.tenantDb, tenantId, input.id);
     }),
 
-  createDocument: protectedProcedure
+  createDocument: strictTenantProcedure
     .input(z.object({
       clientId: z.number(),
       documentType: z.string(),
@@ -56,20 +47,15 @@ export const complianceRouter = router({
       notes: z.string().optional(),
       notificationDays: z.number().optional(),
     }))
-    .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+    .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenant?.id;
-      if (!tenantId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant não identificado' });
-      
-      if (tenantDb) {
-        return await db.createComplianceDocument(tenantDb, { ...input, tenantId });
+      if (!tenantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant não encontrado" });
       }
-      const mainDb = await db.getDb();
-      if (!mainDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-      return await db.createComplianceDocument(mainDb, { ...input, tenantId });
+      return db.createComplianceDocument(ctx.tenantDb, { ...input, tenantId });
     }),
 
-  updateDocument: protectedProcedure
+  updateDocument: strictTenantProcedure
     .input(z.object({
       id: z.number(),
       documentNumber: z.string().optional(),
@@ -81,86 +67,58 @@ export const complianceRouter = router({
       status: z.string().optional(),
       notificationDays: z.number().optional(),
     }))
-    .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+    .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenant?.id;
+      if (!tenantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant não encontrado" });
+      }
       const { id, ...data } = input;
-      
-      if (tenantDb) {
-        await db.updateComplianceDocument(tenantDb, id, data, tenantId);
-        return { success: true };
-      }
-      const mainDb = await db.getDb();
-      if (!mainDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-      await db.updateComplianceDocument(mainDb, id, data, tenantId);
-      return { success: true };
+      return db.updateComplianceDocument(ctx.tenantDb, id, data, tenantId);
     }),
 
-  deleteDocument: protectedProcedure
+  deleteDocument: strictTenantProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+    .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenant?.id;
-      
-      if (tenantDb) {
-        await db.deleteComplianceDocument(tenantDb, input.id, tenantId);
-        return { success: true };
+      if (!tenantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant não encontrado" });
       }
-      const mainDb = await db.getDb();
-      if (!mainDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-      await db.deleteComplianceDocument(mainDb, input.id, tenantId);
-      return { success: true };
+      return db.deleteComplianceDocument(ctx.tenantDb, input.id, tenantId);
     }),
 
-  markAsRenewed: protectedProcedure
+  markAsRenewed: strictTenantProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+    .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenant?.id;
-      
-      if (tenantDb) {
-        await db.markComplianceDocumentAsRenewed(tenantDb, input.id, tenantId);
-        return { success: true };
+      if (!tenantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant não encontrado" });
       }
-      const mainDb = await db.getDb();
-      if (!mainDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-      await db.markComplianceDocumentAsRenewed(mainDb, input.id, tenantId);
-      return { success: true };
+      return db.markComplianceDocumentAsRenewed(ctx.tenantDb, input.id, tenantId);
     }),
 
   // Dashboard stats
-  getDashboardStats: protectedProcedure
-    .query(async ({ ctx }: { ctx: TrpcContext }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+  getDashboardStats: strictTenantProcedure
+    .query(async ({ ctx }) => {
       const tenantId = ctx.tenant?.id;
-      if (!tenantId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant não identificado' });
-      
-      if (tenantDb) {
-        return await db.getComplianceDashboardStats(tenantDb, tenantId);
+      if (!tenantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant não encontrado" });
       }
-      const mainDb = await db.getDb();
-      if (!mainDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-      return await db.getComplianceDashboardStats(mainDb, tenantId);
+      return db.getComplianceDashboardStats(ctx.tenantDb, tenantId);
     }),
 
   // Expiring documents
-  getExpiringSoon: protectedProcedure
+  getExpiringSoon: strictTenantProcedure
     .input(z.object({ daysThreshold: z.number().default(30) }))
-    .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+    .query(async ({ ctx, input }) => {
       const tenantId = ctx.tenant?.id;
-      if (!tenantId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant não identificado' });
-      
-      if (tenantDb) {
-        return await db.getExpiringComplianceDocuments(tenantDb, tenantId, input.daysThreshold);
+      if (!tenantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tenant não encontrado" });
       }
-      const mainDb = await db.getDb();
-      if (!mainDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-      return await db.getExpiringComplianceDocuments(mainDb, tenantId, input.daysThreshold);
+      return db.getExpiringComplianceDocuments(ctx.tenantDb, tenantId, input.daysThreshold);
     }),
 
   // Alerts
-  getAlerts: protectedProcedure
+  getAlerts: strictTenantProcedure
     .input(z.object({
       documentId: z.number().optional(),
       clientId: z.number().optional(),
@@ -168,32 +126,18 @@ export const complianceRouter = router({
       status: z.string().optional(),
       limit: z.number().optional(),
     }))
-    .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+    .query(async ({ ctx, input }) => {
       const tenantId = ctx.tenant?.id;
       if (!tenantId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant não identificado' });
-      
-      if (tenantDb) {
-        return await db.getComplianceAlerts(tenantDb, tenantId, input);
-      }
-      const mainDb = await db.getDb();
-      if (!mainDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-      return await db.getComplianceAlerts(mainDb, tenantId, input);
+      return await db.getComplianceAlerts(ctx.tenantDb, tenantId, input);
     }),
 
-  markAlertAsOpened: protectedProcedure
+  markAlertAsOpened: strictTenantProcedure
     .input(z.object({ alertId: z.number() }))
-    .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
+    .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenant?.id;
-      
-      if (tenantDb) {
-        await db.markComplianceAlertAsOpened(tenantDb, input.alertId, tenantId);
-        return { success: true };
-      }
-      const mainDb = await db.getDb();
-      if (!mainDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-      await db.markComplianceAlertAsOpened(mainDb, input.alertId, tenantId);
+      if (!tenantId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant não identificado' });
+      await db.markComplianceAlertAsOpened(ctx.tenantDb, input.alertId, tenantId);
       return { success: true };
     }),
 });
