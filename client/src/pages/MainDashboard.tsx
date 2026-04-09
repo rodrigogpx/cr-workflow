@@ -2,7 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { APP_LOGO } from "@/const";
-import { Target, Shield, BookOpen, RefreshCcw, Inbox, LogOut, Lock } from "lucide-react";
+import { Target, Shield, BookOpen, RefreshCcw, Inbox, LogOut, Lock, Bell, CalendarDays } from "lucide-react";
+import { trpc } from "../lib/trpc";
 import { useLocation } from "wouter";
 import { useEffectiveTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
@@ -31,6 +32,13 @@ export default function MainDashboard() {
     featureInsumos: false,
     featureIAT: false,
   };
+
+  // Buscar notificações de compliance
+  const { data: complianceNotifications } = trpc.compliance?.getExpiringSoon?.useQuery(
+    { daysThreshold: 30 },
+    { enabled: features.featureRenovacao }
+  );
+  const complianceNotificationCount = complianceNotifications?.length || 0;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -89,6 +97,50 @@ export default function MainDashboard() {
 
         {/* Grid de módulos */}
         <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {/* Módulo Compliance & Vencimentos - Primeiro na lista */}
+          <Card
+            onClick={() => features.featureRenovacao && setLocation(buildTenantPath(tenantSlug, "/compliance"))}
+            className={`border-2 border-dashed ${features.featureRenovacao ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300 relative`}
+          >
+            <CardHeader className="space-y-2 pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureRenovacao && 'text-muted-foreground'}`}>
+                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${features.featureRenovacao ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
+                    {features.featureRenovacao ? <CalendarDays className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                  </span>
+                  Compliance & Vencimentos
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {complianceNotificationCount > 0 && (
+                    <span className="relative flex items-center gap-1 text-[0.65rem] px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 font-semibold">
+                      <Bell className="h-3 w-3" />
+                      {complianceNotificationCount}
+                    </span>
+                  )}
+                  {features.featureRenovacao ? (
+                    <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
+                      Ativo
+                    </span>
+                  ) : (
+                    <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
+                      Desabilitado
+                    </span>
+                  )}
+                </div>
+              </div>
+              <CardDescription className="text-xs sm:text-sm text-muted-foreground">
+                Calendário de vencimentos e repositório de documentos (CR, GT, CRAF, Laudos, Certificados).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 pt-0">
+              <p className="text-[0.7rem] sm:text-xs text-muted-foreground">
+                {features.featureRenovacao
+                  ? `Dashboard consolidado com ${complianceNotificationCount > 0 ? `${complianceNotificationCount} documentos vencendo em breve.` : 'acompanhamento de validades.'}`
+                  : "Módulo avançado de retenção e renovação. Previsto para integração futura."}
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Módulo CR Workflow */}
           <Card
             onClick={() => features.featureWorkflowCR && setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
@@ -227,42 +279,6 @@ export default function MainDashboard() {
                 {features.featureInsumos
                   ? "Acesse para gerenciar cotas e insumos do atirador."
                   : "Ideal para atiradores de IPSC e alto volume. Planejado para fases futuras da plataforma."}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Módulo Compliance & Validade (Renovação) */}
-          <Card
-            onClick={() => features.featureRenovacao && setLocation(buildTenantPath(tenantSlug, "/compliance"))}
-            className={`border-2 border-dashed ${features.featureRenovacao ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
-          >
-            <CardHeader className="space-y-2 pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureRenovacao && 'text-muted-foreground'}`}>
-                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${features.featureRenovacao ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
-                    {features.featureRenovacao ? <RefreshCcw className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                  </span>
-                  Compliance &amp; Vencimentos
-                </CardTitle>
-                {features.featureRenovacao ? (
-                  <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
-                    Ativo
-                  </span>
-                ) : (
-                  <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
-                    Desabilitado
-                  </span>
-                )}
-              </div>
-              <CardDescription className="text-xs sm:text-sm text-muted-foreground">
-                Dashboard consolidado de vencimentos (CR, Laudos, CRAFs) com disparos de cobrança automática.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 pt-0">
-              <p className="text-[0.7rem] sm:text-xs text-muted-foreground">
-                {features.featureRenovacao
-                  ? "Controle as renovações pendentes da sua base de atiradores e despachos em lote."
-                  : "Módulo avançado de retenção e renovação. Previsto para integração com Whatsapp no futuro."}
               </p>
             </CardContent>
           </Card>

@@ -27,6 +27,7 @@ const AdminSettings = lazy(() => import("./pages/TenantSettings"));
 const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const IATModule = lazy(() => import("./pages/IATModule"));
+const ComplianceModule = lazy(() => import("./pages/ComplianceModule"));
 // Platform Admin pages
 const PlatformAdminBootstrap = lazy(() => import("./pages/PlatformAdminBootstrap"));
 const PlatformAdminAdmins = lazy(() => import("./pages/PlatformAdminAdmins"));
@@ -262,6 +263,13 @@ function Router() {
           </ApprovedRoute>
         </Route>
         
+        {/* Global Compliance Module (no tenant) */}
+        <Route path={"/compliance"}>
+          <ApprovedRoute>
+            <ComplianceModule />
+          </ApprovedRoute>
+        </Route>
+        
         {/* Root Route */}
         <Route path={"/"} component={Login} />
         
@@ -326,6 +334,11 @@ function Router() {
         <Route path={"/:tenantSlug/iat"}>
           <ApprovedRoute>
             <IATModule />
+          </ApprovedRoute>
+        </Route>
+        <Route path={"/:tenantSlug/compliance"}>
+          <ApprovedRoute>
+            <ComplianceModule />
           </ApprovedRoute>
         </Route>
         
