@@ -479,3 +479,5 @@ export function ComplianceModule() {
     </div>
   );
 }
+
+export default ComplianceModule;
