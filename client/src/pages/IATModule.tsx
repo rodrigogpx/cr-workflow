@@ -186,7 +186,7 @@ export default function IATModule() {
   const tenantSlug = useTenantSlug();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [tab, setTab] = useState("instructors");
+  const [tab, setTab] = useState("calendar");
   const [search, setSearch] = useState("");
   const [instrDlg, setInstrDlg] = useState<{ open: boolean; editing?: Instructor }>({ open: false });
   const [courseDlg, setCourseDlg] = useState<{ open: boolean; editing?: Course }>({ open: false });
@@ -270,20 +270,32 @@ export default function IATModule() {
         </header>
 
         <div className="grid grid-cols-5 gap-4">
-          {([["Instrutores", instructors.length, Users], ["Cursos", courses.length, GraduationCap], ["Turmas", classes.length, Layers], ["Exames", exams.length, ClipboardList], ["Agendamentos", schedules.length, CalendarDays]] as const).map(([label, count, Icon]) => (
-            <Card key={label} className="bg-card/95 backdrop-blur-sm border border-white/20"><CardContent className="pt-4 pb-4 flex items-center gap-3"><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><Icon className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{count}</p><p className="text-xs text-muted-foreground">{label}</p></div></CardContent></Card>
+          {([
+            ["Instrutores", instructors.length, Users, "instructors"],
+            ["Cursos", courses.length, GraduationCap, "courses"],
+            ["Turmas", classes.length, Layers, "classes"],
+            ["Exames", exams.length, ClipboardList, "exams"],
+            ["Agendamentos", schedules.length, CalendarDays, "schedules"]
+          ] as const).map(([label, count, Icon, tabValue]) => (
+            <Card
+              key={label}
+              onClick={() => setTab(tabValue)}
+              className={`bg-card/95 backdrop-blur-sm border cursor-pointer transition-all duration-200 ${tab === tabValue ? 'border-primary/60 ring-1 ring-primary/40' : 'border-white/20 hover:border-white/40'}`}
+            >
+              <CardContent className="pt-4 pb-4 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{count}</p>
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-card/80 border border-white/10">
-            <TabsTrigger value="instructors" className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />Instrutores</TabsTrigger>
-            <TabsTrigger value="courses" className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" />Cursos</TabsTrigger>
-            <TabsTrigger value="classes" className="flex items-center gap-1.5"><Layers className="h-3.5 w-3.5" />Turmas</TabsTrigger>
-            <TabsTrigger value="exams" className="flex items-center gap-1.5"><ClipboardList className="h-3.5 w-3.5" />Exames</TabsTrigger>
-            <TabsTrigger value="schedules" className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Agendamentos</TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-primary" />Calendário</TabsTrigger>
-          </TabsList>
 
           <TabsContent value="instructors" className="space-y-4 mt-4">
             <div className="flex justify-between items-center"><p className="text-sm text-muted-foreground">{fInstr.length} instrutor(es)</p>{isAdmin && <Button size="sm" onClick={() => setInstrDlg({ open: true })}><Plus className="h-4 w-4 mr-1" />Novo Instrutor</Button>}</div>
