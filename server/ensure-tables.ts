@@ -612,6 +612,33 @@ export async function ensureMissingTables() {
     } catch (adminErr) {
       console.error("[Migration] Error ensuring platform admins:", adminErr);
     }
+
+    // ── Fix double-encoding UTF-8 data (Latin-1 misinterpretation) ──────────────
+    // Dados inseridos com encoding errado aparecem como "AvaliaÃ§Ã£o" em vez de "Avaliação"
+    // A correção converte os bytes Latin-1 de volta para UTF-8 válido.
+    try {
+      const tables: { table: string; column: string }[] = [
+        { table: 'workflowSteps',  column: 'stepTitle' },
+        { table: 'clients',        column: 'name' },
+        { table: 'clients',        column: 'city' },
+        { table: 'clients',        column: 'neighborhood' },
+        { table: 'clients',        column: 'address' },
+        { table: 'iatCourses',     column: 'name' },
+        { table: 'iatCourseClasses', column: 'name' },
+      ];
+
+      for (const { table, column } of tables) {
+        await db.execute(sql.raw(`
+          UPDATE "${table}"
+          SET "${column}" = convert_from(convert_to("${column}", 'LATIN1'), 'UTF8')
+          WHERE "${column}" LIKE '%Ã%' OR "${column}" LIKE '%Â%'
+        `));
+      }
+      console.log("[Migration] Charset double-encoding fix applied");
+    } catch (charsetErr) {
+      console.warn("[Migration] Charset fix skipped (non-fatal):", charsetErr);
+    }
+
   } catch (error) {
     console.error("[Migration] Error creating tables:", error);
   }
