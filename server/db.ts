@@ -3264,7 +3264,7 @@ export async function getExpiringComplianceDocuments(
     JOIN clients c ON c.id = cd."clientId"
     WHERE cd."tenantId" = ${tenantId}
       AND cd.status IN ('valido', 'pendente')
-      AND cd."expiryDate" <= (CURRENT_DATE + INTERVAL '${daysThreshold} days')
+      AND cd."expiryDate" <= (CURRENT_DATE + (${daysThreshold} * INTERVAL '1 day'))
     ORDER BY cd."expiryDate" ASC
   `);
   return extractRows(result);
