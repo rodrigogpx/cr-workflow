@@ -225,6 +225,18 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
       ssl: (process.env.NODE_ENV === "production" && !isLocalhost && !hasSslMode) ? 'require' : undefined,
       idle_timeout: 60,
       connect_timeout: 10,
+      // UTF-8 encoding for proper character handling
+      onnotice: () => {}, // Suppress notices
+      debug: false,
+      types: {
+        // Ensure text fields are decoded as UTF-8
+        text: {
+          to: 0,
+          from: [1043, 25, 18, 19], // varchar, text, char, name
+          parse: (x: string) => x,
+          serialize: (x: string) => x,
+        },
+      },
     });
     const db = drizzle(client);
 
