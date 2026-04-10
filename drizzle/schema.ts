@@ -82,6 +82,8 @@ export const clients = pgTable("clients", {
   acervoComplement: varchar("acervoComplement", { length: 255 }),
   acervoLatitude: varchar("acervoLatitude", { length: 50 }),
   acervoLongitude: varchar("acervoLongitude", { length: 50 }),
+  // NOVO: origem do cliente (controla qual email de boas-vindas enviar)
+  source: varchar("source", { length: 30 }).default("cr"), // cr | iat | manual | portal
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
 }, (table: any) => [
@@ -770,15 +772,22 @@ export const iatCourseClasses = pgTable("iat_course_classes", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   courseId: integer("courseId").notNull(),
-  instructorId: integer("instructorId"),
+  instructorId: integer("instructorId"), // LEGACY: usar iat_class_instructors para múltiplos instrutores
   classNumber: varchar("classNumber", { length: 50 }), // Ex: "01/2026"
   title: varchar("title", { length: 255 }),
-  scheduledDate: timestamp("scheduledDate", { withTimezone: false }),
+  scheduledDate: timestamp("scheduledDate", { withTimezone: false }), // LEGACY: data única, preferir startDate/endDate
   scheduledTime: varchar("scheduledTime", { length: 10 }),
   location: varchar("location", { length: 255 }),
   maxStudents: integer("maxStudents"),
   status: varchar("status", { length: 30 }).default('agendada').notNull(), // agendada, em_andamento, concluida, cancelada
   notes: text("notes"),
+  // Período fixo com sessões semanais
+  startDate: date("startDate"), // NOVO: início da turma (ex: 2026-05-01)
+  endDate: date("endDate"), // NOVO: fim da turma (ex: 2026-07-24)
+  weekDay: integer("weekDay"), // NOVO: dia da semana (0=dom, 1=seg, ..., 6=sáb)
+  defaultTime: varchar("defaultTime", { length: 5 }), // NOVO: horário padrão das sessões (ex: "14:00")
+  defaultDurationMinutes: integer("defaultDurationMinutes").default(60), // NOVO: duração padrão em minutos
+  defaultLocation: varchar("defaultLocation", { length: 255 }), // NOVO: local padrão das sessões
   createdAt: timestamp("createdAt", { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: false }).defaultNow().notNull(),
 });
@@ -795,7 +804,36 @@ export const iatCourseClassesRelations = relations(iatCourseClasses, ({ one, man
     fields: [iatCourseClasses.instructorId],
     references: [iatInstructors.id],
   }),
+  classInstructors: many(iatClassInstructors),
   enrollments: many(iatClassEnrollments),
+}));
+
+/**
+ * ============================================
+ * IAT CLASS INSTRUCTORS (Múltiplos instrutores por turma)
+ * ============================================
+ */
+export const iatClassInstructors = pgTable("iat_class_instructors", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  classId: integer("classId").notNull(),
+  instructorId: integer("instructorId").notNull(),
+  role: varchar("role", { length: 30 }).default("instrutor").notNull(), // instrutor, auxiliar, supervisor
+  assignedAt: timestamp("assignedAt", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type IatClassInstructor = typeof iatClassInstructors.$inferSelect;
+export type InsertIatClassInstructor = typeof iatClassInstructors.$inferInsert;
+
+export const iatClassInstructorsRelations = relations(iatClassInstructors, ({ one }: any) => ({
+  courseClass: one(iatCourseClasses, {
+    fields: [iatClassInstructors.classId],
+    references: [iatCourseClasses.id],
+  }),
+  instructor: one(iatInstructors, {
+    fields: [iatClassInstructors.instructorId],
+    references: [iatInstructors.id],
+  }),
 }));
 
 /**

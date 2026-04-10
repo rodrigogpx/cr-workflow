@@ -290,10 +290,24 @@ export async function ensureMissingTables() {
         "maxStudents" integer,
         "status" varchar(30) DEFAULT 'agendada' NOT NULL,
         "notes" text,
+        "startDate" date,
+        "endDate" date,
+        "weekDay" integer,
+        "defaultTime" varchar(5),
+        "defaultDurationMinutes" integer DEFAULT 60,
+        "defaultLocation" varchar(255),
         "createdAt" timestamp DEFAULT now() NOT NULL,
         "updatedAt" timestamp DEFAULT now() NOT NULL
       );
     `);
+
+    // Adicionar colunas se ainda não existem (migração)
+    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "startDate" date;`);
+    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "endDate" date;`);
+    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "weekDay" integer;`);
+    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "defaultTime" varchar(5);`);
+    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "defaultDurationMinutes" integer DEFAULT 60;`);
+    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "defaultLocation" varchar(255);`);
 
     // IAT Class Enrollments (Matrículas)
     await db.execute(sql`
@@ -311,6 +325,32 @@ export async function ensureMissingTables() {
         "updatedAt" timestamp DEFAULT now() NOT NULL
       );
     `);
+
+    // IAT Class Instructors (Múltiplos instrutores por turma)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "iat_class_instructors" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "tenantId" integer NOT NULL,
+        "classId" integer NOT NULL,
+        "instructorId" integer NOT NULL,
+        "role" varchar(30) DEFAULT 'instrutor' NOT NULL,
+        "assignedAt" timestamp DEFAULT now() NOT NULL,
+        CONSTRAINT "iat_class_instructors_classId_instructorId_unique" UNIQUE("classId", "instructorId")
+      );
+    `);
+
+    // Migração: popular iat_class_instructors a partir do instructorId singular em iat_course_classes
+    try {
+      await db.execute(sql`
+        INSERT INTO "iat_class_instructors" ("tenantId", "classId", "instructorId", "role")
+        SELECT "tenantId", "id", "instructorId", 'instrutor'
+        FROM "iat_course_classes"
+        WHERE "instructorId" IS NOT NULL
+        ON CONFLICT ("classId", "instructorId") DO NOTHING;
+      `);
+    } catch (migrationErr) {
+      console.warn("[Migration] Error migrating instructors to iat_class_instructors:", migrationErr);
+    }
 
     // ============================================
     // Plan Definitions (catálogo de planos)
@@ -504,6 +544,9 @@ export async function ensureMissingTables() {
     } catch (cpfErr) {
       console.error("[Migration] Error migrating CPF constraint:", cpfErr);
     }
+
+    // Adicionar coluna source em clients (origem do cliente)
+    await db.execute(sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "source" varchar(30) DEFAULT 'cr';`);
 
     // ============================================
     // Seed default plan definitions
