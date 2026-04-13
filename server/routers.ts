@@ -1413,18 +1413,23 @@ export const appRouter = router({
           // Step completed trigger
           if (input.completed === true) {
             // Mapear stepId para nÃºmero da etapa
+            // Ordem dos passos no CR:
+            // 1. Cadastro
+            // 2. Encaminhamento para Avaliação Psicológica (agendamento-psicotecnico)
+            // 3. Agendamento Laudo de Capacidade Técnica (agendamento-laudo)
+            // 4. Juntada de Documentos (juntada-documento)
+            // 5. Submissão ao SINARM-CAC (acompanhamento-sinarm-cac)
             const stepIdToNumber: Record<string, string> = {
               'cadastro': '1',
-              'juntada-documento': '2',
-              'boas-vindas': '3',
+              'agendamento-psicotecnico': '2',
+              'agendamento-laudo': '3',
+              'juntada-documento': '4',
+              'acompanhamento-sinarm': '5',
               // aliases/compat
-              'central-mensagens': '3',
-              'agendamento-psicotecnico': '4',
-              'agendamento-laudo': '5',
-              'acompanhamento-sinarm': '6',
-              // aliases/compat
-              'juntada-documentos': '2',
-              'acompanhamento-sinarm-cac': '6',
+              'juntada-documentos': '4',
+              'acompanhamento-sinarm-cac': '5',
+              'central-mensagens': '2',  // legacy alias para psicotecnico
+              'boas-vindas': '2',        // legacy alias para psicotecnico
             };
             const stepNumber = stepIdToNumber[currentStep.stepId] || currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
             
