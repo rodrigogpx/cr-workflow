@@ -205,7 +205,6 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
 
         if (existingAssoc.length === 0) {
           await tenantDb.insert(emailTriggerTemplates).values({
-            tenantId,
             triggerId,
             templateId,
             sendOrder: 1,
