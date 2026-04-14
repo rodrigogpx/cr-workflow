@@ -229,8 +229,14 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
       subject: options.subject,
       html: options.html,
       attachments,
-      encoding: 'utf-8',           // charset para html/text
-      textEncoding: 'base64',      // codifica body em base64 → preserva acentos em todos os clientes
+      // Ensure proper UTF-8 encoding
+      encoding: 'utf-8',
+      textEncoding: 'base64',
+      // Add explicit headers for charset
+      headers: {
+        'Content-Type': 'text/html; charset=UTF-8',
+        'charset': 'UTF-8',
+      },
     });
 
     return { success: true, messageId: info.messageId };
@@ -294,21 +300,26 @@ async function sendEmailViaPostmanGpx(
       gatewayAttachments = resolved.filter(Boolean) as any;
     }
 
+    // Ensure proper UTF-8 encoding for the email content
+    const emailPayload = {
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      from: smtpFrom,
+      replyTo: extractEmailAddress(smtpFrom),
+      attachments: gatewayAttachments,
+      charset: 'UTF-8',
+      // Add explicit content-type with charset for HTML
+      contentType: 'text/html; charset=UTF-8',
+    };
+
     const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'X-API-Key': apiKey,
       },
-      body: JSON.stringify({
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-        from: smtpFrom,
-        replyTo: extractEmailAddress(smtpFrom),
-        attachments: gatewayAttachments,
-        charset: 'UTF-8',
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     const contentType = response.headers.get('content-type') || '';
@@ -425,6 +436,8 @@ export async function sendTestEmailWithSettings(settings: {
         html: htmlBody,
         from: settings.from,
         replyTo: extractEmailAddress(settings.from),
+        charset: 'UTF-8',
+        contentType: 'text/html; charset=UTF-8',
       }),
     });
 
@@ -469,7 +482,13 @@ export async function sendTestEmailWithSettings(settings: {
       to: settings.toEmail,
       subject,
       html: htmlBody,
-      textEncoding: 'UTF-8',
+      // Standardize encoding with main function
+      encoding: 'utf-8',
+      textEncoding: 'base64',
+      headers: {
+        'Content-Type': 'text/html; charset=UTF-8',
+        'charset': 'UTF-8',
+      },
     });
 
     return { success: true };
