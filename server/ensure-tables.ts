@@ -614,7 +614,7 @@ export async function ensureMissingTables() {
     }
 
     // ── Fix double-encoding UTF-8 data (Latin-1 misinterpretation) ──────────────
-    // Dados inseridos com encoding errado aparecem como "AvaliaÃ§Ã£o" em vez de "Avaliação"
+    // Dados inseridos com encoding errado aparecem como "Avaliação" em vez de "Avaliação"
     // A correção converte os bytes Latin-1 de volta para UTF-8 válido.
     try {
       const tables: { table: string; column: string }[] = [

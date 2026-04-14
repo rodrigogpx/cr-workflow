@@ -229,7 +229,8 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
       subject: options.subject,
       html: options.html,
       attachments,
-      textEncoding: 'UTF-8',
+      encoding: 'utf-8',           // charset para html/text
+      textEncoding: 'base64',      // codifica body em base64 → preserva acentos em todos os clientes
     });
 
     return { success: true, messageId: info.messageId };

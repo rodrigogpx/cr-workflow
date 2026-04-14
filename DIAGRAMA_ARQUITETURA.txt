@@ -1,0 +1,310 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    ARQUITETURA MULTI-TENANT - CAC 360                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│                          CAMADA 1: PLATAFORMA                              │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   PostgreSQL Database (PLATFORM_DATABASE_URL)                              │
+│   ┌──────────────────────────────────────────────────────────────────┐    │
+│   │  Tabelas Globais                                                 │    │
+│   ├──────────────────────────────────────────────────────────────────┤    │
+│   │                                                                  │    │
+│   │  ┌─ tenants (Metadados de cada clube)                          │    │
+│   │  │  ├─ id, slug, name                                          │    │
+│   │  │  ├─ dbHost, dbPort, dbName (para multi-DB)                 │    │
+│   │  │  ├─ logo, primaryColor, secondaryColor                      │    │
+│   │  │  ├─ featureWorkflowCR, featureApostilamento, etc           │    │
+│   │  │  ├─ smtpHost, smtpPort, smtpUser, smtpPassword             │    │
+│   │  │  ├─ signatureResponsibleName ✨ (NOVO!)                    │    │
+│   │  │  └─ subscription info, createdAt, updatedAt                │    │
+│   │  │                                                              │    │
+│   │  ├─ platform_admins (Admins da plataforma)                    │    │
+│   │  │  └─ gerenciam tenants, faturamento, etc                    │    │
+│   │  │                                                              │    │
+│   │  ├─ platform_settings (Configurações globais)                 │    │
+│   │  │  └─ SMTP padrão, valores globais, etc                      │    │
+│   │  │                                                              │    │
+│   │  └─ (outras tabelas de suporte)                               │    │
+│   │                                                              │    │
+│   └──────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  Responsabilidades:                                                        │
+│  ✓ Armazenar metadados de cada tenant                                    │
+│  ✓ Resolver qual tenant está acessando                                   │
+│  ✓ Gerenciar subscriptions e faturamento                                 │
+│  ✓ Cache de configurações (TTL: 5 min)                                   │
+│                                                                              │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│                          CAMADA 2: CONTEXTO                                │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  TrpcContext (criado a cada requisição HTTP)                              │
+│                                                                              │
+│  ┌─ Resolução de Tenant ──────────────────────────────────────────┐      │
+│  │                                                                  │      │
+│  │  1. Extrair da Sessão                                          │      │
+│  │     └─ SDK.authenticateRequestWithTenant(req)                  │      │
+│  │        └─> Verifica JWT → tenantSlug                          │      │
+│  │                                                                  │      │
+│  │  2. Header x-tenant-slug (se sem sessão)                       │      │
+│  │     └─ Apenas se NÃO houver sessão autenticada               │      │
+│  │                                                                  │      │
+│  │  3. Hostname/Subdomínio                                        │      │
+│  │     └─ "tiroesp.cac360.com.br" → slug = "tiroesp"            │      │
+│  │                                                                  │      │
+│  │  4. DEV_TENANT_SLUG (localhost em development)                │      │
+│  │     └─ "default" ou valor configurado                         │      │
+│  │                                                                  │      │
+│  └─────────────────────────────────────────────────────────────────┘      │
+│                                                                              │
+│  ┌─ Carregamento de Config ───────────────────────────────────────┐      │
+│  │                                                                  │      │
+│  │  getTenantConfig(tenantSlug)                                   │      │
+│  │  ├─ Verifica cache (5 min TTL)                                │      │
+│  │  ├─ Se HIT: retorna cached TenantConfig                       │      │
+│  │  ├─ Se MISS:                                                   │      │
+│  │  │  ├─ SELECT * FROM tenants WHERE slug=?                     │      │
+│  │  │  ├─ Descriptografa secrets (DB password, SMTP password)    │      │
+│  │  │  └─ Cacheia resultado                                       │      │
+│  │  └─ Retorna TenantConfig                                       │      │
+│  │                                                                  │      │
+│  └─────────────────────────────────────────────────────────────────┘      │
+│                                                                              │
+│  ┌─ TrpcContext (resultado final) ────────────────────────────────┐      │
+│  │                                                                  │      │
+│  │  ctx = {                                                        │      │
+│  │    req: Express.Request,                                       │      │
+│  │    res: Express.Response,                                      │      │
+│  │    user: User | null,                                          │      │
+│  │    platformAdmin: Admin | null,                                │      │
+│  │    tenant: TenantConfig | null,  ← Configuração carregada    │      │
+│  │    tenantSlug: string | null                                   │      │
+│  │  }                                                              │      │
+│  │                                                                  │      │
+│  └─────────────────────────────────────────────────────────────────┘      │
+│                                                                              │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    CAMADA 3: BANCO DE DADOS DO TENANT                      │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Modo Multi-DB (Recomendado em Produção):                                 │
+│  ─────────────────────────────────────────────────────────────             │
+│                                                                              │
+│  Tenant A: postgres://user@rds1:5432/cac360_clubea                         │
+│  ├─ users (usuários do clube A)                                            │
+│  ├─ clients (interessados)                                                 │
+│  ├─ workflow_steps, documents, etc                                         │
+│  └─ email_templates, email_triggers, emailLogs                            │
+│                                                                              │
+│  Tenant B: postgres://user@rds2:5432/cac360_clubeb                         │
+│  ├─ users (usuários do clube B)                                            │
+│  ├─ clients (interessados)                                                 │
+│  └─ ...                                                                     │
+│                                                                              │
+│  ──────────────────────────────────────────────────────────────             │
+│  Modo Single-DB (Development / Railway):                                   │
+│  ──────────────────────────────────────────────────────────────             │
+│                                                                              │
+│  PostgreSQL: postgres://...DATABASE_URL                                    │
+│  ├─ users (tenantId = 1)     [Clube A]                                    │
+│  ├─ users (tenantId = 2)     [Clube B]                                    │
+│  ├─ users (tenantId = 3)     [Clube C]                                    │
+│  ├─ clients (tenantId = 1)   [Clube A]                                    │
+│  ├─ clients (tenantId = 2)   [Clube B]                                    │
+│  └─ ...                                                                     │
+│                                                                              │
+│  Pool de Conexões:                                                         │
+│  ├─ MAX: 50 conexões simultâneas (configurável)                           │
+│  ├─ IDLE_TIMEOUT: 10 minutos                                               │
+│  ├─ Eviction: Remove 10% mais antigas quando limite atingido              │
+│  └─ Cleanup: Automático a cada 10 minutos                                 │
+│                                                                              │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        FLUXO DE UMA REQUISIÇÃO                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+REQUEST: POST /api/trpc/sendPsychReferral
+Headers: host: "tiroesp.cac360.com.br"
+Body: { clientId: 123 }
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. MIDDLEWARE: Express.Request chega                                        │
+│    └─> app.use(createContext)                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 2. RESOLVER TENANT SLUG                                                     │
+│    ├─ Tentar extrair de sessão                                             │
+│    ├─ Tentar x-tenant-slug header                                          │
+│    ├─ Tentar hostname: "tiroesp.cac360.com.br" → "tiroesp"               │
+│    └─> tenantSlug = "tiroesp"                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 3. CARREGAR CONFIGURAÇÃO                                                    │
+│    ├─ Verificar cache: tenantConfigCache.get("tiroesp")                   │
+│    ├─ CACHE HIT: retorna config (5 min TTL)                               │
+│    │                                                                        │
+│    └─ CACHE MISS:                                                          │
+│       ├─ Query: SELECT * FROM tenants WHERE slug='tiroesp'                 │
+│       ├─ Descriptografar: dbPassword, smtpPassword                         │
+│       ├─ Cachear com timestamp                                             │
+│       └─> TenantConfig carregado                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 4. CRIAR TRCPC CONTEXT                                                      │
+│    ctx = {                                                                   │
+│      req, res, user, platformAdmin,                                         │
+│      tenant: TenantConfig {                                                 │
+│        id, slug, name,                                                      │
+│        dbHost, dbPort, dbName, dbUser, dbPassword,                         │
+│        logo, primaryColor, secondaryColor,                                  │
+│        smtpHost, smtpPort, smtpUser, smtpPassword,                        │
+│        signatureResponsibleName: "João Silva",  ✨                         │
+│        featureWorkflowCR: true,                                             │
+│        ...                                                                   │
+│      },                                                                      │
+│      tenantSlug: "tiroesp"                                                  │
+│    }                                                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 5. EXECUTAR PROCEDURE                                                       │
+│    sendPsychReferral({ input, ctx })                                       │
+│    ├─ Buscar cliente: db.getClientById(123)                               │
+│    ├─ Obter responsável:                                                   │
+│    │  if (ctx.tenant?.signatureResponsibleName) → "João Silva"            │
+│    │  else if (admin) → adminUser.name                                    │
+│    │  else → "CAC 360"                                                     │
+│    ├─ Gerar PDF:                                                           │
+│    │  generatePsychReferralPDF(client, "João Silva")                      │
+│    │  └─> Font cursiva, 26pt, azul #123A63                               │
+│    ├─ Enviar Email:                                                        │
+│    │  sendEmail({                                                          │
+│    │    to: client.email,                                                  │
+│    │    subject: "Encaminhamento para Avaliação Psicológica",             │
+│    │    html: "...",                                                       │
+│    │    attachments: [PDF],                                                │
+│    │    tenantDb: <conexão do tenant>,                                     │
+│    │    tenantId: ctx.tenant.id                                            │
+│    │  })                                                                     │
+│    │  ├─ Buscar SMTP do tenant                                            │
+│    │  ├─ Buscar logo do tenant                                            │
+│    │  ├─ Enviar com credentials do tenant                                 │
+│    │  └─> { success: true, messageId }                                    │
+│    └─> return { success: true }                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 6. RESPONSE ENVIADO AO CLIENTE                                              │
+│    { success: true }                                                        │
+│                                                                              │
+│    Cliente recebe email de "Tiro Esportivo Brasil" <noreply@...>         │
+│    ├─ Logo do clube inline                                                 │
+│    ├─ PDF anexado                                                          │
+│    └─ Com assinatura "João Silva" em cursiva                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          PONTOS-CHAVE DA ARQUITETURA                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🔒 SEGURANÇA:
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ✓ Tenants isolados por banco de dados (multi-DB) ou tenantId (single)   │
+│ ✓ Secrets criptografados: dbPassword, smtpPassword, apiKeys             │
+│ ✓ Validação de tenant na sessão para evitar switching                   │
+│ ✓ X-tenant-slug header só aceito sem sessão autenticada                 │
+│ ✓ RLS (Row-Level Security) em single-DB mode via set_config()           │
+│ ✓ Descriptografia automática ao carregar config                         │
+│ ✓ Nenhuma exposição de secrets em logs                                  │
+└──────────────────────────────────────────────────────────────────────────┘
+
+⚡ PERFORMANCE:
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ✓ Cache de config por tenant (5 min TTL)                                │
+│ ✓ Pool de conexões de DB (50 max, 10 min idle timeout)                 │
+│ ✓ Healthcheck rápida ao conectar                                        │
+│ ✓ Eviction de conexões antigas quando limite atingido                   │
+│ ✓ Lazy loading de templates de email (ao seed)                         │
+│ ✓ Cache invalidation explícito em updates                               │
+└──────────────────────────────────────────────────────────────────────────┘
+
+🔧 CONFIGURABILIDADE:
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ✓ Cada tenant pode customizar: cores, logo, SMTP, features              │
+│ ✓ Padrões sensatos para todos os campos (fallbacks)                     │
+│ ✓ Feature flags por tenant (ativa/desativa módulos)                     │
+│ ✓ Subscriptions por tenant (plan, expiry)                               │
+│ ✓ Integrations por tenant (webhooks, APIs)                              │
+│ ✓ signatureResponsibleName configurável por tenant ✨                   │
+└──────────────────────────────────────────────────────────────────────────┘
+
+📊 OBSERVABILIDADE:
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ✓ Logs com [Tenant], [EmailTrigger], etc para rastreamento               │
+│ ✓ tenant_activity_logs para auditoria                                    │
+│ ✓ email_logs para rastrear envios                                        │
+│ ✓ Métadatas como pfLastSyncAt para debugging                           │
+│ ✓ tenant_status_check() para health monitoring                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        EXEMPLO: signatureResponsibleName                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ANTES: ❌
+┌──────────────────────────────────────────────────────────────────────────┐
+│ PDF assinado com:                                                        │
+│ - Nome do admin (pode estar vazio)                                       │
+│ - Fallback "CAC 360" (genérico)                                         │
+│ - Sem forma de customizar por tenant                                     │
+└──────────────────────────────────────────────────────────────────────────┘
+
+DEPOIS: ✨
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 1. Admin cria tenant com signatureResponsibleName: "João Silva"          │
+│                                                                           │
+│ 2. Sistema carrega ctx.tenant.signatureResponsibleName                   │
+│                                                                           │
+│ 3. PDF gerado com:                                                       │
+│    ├─ Texto: "João Silva"                                               │
+│    ├─ Font: DancingScript (cursiva)                                     │
+│    ├─ Size: 26pt                                                        │
+│    ├─ Color: #123A63 (azul)                                             │
+│    └─ Centralizado acima da linha de assinatura                        │
+│                                                                           │
+│ 4. Admin pode atualizar em qualquer momento:                             │
+│    PATCH /api/trpc/tenant.update                                         │
+│    { id: 1, signatureResponsibleName: "Maria Santos" }                   │
+│                                                                           │
+│ 5. Próximos PDFs usam novo nome automaticamente                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+PRIORIDADE DE ASSINATURA:
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 1️⃣  ctx.tenant?.signatureResponsibleName (configurado explicitamente)   │
+│ 2️⃣  ctx.tenant.admin.name (nome do admin)                               │
+│ 3️⃣  "CAC 360" (padrão fallback)                                         │
+└──────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+Criado em: 14 de Abril de 2026
+Atualizado: Análise Arquitetura Multi-Tenant
+Status: ✅ Completo
+═══════════════════════════════════════════════════════════════════════════════

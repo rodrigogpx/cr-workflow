@@ -404,6 +404,8 @@ export const tenants = pgTable("tenants", {
   postmanGpxApiKey: text("postmanGpxApiKey"),
   // Email Logo (URL da imagem copiada do site do clube)
   emailLogoUrl: text("emailLogoUrl"),
+  // Signature Configuration
+  signatureResponsibleName: varchar("signatureResponsibleName", { length: 255 }), // Nome para aparecer na assinatura dos documentos
   // Storage
   storageBucket: varchar("storageBucket", { length: 255 }),
   backupSchedule: varchar("backupSchedule", { length: 50 }).default("0 3 * * *"),

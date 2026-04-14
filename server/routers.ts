@@ -1,4 +1,4 @@
-﻿/// <reference types="node" />
+/// <reference types="node" />
 import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS, SESSION_MAX_AGE_MS, PLATFORM_SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -28,13 +28,13 @@ async function getTenantDbOrNull(ctx: TrpcContext) {
     if (isSingleDbMode) {
       const platformDb = await db.getDb();
       if (!platformDb) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco de dados nÃ£o disponÃ­vel' });
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco de dados não disponível' });
       }
       return platformDb;
     }
     const tenantDb = await getTenantDb(ctx.tenant);
     if (!tenantDb) {
-      throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponÃ­vel' });
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
     }
     return tenantDb;
   }
@@ -46,30 +46,30 @@ type ApostilamentoActivity = 'atirador' | 'cacador' | 'colecionador';
 const DISPENSADO_PREFIX = '[DISPENSADO] ';
 
 const BASE_DOCUMENTS = [
-  'Comprovante de Capacidade TÃ©cnica para o manuseio de arma de fogo',
-  'CertidÃ£o de Antecedente Criminal JustiÃ§a Federal',
-  'DeclaraÃ§Ã£o de nÃ£o estar respondendo a inquÃ©rito policial ou a processo criminal',
-  'Documento de IdentificaÃ§Ã£o Pessoal',
-  'Laudo de AptidÃ£o PsicolÃ³gica para o manuseio de arma de fogo',
-  'Comprovante de ResidÃªncia Fixa',
-  'Comprovante de OcupaÃ§Ã£o LÃ­cita',
-  'CertidÃ£o de Antecedente Criminal JustiÃ§a Estadual',
-  'DeclaraÃ§Ã£o de SeguranÃ§a do Acervo',
-  'CertidÃ£o de Antecedente Criminal JustiÃ§a Militar',
-  'CertidÃ£o de Antecedente Criminal JustiÃ§a Eleitoral',
+  'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
+  'Certidão de Antecedente Criminal Justiça Federal',
+  'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
+  'Documento de Identificação Pessoal',
+  'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
+  'Comprovante de Residência Fixa',
+  'Comprovante de Ocupação Lícita',
+  'Certidão de Antecedente Criminal Justiça Estadual',
+  'Declaração de Segurança do Acervo',
+  'Certidão de Antecedente Criminal Justiça Militar',
+  'Certidão de Antecedente Criminal Justiça Eleitoral',
 ];
 
 const ATIRADOR_DOCUMENTS = [
-  'DeclaraÃ§Ã£o com compromisso de comprovar a habitualidade na forma da norma vigente',
-  'Comprovante de filiaÃ§Ã£o a entidade de tiro desportivo',
+  'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
+  'Comprovante de filiação a entidade de tiro desportivo',
 ];
 
 const CACADOR_DOCUMENTS = [
-  'Comprovante de filiaÃ§Ã£o a entidade de caÃ§a',
+  'Comprovante de filiação a entidade de caça',
   'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
 ];
 
-const SECOND_ADDRESS_DOCUMENT = 'Comprovante de Segundo EndereÃ§o';
+const SECOND_ADDRESS_DOCUMENT = 'Comprovante de Segundo Endereço';
 
 function parseApostilamentoActivities(value: unknown): ApostilamentoActivity[] {
   if (Array.isArray(value)) {
@@ -170,7 +170,7 @@ export const appRouter = router({
       // Remover a senha (hashedPassword) do retorno do tRPC
       const { hashedPassword, ...safeUser } = ctx.user;
       
-      // Injetar tambÃ©m as features do tenant no payload de usuÃ¡rio, se existir, para o front-end
+      // Injetar também as features do tenant no payload de usuário, se existir, para o front-end
       const tenantFeatures = ctx.tenant ? {
         featureWorkflowCR: ctx.tenant.featureWorkflowCR,
         featureApostilamento: ctx.tenant.featureApostilamento,
@@ -187,12 +187,12 @@ export const appRouter = router({
     }),
     platformMe: publicProcedure.query(({ ctx }: { ctx: TrpcContext }) => {
       if (!ctx.platformAdmin) return null;
-      // Remover a senha do platformAdmin tambÃ©m, por seguranÃ§a
+      // Remover a senha do platformAdmin também, por segurança
       const { hashedPassword, ...safeAdmin } = ctx.platformAdmin;
       return safeAdmin;
     }),
-    // Cria o primeiro superadmin quando a tabela platformAdmins estÃ¡ vazia.
-    // Retorna 403 se jÃ¡ existir qualquer admin (proteÃ§Ã£o contra bootstrap repetido).
+    // Cria o primeiro superadmin quando a tabela platformAdmins está vazia.
+    // Retorna 403 se já existir qualquer admin (proteção contra bootstrap repetido).
     bootstrapSuperAdmin: publicProcedure
       .input(z.object({
         email: z.string().email(),
@@ -202,10 +202,10 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const existing = await db.getAllPlatformAdmins();
         if (existing.length > 0) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Bootstrap nÃ£o permitido: jÃ¡ existem administradores cadastrados.' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Bootstrap não permitido: já existem administradores cadastrados.' });
         }
         const admin = await db.createPlatformAdmin({ ...input, role: 'superadmin' });
-        // Fazer login automÃ¡tico apÃ³s bootstrap
+        // Fazer login automático após bootstrap
         // Session cookie (sem maxAge) â†’ apagado ao fechar o browser; JWT expira em 8h
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
           name: admin.name || "",
@@ -229,12 +229,12 @@ export const appRouter = router({
         const admin = await db.getPlatformAdminByEmail(input.email);
         
         if (!admin || !admin.isActive) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais invÃ¡lidas' });
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
 
         const passwordMatch = await comparePassword(input.password, admin.hashedPassword);
         if (!passwordMatch) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais invÃ¡lidas' });
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
 
         // Session cookie (sem maxAge) â†’ apagado ao fechar o browser; JWT expira em 8h
@@ -273,12 +273,12 @@ export const appRouter = router({
           : await db.getUserByEmail(input.email);
 
         if (!user) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais invÃ¡lidas' });
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
 
         const passwordMatch = await comparePassword(input.password, user.hashedPassword);
         if (!passwordMatch) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais invÃ¡lidas' });
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
         }
 
         // If no tenantSlug in context but user has tenantId, resolve it
@@ -290,8 +290,8 @@ export const appRouter = router({
         } else if (!user.tenantId) {
           // SECURITY: Do NOT auto-associate users without tenant to the first tenant.
           // Legacy users without tenantId must be manually assigned by an admin.
-          console.warn(`[Auth] User ${user.id} (${user.email}) has no tenantId â€” login blocked until admin assigns a tenant`);
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'UsuÃ¡rio sem tenant associado. Contate o administrador.' });
+          console.warn(`[Auth] User ${user.id} (${user.email}) has no tenantId — login blocked until admin assigns a tenant`);
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Usuário sem tenant associado. Contate o administrador.' });
         }
 
         // Session cookie (sem maxAge) â†’ apagado ao fechar o browser; JWT expira em 8h
@@ -347,28 +347,28 @@ export const appRouter = router({
     register: publicProcedure
       .input(z.object({
         name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-        email: z.string().email("Email invÃ¡lido"),
+        email: z.string().email("Email inválido"),
         password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
       }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantSlug = ctx.tenantSlug;
 
-        // Verificar se email jÃ¡ existe
+        // Verificar se email já existe
         const existingUser = tenantSlug && ctx.tenant
           ? await (async () => {
               const tenantDb = await getTenantDb(ctx.tenant);
               if (!tenantDb) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponÃ­vel' });
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
               }
               return await db.getUserByEmailFromDb(tenantDb, input.email);
             })()
           : await db.getUserByEmail(input.email);
 
         if (existingUser) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Este email jÃ¡ estÃ¡ cadastrado' });
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
         }
 
-        // Verificar limite de usuÃ¡rios do tenant
+        // Verificar limite de usuários do tenant
         if (tenantSlug && ctx.tenant) {
           const tenantDb = await getTenantDb(ctx.tenant);
           if (tenantDb) {
@@ -378,7 +378,7 @@ export const appRouter = router({
             if (!check.allowed) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: `Limite de usuÃ¡rios atingido (${check.current}/${check.max}). Entre em contato com o administrador para upgrade do plano.`,
+                message: `Limite de usuários atingido (${check.current}/${check.max}). Entre em contato com o administrador para upgrade do plano.`,
               });
             }
           }
@@ -387,25 +387,25 @@ export const appRouter = router({
         // Hash da senha
         const hashedPassword = await hashPassword(input.password);
 
-        // Criar usuÃ¡rio sem role (aguardando aprovaÃ§Ã£o)
+        // Criar usuário sem role (aguardando aprovação)
         const userId = tenantSlug && ctx.tenant
           ? await (async () => {
               const tenantDb = await getTenantDb(ctx.tenant);
               if (!tenantDb) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponÃ­vel' });
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
               }
               return await db.upsertUserToDb(tenantDb, {
                 name: input.name,
                 email: input.email,
                 hashedPassword,
-                role: null, // Aguardando aprovaÃ§Ã£o do admin
+                role: null, // Aguardando aprovação do admin
               });
             })()
           : await db.upsertUser({
               name: input.name,
               email: input.email,
               hashedPassword,
-              role: null, // Aguardando aprovaÃ§Ã£o do admin
+              role: null, // Aguardando aprovação do admin
             });
 
         // Log audit entry for registration
@@ -424,7 +424,7 @@ export const appRouter = router({
 
         return {
           success: true,
-          message: 'Cadastro realizado com sucesso! Aguarde a aprovaÃ§Ã£o de um administrador.',
+          message: 'Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.',
           userId,
         };
       }),
@@ -437,15 +437,15 @@ export const appRouter = router({
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
         
-        // Admin vÃª todos os clientes, operador vÃª todos os clientes
-        // Despachante vÃª clientes com "Juntada de Documentos" concluÃ­da
+        // Admin vê todos os clientes, operador vê todos os clientes
+        // Despachante vê clientes com "Juntada de Documentos" concluída
         let clients: any[] = [];
         if (ctx.user.role === 'admin') {
           clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
         } else if (ctx.user.role === 'operator') {
           clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
         } else if (ctx.user.role === 'despachante') {
-          // Despachante vÃª TODOS os clientes, mas filtraremos depois pela etapa concluÃ­da
+          // Despachante vê TODOS os clientes, mas filtraremos depois pela etapa concluída
           clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
         } else {
           clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
@@ -477,7 +477,7 @@ export const appRouter = router({
         const safeAssignedUsers: any[] = Array.isArray(assignedUsers) ? assignedUsers : [];
         const assignedUserMap = new Map<number, any>(safeAssignedUsers.map((u: any) => [u.id, u]));
         
-        // Ordem canÃ´nica das fases do workflow
+        // Ordem canônica das fases do workflow
         const PHASE_ORDER = [
           'cadastro',
           'agendamento-psicotecnico',
@@ -486,7 +486,7 @@ export const appRouter = router({
           'acompanhamento-sinarm',
         ];
 
-        // Adicionar estatÃ­sticas de workflow para cada cliente
+        // Adicionar estatísticas de workflow para cada cliente
         const clientsWithProgress = await Promise.all(
           safeClients.map(async (client) => {
             const rawWorkflow = tenantDb
@@ -499,7 +499,7 @@ export const appRouter = router({
             const completedSteps = workflow.filter((s: any) => s.completed).length;
             const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
             
-            // Verificar se "Juntada de Documentos" estÃ¡ concluÃ­da (stepId 2 ou tÃ­tulo contendo "juntada"/"documentos")
+            // Verificar se "Juntada de Documentos" está concluída (stepId 2 ou título contendo "juntada"/"documentos")
             const juntadaStep = workflow.find((s: any) => 
               s.stepId === 2 || 
               s.stepId === '2' ||
@@ -509,7 +509,7 @@ export const appRouter = router({
             );
             const juntadaConcluida = juntadaStep?.completed === true;
 
-            // Determinar a fase pendente atual (primeira nÃ£o concluÃ­da na ordem canÃ´nica)
+            // Determinar a fase pendente atual (primeira não concluída na ordem canônica)
             let currentPendingStep: string | null = null;
             let completedPhases: Record<string, boolean> = {};
 
@@ -522,7 +522,7 @@ export const appRouter = router({
                 currentPendingStep = phaseId;
               }
             }
-            // Se todas as fases canÃ´nicas estÃ£o concluÃ­das, marcar como 'concluido'
+            // Se todas as fases canônicas estão concluídas, marcar como 'concluido'
             if (!currentPendingStep && completedSteps > 0 && completedSteps >= totalSteps) {
               currentPendingStep = 'concluido';
             }
@@ -553,7 +553,7 @@ export const appRouter = router({
           })
         );
         
-        // Se for despachante, filtrar apenas clientes com Juntada de Documentos concluÃ­da
+        // Se for despachante, filtrar apenas clientes com Juntada de Documentos concluída
         const filteredClients = ctx.user.role === 'despachante'
           ? clientsWithProgress.filter(c => c.juntadaConcluida)
           : clientsWithProgress;
@@ -579,12 +579,12 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.id)
           : await db.getClientById(input.id);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissÃ£o: admin, despachante ou operador responsÃ¡vel
+        // Verificar permissão: admin, despachante ou operador responsável
         if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o para acessar este cliente' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para acessar este cliente' });
         }
         
         return client;
@@ -593,13 +593,13 @@ export const appRouter = router({
     create: protectedProcedure
       .input(createClientSchema)
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-        // PermissÃ£o:
+        // Permissão:
         // - admin: pode cadastrar e atribuir a qualquer operador
         // - operator: pode cadastrar apenas para si
         if (ctx.user.role !== 'admin' && ctx.user.role !== 'operator') {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'Sem permissÃ£o para cadastrar novos clientes.',
+            message: 'Sem permissão para cadastrar novos clientes.',
           });
         }
 
@@ -650,7 +650,7 @@ export const appRouter = router({
           ) {
             throw new TRPCError({
               code: 'CONFLICT',
-              message: 'Este CPF jÃ¡ estÃ¡ cadastrado no sistema.',
+              message: 'Este CPF já está cadastrado no sistema.',
             });
           }
           
@@ -665,8 +665,8 @@ export const appRouter = router({
         const initialSteps = [
           { stepId: 'boas-vindas', stepTitle: 'Central de Mensagens' },
           { stepId: 'cadastro', stepTitle: 'Cadastro' },
-          { stepId: 'agendamento-psicotecnico', stepTitle: 'Encaminhamento de AvaliaÃ§Ã£o PsicolÃ³gica para ConcessÃ£o de Registro e Porte de Arma de Fogo' },
-          { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo de Capacidade TÃ©cnica para a ObtenÃ§Ã£o do Certificado de Registro (CR)' },
+          { stepId: 'agendamento-psicotecnico', stepTitle: 'Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo' },
+          { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)' },
           { stepId: 'juntada-documento', stepTitle: 'Juntada de Documentos' },
           { stepId: 'acompanhamento-sinarm', stepTitle: 'Acompanhamento Sinarm-CAC' },
         ];
@@ -687,7 +687,7 @@ export const appRouter = router({
                   completed: false,
                 });
 
-            // Se for a etapa "Juntada de Documento", criar subtarefas dinÃ¢micas de documentos
+            // Se for a etapa "Juntada de Documento", criar subtarefas dinâmicas de documentos
             if (step.stepId === 'juntada-documento') {
               const documents = buildRequiredJuntadaDocuments(
                 apostilamentoActivities,
@@ -720,7 +720,7 @@ export const appRouter = router({
             code: wfError?.code,
             detail: wfError?.detail,
           });
-          // Cliente jÃ¡ foi criado â€” nÃ£o falhar a mutaÃ§Ã£o inteira
+          // Cliente já foi criado — não falhar a mutação inteira
           console.warn('[Clients.create] Client created but workflow setup incomplete, clientId:', clientId);
         }
 
@@ -732,7 +732,7 @@ export const appRouter = router({
           }
         } catch (tokenErr) {
           console.warn('[Clients.create] Falha ao gerar token de convite do portal:', tokenErr);
-          // NÃ£o falha o cadastro
+          // Não falha o cadastro
         }
 
         // Enviar email de boas-vindas automaticamente
@@ -742,15 +742,15 @@ export const appRouter = router({
             : await db.getEmailTemplate('boasvindas-filiado');
           
           if (welcomeTemplate && input.email) {
-            // Buscar logo do tenant para variÃ¡vel {{logo}} e converter para base64
+            // Buscar logo do tenant para variável {{logo}} e converter para base64
             const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
             const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
             const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
             
-            // Logo jÃ¡ estÃ¡ salva como base64 no banco
+            // Logo já está salva como base64 no banco
 
-            // VariÃ¡vel {{link_portal}} â€” link de ativaÃ§Ã£o do portal do cliente
-            // DOMAIN pode vir como "hml.cac360.com.br" ou "https://hml.cac360.com.br" â€” normalizar
+            // Variável {{link_portal}} — link de ativação do portal do cliente
+            // DOMAIN pode vir como "hml.cac360.com.br" ou "https://hml.cac360.com.br" — normalizar
             const _rawDomain1 = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
             const portalBaseUrl = ctx.tenant?.domain
               ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
@@ -770,7 +770,7 @@ export const appRouter = router({
               }
             } catch {}
 
-            // Substituir variÃ¡veis no template
+            // Substituir variáveis no template
             const replaceVariables = (text: string) => {
               let result = text;
               result = result.replace(/{{nome}}/g, input.name || '');
@@ -778,7 +778,7 @@ export const appRouter = router({
               result = result.replace(/{{email}}/g, input.email || '');
               result = result.replace(/{{cpf}}/g, input.cpf || '');
               result = result.replace(/{{telefone}}/g, input.phone || '');
-              // VariÃ¡vel {{logo}} â€” CID inline se tenant tiver logo; fallback logo CAC 360
+              // Variável {{logo}} — CID inline se tenant tiver logo; fallback logo CAC 360
               const _logoFallback =
                 `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">` +
                 `<tr><td style="background-color:#123A63;border-radius:6px;padding:10px 28px;text-align:center;">` +
@@ -790,7 +790,7 @@ export const appRouter = router({
               } else {
                 result = result.replace(/{{logo}}/g, _logoFallback);
               }
-              // VariÃ¡vel {{link_portal}} â€” botÃ£o de acesso ao portal
+              // Variável {{link_portal}} — botão de acesso ao portal
               result = result.replace(/{{link_portal}}/g, portalLink
                 ? `<a href="${portalLink}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold;">Completar Meu Cadastro â†’</a>`
                 : '');
@@ -831,7 +831,7 @@ export const appRouter = router({
             }
           }
         } catch (emailError) {
-          // NÃ£o falhar a criaÃ§Ã£o do cliente se o email falhar
+          // Não falhar a criação do cliente se o email falhar
           console.error('[Clients] Failed to send welcome email:', emailError);
         }
 
@@ -856,7 +856,7 @@ export const appRouter = router({
             : await db.getClientById(clientId);
           if (newClient) {
             // Construir link do portal para {{link_portal}} no template welcome.
-            // O token de convite jÃ¡ foi criado acima; apenas lemos o valor.
+            // O token de convite já foi criado acima; apenas lemos o valor.
             let _welcomePortalLink = '';
             try {
               const _rawDomain = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -873,7 +873,7 @@ export const appRouter = router({
                   _welcomePortalLink = `${_portalBase}/portal/acesso?t=${_tokenArr[0].token}`;
                 }
               }
-            } catch { /* non-fatal â€” email Ã© enviado mesmo sem link */ }
+            } catch { /* non-fatal — email é enviado mesmo sem link */ }
 
             await triggerEmails('CLIENT_CREATED', {
               tenantDb,
@@ -897,12 +897,12 @@ export const appRouter = router({
               ? await db.getClientByIdFromDb(tenantDb, input.id)
               : await db.getClientById(input.id);
             if (!client) {
-              throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+              throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
             }
             
-            // Verificar permissÃ£o
+            // Verificar permissão
             if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-              throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o para editar este cliente' });
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para editar este cliente' });
             }
             
             // Apenas admin pode alterar operador
@@ -971,7 +971,7 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.id)
           : await db.getClientById(input.id);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
 
         if (tenantDb) {
@@ -1004,7 +1004,7 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.id)
           : await db.getClientById(input.id);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
         // Apenas admin pode deletar clientes
@@ -1035,27 +1035,27 @@ export const appRouter = router({
       .input(z.object({ clientId: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         if (!['admin', 'operator'].includes(ctx.user.role ?? '')) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o.' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão.' });
         }
 
         const tenantDb = await getTenantDbOrNull(ctx);
         const activeDb = tenantDb || await (await import('./db')).getDb();
-        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponÃ­vel.' });
+        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponível.' });
 
         // Buscar o cliente
         const clientRows = await activeDb.execute(
           (await import('drizzle-orm')).sql`SELECT * FROM "clients" WHERE "id" = ${input.clientId} LIMIT 1`
         );
         const clientArr = Array.isArray(clientRows) ? clientRows : (clientRows as any).rows || [];
-        if (clientArr.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado.' });
+        if (clientArr.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado.' });
         const client = clientArr[0];
 
         // Regenerar token
         const newToken = await db.regenerateClientInviteToken(activeDb, input.clientId, ctx.tenant?.id);
 
         // Montar link do portal
-        // DOMAIN pode vir com ou sem protocolo â€” normalizar e nÃ£o adicionar slug do tenant
-        // (o portal vive na raiz do domÃ­nio, nÃ£o em subdomÃ­nio por tenant)
+        // DOMAIN pode vir com ou sem protocolo — normalizar e não adicionar slug do tenant
+        // (o portal vive na raiz do domínio, não em subdomínio por tenant)
         const _rawDomain2 = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
         const portalBaseUrl = ctx.tenant?.domain
           ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
@@ -1069,13 +1069,13 @@ export const appRouter = router({
             const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
             const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
 
-            const subject = `Seu link de acesso ao Portal â€” ${ctx.tenant?.name || 'CAC 360'}`;
+            const subject = `Seu link de acesso ao Portal — ${ctx.tenant?.name || 'CAC 360'}`;
             const html = `
               <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
                 ${emailLogoUrl ? `<img src="cid:email-logo" alt="Logo" style="max-height:60px;margin-bottom:16px;display:block;" />` : ''}
                 <h2 style="color:#7c3aed">Portal do Associado</h2>
-                <p>OlÃ¡, <strong>${client.name}</strong>!</p>
-                <p>Seu link de acesso ao Portal foi renovado. Clique no botÃ£o abaixo para acessar:</p>
+                <p>Olá, <strong>${client.name}</strong>!</p>
+                <p>Seu link de acesso ao Portal foi renovado. Clique no botão abaixo para acessar:</p>
                 <p style="margin:24px 0">
                   <a href="${portalLink}"
                      style="background:#7c3aed;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
@@ -1083,8 +1083,8 @@ export const appRouter = router({
                   </a>
                 </p>
                 <p style="font-size:12px;color:#888">
-                  Este link Ã© pessoal e expira em 30 dias.<br>
-                  VocÃª precisarÃ¡ confirmar seu email (<strong>${client.email}</strong>) e CPF para acessar.
+                  Este link é pessoal e expira em 30 dias.<br>
+                  Você precisará confirmar seu email (<strong>${client.email}</strong>) e CPF para acessar.
                 </p>
               </div>
             `;
@@ -1099,7 +1099,7 @@ export const appRouter = router({
             });
           } catch (emailErr) {
             console.warn('[portal.reenviarConvite] Email falhou:', emailErr);
-            // NÃ£o falha o processo â€” token jÃ¡ foi gerado
+            // Não falha o processo — token já foi gerado
           }
         }
 
@@ -1147,19 +1147,19 @@ export const appRouter = router({
             ? await db.getClientByIdFromDb(tenantDb, input.clientId)
             : await db.getClientById(input.clientId);
           if (!client) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
           }
           
-          // Verificar permissÃ£o (despachante pode ver clientes do operador a que estÃ¡ vinculado)
+          // Verificar permissão (despachante pode ver clientes do operador a que está vinculado)
           if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
           }
           
           const steps = tenantDb
             ? await db.getWorkflowByClientFromDb(tenantDb, input.clientId)
             : await db.getWorkflowByClient(input.clientId);
           
-          // Etapas visÃ­veis para despachante (por stepId ou tÃ­tulo)
+          // Etapas visíveis para despachante (por stepId ou título)
           const DESPACHANTE_VISIBLE_STEPS = [1, 2, 6]; // Cadastro, Juntada de Documentos, Acompanhamento Sinarm-CAC
           const DESPACHANTE_VISIBLE_TITLES = ['cadastro', 'juntada', 'documentos', 'sinarm', 'acompanhamento'];
           
@@ -1211,17 +1211,17 @@ export const appRouter = router({
           ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
           : await db.getWorkflowStepById(input.stepId);
         if (!currentStep) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa nÃ£o encontrada' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
         }
         
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, currentStep.clientId)
           : await db.getClientById(currentStep.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissÃ£o
+        // Verificar permissão
         // Despachantes podem alterar sinarmStatus e protocolNumber na fase Acompanhamento Sinarm-CAC
         const isDespachante = ctx.user.role === 'despachante';
         const isUpdatingSinarmOnly = (
@@ -1233,10 +1233,10 @@ export const appRouter = router({
         const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
         
         if (!hasGeneralPermission && !(isDespachante && isUpdatingSinarmOnly)) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
 
-        // Regra: Agendamento de Laudo sÃ³ pode ser concluÃ­do se AvaliaÃ§Ã£o PsicolÃ³gica estiver concluÃ­da
+        // Regra: Agendamento de Laudo só pode ser concluído se Avaliação Psicológica estiver concluída
         if (input.completed === true) {
           const isLaudoStep =
             currentStep.stepId === 'agendamento-laudo' ||
@@ -1250,20 +1250,20 @@ export const appRouter = router({
             
             const avaliacaoStep = allSteps.find((s: any) => 
               s.stepId === 'agendamento-psicotecnico' || 
-              s.stepTitle?.toLowerCase()?.includes('avaliaÃ§Ã£o psicolÃ³gica') ||
-              s.stepTitle?.toLowerCase()?.includes('psicotÃ©cnico')
+              s.stepTitle?.toLowerCase()?.includes('avaliação psicológica') ||
+              s.stepTitle?.toLowerCase()?.includes('psicotécnico')
             );
             
             if (avaliacaoStep && !avaliacaoStep.completed) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
-                message: 'NÃ£o Ã© possÃ­vel concluir o Laudo de Capacidade TÃ©cnica: a fase de AvaliaÃ§Ã£o PsicolÃ³gica deve ser concluÃ­da primeiro.',
+                message: 'Não é possível concluir o Laudo de Capacidade Técnica: a fase de Avaliação Psicológica deve ser concluída primeiro.',
               });
             }
           }
         }
 
-        // Regra: Juntada de Documentos sÃ³ pode ser concluÃ­da se todos os documentos forem anexados
+        // Regra: Juntada de Documentos só pode ser concluída se todos os documentos forem anexados
         if (input.completed === true) {
           const isJuntadaStep =
             currentStep.stepId === 'juntada-documento' ||
@@ -1283,13 +1283,13 @@ export const appRouter = router({
             if (subTasksList.length > 0 && missing.length > 0) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
-                message: 'NÃ£o Ã© possÃ­vel concluir a Juntada de Documentos: ainda existem documentos obrigatÃ³rios nÃ£o anexados.',
+                message: 'Não é possível concluir a Juntada de Documentos: ainda existem documentos obrigatórios não anexados.',
               });
             }
           }
         }
         
-        // Construir objeto de atualizaÃ§Ã£o apenas com campos fornecidos
+        // Construir objeto de atualização apenas com campos fornecidos
         const updateData: any = {
           id: input.stepId,
           clientId: currentStep.clientId,
@@ -1308,7 +1308,7 @@ export const appRouter = router({
           await db.upsertWorkflowStep(updateData);
         }
 
-        // Registrar comentÃ¡rio no histÃ³rico para qualquer alteraÃ§Ã£o Sinarm
+        // Registrar comentário no histórico para qualquer alteração Sinarm
         try {
           const hasStatusChange = input.sinarmStatus !== undefined && input.sinarmStatus !== (currentStep.sinarmStatus || '');
           const oldProtocol = currentStep.protocolNumber || '';
@@ -1331,15 +1331,15 @@ export const appRouter = router({
               parts.push(`Status: "${currentStep.sinarmStatus || 'Novo'}" â†’ "${input.sinarmStatus}"`);
             }
             if (hasProtocolChange) {
-              parts.push(`Protocolo: "${oldProtocol || 'â€”'}" â†’ "${newProtocol || 'â€”'}"`);
+              parts.push(`Protocolo: "${oldProtocol || '—'}" â†’ "${newProtocol || '—'}"`);
             }
             if (hasDateChange) {
-              const fmtOld = oldDateRaw ? oldDateRaw.toLocaleDateString('pt-BR') : 'â€”';
-              const fmtNew = newDateRaw ? newDateRaw.toLocaleDateString('pt-BR') : 'â€”';
+              const fmtOld = oldDateRaw ? oldDateRaw.toLocaleDateString('pt-BR') : '—';
+              const fmtNew = newDateRaw ? newDateRaw.toLocaleDateString('pt-BR') : '—';
               parts.push(`Data abertura: "${fmtOld}" â†’ "${fmtNew}"`);
             }
 
-            const autoComment = parts.length > 0 ? parts.join(' | ') : 'AtualizaÃ§Ã£o registrada';
+            const autoComment = parts.length > 0 ? parts.join(' | ') : 'Atualização registrada';
             const comment = hasUserComment ? input.sinarmComment!.trim() : autoComment;
             const newStatus = input.sinarmStatus || currentStep.sinarmStatus || 'Novo';
             const oldStatus = hasStatusChange ? (currentStep.sinarmStatus || 'Novo') : newStatus;
@@ -1412,7 +1412,7 @@ export const appRouter = router({
         try {
           // Step completed trigger
           if (input.completed === true) {
-            // Mapear stepId para nÃºmero da etapa
+            // Mapear stepId para número da etapa
             // Ordem dos passos no CR:
             // 1. Cadastro
             // 2. Encaminhamento para Avaliação Psicológica (agendamento-psicotecnico)
@@ -1433,7 +1433,7 @@ export const appRouter = router({
             };
             const stepNumber = stepIdToNumber[currentStep.stepId] || currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
             
-            // Preparar extraData com informaÃ§Ãµes de agendamento se disponÃ­veis
+            // Preparar extraData com informações de agendamento se disponíveis
             const stepExtraData: Record<string, any> = {};
             if (currentStep.scheduledDate) {
               const schedDate = new Date(currentStep.scheduledDate);
@@ -1446,9 +1446,9 @@ export const appRouter = router({
             const isPsychStep = String(currentStep.stepId).includes('psico') || currentStep.stepTitle?.toLowerCase()?.includes('psico');
             const isLaudoStep = String(currentStep.stepId).includes('laudo') || currentStep.stepTitle?.toLowerCase()?.includes('laudo');
             if (isPsychStep) {
-              stepExtraData.tipoAgendamento = 'AvaliaÃ§Ã£o PsicolÃ³gica';
+              stepExtraData.tipoAgendamento = 'Avaliação Psicológica';
             } else if (isLaudoStep) {
-              stepExtraData.tipoAgendamento = 'Laudo TÃ©cnico';
+              stepExtraData.tipoAgendamento = 'Laudo Técnico';
             }
             
             await triggerEmails(`STEP_COMPLETED:${stepNumber}`, {
@@ -1461,8 +1461,8 @@ export const appRouter = router({
           
           // Sinarm status change trigger
           if (input.sinarmStatus) {
-            const sinarmEventStatus = input.sinarmStatus === 'RestituÃ­do'
-              ? 'CorreÃ§Ã£o Solicitada'
+            const sinarmEventStatus = input.sinarmStatus === 'Restituído'
+              ? 'Correção Solicitada'
               : input.sinarmStatus;
 
             const effectiveProtocolNumber = input.protocolNumber !== undefined
@@ -1492,7 +1492,7 @@ export const appRouter = router({
           : await db.getWorkflowStepById(input.stepId);
 
         if (!step) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa nÃ£o encontrada' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
         }
 
         const client = tenantDb
@@ -1500,7 +1500,7 @@ export const appRouter = router({
           : await db.getClientById(step.clientId);
 
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
 
         const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
@@ -1511,7 +1511,7 @@ export const appRouter = router({
           step.stepTitle?.toLowerCase()?.includes('sinarm') === true;
 
         if (!hasGeneralPermission && !(isDespachante && isSinarmStep)) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
 
         return tenantDb
@@ -1531,12 +1531,12 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissÃ£o
+        // Verificar permissão
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
         if (tenantDb) {
@@ -1556,12 +1556,12 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissÃ£o
+        // Verificar permissão
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
         const { generateWelcomePDF } = await import('./generate-pdf');
@@ -1593,15 +1593,20 @@ export const appRouter = router({
           : await db.getClientById(input.clientId);
         if (!client) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado.' });
 
-        // Get tenant admin name for PDF signature
+        // Get tenant signature configuration for PDF signature
         let responsibleName = 'CAC 360';
         if (ctx.tenant?.id) {
-          const tenantAdmins = tenantDb
-            ? await db.getAllUsersFromDb(tenantDb, ctx.tenant.id)
-            : await db.getAllUsers();
-          const adminUser = tenantAdmins.find(u => u.role === 'admin');
-          if (adminUser) {
-            responsibleName = adminUser.name || 'CAC 360';
+          // Priority: 1) Signature name configured in tenant, 2) Admin user name, 3) CAC 360
+          if ((ctx.tenant as any).signatureResponsibleName) {
+            responsibleName = (ctx.tenant as any).signatureResponsibleName;
+          } else {
+            const tenantAdmins = tenantDb
+              ? await db.getAllUsersFromDb(tenantDb, ctx.tenant.id)
+              : await db.getAllUsers();
+            const adminUser = tenantAdmins.find(u => u.role === 'admin');
+            if (adminUser) {
+              responsibleName = adminUser.name || 'CAC 360';
+            }
           }
         }
 
@@ -1624,7 +1629,7 @@ export const appRouter = router({
           const mimeType  = base64Match[1];
           const fileBuffer = Buffer.from(base64Match[2], 'base64');
           attachments.push({ filename: input.fileName, content: fileBuffer, contentType: mimeType });
-          // Anexar tambÃ©m a ficha de dados do cliente
+          // Anexar também a ficha de dados do cliente
           const clientDataPdf = await generateClientDataPDF(client as any);
           attachments.push({ filename: 'ficha-cadastral.pdf', content: clientDataPdf, contentType: 'application/pdf' });
         }
@@ -1663,22 +1668,22 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissÃ£o
+        // Verificar permissão
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
         const currentStep = tenantDb
           ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
           : await db.getWorkflowStepById(input.stepId);
         if (!currentStep) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa nÃ£o encontrada' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
         }
 
-        // Atualizar apenas campos de agendamento, preservando identificadores e tÃ­tulo da etapa
+        // Atualizar apenas campos de agendamento, preservando identificadores e título da etapa
         if (tenantDb) {
           await db.upsertWorkflowStepToDb(tenantDb, {
             id: currentStep.id,
@@ -1714,7 +1719,7 @@ export const appRouter = router({
               extraData: {
                 dataAgendamento: scheduledDate.toLocaleString('pt-BR'),
                 examinador: input.examinerName || '',
-                tipoAgendamento: isPsych ? 'AvaliaÃ§Ã£o PsicolÃ³gica' : 'Laudo TÃ©cnico',
+                tipoAgendamento: isPsych ? 'Avaliação Psicológica' : 'Laudo Técnico',
               },
             });
           } catch (triggerError) {
@@ -1737,12 +1742,12 @@ export const appRouter = router({
             ? await db.getClientByIdFromDb(tenantDb, input.clientId)
             : await db.getClientById(input.clientId);
           if (!client) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
           }
           
-          // Verificar permissÃ£o
+          // Verificar permissão
           if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
           }
           
           return tenantDb
@@ -1770,17 +1775,17 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissÃ£o
+        // Verificar permissão
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
 
-        // Despachante nÃ£o pode fazer upload de documentos
+        // Despachante não pode fazer upload de documentos
         if (ctx.user.role === 'despachante') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante nÃ£o pode fazer upload de documentos' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode fazer upload de documentos' });
         }
 
         // Verificar limite de armazenamento do tenant
@@ -1796,7 +1801,7 @@ export const appRouter = router({
           }
         }
 
-        // SECURITY: Validar MIME type e extensÃ£o antes de salvar
+        // SECURITY: Validar MIME type e extensão antes de salvar
         validateFileUpload(input.fileName, input.mimeType);
 
         const buffer = Buffer.from(input.fileData, "base64");
@@ -1817,7 +1822,7 @@ export const appRouter = router({
           fileUrl = stored.publicPath;
           fileSize = stored.size;
         } else {
-          // Fallback para storage padrÃ£o (proxy/S3)
+          // Fallback para storage padrão (proxy/S3)
           const relKey = `clients/${input.clientId}/${Date.now()}-${input.fileName}`;
           const { url } = await storagePut(relKey, buffer, input.mimeType);
           fileKey = relKey;
@@ -1894,24 +1899,24 @@ export const appRouter = router({
           : await db.getDocumentById(input.id);
         
         if (!doc) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Documento nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Documento não encontrado' });
         }
         
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, doc.clientId)
           : await db.getClientById(doc.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissÃ£o
+        // Verificar permissão
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
 
-        // Despachante nÃ£o pode excluir documentos
+        // Despachante não pode excluir documentos
         if (ctx.user.role === 'despachante') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante nÃ£o pode excluir documentos' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode excluir documentos' });
         }
         
         // Log de auditoria - DELETE (antes de deletar para ter os dados)
@@ -1961,12 +1966,12 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
         
-        // Verificar permissÃ£o
+        // Verificar permissão
         if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
         }
         
         const docs = tenantDb
@@ -2118,20 +2123,20 @@ export const appRouter = router({
         if (!tenantId) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Tenant nÃ£o identificado. FaÃ§a login novamente.",
+            message: "Tenant não identificado. Faça login novamente.",
           });
         }
 
-        // Se mÃ©todo Ã© SMTP, valida campos obrigatÃ³rios
+        // Se método é SMTP, valida campos obrigatórios
         if (input.emailMethod === "smtp") {
           if (!input.smtpHost || !input.smtpUser) {
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message: "Configure host e usuÃ¡rio SMTP.",
+              message: "Configure host e usuário SMTP.",
             });
           }
 
-          // Busca configuraÃ§Ã£o existente para manter senha se nÃ£o informada
+          // Busca configuração existente para manter senha se não informada
           const existing = await db.getTenantSmtpSettings(tenantId);
           const smtpPassword = input.smtpPass !== undefined && input.smtpPass !== ""
             ? input.smtpPass
@@ -2153,7 +2158,7 @@ export const appRouter = router({
             smtpFrom: input.smtpFrom,
           });
         } else {
-          // MÃ©todo gateway (PostmanGPX)
+          // Método gateway (PostmanGPX)
           if (!input.postmanGpxBaseUrl) {
             throw new TRPCError({
               code: "BAD_REQUEST",
@@ -2204,10 +2209,10 @@ export const appRouter = router({
         // Buscar settings do tenant
         const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
         
-        // Determinar mÃ©todo: usa o informado no input ou o configurado no tenant
+        // Determinar método: usa o informado no input ou o configurado no tenant
         const method = input?.useMethod || tenantSettings?.emailMethod || "gateway";
 
-        // Email destinatÃ¡rio
+        // Email destinatário
         const toEmail = input?.testEmail || ctx.user?.email;
         if (!toEmail) {
           throw new TRPCError({
@@ -2216,7 +2221,7 @@ export const appRouter = router({
           });
         }
 
-        // Enviar email de teste via mÃ©todo escolhido
+        // Enviar email de teste via método escolhido
         const result = await sendTestEmailWithSettings({
           host: tenantSettings?.smtpHost || process.env.SMTP_HOST || "",
           port: tenantSettings?.smtpPort || Number(process.env.SMTP_PORT) || 587,
@@ -2235,7 +2240,7 @@ export const appRouter = router({
         if (!result.success) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: result.error || "Falha ao enviar email de teste. Verifique as configuraÃ§Ãµes.",
+            message: result.error || "Falha ao enviar email de teste. Verifique as configurações.",
           });
         }
 
@@ -2260,7 +2265,7 @@ export const appRouter = router({
         if (!tenantId) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Tenant nÃ£o identificado. FaÃ§a login novamente.",
+            message: "Tenant não identificado. Faça login novamente.",
           });
         }
 
@@ -2276,14 +2281,14 @@ export const appRouter = router({
             // Se HEAD falhar, tenta GET para validar
           }
 
-          // Se HEAD nÃ£o funcionou ou nÃ£o retornou content-type de imagem, tenta GET
+          // Se HEAD não funcionou ou não retornou content-type de imagem, tenta GET
           if (!contentType.startsWith("image/")) {
             const response = await fetch(input.logoUrl);
             
             if (!response.ok) {
               throw new TRPCError({
                 code: "BAD_REQUEST",
-                message: `NÃ£o foi possÃ­vel acessar a imagem: ${response.statusText}`,
+                message: `Não foi possível acessar a imagem: ${response.statusText}`,
               });
             }
 
@@ -2298,13 +2303,13 @@ export const appRouter = router({
           }
 
           // IMPORTANTE: Converter a imagem para base64 e salvar diretamente no banco.
-          // Isso garante que a imagem esteja sempre disponÃ­vel, independente de URLs externas.
+          // Isso garante que a imagem esteja sempre disponível, independente de URLs externas.
           
           const imageResponse = await fetch(input.logoUrl);
           if (!imageResponse.ok) {
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message: `NÃ£o foi possÃ­vel baixar a imagem: ${imageResponse.statusText}`,
+              message: `Não foi possível baixar a imagem: ${imageResponse.statusText}`,
             });
           }
           
@@ -2348,7 +2353,7 @@ export const appRouter = router({
         if (!tenantId) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Tenant nÃ£o identificado.",
+            message: "Tenant não identificado.",
           });
         }
 
@@ -2438,7 +2443,7 @@ export const appRouter = router({
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
         if (!tenantDb || !tenantId) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant nÃ£o identificado ou banco indisponÃ­vel' });
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado ou banco indisponível' });
         }
         return await seedTenantEmailTemplates(tenantDb, tenantId);
       }),
@@ -2467,9 +2472,9 @@ export const appRouter = router({
         content: z.string(),
       }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
-        // Despachante nÃ£o pode enviar emails manualmente
+        // Despachante não pode enviar emails manualmente
         if (ctx.user?.role === 'despachante') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante nÃ£o pode enviar emails manualmente' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode enviar emails manualmente' });
         }
 
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -2477,7 +2482,7 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
 
         const template = tenantDb
@@ -2514,7 +2519,7 @@ export const appRouter = router({
           schedulingExaminer = schedulingStep.examinerName;
         }
 
-        // Buscar logo do tenant (jÃ¡ salva como base64 no banco)
+        // Buscar logo do tenant (já salva como base64 no banco)
         const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
         const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
         const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
@@ -2532,7 +2537,7 @@ export const appRouter = router({
           result = result.replace(/{{cpf}}/g, clientData.cpf || '');
           result = result.replace(/{{telefone}}/g, clientData.phone || '');
 
-          // VariÃ¡veis especÃ­ficas de agendamento de laudo
+          // Variáveis específicas de agendamento de laudo
           if (schedulingDateFormatted) {
             result = result.replace(/{{data_agendamento}}/g, schedulingDateFormatted);
           }
@@ -2540,7 +2545,7 @@ export const appRouter = router({
             result = result.replace(/{{examinador}}/g, schedulingExaminer);
           }
 
-          // VariÃ¡vel {{logo}} - renderiza como inline attachment (CID)
+          // Variável {{logo}} - renderiza como inline attachment (CID)
           if (emailLogoUrl) {
             result = result.replace(/{{logo}}/g, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
           } else {
@@ -2570,7 +2575,7 @@ export const appRouter = router({
           console.error("Email sending failed:", error);
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR',
-            message: 'Falha ao enviar o email. Verifique as configuraÃ§Ãµes SMTP e tente novamente.',
+            message: 'Falha ao enviar o email. Verifique as configurações SMTP e tente novamente.',
           });
         }
 
@@ -2609,7 +2614,7 @@ export const appRouter = router({
       }),
   }),
 
-  // Users router (tenant admin only â€” tenant obrigatÃ³rio para isolamento)
+  // Users router (tenant admin only — tenant obrigatório para isolamento)
   users: router({
     list: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
@@ -2625,7 +2630,7 @@ export const appRouter = router({
           ? await db.getUserByEmailFromDb(tenantDb, input.email)
           : await db.getUserByEmail(input.email);
         if (existingUser) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Este email jÃ¡ estÃ¡ cadastrado' });
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
         }
 
         const hashedPassword = await hashPassword(input.password);
@@ -2671,7 +2676,7 @@ export const appRouter = router({
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
           : await db.getUserById(input.userId);
         if (!user) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'UsuÃ¡rio nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
         }
 
         const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
@@ -2688,7 +2693,7 @@ export const appRouter = router({
             ? await db.getUserByEmailFromDb(tenantDb, input.email)
             : await db.getUserByEmail(input.email);
           if (other && other.id !== input.userId) {
-            throw new TRPCError({ code: 'CONFLICT', message: 'Este email jÃ¡ estÃ¡ em uso por outro usuÃ¡rio' });
+            throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está em uso por outro usuário' });
           }
           updateData.email = input.email;
         }
@@ -2697,7 +2702,7 @@ export const appRouter = router({
           if (isLastAdmin && input.role !== 'admin') {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'NÃ£o Ã© possÃ­vel rebaixar o Ãºltimo administrador do sistema.',
+              message: 'Não é possível rebaixar o último administrador do sistema.',
             });
           }
           updateData.role = input.role;
@@ -2745,7 +2750,7 @@ export const appRouter = router({
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
           : await db.getUserById(input.userId);
         if (!user) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'UsuÃ¡rio nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
         }
 
         const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
@@ -2754,7 +2759,7 @@ export const appRouter = router({
         if (isLastAdmin && input.role !== 'admin') {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'NÃ£o Ã© possÃ­vel rebaixar o Ãºltimo administrador do sistema.',
+            message: 'Não é possível rebaixar o último administrador do sistema.',
           });
         }
 
@@ -2792,7 +2797,7 @@ export const appRouter = router({
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
           : await db.getUserById(input.userId);
         if (!user) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'UsuÃ¡rio nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
         }
 
         const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
@@ -2801,7 +2806,7 @@ export const appRouter = router({
         if (isLastAdmin && input.role !== 'admin') {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'NÃ£o Ã© possÃ­vel rebaixar o Ãºltimo administrador do sistema.',
+            message: 'Não é possível rebaixar o último administrador do sistema.',
           });
         }
 
@@ -2820,16 +2825,16 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
-        // Impedir exclusÃ£o do prÃ³prio usuÃ¡rio
+        // Impedir exclusão do próprio usuário
         if (input.userId === ctx.user.id) {
-          throw new Error('VocÃª nÃ£o pode excluir seu prÃ³prio usuÃ¡rio');
+          throw new Error('Você não pode excluir seu próprio usuário');
         }
 
         const user = tenantDb
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
           : await db.getUserById(input.userId);
         if (!user) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'UsuÃ¡rio nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
         }
 
         const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
@@ -2838,7 +2843,7 @@ export const appRouter = router({
         if (isLastAdmin) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'NÃ£o Ã© possÃ­vel excluir o Ãºltimo administrador do sistema.',
+            message: 'Não é possível excluir o último administrador do sistema.',
           });
         }
         
@@ -2865,7 +2870,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    // Listar operadores com estatÃ­sticas de clientes
+    // Listar operadores com estatísticas de clientes
     listOperatorsWithStats: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
@@ -2885,7 +2890,7 @@ export const appRouter = router({
       });
     }),
 
-    // Listar clientes disponÃ­veis para atribuiÃ§Ã£o
+    // Listar clientes disponíveis para atribuição
     listClientsForAssignment: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
@@ -2910,14 +2915,14 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
         }
 
         const operator = tenantDb
           ? await db.getUserByIdFromDb(tenantDb, input.operatorId)
           : await db.getUserById(input.operatorId);
         if (!operator) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Operador nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Operador não encontrado' });
         }
 
         if (tenantDb) {
@@ -2944,7 +2949,7 @@ export const appRouter = router({
       .query(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         return tenant;
       }),
@@ -2984,18 +2989,19 @@ export const appRouter = router({
         maxUsers: z.number().default(10),
         maxClients: z.number().default(500),
         maxStorageGB: z.number().default(50),
+        signatureResponsibleName: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
-        // Verificar se slug jÃ¡ existe
+        // Verificar se slug já existe
         const existing = await db.getTenantBySlug(input.slug);
         if (existing) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Este slug jÃ¡ estÃ¡ em uso' });
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este slug já está em uso' });
         }
 
-        // Verificar se email do admin jÃ¡ existe
+        // Verificar se email do admin já existe
         const existingUser = await db.getUserByEmail(input.adminEmail);
         if (existingUser) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Este email jÃ¡ estÃ¡ cadastrado' });
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
         }
 
         // No modo single-db, usar valores do DATABASE_URL
@@ -3039,6 +3045,7 @@ export const appRouter = router({
           maxUsers: input.maxUsers,
           maxClients: input.maxClients,
           maxStorageGB: input.maxStorageGB,
+          signatureResponsibleName: input.signatureResponsibleName,
           subscriptionStatus: 'trial',
           isActive: true,
         });
@@ -3101,13 +3108,14 @@ export const appRouter = router({
         maxUsers: z.number().optional(),
         maxClients: z.number().optional(),
         maxStorageGB: z.number().optional(),
+        signatureResponsibleName: z.string().optional(),
         isActive: z.boolean().optional(),
       }))
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const { id, ...updates } = input;
         const tenant = await db.getTenantById(id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         await db.updateTenant(id, updates);
         invalidateTenantCache(tenant.slug);
@@ -3123,7 +3131,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         await db.updateTenant(input.id, { subscriptionStatus: input.status });
         invalidateTenantCache(tenant.slug);
@@ -3142,7 +3150,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         await db.updateTenant(input.id, { isActive: false, subscriptionStatus: 'cancelled' });
         invalidateTenantCache(tenant.slug);
@@ -3161,25 +3169,25 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         await db.hardDeleteTenant(input.id);
         invalidateTenantCache(tenant.slug);
         return { success: true };
       }),
 
-    // EstatÃ­sticas do tenant
+    // Estatísticas do tenant
     getStats: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         try {
           const platformDb = await db.getDb();
           if (!platformDb) {
-            return { usersCount: 0, clientsCount: 0, storageUsedGB: 0, lastActivity: null, error: 'DB nÃ£o disponÃ­vel' };
+            return { usersCount: 0, clientsCount: 0, storageUsedGB: 0, lastActivity: null, error: 'DB não disponível' };
           }
           const usersRes = await platformDb.execute(sql`SELECT count(*) as count FROM "users" WHERE "tenantId" = ${input.id}`);
           const usersCount = Number(usersRes[0]?.count || 0);
@@ -3206,12 +3214,12 @@ export const appRouter = router({
         }
       }),
 
-    // EstatÃ­sticas Globais (Super Admin Dashboard)
+    // Estatísticas Globais (Super Admin Dashboard)
     getGlobalStats: platformAdminProcedure
       .query(async () => {
         const platformDb = await db.getDb();
         if (!platformDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados nÃ£o disponÃ­vel' });
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
         }
         try {
           const [tenantsRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "tenants"`);
@@ -3233,29 +3241,29 @@ export const appRouter = router({
           console.error('[getGlobalStats] Error:', error);
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
-            message: 'Erro ao calcular estatÃ­sticas globais: ' + error.message 
+            message: 'Erro ao calcular estatísticas globais: ' + error.message 
           });
         }
       }),
 
-    // Health check do tenant (verifica conexÃ£o com banco)
+    // Health check do tenant (verifica conexão com banco)
     healthCheck: platformAdminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }: { input: any }) => {
         const startTime = Date.now();
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          return { status: 'error' as const, message: 'Tenant nÃ£o encontrado', latencyMs: Date.now() - startTime };
+          return { status: 'error' as const, message: 'Tenant não encontrado', latencyMs: Date.now() - startTime };
         }
         try {
           const tenantDb = await getTenantDb(tenant);
           if (!tenantDb) {
-            return { status: 'error' as const, message: 'NÃ£o foi possÃ­vel conectar ao banco do tenant', latencyMs: Date.now() - startTime };
+            return { status: 'error' as const, message: 'Não foi possível conectar ao banco do tenant', latencyMs: Date.now() - startTime };
           }
           await tenantDb.execute(sql`SELECT 1`);
           return {
             status: 'healthy' as const,
-            message: 'ConexÃ£o OK',
+            message: 'Conexão OK',
             latencyMs: Date.now() - startTime,
             tenant: {
               slug: tenant.slug,
@@ -3269,7 +3277,7 @@ export const appRouter = router({
         }
       }),
 
-    // Impersonate: entrar como admin de um tenant especÃ­fico
+    // Impersonate: entrar como admin de um tenant específico
     impersonate: platformAdminOrSuperProcedure
       .input(z.object({ 
         tenantId: z.number(),
@@ -3282,11 +3290,11 @@ export const appRouter = router({
         }
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         const tenantAdmin = await db.getTenantAdmin(input.tenantId);
         if (!tenantAdmin) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Admin do tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Admin do tenant não encontrado' });
         }
         const impersonationToken = await sdk.createSessionToken(tenantAdmin.id.toString(), {
           name: tenantAdmin.name || "",
@@ -3360,7 +3368,7 @@ export const appRouter = router({
         const { tenantId, ...config } = input;
         if (config.emailMethod === "smtp") {
           if (!config.smtpHost || !config.smtpUser) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "SMTP requer host e usuÃ¡rio" });
+            throw new TRPCError({ code: "BAD_REQUEST", message: "SMTP requer host e usuário" });
           }
           const existing = await db.getTenantSmtpSettings(tenantId);
           const smtpPassword = config.smtpPassword !== undefined && config.smtpPassword !== ""
@@ -3406,7 +3414,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const settings = await db.getTenantSmtpSettings(input.tenantId);
         if (!settings) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'ConfiguraÃ§Ã£o nÃ£o encontrada' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Configuração não encontrada' });
         }
         const tenant = await db.getTenantById(input.tenantId);
         const result = await sendTestEmailWithSettings({
@@ -3417,8 +3425,8 @@ export const appRouter = router({
           secure: settings.smtpPort === 465,
           from: settings.smtpFrom || "",
           toEmail: input.testEmail,
-          subject: `[CAC 360] Teste de ConfiguraÃ§Ã£o - ${tenant?.name || 'Tenant'}`,
-          body: `<p>Este Ã© um email de teste da configuraÃ§Ã£o SMTP do tenant <strong>${tenant?.name || input.tenantId}</strong>.</p><p>Enviado por: ${ctx.platformAdmin.name || ctx.platformAdmin.email}</p>`,
+          subject: `[CAC 360] Teste de Configuração - ${tenant?.name || 'Tenant'}`,
+          body: `<p>Este é um email de teste da configuração SMTP do tenant <strong>${tenant?.name || input.tenantId}</strong>.</p><p>Enviado por: ${ctx.platformAdmin.name || ctx.platformAdmin.email}</p>`,
           useGateway: settings.emailMethod === "gateway",
           postmanGpxBaseUrl: (settings as any).postmanGpxBaseUrl,
           postmanGpxApiKey: (settings as any).postmanGpxApiKey,
@@ -3435,7 +3443,7 @@ export const appRouter = router({
         try {
           const tenant = await db.getTenantById(input.tenantId);
           if (!tenant) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
           }
           let tenantDb: any = null;
           const tenantConfig = await getTenantConfig(tenant.slug);
@@ -3455,7 +3463,7 @@ export const appRouter = router({
         try {
           const tenant = await db.getTenantById(input.tenantId);
           if (!tenant) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
           }
           let tenantDb: any = null;
           const tenantConfig = await getTenantConfig(tenant.slug);
@@ -3487,13 +3495,13 @@ export const appRouter = router({
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponÃ­vel' });
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         const templateId = await db.saveEmailTemplateToDb(tenantDb, {
           templateKey: input.templateKey,
           module: input.module,
@@ -3509,13 +3517,13 @@ export const appRouter = router({
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponÃ­vel' });
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         return await seedTenantEmailTemplates(tenantDb, input.tenantId);
       }),
 
@@ -3532,13 +3540,13 @@ export const appRouter = router({
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponÃ­vel' });
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         const { tenantId: _tid, ...triggerData } = input;
         const trigger = await db.createEmailTriggerToDb(tenantDb, {
           ...triggerData,
@@ -3561,13 +3569,13 @@ export const appRouter = router({
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponÃ­vel' });
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         const { tenantId: _tid, triggerId, ...updateFields } = input;
         const updateData: any = {};
         if (updateFields.name !== undefined) updateData.name = updateFields.name;
@@ -3588,13 +3596,13 @@ export const appRouter = router({
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponÃ­vel' });
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         await db.deleteEmailTriggerFromDb(tenantDb, input.triggerId);
         return { success: true };
       }),
@@ -3621,13 +3629,13 @@ export const appRouter = router({
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponÃ­vel' });
+        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
         const { emailTriggerTemplates } = await import('../drizzle/schema');
         const { eq } = await import('drizzle-orm');
         await tenantDb.delete(emailTriggerTemplates).where(eq(emailTriggerTemplates.triggerId, input.triggerId));
@@ -3662,7 +3670,7 @@ export const appRouter = router({
           const tenantDb = await getTenantDbOrNull(ctx);
           const tenantId = ctx.tenant?.id || ctx.user?.tenantId;
           if (!tenantId) {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant nÃ£o identificado' });
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
           }
 
           const params: db.GetAuditLogsParams = {
@@ -3759,7 +3767,7 @@ export const appRouter = router({
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id || ctx.user?.tenantId;
           if (!tenantId) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant nÃ£o identificado' });
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
         }
 
         const params: db.GetAuditLogsParams = {
@@ -3813,7 +3821,7 @@ export const appRouter = router({
           return log.userId ? 'Admin da plataforma' : 'Sistema';
         };
 
-        const csvHeader = 'Data/Hora,UsuÃ¡rio,AÃ§Ã£o,Entidade,ID Entidade,Detalhes,IP\n';
+        const csvHeader = 'Data/Hora,Usuário,Ação,Entidade,ID Entidade,Detalhes,IP\n';
         const csvRows = result.logs.map(log => {
           const userName = getUserNameForLog(log);
           const date = new Date(log.createdAt).toLocaleString('pt-BR');
@@ -3828,7 +3836,7 @@ export const appRouter = router({
       }),
   }),
 
-  // Email Triggers Router - AutomaÃ§Ã£o de emails
+  // Email Triggers Router - Automação de emails
   emailTriggers: router({
     list: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       try {
@@ -3865,7 +3873,7 @@ export const appRouter = router({
           : await db.getEmailTriggerById(input.id);
         
         if (!trigger) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Trigger nÃ£o encontrado' });
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Trigger não encontrado' });
         }
         
         const templates = tenantDb
@@ -3994,20 +4002,20 @@ export const appRouter = router({
     getAvailableEvents: tenantAdminProcedure.query(() => {
       return [
         { value: 'CLIENT_CREATED', label: 'Cliente cadastrado', hasSchedule: false },
-        { value: 'STEP_COMPLETED:1', label: 'Etapa 1 - Cadastro concluÃ­do', hasSchedule: false },
-        { value: 'STEP_COMPLETED:2', label: 'Etapa 2 - Juntada de Documentos concluÃ­da', hasSchedule: false },
-        { value: 'STEP_COMPLETED:3', label: 'Etapa 3 - Central de Mensagens concluÃ­da', hasSchedule: false },
-        { value: 'STEP_COMPLETED:4', label: 'Etapa 4 - AvaliaÃ§Ã£o PsicolÃ³gica concluÃ­da', hasSchedule: false },
-        { value: 'STEP_COMPLETED:5', label: 'Etapa 5 - Laudo TÃ©cnico concluÃ­do', hasSchedule: false },
-        { value: 'STEP_COMPLETED:6', label: 'Etapa 6 - Acompanhamento Sinarm concluÃ­do', hasSchedule: false },
-        { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de AvaliaÃ§Ã£o PsicolÃ³gica', hasSchedule: true },
-        { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'ConfirmaÃ§Ã£o de Agendamento de Laudo TÃ©cnico', hasSchedule: true },
-        // SCHEDULE_TECH_REMINDER e WORKFLOW_COMPLETE removidos: eventos nÃ£o disparados no backend
+        { value: 'STEP_COMPLETED:1', label: 'Etapa 1 - Cadastro concluído', hasSchedule: false },
+        { value: 'STEP_COMPLETED:2', label: 'Etapa 2 - Juntada de Documentos concluída', hasSchedule: false },
+        { value: 'STEP_COMPLETED:3', label: 'Etapa 3 - Central de Mensagens concluída', hasSchedule: false },
+        { value: 'STEP_COMPLETED:4', label: 'Etapa 4 - Avaliação Psicológica concluída', hasSchedule: false },
+        { value: 'STEP_COMPLETED:5', label: 'Etapa 5 - Laudo Técnico concluído', hasSchedule: false },
+        { value: 'STEP_COMPLETED:6', label: 'Etapa 6 - Acompanhamento Sinarm concluído', hasSchedule: false },
+        { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
+        { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'Confirmação de Agendamento de Laudo Técnico', hasSchedule: true },
+        // SCHEDULE_TECH_REMINDER e WORKFLOW_COMPLETE removidos: eventos não disparados no backend
         { value: 'SINARM_STATUS:Iniciado', label: 'Sinarm - Iniciado', hasSchedule: false },
         { value: 'SINARM_STATUS:Solicitado', label: 'Sinarm - Solicitado', hasSchedule: false },
         { value: 'SINARM_STATUS:Aguardando Baixa GRU', label: 'Sinarm - Aguardando Baixa GRU', hasSchedule: false },
-        { value: 'SINARM_STATUS:Em AnÃ¡lise', label: 'Sinarm - Em AnÃ¡lise', hasSchedule: false },
-        { value: 'SINARM_STATUS:CorreÃ§Ã£o Solicitada', label: 'Sinarm - CorreÃ§Ã£o Solicitada', hasSchedule: false },
+        { value: 'SINARM_STATUS:Em Análise', label: 'Sinarm - Em Análise', hasSchedule: false },
+        { value: 'SINARM_STATUS:Correção Solicitada', label: 'Sinarm - Correção Solicitada', hasSchedule: false },
         { value: 'SINARM_STATUS:Deferido', label: 'Sinarm - Deferido', hasSchedule: false },
         { value: 'SINARM_STATUS:Indeferido', label: 'Sinarm - Indeferido', hasSchedule: false },
       ];
@@ -4038,12 +4046,12 @@ export const appRouter = router({
   // PLATFORM ADMINS ROUTER (RBAC)
   // ===========================================
   platformAdmins: router({
-    // Lista todos os platform admins â€” apenas superadmin
+    // Lista todos os platform admins — apenas superadmin
     list: platformSuperAdminProcedure.query(async () => {
       return db.getAllPlatformAdmins();
     }),
 
-    // Cria novo platform admin â€” apenas superadmin
+    // Cria novo platform admin — apenas superadmin
     create: platformSuperAdminProcedure
       .input(z.object({
         email: z.string().email(),
@@ -4054,12 +4062,12 @@ export const appRouter = router({
       .mutation(async ({ input }: { input: any }) => {
         const existing = await db.getPlatformAdminByEmail(input.email);
         if (existing) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'JÃ¡ existe um administrador com esse e-mail.' });
+          throw new TRPCError({ code: 'CONFLICT', message: 'Já existe um administrador com esse e-mail.' });
         }
         return db.createPlatformAdmin(input);
       }),
 
-    // Edita perfil â€” superadmin edita qualquer um; outros sÃ³ editam o prÃ³prio
+    // Edita perfil — superadmin edita qualquer um; outros só editam o próprio
     update: platformAdminProcedure
       .input(z.object({
         id: z.number(),
@@ -4069,19 +4077,19 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const isSelf = ctx.platformAdmin!.id === input.id;
         if (!isSelf && ctx.platformAdmin!.role !== 'superadmin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o para editar outro administrador.' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para editar outro administrador.' });
         }
         if (input.email) {
           const existing = await db.getPlatformAdminByEmail(input.email);
           if (existing && existing.id !== input.id) {
-            throw new TRPCError({ code: 'CONFLICT', message: 'E-mail jÃ¡ em uso por outro administrador.' });
+            throw new TRPCError({ code: 'CONFLICT', message: 'E-mail já em uso por outro administrador.' });
           }
         }
         const { id, ...data } = input;
         return db.updatePlatformAdmin(id, data);
       }),
 
-    // Troca senha â€” superadmin troca de qualquer um sem senha atual; outros sÃ³ a prÃ³pria (com senha atual)
+    // Troca senha — superadmin troca de qualquer um sem senha atual; outros só a própria (com senha atual)
     changePassword: platformAdminProcedure
       .input(z.object({
         id: z.number(),
@@ -4093,14 +4101,14 @@ export const appRouter = router({
         const isSuperAdmin = ctx.platformAdmin!.role === 'superadmin';
 
         if (!isSelf && !isSuperAdmin) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissÃ£o para alterar a senha de outro administrador.' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para alterar a senha de outro administrador.' });
         }
         if (isSelf) {
           if (!input.currentPassword) {
             throw new TRPCError({ code: 'BAD_REQUEST', message: 'Informe a senha atual.' });
           }
           const admin = await db.getPlatformAdminById(input.id);
-          if (!admin) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador nÃ£o encontrado.' });
+          if (!admin) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador não encontrado.' });
           const match = await comparePassword(input.currentPassword, admin.hashedPassword);
           if (!match) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Senha atual incorreta.' });
         }
@@ -4108,7 +4116,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    // Ativa/desativa â€” apenas superadmin; bloqueia se for o Ãºltimo superadmin ativo
+    // Ativa/desativa — apenas superadmin; bloqueia se for o último superadmin ativo
     setStatus: platformSuperAdminProcedure
       .input(z.object({ id: z.number(), isActive: z.boolean() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
@@ -4117,7 +4125,7 @@ export const appRouter = router({
           if (target?.role === 'superadmin') {
             const count = await db.countActivePlatformAdmins();
             if (count <= 1) {
-              throw new TRPCError({ code: 'FORBIDDEN', message: 'NÃ£o Ã© possÃ­vel desativar o Ãºnico superadmin ativo.' });
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível desativar o único superadmin ativo.' });
             }
           }
         }
@@ -4125,19 +4133,19 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    // Altera role â€” apenas superadmin; bloqueia rebaixamento do Ãºltimo superadmin
+    // Altera role — apenas superadmin; bloqueia rebaixamento do último superadmin
     setRole: platformSuperAdminProcedure
       .input(z.object({ id: z.number(), role: z.enum(['superadmin', 'admin', 'support']) }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         if (ctx.platformAdmin!.id === input.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'VocÃª nÃ£o pode alterar o prÃ³prio role.' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode alterar o próprio role.' });
         }
         if (input.role !== 'superadmin') {
           const target = await db.getPlatformAdminById(input.id);
           if (target?.role === 'superadmin') {
             const count = await db.countActivePlatformAdmins();
             if (count <= 1) {
-              throw new TRPCError({ code: 'FORBIDDEN', message: 'NÃ£o Ã© possÃ­vel rebaixar o Ãºnico superadmin ativo.' });
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível rebaixar o único superadmin ativo.' });
             }
           }
         }
@@ -4145,19 +4153,19 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    // Deleta â€” apenas superadmin; bloqueia deleÃ§Ã£o do Ãºltimo superadmin
+    // Deleta — apenas superadmin; bloqueia deleção do último superadmin
     delete: platformSuperAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         if (ctx.platformAdmin!.id === input.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'VocÃª nÃ£o pode deletar a prÃ³pria conta.' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode deletar a própria conta.' });
         }
         const target = await db.getPlatformAdminById(input.id);
-        if (!target) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador nÃ£o encontrado.' });
+        if (!target) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador não encontrado.' });
         if (target.role === 'superadmin') {
           const count = await db.countActivePlatformAdmins();
           if (count <= 1) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'NÃ£o Ã© possÃ­vel deletar o Ãºnico superadmin ativo.' });
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível deletar o único superadmin ativo.' });
           }
         }
         await db.deletePlatformAdmin(input.id);
@@ -4179,7 +4187,7 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(async ({ input }: { input: any }) => {
         const plan = await db.getPlanDefinitionById(input.id);
-        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano nÃ£o encontrado' });
+        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano não encontrado' });
         return plan;
       }),
     create: platformAdminProcedure
@@ -4205,7 +4213,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }: { input: any }) => {
         const existing = await db.getPlanDefinitionBySlug(input.slug);
-        if (existing) throw new TRPCError({ code: 'CONFLICT', message: 'JÃ¡ existe um plano com este slug' });
+        if (existing) throw new TRPCError({ code: 'CONFLICT', message: 'Já existe um plano com este slug' });
         return await db.createPlanDefinition(input);
       }),
     update: platformAdminProcedure
@@ -4272,10 +4280,10 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const plan = await db.getPlanDefinitionById(input.planId);
-        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano nÃ£o encontrado' });
+        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano não encontrado' });
         const activeSub = await db.getActiveSubscription(input.tenantId);
         if (activeSub) {
-          await db.updateSubscription(activeSub.id, { status: "cancelled", cancelledAt: new Date(), cancelReason: "SubstituÃ­da por nova assinatura" });
+          await db.updateSubscription(activeSub.id, { status: "cancelled", cancelledAt: new Date(), cancelReason: "Substituída por nova assinatura" });
         }
         const sub = await db.createSubscription({
           tenantId: input.tenantId, planId: input.planId, startDate: new Date(),
@@ -4350,7 +4358,7 @@ export const appRouter = router({
         return await db.getUsageSnapshotsByTenant(input.tenantId, input.limit);
       }),
 
-    /** Lista tenants enriquecidos com plano ativo (para relatÃ³rios) */
+    /** Lista tenants enriquecidos com plano ativo (para relatórios) */
     tenantsWithPlans: platformAdminProcedure.query(async () => {
       const platformDb = await db.getDb();
       if (!platformDb) return [];
@@ -4417,7 +4425,7 @@ export const appRouter = router({
         };
       }),
 
-    // â”€â”€ Planos de assinatura â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Planos de assinatura ──────────────────────────────────────────────────
     listPlans: platformAdminProcedure.query(async () => {
       return await db.getAllPlanDefinitions();
     }),
@@ -4481,16 +4489,16 @@ export const appRouter = router({
       }),
   }),
 
-  // â”€â”€ Triagem de documentos enviados pelo portal do cliente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Triagem de documentos enviados pelo portal do cliente ──────────────────
   pendingDocuments: router({
-    /** Lista documentos pendentes de triagem (filtrÃ¡vel por clientId) */
+    /** Lista documentos pendentes de triagem (filtrável por clientId) */
     list: protectedProcedure
       .input(z.object({ clientId: z.number().int().optional() }))
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-        // ctx.db nÃ£o existe no TrpcContext â€” usar getTenantDbOrNull com fallback Ã  platform DB
+        // ctx.db não existe no TrpcContext — usar getTenantDbOrNull com fallback à platform DB
         const tenantDb = await getTenantDbOrNull(ctx);
         const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponÃ­vel." });
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
         return await db.getPendingDocumentsForTriage(
           activeDb,
           input.clientId ?? null,
@@ -4498,7 +4506,7 @@ export const appRouter = router({
         );
       }),
 
-    /** Aprova e vincula documento Ã  juntada oficial â€” notifica cliente por email. */
+    /** Aprova e vincula documento à juntada oficial — notifica cliente por email. */
     approve: protectedProcedure
       .input(z.object({
         docId:       z.number().int(),
@@ -4510,19 +4518,19 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponÃ­vel." });
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
 
         // Buscar dados do documento para obter fileUrl, mimeType etc.
         const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
         const doc = docRows.find((d: any) => d.id === input.docId);
-        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento nÃ£o encontrado." });
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
 
         const finalFileName = (input.newFileName?.trim() || input.fileName || doc.fileName).trim();
         const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
         const uploadedBy = ctx.user?.id ?? 0;
         const issueDate = input.issueDate ?? null;
 
-        // Inserir na juntada oficial (com data de emissÃ£o se fornecida)
+        // Inserir na juntada oficial (com data de emissão se fornecida)
         await activeDb.execute(sql`
           INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileKey", "fileUrl", "mimeType", "fileSize", "uploadedBy", "issueDate", "createdAt")
           VALUES (${input.subTaskId}, ${doc.clientId}, ${finalFileName}, ${fileKey}, ${doc.fileUrl},
@@ -4530,7 +4538,7 @@ export const appRouter = router({
                   ${issueDate ? sql`${issueDate}::timestamp` : sql`NULL`}, now())
         `);
 
-        // Marcar como vinculado com data de emissÃ£o
+        // Marcar como vinculado com data de emissão
         await db.updatePendingDocumentStatus(activeDb, input.docId, "linked", {
           linkedSubTaskId: input.subTaskId,
           issueDate,
@@ -4540,13 +4548,13 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    /** Rejeita documento com motivo opcional â€” notifica cliente */
+    /** Rejeita documento com motivo opcional — notifica cliente */
     reject: protectedProcedure
       .input(z.object({ docId: z.number().int(), reason: z.string().optional() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponÃ­vel." });
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
         await db.updatePendingDocumentStatus(activeDb, input.docId, "rejected", {
           rejectionReason: input.reason,
         });
@@ -4565,12 +4573,12 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponÃ­vel." });
+        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
 
         // Buscar dados do documento pendente (sem filtro de tenantId para encontrar por id)
         const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
         const doc = docRows.find((d: any) => d.id === input.docId);
-        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento nÃ£o encontrado." });
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
 
         // Nome final: renomeado pelo operador ou nome original
         const finalFileName = (input.newFileName?.trim() || input.fileName).trim();
@@ -4581,7 +4589,7 @@ export const appRouter = router({
         // uploadedBy: operador logado
         const uploadedBy = ctx.user?.id ?? 0;
 
-        // Inserir na juntada oficial (todos campos obrigatÃ³rios)
+        // Inserir na juntada oficial (todos campos obrigatórios)
         await activeDb.execute(sql`
           INSERT INTO "documents" ("subTaskId", "clientId", "fileName", "fileKey", "fileUrl", "mimeType", "fileSize", "uploadedBy", "createdAt")
           VALUES (${input.subTaskId}, ${doc.clientId}, ${finalFileName}, ${fileKey}, ${doc.fileUrl},
@@ -4627,7 +4635,7 @@ export const appRouter = router({
   compliance: complianceRouter,
 });
 
-/** Notifica cliente sobre decisÃ£o de triagem do documento */
+/** Notifica cliente sobre decisão de triagem do documento */
 async function notifyClientOfDocumentDecision(
   ctx: TrpcContext,
   docId: number,
@@ -4650,21 +4658,21 @@ async function notifyClientOfDocumentDecision(
     const isApproved = decision === "approved";
     await sendEmail({
       to: clientEmail,
-      subject: isApproved ? `[CAC 360] Documento aprovado!` : `[CAC 360] Documento nÃ£o aprovado`,
+      subject: isApproved ? `[CAC 360] Documento aprovado!` : `[CAC 360] Documento não aprovado`,
       html: isApproved
         ? `<div style="font-family:sans-serif;max-width:600px">
             <h3 style="color:#16a34a">Documento aprovado! âœ“</h3>
-            <p>OlÃ¡ <strong>${clientName}</strong>,</p>
+            <p>Olá <strong>${clientName}</strong>,</p>
             <p>Seu documento <strong>${fileName ?? ""}</strong> foi aprovado pela equipe do clube.</p>
-            <p style="color:#888;font-size:12px">CAC 360 â€” notificaÃ§Ã£o automÃ¡tica</p>
+            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
           </div>`
         : `<div style="font-family:sans-serif;max-width:600px">
-            <h3 style="color:#dc2626">Documento nÃ£o aprovado</h3>
-            <p>OlÃ¡ <strong>${clientName}</strong>,</p>
-            <p>Seu documento <strong>${fileName ?? ""}</strong> nÃ£o foi aprovado.</p>
+            <h3 style="color:#dc2626">Documento não aprovado</h3>
+            <p>Olá <strong>${clientName}</strong>,</p>
+            <p>Seu documento <strong>${fileName ?? ""}</strong> não foi aprovado.</p>
             ${reason ? `<p><strong>Motivo:</strong> ${reason}</p>` : ""}
             <p>Acesse o portal e envie o documento corrigido.</p>
-            <p style="color:#888;font-size:12px">CAC 360 â€” notificaÃ§Ã£o automÃ¡tica</p>
+            <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
           </div>`,
     } as any).catch((e: any) => console.error("[PendingDocs] Email cliente:", e));
   } catch (e) {
