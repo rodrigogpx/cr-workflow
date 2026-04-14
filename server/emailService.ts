@@ -229,6 +229,7 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
       subject: options.subject,
       html: options.html,
       attachments,
+      textEncoding: 'UTF-8',
     });
 
     return { success: true, messageId: info.messageId };
@@ -295,7 +296,7 @@ async function sendEmailViaPostmanGpx(
     const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'X-API-Key': apiKey,
       },
       body: JSON.stringify({
@@ -305,6 +306,7 @@ async function sendEmailViaPostmanGpx(
         from: smtpFrom,
         replyTo: extractEmailAddress(smtpFrom),
         attachments: gatewayAttachments,
+        charset: 'UTF-8',
       }),
     });
 
@@ -466,6 +468,7 @@ export async function sendTestEmailWithSettings(settings: {
       to: settings.toEmail,
       subject,
       html: htmlBody,
+      textEncoding: 'UTF-8',
     });
 
     return { success: true };

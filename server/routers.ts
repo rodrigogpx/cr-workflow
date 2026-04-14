@@ -1579,36 +1579,48 @@ export const appRouter = router({
         clientId:  z.number().int(),
         stepId:    z.number().int(),
         type:      z.enum(['standard', 'custom']),
-        fileData:  z.string().optional(), // base64 data URI â€” only for custom
+        fileData:  z.string().optional(), // base64 data URI — only for custom
         fileName:  z.string().optional(), // only for custom
       }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponÃ­vel.' });
+        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponível.' });
 
         // Buscar cliente
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
-        if (!client) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente nÃ£o encontrado.' });
+        if (!client) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado.' });
+
+        // Get tenant admin name for PDF signature
+        let responsibleName = 'CAC 360';
+        if (ctx.tenant?.id) {
+          const tenantAdmins = tenantDb
+            ? await db.getAllUsersFromDb(tenantDb, ctx.tenant.id)
+            : await db.getAllUsers();
+          const adminUser = tenantAdmins.find(u => u.role === 'admin');
+          if (adminUser) {
+            responsibleName = adminUser.name || 'CAC 360';
+          }
+        }
 
         const { generatePsychReferralPDF, generateClientDataPDF } = await import('./generate-pdf');
         const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
         const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
 
         if (input.type === 'standard') {
-          // Gerar PDF de encaminhamento padrÃ£o CAC360
-          const pdfBuf = await generatePsychReferralPDF(client as any);
+          // Gerar PDF de encaminhamento com nome do responsável
+          const pdfBuf = await generatePsychReferralPDF(client as any, responsibleName);
           attachments.push({ filename: 'encaminhamento-avaliacao-psicologica.pdf', content: pdfBuf, contentType: 'application/pdf' });
         } else {
           // Encaminhamento personalizado: salvar arquivo e anexar
           if (!input.fileData || !input.fileName) {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Arquivo obrigatÃ³rio para encaminhamento personalizado.' });
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Arquivo obrigatório para encaminhamento personalizado.' });
           }
           // Decodificar base64
           const base64Match = input.fileData.match(/^data:([^;]+);base64,(.+)$/);
-          if (!base64Match) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Formato de arquivo invÃ¡lido.' });
+          if (!base64Match) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Formato de arquivo inválido.' });
           const mimeType  = base64Match[1];
           const fileBuffer = Buffer.from(base64Match[2], 'base64');
           attachments.push({ filename: input.fileName, content: fileBuffer, contentType: mimeType });
@@ -1621,7 +1633,7 @@ export const appRouter = router({
         const html = buildPsychReferralEmailHtml(client.name, input.type, dateStr);
         await sendEmail({
           to: client.email,
-          subject: 'Encaminhamento para AvaliaÃ§Ã£o PsicolÃ³gica â€” CAC 360',
+          subject: `Encaminhamento para Avaliação Psicológica — ${responsibleName}`,
           html,
           attachments,
           tenantDb: tenantDb ?? undefined,

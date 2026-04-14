@@ -12,7 +12,7 @@ function getCursiveFontPath(): string | null {
   return candidates.find(p => fs.existsSync(p)) ?? null;
 }
 
-export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
+export function generatePsychReferralPDF(client: Client, responsibleName: string = 'CAC 360'): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 60 });
     const buffers: Buffer[] = [];
@@ -25,7 +25,7 @@ export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
     const dateStr = today.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
     // Header
-    doc.fontSize(18).fillColor('#123A63').text('CAC 360', { align: 'center' });
+    doc.fontSize(18).fillColor('#123A63').text(responsibleName, { align: 'center' });
     doc.fontSize(10).fillColor('#555555').text('Gestão de Workflow CR — Certificado de Registro', { align: 'center' });
     doc.moveDown(0.3);
     doc.moveTo(60, doc.y).lineTo(535, doc.y).lineWidth(1.5).stroke('#123A63');
@@ -37,7 +37,7 @@ export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
 
     // Intro
     doc.fontSize(11).fillColor('#000000').text(
-      'Encaminhamos o(a) Sr(a). abaixo identificado(a) para realização da Avaliação Psicológica, conforme exigência legal estabelecida pelo Estatuto do Desarmamento (Lei nº 10.826/2003), para fins de obtenção do Certificado de Registro (CR) de Atirador Desportivo junto ao Exército Brasileiro.',
+      'Encaminhamos o(a) Sr(a). abaixo identificado(a) para realização da Avaliação Psicológica, conforme exigência legal estabelecida pelo Estatuto do Desarmamento (Lei nº 10.826/2003), para fins de obtenção do Certificado de Registro (CR) de Atirador Desportivo junto à Polícia Federal.',
       { align: 'justify' }
     );
     doc.moveDown(1.5);
@@ -78,7 +78,7 @@ export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
 
     // Body
     doc.fontSize(11).fillColor('#000000').text(
-      'O(A) requerente encontra-se em processo de obtenção/renovação de seu Certificado de Registro junto ao Exército Brasileiro, necessitando de laudo psicológico conforme normativa vigente. Solicitamos que o(a) profissional avaliador(a) emita laudo conclusivo quanto à aptidão para o manuseio e guarda de arma de fogo.',
+      'O(A) requerente encontra-se em processo de obtenção/renovação de seu Certificado de Registro junto à Polícia Federal, necessitando de laudo psicológico conforme normativa vigente. Solicitamos que o(a) profissional avaliador(a) emita laudo conclusivo quanto à aptidão para o manuseio e guarda de arma de fogo.',
       { align: 'justify' }
     );
     doc.moveDown(1);
@@ -96,23 +96,23 @@ export function generatePsychReferralPDF(client: Client): Promise<Buffer> {
     const cursivePath = getCursiveFontPath();
     if (cursivePath) {
       try {
-        doc.font(cursivePath).fontSize(26).fillColor('#123A63').text('CAC 360', { align: 'center' });
+        doc.font(cursivePath).fontSize(26).fillColor('#123A63').text(responsibleName, { align: 'center' });
         doc.font('Helvetica');
       } catch {
-        doc.fontSize(20).fillColor('#123A63').text('CAC 360', { align: 'center' });
+        doc.fontSize(20).fillColor('#123A63').text(responsibleName, { align: 'center' });
       }
     } else {
-      doc.fontSize(20).fillColor('#123A63').text('CAC 360', { align: 'center' });
+      doc.fontSize(20).fillColor('#123A63').text(responsibleName, { align: 'center' });
     }
     doc.moveDown(0.3);
     doc.moveTo(200, doc.y).lineTo(440, doc.y).lineWidth(0.5).stroke('#000000');
     doc.moveDown(0.3);
-    doc.fontSize(10).fillColor('#000000').text('Assinatura / Responsável CAC 360', { align: 'center' });
+    doc.fontSize(10).fillColor('#000000').text(`Assinatura / Responsável ${responsibleName}`, { align: 'center' });
 
     // Footer
     doc.moveDown(3);
     doc.fontSize(8).fillColor('#999999').text(
-      'Documento gerado automaticamente pelo sistema CAC 360 — www.cac360.com.br',
+      `Documento gerado automaticamente pelo sistema ${responsibleName}`,
       { align: 'center' }
     );
 
