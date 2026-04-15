@@ -5,9 +5,14 @@ import type { Client } from '../drizzle/schema';
 
 function getCursiveFontPath(): string | null {
   const candidates = [
+    // DancingScript (cursiva script — preferida)
     path.join(process.cwd(), 'server', 'fonts', 'DancingScript-Regular.ttf'),
     path.join(__dirname, '..', 'server', 'fonts', 'DancingScript-Regular.ttf'),
     path.join(__dirname, 'fonts', 'DancingScript-Regular.ttf'),
+    // Lora-Italic (serif itálica elegante — fallback cursivo)
+    path.join(process.cwd(), 'server', 'fonts', 'Lora-Italic.ttf'),
+    path.join(__dirname, '..', 'server', 'fonts', 'Lora-Italic.ttf'),
+    path.join(__dirname, 'fonts', 'Lora-Italic.ttf'),
   ];
   return candidates.find(p => fs.existsSync(p)) ?? null;
 }
