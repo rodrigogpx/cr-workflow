@@ -826,7 +826,7 @@ export const appRouter = router({
               }
               // Variável {{link_portal}} — botão de acesso ao portal
               result = result.replace(/{{link_portal}}/g, portalLink
-                ? `<a href="${portalLink}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold;">Completar Meu Cadastro â†’</a>`
+                ? `<a href="${portalLink}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold;">Completar Meu Cadastro &#x2192;</a>`
                 : '');
               return result;
             };
@@ -1105,7 +1105,7 @@ export const appRouter = router({
                 <p style="margin:24px 0">
                   <a href="${portalLink}"
                      style="background:#7c3aed;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
-                    Acessar o Portal â†’
+                    Acessar o Portal &#x2192;
                   </a>
                 </p>
                 <p style="font-size:12px;color:#888">
