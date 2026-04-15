@@ -5,6 +5,9 @@
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
+[env]
+RAILWAY_MIGRATION = "1"
+
 [deploy]
 numReplicas = 1
 healthcheckPath = "/health"

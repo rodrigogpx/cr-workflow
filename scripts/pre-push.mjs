@@ -32,10 +32,13 @@ const isRailway = Boolean(
   || process.env.RAILWAY_STATIC_URL
 );
 
-// Hard no-op em CI/Railway para eliminar qualquer risco de travar deploy por
-// prompt interativo do drizzle-kit ou variações de schema no ambiente gerenciado.
-if (isCi || isRailway) {
+// Hard no-op em CI/Railway UNLESS explicitamente permitido por RAILWAY_MIGRATION=1
+// (usado durante deploy para rodar migrations automaticamente)
+const allowRailwayMigration = process.env.RAILWAY_MIGRATION === '1';
+
+if ((isCi || isRailway) && !allowRailwayMigration) {
   console.log('[pre-push] Ambiente CI/Railway detectado — pulando db:push neste ambiente.');
+  console.log('[pre-push] (Para rodar migração no Railway, defina RAILWAY_MIGRATION=1)');
   process.exit(0);
 }
 
