@@ -41,7 +41,6 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { updateClientSchema, type UpdateClientInput, formatCPF, formatPhone, formatCEP, isValidCPF } from "@shared/validations";
 import { PsychReferralPanel } from "@/components/PsychReferralPanel";
-import { EmailPreview } from "@/components/EmailPreview";
 import { UploadModal } from "@/components/UploadModal";
 import { Input } from "@/components/ui/input";
 import Footer from "@/components/Footer";
@@ -550,6 +549,16 @@ export default function ClientWorkflow() {
     },
     onError: (error) => {
       toast.error(`Erro ao atualizar: ${error.message}`);
+    },
+  });
+
+  const sendEmailMutation = trpc.emails.sendEmail.useMutation({
+    onSuccess: () => {
+      toast.success("Email de confirmação de agendamento enviado com sucesso!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao enviar email: ${error.message}`);
     },
   });
 
@@ -1761,36 +1770,58 @@ export default function ClientWorkflow() {
                               </div>
                             </div>
                             
-                            {/* Botão de envio de email de confirmação */}
-                            {client && (
-                              <EmailPreview
-                                clientId={Number(clientId)}
-                                clientEmail={client.email || ""}
-                                clientName={client.name || "Cliente"}
-                                templateKey="agendamento_laudo"
-                                title="Enviar Confirmação de Agendamento"
-                                requiresScheduling={true}
-                                scheduledDate={step.scheduledDate}
-                                examinerName={step.examinerName}
-                              />
-                            )}
-                            
-                            {/* Botão para alterar agendamento */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                updateSchedulingMutation.mutate({
-                                  clientId: Number(clientId),
-                                  stepId: step.id,
-                                  scheduledDate: undefined,
-                                  examinerName: undefined,
-                                });
-                              }}
-                              className="mt-2"
-                            >
-                              Alterar Agendamento
-                            </Button>
+                            {/* Botões de ação */}
+                            <div className="flex gap-2 mt-2">
+                              {/* Botão para reenviar agendamento */}
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => {
+                                  if (!client?.email) {
+                                    toast.error("Cliente não possui email cadastrado");
+                                    return;
+                                  }
+                                  
+                                  sendEmailMutation.mutate({
+                                    clientId: Number(clientId),
+                                    recipientEmail: client.email,
+                                    templateKey: "agendamento_laudo",
+                                    subject: "Confirmação de Agendamento - Laudo de Capacidade Técnica",
+                                    content: "", // Será preenchido pelo template
+                                  });
+                                }}
+                                disabled={sendEmailMutation.isPending || !step.scheduledDate}
+                                className="flex-1"
+                              >
+                                {sendEmailMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Enviando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Reenviar Agendamento
+                                  </>
+                                )}
+                              </Button>
+                              
+                              {/* Botão para alterar agendamento */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  updateSchedulingMutation.mutate({
+                                    clientId: Number(clientId),
+                                    stepId: step.id,
+                                    scheduledDate: undefined,
+                                    examinerName: undefined,
+                                  });
+                                }}
+                              >
+                                Alterar Agendamento
+                              </Button>
+                            </div>
                           </div>
                         ) : (
                           <div className="space-y-3">
