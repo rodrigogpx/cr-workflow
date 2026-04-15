@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Eye, Send, CheckCircle2, FileText } from "lucide-react";
+import { Send, CheckCircle2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
@@ -27,7 +25,6 @@ export function EmailPreview({
   scheduledDate = null,
   examinerName = null,
 }: EmailPreviewProps) {
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Buscar template salvo
   const { data: template } = trpc.emails.getTemplate.useQuery({ templateKey });
@@ -112,90 +109,16 @@ export function EmailPreview({
         )}
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex gap-2">
-          {/* Botão de Preview */}
-          <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex-1">
-                <Eye className="h-4 w-4 mr-2" />
-                Visualizar
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-full max-w-[95vw] sm:max-w-[70vw] h-[90vh] flex flex-col">
-              <DialogHeader className="px-6 pt-6">
-                <DialogTitle>{title}</DialogTitle>
-                <DialogDescription>
-                  Preview do email que será enviado para {clientEmail}
-                </DialogDescription>
-              </DialogHeader>
+        {/* Botão de Reenvio */}
+        <Button
+          onClick={handleSendEmail}
+          disabled={sendEmailMutation.isPending || !template || (requiresScheduling && !scheduledDate)}
+          className="w-full"
+        >
+          <Send className="h-4 w-4 mr-2" />
+          {sendEmailMutation.isPending ? "Enviando..." : wasAlreadySent ? "Reenviar Confirmação de Agendamento" : "Enviar Confirmação de Agendamento"}
+        </Button>
 
-              <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 px-6 pb-6">
-                {/* Assunto */}
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Assunto:</p>
-                  <div className="p-3 bg-gray-50 border rounded-md text-sm font-medium text-gray-900">
-                    {previewSubject}
-                  </div>
-                </div>
-
-                {/* Conteúdo */}
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Conteúdo:</p>
-                  {/* SECURITY: iframe srcdoc com sandbox bloqueia scripts, forms e plugins sem precisar de biblioteca externa */}
-                  <iframe
-                    srcDoc={previewContent}
-                    sandbox="allow-same-origin"
-                    className="w-full min-h-[400px] border rounded-lg shadow-sm bg-white"
-                    title="Preview do email"
-                    style={{ height: "400px" }}
-                  />
-                </div>
-
-                {/* Anexos */}
-                {attachments.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">Anexos ({attachments.length}):</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {attachments.map((att: any, index: number) => (
-                        <a 
-                          href={att.fileUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          key={index} 
-                          className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 border rounded-md transition-colors group"
-                        >
-                          <div className="p-2 bg-white rounded border group-hover:border-primary/50 transition-colors">
-                            <FileText className="h-4 w-4 text-primary" />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 truncate">
-                            {att.fileName}
-                          </span>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Botão de Envio */}
-          <Button
-            onClick={handleSendEmail}
-            disabled={sendEmailMutation.isPending || !template || (requiresScheduling && !scheduledDate)}
-            className="flex-1"
-          >
-            <Send className="h-4 w-4 mr-2" />
-            {sendEmailMutation.isPending ? "Enviando..." : wasAlreadySent ? "Reenviar" : "Enviar"}
-          </Button>
-        </div>
-
-        {!template && (
-          <p className="text-xs text-red-600">
-            ⚠️ Template não configurado. Solicite ao administrador para configurar em Administração → Templates de Email
-          </p>
-        )}
-        
         {requiresScheduling && !scheduledDate && (
           <p className="text-xs text-amber-600">
             ⚠️ É necessário agendar uma data antes de enviar este email.
