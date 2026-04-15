@@ -21,6 +21,44 @@ import type { TrpcContext } from "./_core/context";
 import { complianceRouter } from "./routers/compliance";
 import { Buffer } from "node:buffer";
 
+/**
+ * Constrói a URL base do portal a partir do contexto da requisição.
+ * Prioridade:
+ *  1. Host real da requisição (x-forwarded-host ou host header) — mais confiável em produção
+ *  2. DOMAIN env var
+ *  3. APP_URL env var
+ *  4. fallback vazio (link quebrado, mas não localhost)
+ */
+function getPortalBaseUrl(ctx: TrpcContext): string {
+  // 1) Host real da requisição — mais confiável em Railway/proxy
+  const forwardedHost = ctx.req?.headers?.['x-forwarded-host'] as string | undefined;
+  const reqHost = (forwardedHost || ctx.req?.headers?.host || '').split(',')[0]?.trim();
+  if (reqHost && reqHost !== 'localhost' && !reqHost.startsWith('127.') && !reqHost.startsWith('::1')) {
+    const proto = (ctx.req?.headers?.['x-forwarded-proto'] as string || 'https').split(',')[0]?.trim();
+    return `${proto}://${reqHost}`;
+  }
+
+  // 2) DOMAIN env var
+  const domain = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  if (domain && domain !== 'localhost') {
+    return `https://${domain}`;
+  }
+
+  // 3) APP_URL env var
+  const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
+  if (appUrl && !appUrl.includes('localhost')) {
+    return appUrl;
+  }
+
+  // 4) RAILWAY_STATIC_URL (fornecido pelo Railway automaticamente)
+  const railwayUrl = (process.env.RAILWAY_STATIC_URL ?? '').replace(/\/$/, '');
+  if (railwayUrl) {
+    return railwayUrl.startsWith('http') ? railwayUrl : `https://${railwayUrl}`;
+  }
+
+  return '';
+}
+
 async function getTenantDbOrNull(ctx: TrpcContext) {
   if (ctx?.tenantSlug && ctx?.tenant) {
     // No single-db mode, usar o platformDb diretamente (sem healthcheck que falha no Railway)
@@ -750,11 +788,7 @@ export const appRouter = router({
             // Logo já está salva como base64 no banco
 
             // Variável {{link_portal}} — link de ativação do portal do cliente
-            // DOMAIN pode vir como "hml.cac360.com.br" ou "https://hml.cac360.com.br" — normalizar
-            const _rawDomain1 = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-            const portalBaseUrl = ctx.tenant?.domain
-              ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
-              : (_rawDomain1 ? `https://${_rawDomain1}` : process.env.APP_URL || '');
+            const portalBaseUrl = getPortalBaseUrl(ctx);
 
             let portalLink = '';
             try {
@@ -859,10 +893,7 @@ export const appRouter = router({
             // O token de convite já foi criado acima; apenas lemos o valor.
             let _welcomePortalLink = '';
             try {
-              const _rawDomain = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-              const _portalBase = ctx.tenant?.domain
-                ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
-                : (_rawDomain ? `https://${_rawDomain}` : process.env.APP_URL || '');
+              const _portalBase = getPortalBaseUrl(ctx);
               const _pdb = tenantDb || await db.getDb();
               if (_pdb) {
                 const _prows: any = await _pdb.execute(
@@ -1053,13 +1084,8 @@ export const appRouter = router({
         // Regenerar token
         const newToken = await db.regenerateClientInviteToken(activeDb, input.clientId, ctx.tenant?.id);
 
-        // Montar link do portal
-        // DOMAIN pode vir com ou sem protocolo — normalizar e não adicionar slug do tenant
-        // (o portal vive na raiz do domínio, não em subdomínio por tenant)
-        const _rawDomain2 = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-        const portalBaseUrl = ctx.tenant?.domain
-          ? `https://${ctx.tenant.slug}.${ctx.tenant.domain.replace(/^https?:\/\//, '')}`
-          : (_rawDomain2 ? `https://${_rawDomain2}` : process.env.APP_URL || '');
+        // Montar link do portal — usa host real da requisição para evitar localhost em produção
+        const portalBaseUrl = getPortalBaseUrl(ctx);
         const portalLink = `${portalBaseUrl}/portal/acesso?t=${newToken}`;
 
         // Enviar email com o link
