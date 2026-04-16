@@ -188,23 +188,13 @@ export function buildInlineLogoAttachment(emailLogoValue: string | undefined | n
 }
 
 /**
- * Send email via SMTP (prioritário) ou Gateway como fallback.
- *
- * Prioridade:
- *  1. SMTP direto (nodemailer) — se o tenant tiver smtpHost configurado.
- *     Isso é o padrão mesmo em produção, pois evita passar pelo gateway
- *     PostmanGPX que injeta wrappers de click tracking nos links.
- *  2. PostmanGPX Gateway — fallback apenas quando emailMethod === 'gateway'
- *     for explicitamente configurado no tenant E não houver SMTP disponível.
- *
- * Para forçar o gateway, configure emailMethod = 'gateway' no tenant
- * (sem smtpHost definido).
+ * Send email via Gateway (production) or SMTP (development)
  */
 export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; tenantId?: number }): Promise<{ success: boolean; messageId?: string }> {
   const { tenantDb, tenantId, ...emailOptions } = options;
-
+  
   let finalTenantId = tenantId;
-
+  
   if (!finalTenantId) {
     const { getAllTenants } = await import('./db');
     const allTenants = await getAllTenants();
@@ -214,16 +204,16 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
   }
 
   const { getTenantSmtpSettings } = await import('./db');
-  let tenantSettings: any = null;
+  let emailMethod = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true' ? 'gateway' : 'smtp';
+  
   if (finalTenantId) {
-    tenantSettings = await getTenantSmtpSettings(finalTenantId);
+    const tenantSettings = await getTenantSmtpSettings(finalTenantId);
+    if (tenantSettings && tenantSettings.emailMethod) {
+      emailMethod = tenantSettings.emailMethod;
+    }
   }
 
-  // Determinar se há SMTP configurado no tenant
-  const hasSmtp = !!(tenantSettings?.smtpHost && tenantSettings?.smtpUser);
-  // Usar gateway apenas se explicitamente configurado como 'gateway' E sem SMTP disponível
-  const emailMethod = tenantSettings?.emailMethod ?? 'smtp';
-  const useGateway = emailMethod === 'gateway' && !hasSmtp;
+  const useGateway = emailMethod === 'gateway';
 
   if (useGateway) {
     const result = await sendEmailViaPostmanGpx({
