@@ -18,6 +18,28 @@ interface SmtpConfig {
   useSecure: boolean;
 }
 
+/**
+ * Adiciona atributos que instruem gateways de email a NÃO envolver os links
+ * em wrappers de click tracking (ex: http://localhost:3000/track/click/...).
+ *
+ * Convenções suportadas por diversos gateways (Mailgun, SendGrid, Postmark,
+ * Sendinblue/Brevo, e implementações genéricas):
+ *   - clicktracking="off"        (padrão mais comum)
+ *   - data-notrack="true"
+ *   - data-clicktracking="off"
+ *
+ * Aplicamos em todas as tags <a> cujo href seja http(s). Links âncora (#) e
+ * mailto: são ignorados.
+ */
+function disableClickTracking(html: string): string {
+  if (!html || typeof html !== 'string') return html;
+  return html.replace(/<a\s+([^>]*?)href\s*=\s*(["'])(https?:\/\/[^"']+)\2([^>]*)>/gi, (match, pre, quote, url, post) => {
+    const attrs = `${pre ?? ''}${post ?? ''}`.toLowerCase();
+    if (attrs.includes('clicktracking=')) return match;
+    return `<a ${pre ?? ''}href=${quote}${url}${quote}${post ?? ''} clicktracking="off" data-notrack="true" data-clicktracking="off">`;
+  });
+}
+
 function extractEmailAddress(fromValue: string | undefined | null): string | undefined {
   if (!fromValue) return undefined;
   const match = fromValue.match(/<([^>]+)>/);
@@ -227,7 +249,7 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
       replyTo: extractEmailAddress(config.smtpFrom),
       to: options.to,
       subject: options.subject,
-      html: options.html,
+      html: disableClickTracking(options.html),
       attachments,
       // Ensure proper UTF-8 encoding
       encoding: 'utf-8',
@@ -303,10 +325,13 @@ async function sendEmailViaPostmanGpx(
     // Ensure proper UTF-8 encoding for the email content
     // Desabilitamos todo tracking (click/open) para evitar wrappers de URL
     // (ex: http://localhost:3000/track/click/... injetado pelo gateway).
+    // Além dos flags da API, injetamos clicktracking="off" em todas as
+    // âncoras do HTML (convenção universal respeitada por gateways).
+    const sanitizedHtml = disableClickTracking(options.html);
     const emailPayload = {
       to: options.to,
       subject: options.subject,
-      html: options.html,
+      html: sanitizedHtml,
       from: smtpFrom,
       replyTo: extractEmailAddress(smtpFrom),
       attachments: gatewayAttachments,
@@ -320,6 +345,9 @@ async function sendEmailViaPostmanGpx(
       clickTracking: false,
       openTracking: false,
       disableTracking: true,
+      track_clicks: false,
+      track_opens: false,
+      options: { tracking: false, clickTracking: false, openTracking: false },
     };
 
     const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
@@ -442,7 +470,7 @@ export async function sendTestEmailWithSettings(settings: {
       body: JSON.stringify({
         to: settings.toEmail,
         subject,
-        html: htmlBody,
+        html: disableClickTracking(htmlBody),
         from: settings.from,
         replyTo: extractEmailAddress(settings.from),
         charset: 'UTF-8',
@@ -454,6 +482,9 @@ export async function sendTestEmailWithSettings(settings: {
         clickTracking: false,
         openTracking: false,
         disableTracking: true,
+        track_clicks: false,
+        track_opens: false,
+        options: { tracking: false, clickTracking: false, openTracking: false },
       }),
     });
 
@@ -497,7 +528,7 @@ export async function sendTestEmailWithSettings(settings: {
       from: settings.from,
       to: settings.toEmail,
       subject,
-      html: htmlBody,
+      html: disableClickTracking(htmlBody),
       // Standardize encoding with main function
       encoding: 'utf-8',
       textEncoding: 'base64',
