@@ -23,39 +23,69 @@ import { Buffer } from "node:buffer";
 
 /**
  * Constrói a URL base do portal a partir do contexto da requisição.
- * Prioridade:
- *  1. Host real da requisição (x-forwarded-host ou host header) — mais confiável em produção
- *  2. DOMAIN env var
- *  3. APP_URL env var
- *  4. fallback vazio (link quebrado, mas não localhost)
+ * Prioridade (mais confiável primeiro):
+ *  1. DOMAIN env var (explicito, preferido em produção)
+ *  2. APP_URL env var
+ *  3. Host real da requisição (x-forwarded-host/host) — desde que não seja localhost
+ *  4. RAILWAY_PUBLIC_DOMAIN / RAILWAY_STATIC_URL
+ *  5. fallback vazio (link quebrado, mas nunca localhost)
+ *
+ * IMPORTANTE: em produção, Railway injeta RAILWAY_PUBLIC_DOMAIN automaticamente.
+ * Também checamos o hostname sem o port para evitar falsos negativos com "localhost:3000".
  */
 function getPortalBaseUrl(ctx: TrpcContext): string {
-  // 1) Host real da requisição — mais confiável em Railway/proxy
-  const forwardedHost = ctx.req?.headers?.['x-forwarded-host'] as string | undefined;
-  const reqHost = (forwardedHost || ctx.req?.headers?.host || '').split(',')[0]?.trim();
-  if (reqHost && reqHost !== 'localhost' && !reqHost.startsWith('127.') && !reqHost.startsWith('::1')) {
-    const proto = (ctx.req?.headers?.['x-forwarded-proto'] as string || 'https').split(',')[0]?.trim();
-    return `${proto}://${reqHost}`;
-  }
+  const isLocalHostname = (h: string | undefined | null): boolean => {
+    if (!h) return true;
+    const hostOnly = h.split(':')[0]?.toLowerCase() ?? '';
+    return (
+      hostOnly === '' ||
+      hostOnly === 'localhost' ||
+      hostOnly.startsWith('127.') ||
+      hostOnly === '::1' ||
+      hostOnly === '0.0.0.0'
+    );
+  };
 
-  // 2) DOMAIN env var
+  // 1) DOMAIN env var — fonte de verdade configurada pelo admin
   const domain = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-  if (domain && domain !== 'localhost') {
+  if (domain && !isLocalHostname(domain)) {
     return `https://${domain}`;
   }
 
-  // 3) APP_URL env var
+  // 2) APP_URL env var
   const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
-  if (appUrl && !appUrl.includes('localhost')) {
-    return appUrl;
+  if (appUrl && !appUrl.includes('localhost') && !appUrl.includes('127.0.0.1')) {
+    return appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
   }
 
-  // 4) RAILWAY_STATIC_URL (fornecido pelo Railway automaticamente)
+  // 3) Host real da requisição (Railway envia x-forwarded-host com o domínio público)
+  const forwardedHost = ctx.req?.headers?.['x-forwarded-host'] as string | undefined;
+  const hostHeader = ctx.req?.headers?.host as string | undefined;
+  const reqHost = (forwardedHost || hostHeader || '').split(',')[0]?.trim();
+  if (reqHost && !isLocalHostname(reqHost)) {
+    const proto = ((ctx.req?.headers?.['x-forwarded-proto'] as string) || 'https').split(',')[0]?.trim();
+    return `${proto}://${reqHost}`;
+  }
+
+  // 4) RAILWAY_PUBLIC_DOMAIN (ex: cac360-hml.up.railway.app) ou RAILWAY_STATIC_URL
+  const railwayPublic = (process.env.RAILWAY_PUBLIC_DOMAIN ?? '').replace(/\/$/, '');
+  if (railwayPublic && !isLocalHostname(railwayPublic)) {
+    return `https://${railwayPublic.replace(/^https?:\/\//, '')}`;
+  }
   const railwayUrl = (process.env.RAILWAY_STATIC_URL ?? '').replace(/\/$/, '');
-  if (railwayUrl) {
+  if (railwayUrl && !isLocalHostname(railwayUrl)) {
     return railwayUrl.startsWith('http') ? railwayUrl : `https://${railwayUrl}`;
   }
 
+  // 5) Último recurso — log para diagnóstico e fallback vazio (nunca localhost)
+  console.warn('[getPortalBaseUrl] Nenhuma fonte válida de URL encontrada', {
+    domain: process.env.DOMAIN,
+    appUrl: process.env.APP_URL,
+    forwardedHost,
+    hostHeader,
+    railwayPublic: process.env.RAILWAY_PUBLIC_DOMAIN,
+    railwayStatic: process.env.RAILWAY_STATIC_URL,
+  });
   return '';
 }
 
