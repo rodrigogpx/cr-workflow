@@ -301,6 +301,8 @@ async function sendEmailViaPostmanGpx(
     }
 
     // Ensure proper UTF-8 encoding for the email content
+    // Desabilitamos todo tracking (click/open) para evitar wrappers de URL
+    // (ex: http://localhost:3000/track/click/... injetado pelo gateway).
     const emailPayload = {
       to: options.to,
       subject: options.subject,
@@ -311,6 +313,13 @@ async function sendEmailViaPostmanGpx(
       charset: 'UTF-8',
       // Add explicit content-type with charset for HTML
       contentType: 'text/html; charset=UTF-8',
+      // Disable click/open tracking — cobrir múltiplas convenções de API
+      trackClicks: false,
+      trackOpens: false,
+      tracking: false,
+      clickTracking: false,
+      openTracking: false,
+      disableTracking: true,
     };
 
     const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
@@ -438,6 +447,13 @@ export async function sendTestEmailWithSettings(settings: {
         replyTo: extractEmailAddress(settings.from),
         charset: 'UTF-8',
         contentType: 'text/html; charset=UTF-8',
+        // Disable click/open tracking — idem emailPayload principal
+        trackClicks: false,
+        trackOpens: false,
+        tracking: false,
+        clickTracking: false,
+        openTracking: false,
+        disableTracking: true,
       }),
     });
 
