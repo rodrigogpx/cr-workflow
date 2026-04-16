@@ -616,7 +616,6 @@ export async function ensureMissingTables() {
     // ── Corrigir nomes de triggers com associação errada de etapas ───────────────
     // Etapa 3 = agendamento-laudo (Laudo de Cap. Técnica), não psicológica.
     // Etapa 5 = acompanhamento-sinarm (SINARM), não Laudo Técnico.
-    // Atualiza apenas o "name" do trigger; o triggerEvent (STEP_COMPLETED:3/5) continua correto.
     try {
       await db.execute(sql`
         UPDATE "emailTriggers"
@@ -633,6 +632,51 @@ export async function ensureMissingTables() {
       console.log("[Migration] Email trigger names corrected (step 3 and 5)");
     } catch (triggerFixErr) {
       console.warn("[Migration] Trigger name fix skipped (non-fatal):", triggerFixErr);
+    }
+
+    // ── Corrigir associações trigger→template incorretas ─────────────────────────
+    // O seed antigo linkava triggers ao template errado (não atualizava existentes).
+    // Este bloco força a associação correta usando SQL direto.
+    // Mapa: triggerEvent → templateKey correto
+    try {
+      const triggerTemplateCorrections: Array<{ event: string; correctKey: string }> = [
+        { event: 'STEP_COMPLETED:1', correctKey: 'cadastro_concluido' },
+        { event: 'STEP_COMPLETED:2', correctKey: 'psicotecnico' },
+        { event: 'STEP_COMPLETED:3', correctKey: 'laudo_tecnico_concluido' },
+        { event: 'STEP_COMPLETED:4', correctKey: 'juntada_documentos' },
+        { event: 'STEP_COMPLETED:5', correctKey: 'sinarm_iniciado' },
+        { event: 'CLIENT_CREATED',   correctKey: 'welcome' },
+        { event: 'SCHEDULE_PSYCH_CREATED',      correctKey: 'psicotecnico_agendado' },
+      ];
+
+      for (const { event, correctKey } of triggerTemplateCorrections) {
+        await db.execute(sql.raw(`
+          -- Remove associações erradas: trigger com esse evento ligado a template diferente do correto
+          DELETE FROM "emailTriggerTemplates"
+          WHERE "triggerId" IN (
+            SELECT id FROM "emailTriggers" WHERE "triggerEvent" = '${event}'
+          )
+          AND "templateId" NOT IN (
+            SELECT id FROM "emailTemplates" WHERE "templateKey" = '${correctKey}'
+          );
+
+          -- Insere associação correta se ainda não existir
+          INSERT INTO "emailTriggerTemplates" ("triggerId", "templateId", "sendOrder", "isForReminder")
+          SELECT et.id, tmpl.id, 1, false
+          FROM "emailTriggers" et
+          JOIN "emailTemplates" tmpl ON tmpl."templateKey" = '${correctKey}'
+            AND (tmpl."tenantId" = et."tenantId" OR tmpl."tenantId" IS NULL)
+          WHERE et."triggerEvent" = '${event}'
+          AND NOT EXISTS (
+            SELECT 1 FROM "emailTriggerTemplates" ett2
+            WHERE ett2."triggerId" = et.id AND ett2."templateId" = tmpl.id
+          )
+          ON CONFLICT DO NOTHING;
+        `));
+      }
+      console.log("[Migration] Trigger→template associations corrected");
+    } catch (assocFixErr) {
+      console.warn("[Migration] Trigger association fix skipped (non-fatal):", assocFixErr);
     }
 
     // ── Fix double-encoding UTF-8 data (Latin-1 misinterpretation) ──────────────

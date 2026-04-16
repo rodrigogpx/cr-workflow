@@ -197,7 +197,8 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
       if (templateKeyToMap && templateIdMap.has(templateKeyToMap)) {
         const templateId = templateIdMap.get(templateKeyToMap)!;
 
-        const existingAssoc = await tenantDb
+        // Verificar se já existe associação com o template CORRETO
+        const existingCorrectAssoc = await tenantDb
           .select()
           .from(emailTriggerTemplates)
           .where(and(
@@ -206,7 +207,13 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
           ))
           .limit(1);
 
-        if (existingAssoc.length === 0) {
+        if (existingCorrectAssoc.length === 0) {
+          // Remover qualquer associação errada anterior para este trigger
+          // (garante que re-seed corrija associações incorretas, não apenas ausentes)
+          await tenantDb
+            .delete(emailTriggerTemplates)
+            .where(eq(emailTriggerTemplates.triggerId, triggerId));
+
           await tenantDb.insert(emailTriggerTemplates).values({
             triggerId,
             templateId,
