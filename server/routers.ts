@@ -4059,11 +4059,10 @@ export const appRouter = router({
       return [
         { value: 'CLIENT_CREATED', label: 'Cliente cadastrado', hasSchedule: false },
         { value: 'STEP_COMPLETED:1', label: 'Etapa 1 - Cadastro concluído', hasSchedule: false },
-        { value: 'STEP_COMPLETED:2', label: 'Etapa 2 - Juntada de Documentos concluída', hasSchedule: false },
-        { value: 'STEP_COMPLETED:3', label: 'Etapa 3 - Central de Mensagens concluída', hasSchedule: false },
-        { value: 'STEP_COMPLETED:4', label: 'Etapa 4 - Avaliação Psicológica concluída', hasSchedule: false },
-        { value: 'STEP_COMPLETED:5', label: 'Etapa 5 - Laudo Técnico concluído', hasSchedule: false },
-        { value: 'STEP_COMPLETED:6', label: 'Etapa 6 - Acompanhamento Sinarm concluído', hasSchedule: false },
+        { value: 'STEP_COMPLETED:2', label: 'Etapa 2 - Avaliação Psicológica concluída', hasSchedule: false },
+        { value: 'STEP_COMPLETED:3', label: 'Etapa 3 - Laudo de Capacidade Técnica concluído', hasSchedule: false },
+        { value: 'STEP_COMPLETED:4', label: 'Etapa 4 - Juntada de Documentos concluída', hasSchedule: false },
+        { value: 'STEP_COMPLETED:5', label: 'Etapa 5 - Submissão ao SINARM-CAC concluída', hasSchedule: false },
         { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
         { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'Confirmação de Agendamento de Laudo Técnico', hasSchedule: true },
         // SCHEDULE_TECH_REMINDER e WORKFLOW_COMPLETE removidos: eventos não disparados no backend

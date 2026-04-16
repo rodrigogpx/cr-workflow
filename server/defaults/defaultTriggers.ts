@@ -37,7 +37,7 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
     isActive: true
   },
   {
-    name: 'Avaliação Psicológica Concluída',
+    name: 'Laudo de Capacidade Técnica Concluído',
     triggerEvent: 'STEP_COMPLETED:3',
     recipientType: 'client',
     sendImmediate: true,
@@ -66,7 +66,7 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
     isActive: true
   },
   {
-    name: 'Laudo Técnico Concluído',
+    name: 'Processo Enviado ao SINARM',
     triggerEvent: 'STEP_COMPLETED:5',
     recipientType: 'client',
     sendImmediate: true,

@@ -613,6 +613,28 @@ export async function ensureMissingTables() {
       console.error("[Migration] Error ensuring platform admins:", adminErr);
     }
 
+    // ── Corrigir nomes de triggers com associação errada de etapas ───────────────
+    // Etapa 3 = agendamento-laudo (Laudo de Cap. Técnica), não psicológica.
+    // Etapa 5 = acompanhamento-sinarm (SINARM), não Laudo Técnico.
+    // Atualiza apenas o "name" do trigger; o triggerEvent (STEP_COMPLETED:3/5) continua correto.
+    try {
+      await db.execute(sql`
+        UPDATE "emailTriggers"
+        SET "name" = 'Laudo de Capacidade Técnica Concluído'
+        WHERE "name" = 'Avaliação Psicológica Concluída'
+          AND "triggerEvent" = 'STEP_COMPLETED:3'
+      `);
+      await db.execute(sql`
+        UPDATE "emailTriggers"
+        SET "name" = 'Processo Enviado ao SINARM'
+        WHERE "name" = 'Laudo Técnico Concluído'
+          AND "triggerEvent" = 'STEP_COMPLETED:5'
+      `);
+      console.log("[Migration] Email trigger names corrected (step 3 and 5)");
+    } catch (triggerFixErr) {
+      console.warn("[Migration] Trigger name fix skipped (non-fatal):", triggerFixErr);
+    }
+
     // ── Fix double-encoding UTF-8 data (Latin-1 misinterpretation) ──────────────
     // Dados inseridos com encoding errado aparecem como "Avaliação" em vez de "Avaliação"
     // A correção converte os bytes Latin-1 de volta para UTF-8 válido.

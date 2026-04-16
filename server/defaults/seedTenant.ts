@@ -44,22 +44,25 @@ const META: Record<string, { title: string; subject: string }> = {
 // ─── Mapa trigger name → template key ───────────────────────────────────────
 // As chaves correspondem exatamente às templateKey normalizadas acima.
 const TRIGGER_TEMPLATE_MAP: Record<string, string> = {
-  'Boas Vindas':                       'welcome',
-  'Cadastro Concluído':                'cadastro_concluido',
-  'Conclusão Juntada de Documentos':   'juntada_documentos',
-  'Encaminhamento Psicotécnico':       'psicotecnico',
-  'Avaliação Psicológica Concluída':   'psicotecnico_concluido',
-  'Agendamento Laudo Técnico':         'laudo_tecnico',
-  'Lembrete Agendamento Laudo Técnico':'laudo_tecnico',     // compartilha template base; diferenciado por sendBeforeHours
-  'Laudo Técnico Concluído':           'laudo_tecnico_concluido',
-  'Processo Iniciado no Sinarm':        'sinarm_iniciado',
-  'Processo Solicitado no Sinarm':      'sinarm_solicitado',
-  'Aguardando Baixa GRU':              'sinarm_aguardando_gru',
-  'Processo em Análise':               'sinarm_em_analise',
-  'Processo Restituído':               'sinarm_restituido',
-  'Processo Indeferido':               'sinarm_indeferido',
-  'Processo Deferido':                 'sinarm_deferido',
-  'Agendamento Avaliação Psicológica': 'psicotecnico_agendado',
+  'Boas Vindas':                              'welcome',
+  'Cadastro Concluído':                       'cadastro_concluido',
+  'Encaminhamento Psicotécnico':              'psicotecnico',           // STEP_COMPLETED:2 (agendamento-psicotecnico)
+  'Laudo de Capacidade Técnica Concluído':    'laudo_tecnico_concluido',// STEP_COMPLETED:3 (agendamento-laudo)
+  'Conclusão Juntada de Documentos':          'juntada_documentos',     // STEP_COMPLETED:4 (juntada-documento)
+  'Processo Enviado ao SINARM':               'sinarm_iniciado',        // STEP_COMPLETED:5 (acompanhamento-sinarm)
+  'Agendamento Laudo Técnico':                'laudo_tecnico',          // SCHEDULE_TECH_CONFIRMATION
+  'Lembrete Agendamento Laudo Técnico':       'laudo_tecnico',          // SCHEDULE_TECH_CONFIRMATION (sendBeforeHours:24)
+  'Agendamento Avaliação Psicológica':        'psicotecnico_agendado',  // SCHEDULE_PSYCH_CREATED
+  'Processo Iniciado no Sinarm':              'sinarm_iniciado',
+  'Processo Solicitado no Sinarm':            'sinarm_solicitado',
+  'Aguardando Baixa GRU':                    'sinarm_aguardando_gru',
+  'Processo em Análise':                     'sinarm_em_analise',
+  'Processo Restituído':                     'sinarm_restituido',
+  'Processo Indeferido':                     'sinarm_indeferido',
+  'Processo Deferido':                       'sinarm_deferido',
+  // Legado — mantidos para tenants existentes que ainda têm esses nomes no banco
+  'Avaliação Psicológica Concluída':          'laudo_tecnico_concluido',// antigo nome de STEP_COMPLETED:3
+  'Laudo Técnico Concluído':                  'sinarm_iniciado',        // antigo nome de STEP_COMPLETED:5
 };
 
 /**
