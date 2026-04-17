@@ -16,7 +16,21 @@ function getCursiveFontPath(): string | null {
     // Production: dist/fonts (after build)
     path.join(__dirname, '..', 'dist', 'fonts', 'Lora-Italic.ttf'),
   ];
-  return candidates.find(p => fs.existsSync(p)) ?? null;
+  
+  // Debug: Log all candidates and their existence
+  console.log('=== PDF FONT DEBUG ===');
+  console.log('process.cwd():', process.cwd());
+  console.log('__dirname:', __dirname);
+  candidates.forEach((candidate, index) => {
+    const exists = fs.existsSync(candidate);
+    console.log(`[${index}] ${candidate} - ${exists ? 'EXISTS' : 'MISSING'}`);
+  });
+  
+  const found = candidates.find(p => fs.existsSync(p)) ?? null;
+  console.log('Selected font:', found || 'NONE');
+  console.log('==================');
+  
+  return found;
 }
 
 export function generatePsychReferralPDF(client: Client, responsibleName: string = 'CAC 360'): Promise<Buffer> {
