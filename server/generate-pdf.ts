@@ -7,12 +7,14 @@ function getCursiveFontPath(): string | null {
   const candidates = [
     // DancingScript (cursiva script — preferida)
     path.join(process.cwd(), 'server', 'fonts', 'DancingScript-Regular.ttf'),
-    path.join(__dirname, '..', 'server', 'fonts', 'DancingScript-Regular.ttf'),
     path.join(__dirname, 'fonts', 'DancingScript-Regular.ttf'),
+    // Production: dist/fonts (after build)
+    path.join(__dirname, '..', 'dist', 'fonts', 'DancingScript-Regular.ttf'),
     // Lora-Italic (serif itálica elegante — fallback cursivo)
     path.join(process.cwd(), 'server', 'fonts', 'Lora-Italic.ttf'),
-    path.join(__dirname, '..', 'server', 'fonts', 'Lora-Italic.ttf'),
     path.join(__dirname, 'fonts', 'Lora-Italic.ttf'),
+    // Production: dist/fonts (after build)
+    path.join(__dirname, '..', 'dist', 'fonts', 'Lora-Italic.ttf'),
   ];
   return candidates.find(p => fs.existsSync(p)) ?? null;
 }
@@ -107,7 +109,9 @@ export function generatePsychReferralPDF(client: Client, responsibleName: string
         doc.fontSize(20).fillColor('#123A63').text(responsibleName, { align: 'center' });
       }
     } else {
-      doc.fontSize(20).fillColor('#123A63').text(responsibleName, { align: 'center' });
+      // Fallback: use Helvetica-Oblique to simulate italic appearance
+      doc.font('Helvetica-Oblique').fontSize(20).fillColor('#123A63').text(responsibleName, { align: 'center' });
+      doc.font('Helvetica');
     }
     doc.moveDown(0.3);
     doc.moveTo(200, doc.y).lineTo(440, doc.y).lineWidth(0.5).stroke('#000000');
