@@ -43,6 +43,8 @@ const Landing = lazy(() => import("./pages/Landing"));
 
 function getBackgroundForPath(path: string) {
   // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
+  
+  // CR-Workflow Module - background específico
   if (
     path.includes("/cr-workflow") ||
     path.includes("/client/") ||
@@ -50,6 +52,39 @@ function getBackgroundForPath(path: string) {
   ) {
     return "/background-02.webp";
   }
+  
+  // Portal Module - background específico
+  if (
+    path.includes("/portal") ||
+    path.includes("/landing")
+  ) {
+    return "/background-01.webp";
+  }
+  
+  // Platform Admin - background específico
+  if (
+    path.includes("/platform-admin") ||
+    path.includes("/super-admin")
+  ) {
+    return "/background-super-admin.png";
+  }
+  
+  // IAT Module - background específico
+  if (path.includes("/iat")) {
+    return "/background-02.webp";
+  }
+  
+  // Compliance Module - background específico
+  if (path.includes("/compliance")) {
+    return "/background-02.webp";
+  }
+  
+  // Admin Module - background específico
+  if (path.includes("/admin")) {
+    return "/background-02.webp";
+  }
+  
+  // Default background para todas as outras páginas
   return "/background-01.webp";
 }
 
