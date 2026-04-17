@@ -434,7 +434,7 @@ export default function IATSessionsPanel({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-primary" />

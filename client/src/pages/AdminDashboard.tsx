@@ -33,22 +33,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Usuários
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{totalUsers}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {admins.length} admin • {operators.length} operador{operators.length !== 1 ? 'es' : ''}
-              </p>
-            </CardContent>
-          </Card>
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
@@ -94,6 +79,32 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Card de Usuários - Terceira linha */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Usuários
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <p className="text-3xl font-bold">{totalUsers}</p>
+                <p className="text-xs text-muted-foreground mt-1">Total de Usuários</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-blue-600">{admins.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Administradores</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-green-600">{operators.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Operadores</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Clientes por operador */}
         <Card>

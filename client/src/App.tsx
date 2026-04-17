@@ -48,7 +48,7 @@ function getBackgroundForPath(path: string) {
     path.includes("/client/") ||
     path.includes("/workflow-admin")
   ) {
-    return "/backgrond-02.webp";
+    return "/background-02.webp";
   }
   return "/background-01.webp";
 }

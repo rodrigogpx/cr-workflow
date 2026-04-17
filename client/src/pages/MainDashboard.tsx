@@ -97,50 +97,6 @@ export default function MainDashboard() {
 
         {/* Grid de módulos */}
         <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {/* Módulo Compliance & Vencimentos - Primeiro na lista */}
-          <Card
-            onClick={() => features.featureRenovacao && setLocation(buildTenantPath(tenantSlug, "/compliance"))}
-            className={`border-2 border-dashed ${features.featureRenovacao ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300 relative`}
-          >
-            <CardHeader className="space-y-2 pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureRenovacao && 'text-muted-foreground'}`}>
-                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${features.featureRenovacao ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
-                    {features.featureRenovacao ? <CalendarDays className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                  </span>
-                  Compliance & Vencimentos
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  {complianceNotificationCount > 0 && (
-                    <span className="relative flex items-center gap-1 text-[0.65rem] px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 font-semibold">
-                      <Bell className="h-3 w-3" />
-                      {complianceNotificationCount}
-                    </span>
-                  )}
-                  {features.featureRenovacao ? (
-                    <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
-                      Ativo
-                    </span>
-                  ) : (
-                    <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
-                      Desabilitado
-                    </span>
-                  )}
-                </div>
-              </div>
-              <CardDescription className="text-xs sm:text-sm text-muted-foreground">
-                Calendário de vencimentos e repositório de documentos (CR, GT, CRAF, Laudos, Certificados).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 pt-0">
-              <p className="text-[0.7rem] sm:text-xs text-muted-foreground">
-                {features.featureRenovacao
-                  ? `Dashboard consolidado com ${complianceNotificationCount > 0 ? `${complianceNotificationCount} documentos vencendo em breve.` : 'acompanhamento de validades.'}`
-                  : "Módulo avançado de retenção e renovação. Previsto para integração futura."}
-              </p>
-            </CardContent>
-          </Card>
-
           {/* Módulo CR Workflow */}
           <Card
             onClick={() => features.featureWorkflowCR && setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
@@ -172,42 +128,6 @@ export default function MainDashboard() {
               <p className="text-[0.7rem] sm:text-xs text-muted-foreground">
                 Use este módulo para inserir novos clientes no CAC 360 e acompanhar o fluxo de aprovação do Certificado de Registro.
               </p>
-            </CardContent>
-          </Card>
-
-          {/* Módulo Aquisição & CRAF */}
-          <Card
-            onClick={() => features.featureApostilamento && setLocation(buildTenantPath(tenantSlug, "/aquisicao"))}
-            className={`border-2 border-dashed ${features.featureApostilamento ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureApostilamento && 'text-muted-foreground'}`}>
-                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${features.featureApostilamento ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
-                    {features.featureApostilamento ? <Inbox className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                  </span>
-                  Aquisição & CRAF
-                </CardTitle>
-                {features.featureApostilamento ? (
-                  <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
-                    Ativo
-                  </span>
-                ) : (
-                  <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
-                    Desabilitado
-                  </span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <p className={`text-sm ${features.featureApostilamento ? 'text-muted-foreground' : 'text-muted-foreground/60'}`}>
-                  Fluxo para autorização de compra, upload de NF e emissão do CRAF, com cofre digital.
-                </p>
-                <div className={`text-xs ${features.featureApostilamento ? 'text-muted-foreground' : 'text-muted-foreground/60'} pt-2 border-t border-border/50`}>
-                  Módulo planejado. Em breve será possível acompanhar todas as aquisições do cliente a partir deste painel.
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -280,6 +200,86 @@ export default function MainDashboard() {
                   ? "Acesse para gerenciar cotas e insumos do atirador."
                   : "Ideal para atiradores de IPSC e alto volume. Planejado para fases futuras da plataforma."}
               </p>
+            </CardContent>
+          </Card>
+
+          {/* Módulo Compliance & Vencimentos */}
+          <Card
+            onClick={() => features.featureRenovacao && setLocation(buildTenantPath(tenantSlug, "/compliance"))}
+            className={`border-2 border-dashed ${features.featureRenovacao ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300 relative`}
+          >
+            <CardHeader className="space-y-2 pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureRenovacao && 'text-muted-foreground'}`}>
+                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${features.featureRenovacao ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
+                    {features.featureRenovacao ? <CalendarDays className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                  </span>
+                  Compliance & Vencimentos
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {complianceNotificationCount > 0 && (
+                    <span className="relative flex items-center gap-1 text-[0.65rem] px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 font-semibold">
+                      <Bell className="h-3 w-3" />
+                      {complianceNotificationCount}
+                    </span>
+                  )}
+                  {features.featureRenovacao ? (
+                    <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
+                      Ativo
+                    </span>
+                  ) : (
+                    <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
+                      Desabilitado
+                    </span>
+                  )}
+                </div>
+              </div>
+              <CardDescription className="text-xs sm:text-sm text-muted-foreground">
+                Calendário de vencimentos e repositório de documentos (CR, GT, CRAF, Laudos, Certificados).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 pt-0">
+              <p className="text-[0.7rem] sm:text-xs text-muted-foreground">
+                {features.featureRenovacao
+                  ? `Dashboard consolidado com ${complianceNotificationCount > 0 ? `${complianceNotificationCount} documentos vencendo em breve.` : 'acompanhamento de validades.'}`
+                  : "Módulo avançado de retenção e renovação. Previsto para integração futura."}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Módulo Aquisição & CRAF */}
+          <Card
+            onClick={() => features.featureApostilamento && setLocation(buildTenantPath(tenantSlug, "/aquisicao"))}
+            className={`border-2 border-dashed ${features.featureApostilamento ? 'border-white/20 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/20 cursor-pointer' : 'border-white/5 opacity-50'} bg-card/95 backdrop-blur-sm transition-all duration-300`}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className={`text-base font-bold uppercase tracking-tight flex items-center gap-2 ${!features.featureApostilamento && 'text-muted-foreground'}`}>
+                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${features.featureApostilamento ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
+                    {features.featureApostilamento ? <Inbox className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                  </span>
+                  Aquisição & CRAF
+                </CardTitle>
+                {features.featureApostilamento ? (
+                  <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 uppercase font-semibold tracking-wide">
+                    Ativo
+                  </span>
+                ) : (
+                  <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-slate-700 text-white border border-slate-200/30 shadow-sm uppercase font-bold tracking-wide">
+                    Desabilitado
+                  </span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className={`text-sm ${features.featureApostilamento ? 'text-muted-foreground' : 'text-muted-foreground/60'}`}>
+                  Fluxo para autorização de compra, upload de NF e emissão do CRAF, com cofre digital.
+                </p>
+                <div className={`text-xs ${features.featureApostilamento ? 'text-muted-foreground' : 'text-muted-foreground/60'} pt-2 border-t border-border/50`}>
+                  Módulo planejado. Em breve será possível acompanhar todas as aquisições do cliente a partir deste painel.
+                </div>
+              </div>
             </CardContent>
           </Card>
 

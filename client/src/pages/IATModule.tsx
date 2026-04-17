@@ -416,7 +416,7 @@ export default function IATModule() {
 
       {/* Enrollment Sheet */}
       <Sheet open={!!enrollSheet?.open} onOpenChange={open => { if (!open) setEnrollSheet(null); }}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader><SheetTitle>{enrollSheet?.classTitle} – Alunos</SheetTitle></SheetHeader>
           <div className="mt-4 space-y-4">
             {/* Enrolled students list */}
