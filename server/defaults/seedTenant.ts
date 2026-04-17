@@ -60,9 +60,9 @@ const TRIGGER_TEMPLATE_MAP: Record<string, string> = {
   'Processo Restituído':                     'sinarm_restituido',
   'Processo Indeferido':                     'sinarm_indeferido',
   'Processo Deferido':                       'sinarm_deferido',
-  // Legado — mantidos para tenants existentes que ainda têm esses nomes no banco
-  'Avaliação Psicológica Concluída':          'laudo_tecnico_concluido',// antigo nome de STEP_COMPLETED:3
-  'Laudo Técnico Concluído':                  'sinarm_iniciado',        // antigo nome de STEP_COMPLETED:5
+  // OBS: legacy names foram removidos — a correção definitiva do link trigger→template
+  // é feita por triggerEvent em ensure-tables.ts (migration). Mapear por nome antigo
+  // pode linkar ao template errado quando o triggerEvent histórico diferiu.
 };
 
 /**

@@ -637,6 +637,8 @@ export async function ensureMissingTables() {
     // ── Corrigir associações trigger→template incorretas ─────────────────────────
     // O seed antigo linkava triggers ao template errado (não atualizava existentes).
     // Este bloco força a associação correta usando SQL direto.
+    // Importante: executa cada statement em uma chamada separada (alguns drivers
+    // do pg não suportam múltiplos statements em uma única chamada de execute).
     // Mapa: triggerEvent → templateKey correto
     try {
       const triggerTemplateCorrections: Array<{ event: string; correctKey: string }> = [
@@ -646,35 +648,54 @@ export async function ensureMissingTables() {
         { event: 'STEP_COMPLETED:4', correctKey: 'juntada_documentos' },
         { event: 'STEP_COMPLETED:5', correctKey: 'sinarm_iniciado' },
         { event: 'CLIENT_CREATED',   correctKey: 'welcome' },
-        { event: 'SCHEDULE_PSYCH_CREATED',      correctKey: 'psicotecnico_agendado' },
+        { event: 'SCHEDULE_PSYCH_CREATED', correctKey: 'psicotecnico_agendado' },
       ];
 
       for (const { event, correctKey } of triggerTemplateCorrections) {
-        await db.execute(sql.raw(`
-          -- Remove associações erradas: trigger com esse evento ligado a template diferente do correto
-          DELETE FROM "emailTriggerTemplates"
-          WHERE "triggerId" IN (
-            SELECT id FROM "emailTriggers" WHERE "triggerEvent" = '${event}'
-          )
-          AND "templateId" NOT IN (
-            SELECT id FROM "emailTemplates" WHERE "templateKey" = '${correctKey}'
-          );
+        try {
+          // 1) DELETE: remove associações onde o template não bate com o correctKey.
+          //    Usa binding parametrizado (sql`...`) para evitar ambiguidade de escape.
+          const delResult: any = await db.execute(sql`
+            DELETE FROM "emailTriggerTemplates"
+            WHERE "triggerId" IN (
+              SELECT id FROM "emailTriggers" WHERE "triggerEvent" = ${event}
+            )
+            AND "templateId" NOT IN (
+              SELECT id FROM "emailTemplates" WHERE "templateKey" = ${correctKey}
+            )
+          `);
+          const delCount = (delResult?.rowCount ?? delResult?.rows?.length ?? 0);
 
-          -- Insere associação correta se ainda não existir
-          INSERT INTO "emailTriggerTemplates" ("triggerId", "templateId", "sendOrder", "isForReminder")
-          SELECT et.id, tmpl.id, 1, false
-          FROM "emailTriggers" et
-          JOIN "emailTemplates" tmpl ON tmpl."templateKey" = '${correctKey}'
-            AND (tmpl."tenantId" = et."tenantId" OR tmpl."tenantId" IS NULL)
-          WHERE et."triggerEvent" = '${event}'
-          AND NOT EXISTS (
-            SELECT 1 FROM "emailTriggerTemplates" ett2
-            WHERE ett2."triggerId" = et.id AND ett2."templateId" = tmpl.id
-          )
-          ON CONFLICT DO NOTHING;
-        `));
+          // 2) INSERT: cria a associação correta para cada trigger do evento,
+          //    escolhendo UM template por tenant, priorizando o tenant-específico.
+          //    (LATERAL + ORDER BY NULLS LAST resolve ambiguidade quando coexistem
+          //    um template do tenant e um template global com mesmo templateKey.)
+          const insResult: any = await db.execute(sql`
+            INSERT INTO "emailTriggerTemplates" ("triggerId", "templateId", "sendOrder", "isForReminder")
+            SELECT et.id, tmpl.id, 1, false
+            FROM "emailTriggers" et
+            CROSS JOIN LATERAL (
+              SELECT t.id
+              FROM "emailTemplates" t
+              WHERE t."templateKey" = ${correctKey}
+                AND (t."tenantId" = et."tenantId" OR t."tenantId" IS NULL)
+              ORDER BY (t."tenantId" IS NULL) ASC
+              LIMIT 1
+            ) tmpl
+            WHERE et."triggerEvent" = ${event}
+              AND NOT EXISTS (
+                SELECT 1 FROM "emailTriggerTemplates" ett2
+                WHERE ett2."triggerId" = et.id AND ett2."templateId" = tmpl.id
+              )
+          `);
+          const insCount = (insResult?.rowCount ?? insResult?.rows?.length ?? 0);
+
+          console.log(`[Migration] ${event} → ${correctKey} | removidas=${delCount} inseridas=${insCount}`);
+        } catch (perEventErr) {
+          console.warn(`[Migration] Falha ao corrigir ${event} → ${correctKey}:`, perEventErr);
+        }
       }
-      console.log("[Migration] Trigger→template associations corrected");
+      console.log("[Migration] Trigger→template associations corrected (v2)");
     } catch (assocFixErr) {
       console.warn("[Migration] Trigger association fix skipped (non-fatal):", assocFixErr);
     }
