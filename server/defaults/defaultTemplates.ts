@@ -3,7 +3,7 @@ import { defaultEmailTemplates as rawTemplates } from './emailTemplatesData';
 /**
  * Fix double-encoded UTF-8 content.
  * The base64 HTML data was encoded as: original UTF-8 bytes → treated as Latin-1 → re-encoded to UTF-8.
- * Result: "ç" (C3 A7) became C3 83 C2 A7 → decodes as "Ã§" (mojibake).
+ * Result: "ç" (C3 A7) became C3 83 C2 A7 → decodes as "ç" (mojibake).
  * Fix: decode as UTF-8 (gets mojibake chars), then take each char's code point as a byte (latin1),
  * then re-interpret those bytes as UTF-8.
  */

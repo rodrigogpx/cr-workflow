@@ -27,6 +27,7 @@ const AdminSettings = lazy(() => import("./pages/TenantSettings"));
 const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const IATModule = lazy(() => import("./pages/IATModule"));
+const ComplianceModule = lazy(() => import("./pages/ComplianceModule"));
 // Platform Admin pages
 const PlatformAdminBootstrap = lazy(() => import("./pages/PlatformAdminBootstrap"));
 const PlatformAdminAdmins = lazy(() => import("./pages/PlatformAdminAdmins"));
@@ -42,13 +43,48 @@ const Landing = lazy(() => import("./pages/Landing"));
 
 function getBackgroundForPath(path: string) {
   // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
+  
+  // CR-Workflow Module - background específico
   if (
     path.includes("/cr-workflow") ||
     path.includes("/client/") ||
     path.includes("/workflow-admin")
   ) {
-    return "/backgrond-02.webp";
+    return "/background-02.webp";
   }
+  
+  // Portal Module - background específico
+  if (
+    path.includes("/portal") ||
+    path.includes("/landing")
+  ) {
+    return "/background-01.webp";
+  }
+  
+  // Platform Admin - background específico
+  if (
+    path.includes("/platform-admin") ||
+    path.includes("/super-admin")
+  ) {
+    return "/background-super-admin.png";
+  }
+  
+  // IAT Module - background específico
+  if (path.includes("/iat")) {
+    return "/background-02.webp";
+  }
+  
+  // Compliance Module - background específico
+  if (path.includes("/compliance")) {
+    return "/background-02.webp";
+  }
+  
+  // Admin Module - background específico
+  if (path.includes("/admin")) {
+    return "/background-02.webp";
+  }
+  
+  // Default background para todas as outras páginas
   return "/background-01.webp";
 }
 
@@ -262,6 +298,13 @@ function Router() {
           </ApprovedRoute>
         </Route>
         
+        {/* Global Compliance Module (no tenant) */}
+        <Route path={"/compliance"}>
+          <ApprovedRoute>
+            <ComplianceModule />
+          </ApprovedRoute>
+        </Route>
+        
         {/* Root Route */}
         <Route path={"/"} component={Login} />
         
@@ -326,6 +369,11 @@ function Router() {
         <Route path={"/:tenantSlug/iat"}>
           <ApprovedRoute>
             <IATModule />
+          </ApprovedRoute>
+        </Route>
+        <Route path={"/:tenantSlug/compliance"}>
+          <ApprovedRoute>
+            <ComplianceModule />
           </ApprovedRoute>
         </Route>
         

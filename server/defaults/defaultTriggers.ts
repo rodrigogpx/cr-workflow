@@ -2,11 +2,10 @@ import { InsertEmailTrigger } from '../../drizzle/schema';
 
 // Workflow steps → stepIdToNumber mapping (routers.ts):
 //   1 = cadastro
-//   2 = juntada-documento
-//   3 = boas-vindas (Central de Mensagens)
-//   4 = agendamento-psicotecnico
-//   5 = agendamento-laudo
-//   6 = acompanhamento-sinarm
+//   2 = agendamento-psicotecnico (Encaminhamento Psicotécnico)
+//   3 = agendamento-laudo (Agendamento Laudo Técnico)
+//   4 = juntada-documento (Juntada de Documentos)
+//   5 = acompanhamento-sinarm (Submissão SINARM)
 //
 // Sinarm statuses (ClientWorkflow.tsx):
 //   Iniciado, Solicitado, Aguardando Baixa GRU, Em Análise,
@@ -31,21 +30,21 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
     isActive: true
   },
   {
-    name: 'Conclusão Juntada de Documentos',
+    name: 'Encaminhamento Psicotécnico',
     triggerEvent: 'STEP_COMPLETED:2',
     recipientType: 'client',
     sendImmediate: true,
     isActive: true
   },
   {
-    name: 'Encaminhamento Psicotécnico',
+    name: 'Laudo de Capacidade Técnica Concluído',
     triggerEvent: 'STEP_COMPLETED:3',
     recipientType: 'client',
     sendImmediate: true,
     isActive: true
   },
   {
-    name: 'Avaliação Psicológica Concluída',
+    name: 'Conclusão Juntada de Documentos',
     triggerEvent: 'STEP_COMPLETED:4',
     recipientType: 'client',
     sendImmediate: true,
@@ -67,7 +66,7 @@ export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
     isActive: true
   },
   {
-    name: 'Laudo Técnico Concluído',
+    name: 'Processo Enviado ao SINARM',
     triggerEvent: 'STEP_COMPLETED:5',
     recipientType: 'client',
     sendImmediate: true,

@@ -225,6 +225,24 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
       ssl: (process.env.NODE_ENV === "production" && !isLocalhost && !hasSslMode) ? 'require' : undefined,
       idle_timeout: 60,
       connect_timeout: 10,
+      // UTF-8 encoding for proper character handling
+      onnotice: () => {}, // Suppress notices
+      debug: false,
+      // Force UTF-8 encoding for all text data
+      encoding: 'utf8',
+      types: {
+        // Ensure text fields are decoded as UTF-8
+        text: {
+          to: 0,
+          from: [1043, 25, 18, 19], // varchar, text, char, name
+          parse: (x: string) => {
+            // Force UTF-8 interpretation if needed
+            if (typeof x === 'string') return x;
+            return Buffer.from(x).toString('utf8');
+          },
+          serialize: (x: string) => x,
+        },
+      },
     });
     const db = drizzle(client);
 

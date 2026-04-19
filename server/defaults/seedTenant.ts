@@ -3,7 +3,7 @@ import { emailTemplates, emailTriggers, emailTriggerTemplates } from '../../driz
 import { defaultEmailTemplates as staticDefaultTemplates } from './defaultTemplates';
 import { defaultEmailTriggers } from './defaultTriggers';
 
-// ─── Normalização de chaves (DB → padrão do seed) ───────────────────────────
+// --- Normalização de chaves (DB -> padrão do seed) ----------------------------------
 // Aplicada aos templates com tenantId = NULL quando carregados do banco em runtime.
 // Permite que os templates sejam editados diretamente no banco sem re-deploy.
 const KEY_MAP: Record<string, string> = {
@@ -41,7 +41,7 @@ const META: Record<string, { title: string; subject: string }> = {
   'psicotecnico_agendado':  { title: 'Agendamento Avaliação Psicológica', subject: 'Agendamento Psicológico Confirmado - {{nome}}' },
 };
 
-// ─── Mapa trigger name → template key ───────────────────────────────────────
+// --- Mapa trigger name -> template key -----------------------------------------------
 // As chaves correspondem exatamente às templateKey normalizadas acima.
 const TRIGGER_TEMPLATE_MAP: Record<string, string> = {
   'Boas Vindas':                       'welcome',
@@ -110,10 +110,10 @@ async function loadSeedTemplates(tenantDb: any): Promise<Array<{
 }
 
 export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) {
-  // ── 1. Carregar fonte de templates (banco ou estático) ──────────────────
+  // --- 1. Carregar fonte de templates (banco ou estático) -----------------------------
   const seedTemplates = await loadSeedTemplates(tenantDb);
 
-  // ── 2. Upsert Templates ─────────────────────────────────────────────────
+  // --- 2. Upsert Templates ---------------------------------------------------------
   const templateIdMap = new Map<string, number>();
   let templatesInserted = 0;
 
@@ -153,7 +153,7 @@ export async function seedTenantEmailTemplates(tenantDb: any, tenantId: number) 
     }
   }
 
-  // ── 3. Upsert Triggers e associações ────────────────────────────────────
+  // --- 3. Upsert Triggers e associações ------------------------------------------------
   let triggersInserted = 0;
   for (const trigger of defaultEmailTriggers) {
     try {

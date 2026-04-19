@@ -38,7 +38,7 @@ RUN set -eux; \
 
 # Copiar código-fonte completo
 # ARG abaixo invalida o cache desta layer a cada rebuild
-ARG REBUILD_AT=20260407c
+ARG REBUILD_AT=20260415a
 COPY . .
 
 # Build do frontend
@@ -77,16 +77,24 @@ RUN set -eux; \
 
 # Copiar código-fonte completo
 # ARG abaixo invalida o cache desta layer a cada rebuild
-ARG REBUILD_AT=20260407c
+ARG REBUILD_AT=20260415a
 COPY . .
 
-# Baixar fonte cursiva para assinatura nos PDFs
+# Baixar fonte cursiva DancingScript para assinatura nos PDFs
+# Tenta múltiplas URLs (variável e estática) com fallback para Lora-Italic já no repo
 RUN apk add --no-cache curl \
     && mkdir -p /app/server/fonts \
-    && curl --retry 3 --retry-delay 2 -L \
-       "https://github.com/google/fonts/raw/main/ofl/dancingscript/static/DancingScript-Regular.ttf" \
-       -o /app/server/fonts/DancingScript-Regular.ttf \
-    || echo "[warn] DancingScript font download failed, PDFs will use fallback font"
+    && (curl --retry 3 --retry-delay 2 --max-time 20 -L \
+         "https://github.com/google/fonts/raw/main/ofl/dancingscript/DancingScript%5Bwght%5D.ttf" \
+         -o /app/server/fonts/DancingScript-Regular.ttf \
+         && file /app/server/fonts/DancingScript-Regular.ttf | grep -q "TrueType\|OpenType\|font" \
+         && echo "[font] DancingScript baixado com sucesso (variável)" \
+    ) || (curl --retry 3 --retry-delay 2 --max-time 20 -L \
+         "https://github.com/google/fonts/raw/main/ofl/dancingscript/static/DancingScript-Regular.ttf" \
+         -o /app/server/fonts/DancingScript-Regular.ttf \
+         && file /app/server/fonts/DancingScript-Regular.ttf | grep -q "TrueType\|OpenType\|font" \
+         && echo "[font] DancingScript baixado com sucesso (estático)" \
+    ) || echo "[font] Download falhou — Lora-Italic (repo) será usada como fallback cursivo"
 
 # Build do backend
 RUN pnpm run build:server

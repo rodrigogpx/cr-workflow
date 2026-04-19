@@ -1,0 +1,157 @@
+================================================================================
+                    RESUMO DE AJUSTES REALIZADOS
+================================================================================
+
+DATA: 14 de Abril de 2026
+
+================================================================================
+1️⃣  TEMPLATES DE EMAIL - "Exército Brasileiro" → "Polícia Federal"
+================================================================================
+
+✅ ATUALIZADO: email-templates/process.html
+   Linha 51: "Protocolo e Acompanhamento no Exército" 
+         ↓
+         "Protocolo e Acompanhamento na Polícia Federal"
+
+✅ ATUALIZADO: email-templates/process.min.html
+   Mesma alteração (versão minificada)
+
+Status: ✨ Pronto - sem dependências
+
+================================================================================
+2️⃣  CAMPO DE ASSINATURA - Configuração por Tenant
+================================================================================
+
+✅ SCHEMA DRIZZLE (drizzle/schema.ts)
+   Adicionado campo ao objeto tenants:
+   
+   signatureResponsibleName: varchar("signatureResponsibleName", { length: 255 })
+   
+   - Campo opcional
+   - Armazena o nome para assinatura dos documentos
+   - Usa fonte cursiva (DancingScript) no PDF
+
+✅ MIGRAÇÃO SQL
+   Criado: drizzle/migrations/202604141500_add_signature_responsible_name.sql
+   Comando: ALTER TABLE tenants ADD COLUMN signature_responsible_name VARCHAR(255);
+
+Status: 🔄 Requer migração (npm run migrate)
+
+================================================================================
+3️⃣  ROTAS DE ADMINISTRADOR (server/routers.ts)
+================================================================================
+
+✅ MUTATION: tenant.create (linha 2966+)
+   Input: signatureResponsibleName: z.string().optional()
+   Passado para: db.createTenant({...signatureResponsibleName})
+   
+   Uso: POST /api/trpc/tenant.create
+   {
+     "slug": "novo-clube",
+     "name": "Clube X",
+     "signatureResponsibleName": "João Silva",
+     ...
+   }
+
+✅ MUTATION: tenant.update (linha 3087+)
+   Input: signatureResponsibleName: z.string().optional()
+   
+   Uso: POST /api/trpc/tenant.update
+   {
+     "id": 1,
+     "signatureResponsibleName": "Maria Santos"
+   }
+
+Status: ✨ Pronto - sem dependências adicionais
+
+================================================================================
+4️⃣  LÓGICA DE RESPONSÁVEL DO PDF (server/routers.ts ~linha 1596)
+================================================================================
+
+✅ PRIORIDADE DE ASSINATURA:
+
+   1. signatureResponsibleName (do tenant) 
+      └─ SE preenchido, usa esse valor
+      
+   2. Nome do Admin (se #1 não existir)
+      └─ Se não houver signatureResponsibleName configurado
+      
+   3. "CAC 360" (fallback padrão)
+      └─ Se nenhuma das opções anteriores existir
+
+Implementação:
+   if ((ctx.tenant as any).signatureResponsibleName) {
+     responsibleName = (ctx.tenant as any).signatureResponsibleName;
+   } else {
+     // busca nome do admin do tenant
+   }
+
+Status: ✨ Pronto
+
+================================================================================
+5️⃣  FONTE CURSIVA NA ASSINATURA (server/generate-pdf.ts)
+================================================================================
+
+✅ JÁ IMPLEMENTADO - Usa "DancingScript-Regular.ttf"
+
+Especificações:
+   - Arquivo: server/fonts/DancingScript-Regular.ttf
+   - Tamanho: 26pt
+   - Cor: #123A63 (azul)
+   - Alinhamento: Centro
+   - Localização: Acima da linha de assinatura
+
+Código:
+   doc.font(cursivePath).fontSize(26).fillColor('#123A63')
+      .text(responsibleName, { align: 'center' });
+
+Status: ✨ Funcionando
+
+================================================================================
+📋 CHECKLIST DE IMPLEMENTAÇÃO
+================================================================================
+
+[✅] Templates de email atualizados
+[✅] Schema do banco atualizado
+[✅] Arquivo de migração criado
+[✅] Rotas de admin (create e update) com novo campo
+[✅] Lógica de responsável do PDF atualizada
+[✅] Fonte cursiva já presente no PDF
+
+================================================================================
+🚀 PRÓXIMOS PASSOS
+================================================================================
+
+1. Executar migração do banco:
+   npm run migrate
+
+2. Fazer commit das alterações:
+   git add -A
+   git commit -m "feat: adiciona configuração de assinatura em tenants"
+
+3. Testar:
+   - Criar novo tenant com signatureResponsibleName
+   - Gerar PDF de encaminhamento para avaliação psicológica
+   - Verificar se nome aparece em fonte cursiva
+
+4. (Opcional) Interface de Admin:
+   - Adicionar campo de texto na tela de edição de tenant
+   - Permitir que admins configurem a assinatura
+
+================================================================================
+📝 NOTAS IMPORTANTES
+================================================================================
+
+✨ A fonte cursiva já estava implementada! Nenhuma alteração necessária.
+
+📱 Charset dos emails:
+   - Já estava com UTF-8 configurado corretamente
+   - Meta tags: <meta charset="UTF-8">
+   - emailService: textEncoding: 'UTF-8'
+
+🔐 Campo é seguro:
+   - Armazenado como varchar(255)
+   - Passado apenas para o gerador de PDF
+   - Sem validação específica (TBD)
+
+================================================================================
