@@ -1,0 +1,68 @@
+# CODEOWNERS — Firerange Workflow
+#
+# Enforce mecanicamente a allowlist definida em:
+#   docs/adr/ADR-000-multi-agent-workflow.md
+#   .windsurf/rules/agent-{a1,a2,a3}.md
+#
+# Substitua os placeholders @a1-docs / @a2-backend / @a3-frontend pelos
+# handles GitHub (ou teams) quando forem criados. Até lá, manter os
+# placeholders já bloqueia PRs fora de escopo no GitHub (nenhum revisor
+# satisfaz o CODEOWNER → PR não pode ser merged sem override de admin).
+#
+# Ordem: a última regra que casar com o arquivo vence.
+
+# Fallback: qualquer arquivo não coberto exige revisão do humano responsável.
+*                                       @rodrigogpx
+
+# ------------------------------------------------------------
+# A1 — Docs / ADR
+# ------------------------------------------------------------
+/docs/                                  @a1-docs @rodrigogpx
+/docs/**                                @a1-docs @rodrigogpx
+/README.md                              @a1-docs @rodrigogpx
+/CHANGELOG.md                           @a1-docs @rodrigogpx
+/.github/                               @a1-docs @rodrigogpx
+/.github/**                             @a1-docs @rodrigogpx
+
+# Workflows de deploy/release permanecem só com o humano.
+/.github/workflows/deploy*.yml          @rodrigogpx
+/.github/workflows/release*.yml         @rodrigogpx
+
+# ------------------------------------------------------------
+# A2 — Backend / Database
+# ------------------------------------------------------------
+/server/                                @a2-backend @rodrigogpx
+/server/**                              @a2-backend @rodrigogpx
+/drizzle/                               @a2-backend @rodrigogpx
+/drizzle/**                             @a2-backend @rodrigogpx
+/shared/                                @a2-backend @rodrigogpx
+/shared/**                              @a2-backend @rodrigogpx
+/scripts/                               @a2-backend @rodrigogpx
+/scripts/**                             @a2-backend @rodrigogpx
+/drizzle.config.ts                      @a2-backend @rodrigogpx
+
+# ------------------------------------------------------------
+# A3 — Frontend / UX
+# ------------------------------------------------------------
+/client/                                @a3-frontend @rodrigogpx
+/client/**                              @a3-frontend @rodrigogpx
+/public/                                @a3-frontend @rodrigogpx
+/public/**                              @a3-frontend @rodrigogpx
+/tests/frontend/                        @a3-frontend @rodrigogpx
+/tests/frontend/**                      @a3-frontend @rodrigogpx
+/index.html                             @a3-frontend @rodrigogpx
+/vite.config.ts                         @a3-frontend @rodrigogpx
+/tailwind.config.js                     @a3-frontend @rodrigogpx
+/tailwind.config.ts                     @a3-frontend @rodrigogpx
+/postcss.config.js                      @a3-frontend @rodrigogpx
+/postcss.config.cjs                     @a3-frontend @rodrigogpx
+/components.json                        @a3-frontend @rodrigogpx
+
+# ------------------------------------------------------------
+# Raiz sensível — sempre humano
+# ------------------------------------------------------------
+/package.json                           @rodrigogpx
+/pnpm-lock.yaml                         @rodrigogpx
+/Dockerfile                             @rodrigogpx
+/.env.example                           @rodrigogpx
+/.env.gcp.example                       @rodrigogpx
