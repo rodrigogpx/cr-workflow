@@ -3,9 +3,11 @@ name: Integrity Check
 on:
   pull_request:
     branches:
+      - hml
       - main
   push:
     branches:
+      - hml
       - main
 
 permissions:

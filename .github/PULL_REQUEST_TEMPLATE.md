@@ -66,7 +66,7 @@ WP-__ — __
 
 ## Checklist pré-merge
 
-- [ ] PR aponta para `main` e passou pelo gate `integrity / Integrity Report`.
+- [ ] PR aponta para `hml` (fluxo padrão dos agentes) e passou pelo gate `integrity / Integrity Report`. PRs excepcionais para `main` (ex.: hotfix, promoção `hml → main`) também acionam o CI.
 - [ ] Conventional Commit nos commits desta branch.
 - [ ] Documentação atualizada (se mudança de API pública, contrato tRPC, ou procedimento operacional).
 - [ ] Nenhuma regressão no baseline (bundle size, testes passando, tempo de build).

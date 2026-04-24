@@ -16,7 +16,7 @@ Este baseline é referência para o gate de regressão do workflow CI `integrity
 
 - **Data:**
 - **Commit base:**
-- **Branch:** `main`
+- **Branch:** `hml` (baseline é congelado a partir de `hml`, que é o target dos PRs dos agentes)
 - **Autor:** @rodrigogpx
 - **PR associado:** `sprint-0/baseline-freeze`
 
@@ -70,4 +70,4 @@ scripts/capture-baseline.sh
 
 - [ ] Baseline verificado por @rodrigogpx
 - [ ] `docs/integrity-baseline.md` e `docs/integrity-baseline.json` committed
-- [ ] Workflow `integrity.yml` passando com `regression: ✓` na branch `main`
+- [ ] Workflow `integrity.yml` passando com `regression: ✓` na branch `hml`
