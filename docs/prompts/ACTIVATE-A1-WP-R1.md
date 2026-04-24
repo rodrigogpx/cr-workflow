@@ -109,7 +109,9 @@ Rode:
   git branch --show-current
   git log --oneline -n 5
 
-Confirme `main` atualizada.
+Confirme `hml` atualizada.
+(Fluxo do projeto: `feature → hml → main`. Abra branch a partir
+de `hml` e mire o PR em `hml`.)
 
 ### 1) Diagnóstico (sem editar)
 
@@ -168,7 +170,7 @@ Colar saída. Qualquer ✗ → PARE.
 
   git push -u origin agent-a1/WP-R1-platform-admin-roleset-adr
   gh pr create \
-    --base main \
+    --base hml \
     --head agent-a1/WP-R1-platform-admin-roleset-adr \
     --title "A1/WP-R1 — ADR-002 roleset platform admin" \
     --body-file <(cat <<'BODY'
@@ -191,8 +193,8 @@ BODY
 
 ### 6) Fechamento
 
-Após merge:
-  git checkout main && git pull
+Após merge em `hml`:
+  git checkout hml && git pull
   git checkout -b agent-a1/WP-R1-close
   # TASKS.md: [?] → [x], mover para Concluídos
   git commit -am "chore(tasks): A1 closes WP-R1"

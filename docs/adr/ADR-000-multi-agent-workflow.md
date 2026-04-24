@@ -32,7 +32,7 @@ Adotamos **git-based distributed locking** como mecanismo primário de coordena�
    - A1: `docs/**`, `.github/**`, `README.md`, `CHANGELOG.md`.
    - A2: `server/**`, `drizzle/**`, `shared/**`, `scripts/**`, `drizzle.config.ts`.
    - A3: `client/**`, `public/**`, `tests/frontend/**`, `index.html`, `vite.config.ts`.
-5. **Branch-por-agente-por-WP:** nomenclatura `agent-{a1|a2|a3}/WP-XX-slug`. PRs para `main` com review obrigatório.
+5. **Branch-por-agente-por-WP:** nomenclatura `agent-{a1|a2|a3}/WP-XX-slug`. PRs miram `hml` (homologação) com review obrigatório. A promoção `hml → main` é manual, sob responsabilidade do owner do repositório, fora do loop dos agentes. O CI de integridade roda nos PRs que mirem `hml` **e** nos que mirem `main`.
 6. **CODEOWNERS** reforça mecanicamente a allowlist: PR que toque diretório fora do escopo do autor bloqueia merge.
 7. **Integrity Report obrigatório:** antes de mover um WP para `[?]` (review), o agente executa `scripts/integrity-check.sh` e cola a saída na descrição do PR. Sem report verde nas camadas obrigatórias, o PR não é elegível para merge.
 
@@ -44,7 +44,7 @@ Adotamos **git-based distributed locking** como mecanismo primário de coordena�
 | `[~]` | claimed | Reivindicado; nenhum outro agente edita os mesmos paths. |
 | `[>]` | in_progress | Agente iniciou commits de implementação. |
 | `[?]` | review | PR aberto; aguardando revisão e Integrity Report. |
-| `[x]` | completed | Merge em `main`. Movido para histórico ao final do sprint. |
+| `[x]` | completed | Merge em `hml`. Movido para histórico ao final do sprint. (A eventual promoção `hml → main` é ortogonal ao ciclo de vida do WP.) |
 | `[!]` | blocked | Dependência, decisão pendente ou falha de integridade. |
 
 ## 4. Camadas de integridade (resumo)
@@ -87,7 +87,7 @@ Detalhe completo em `docs/PLANO-MULTI-AGENTE.md` §7. Resumo da obrigatoriedade:
 1. Criação de `docs/TASKS.md` (feita em WP-00).
 2. Criação de `.windsurf/rules/agent-{a1,a2,a3}.md` (feita em WP-00).
 3. Criação de `scripts/integrity-check.sh` (feita em WP-00).
-4. Configuração de `.github/CODEOWNERS` e proteção da branch `main` (feita em WP-00 + passo operacional no GitHub).
+4. Configuração de `.github/CODEOWNERS` e proteção das branches `hml` e `main` (feita em WP-00 + passo operacional no GitHub). A branch `hml` recebe PRs dos agentes; `main` só recebe promoções manuais a partir de `hml`.
 5. Abertura dos primeiros WPs reivindicáveis: WP-01, WP-02, WP-03, WP-R1.
 
 ## 8. Revisão
