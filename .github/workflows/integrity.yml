@@ -1,0 +1,226 @@
+name: Integrity Check
+
+on:
+  pull_request:
+    branches:
+      - hml
+      - main
+  push:
+    branches:
+      - hml
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  integrity:
+    name: Integrity Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # -------------------------------------------------------------------
+      # Detecta agente autor pela convenção de nome da branch
+      # -------------------------------------------------------------------
+      - name: Infer author agent
+        id: agent
+        run: |
+          head_ref="${{ github.head_ref || github.ref_name }}"
+          case "$head_ref" in
+            agent-a1/*) echo "AGENT=A1" >> "$GITHUB_OUTPUT" ;;
+            agent-a2/*) echo "AGENT=A2" >> "$GITHUB_OUTPUT" ;;
+            agent-a3/*) echo "AGENT=A3" >> "$GITHUB_OUTPUT" ;;
+            sprint-0/*) echo "AGENT=human" >> "$GITHUB_OUTPUT" ;;
+            *)          echo "AGENT=human" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      # -------------------------------------------------------------------
+      # Define camadas obrigatórias conforme matriz do §7
+      # -------------------------------------------------------------------
+      - name: Resolve required layers
+        id: layers
+        run: |
+          case "${{ steps.agent.outputs.AGENT }}" in
+            A1)
+              echo "LAYERS=static" >> "$GITHUB_OUTPUT" ;;
+            A2)
+              echo "LAYERS=static,unit,integration,build,regression,migrations,impact" >> "$GITHUB_OUTPUT" ;;
+            A3)
+              echo "LAYERS=static,unit,build,regression,impact" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "LAYERS=all" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      # -------------------------------------------------------------------
+      # Executa integridade (com captura de métricas)
+      # -------------------------------------------------------------------
+      - name: Run integrity-check
+        id: check
+        env:
+          AGENT: ${{ steps.agent.outputs.AGENT }}
+          LAYERS: ${{ steps.layers.outputs.LAYERS }}
+          METRICS_OUT: integrity-metrics.txt
+        run: |
+          set +e
+          scripts/integrity-check.sh | tee integrity-report.txt
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      # -------------------------------------------------------------------
+      # Gate de regressão: compara métricas desta run com o baseline
+      # -------------------------------------------------------------------
+      - name: Regression gate (vs docs/integrity-baseline.json)
+        id: regression
+        if: always()
+        run: |
+          if [[ ! -f docs/integrity-baseline.json ]]; then
+            echo "⚠ Baseline ainda não congelado (docs/integrity-baseline.json ausente)."
+            echo "status=pending" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ ! -f integrity-metrics.txt ]]; then
+            echo "❌ Métricas não produzidas pelo integrity-check.sh"
+            echo "status=error" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import json, os, sys
+
+          with open("docs/integrity-baseline.json") as f:
+              base = json.load(f)
+
+          metrics = {}
+          with open("integrity-metrics.txt") as f:
+              for line in f:
+                  line = line.strip()
+                  if "=" in line and not line.startswith("#"):
+                      k, v = line.split("=", 1)
+                      metrics[k] = v
+
+          thresholds = base.get("thresholds", {})
+          max_client_pct = thresholds.get("bundle_client_pct_max", 5)
+          max_build_pct = thresholds.get("build_time_pct_max", 20)
+
+          issues = []
+
+          ref_client = base.get("bundle_client_kb")
+          cur_client = metrics.get("bundle_client_kb")
+          if ref_client and cur_client:
+              cur_client = int(cur_client)
+              pct = (cur_client - ref_client) / ref_client * 100
+              print(f"bundle_client: {ref_client}KB → {cur_client}KB ({pct:+.1f}%)")
+              if pct >= max_client_pct:
+                  issues.append(f"bundle cliente cresceu {pct:.1f}% (limite {max_client_pct}%)")
+
+          ref_build = base.get("durations_ms", {}).get("build")
+          # build duration do run atual — soma das linhas "build:..."
+          cur_build = 0
+          with open("integrity-metrics.txt") as f:
+              for line in f:
+                  if line.startswith("build:"):
+                      parts = line.strip().split(":")
+                      if len(parts) >= 4:
+                          try:
+                              cur_build += int(parts[3])
+                          except ValueError:
+                              pass
+          if ref_build and cur_build:
+              pct = (cur_build - ref_build) / ref_build * 100
+              print(f"build_ms: {ref_build} → {cur_build} ({pct:+.1f}%)")
+              if pct >= max_build_pct:
+                  issues.append(f"tempo de build cresceu {pct:.1f}% (limite {max_build_pct}%)")
+
+          cur_fail = int(metrics.get("fail", 0))
+          if cur_fail > 0:
+              issues.append(f"{cur_fail} camada(s) falharam")
+
+          if issues:
+              print("❌ Regressão:")
+              for i in issues:
+                  print(f"  - {i}")
+              sys.exit(1)
+          print("✅ Sem regressão vs baseline")
+          PY
+
+      # -------------------------------------------------------------------
+      # Upload do relatório e comentário no PR
+      # -------------------------------------------------------------------
+      - name: Upload integrity artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrity-${{ github.run_id }}
+          path: |
+            integrity-report.txt
+            integrity-metrics.txt
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('integrity-report.txt', 'utf8');
+            const agent = "${{ steps.agent.outputs.AGENT }}";
+            const layers = "${{ steps.layers.outputs.LAYERS }}";
+            const regression = "${{ steps.regression.outputs.status || 'evaluated' }}";
+            const marker = '<!-- integrity-report -->';
+            const body = [
+              marker,
+              '### 🔎 Integrity Report',
+              '',
+              `**Agente detectado:** \`${agent}\``,
+              `**Camadas obrigatórias:** \`${layers}\``,
+              `**Gate de regressão:** \`${regression}\``,
+              '',
+              '```',
+              report,
+              '```',
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail if integrity not green
+        if: steps.check.outputs.exit_code != '0'
+        run: |
+          echo "Integrity check failed (exit ${{ steps.check.outputs.exit_code }})." >&2
+          exit 1
