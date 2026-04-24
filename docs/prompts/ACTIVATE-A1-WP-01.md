@@ -94,7 +94,10 @@ Rode e cole o output:
   git branch --show-current
   git log --oneline -n 3
 
-Se não estiver em `main` atualizado, pare e me avise.
+Se não estiver em `hml` atualizado, pare e me avise.
+(O fluxo do projeto é `feature → hml → main`. Sua branch parte
+de `hml`; a promoção `hml → main` é responsabilidade do owner
+do repositório, fora do escopo dos agentes.)
 
 ### 1) Diagnóstico (sem editar nada ainda)
 
@@ -142,7 +145,7 @@ Cole a saída em chat. Se houver qualquer ✗, pare e corrija.
 
   git push -u origin agent-a1/WP-01-subscription-lifecycle-adr
   gh pr create \
-    --base main \
+    --base hml \
     --head agent-a1/WP-01-subscription-lifecycle-adr \
     --title "A1/WP-01 — ADR-001 lifecycle unificado de assinatura" \
     --body-file <(echo "WP: WP-01"; echo; cat docs/adr/ADR-001-subscription-lifecycle.md)
@@ -152,8 +155,8 @@ ainda não congelado), está OK — seguir. Se reportar `fail`, pare.
 
 ### 6) Merge e fechamento
 
-Depois da minha aprovação do PR e do merge:
-  git checkout main && git pull
+Depois da minha aprovação do PR e do merge em `hml`:
+  git checkout hml && git pull
   git checkout -b agent-a1/WP-01-close
   # editar docs/TASKS.md: [?] → [x], mover para "Concluídos"
   git commit -am "chore(tasks): A1 closes WP-01"
@@ -191,7 +194,8 @@ Só depois disso começamos.
 ### Antes de iniciar o Cascade
 
 - [ ] PR `sprint-0/protocol-foundation` mergeado em `main`.
-- [ ] `git checkout main && git pull --ff-only` local.
+- [ ] PR `sprint-0/backfill-to-hml` mergeado em `hml` (traz o protocolo também para a branch de homologação, que é o target dos WPs).
+- [ ] `git checkout hml && git pull --ff-only` local.
 - [ ] (Opcional mas recomendado) PR `sprint-0/baseline-freeze` mergeado, senão o gate de regressão no CI vai ficar em `pending` — isso não bloqueia o WP-01, que só exige camada `static`.
 
 ### Gates que você aplica manualmente no chat

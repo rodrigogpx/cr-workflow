@@ -1,6 +1,8 @@
 # Prompt de ativação — Agente A2 · WP-02
 
-> **Pré-requisito obrigatório:** WP-01 (ADR-001 de lifecycle) já **mergeado em `main`**. O A2 não deve começar o WP-02 sem o ADR-001 aprovado, porque ele é a fonte da verdade sobre o modelo canônico de estados.
+> **Pré-requisito obrigatório:** WP-01 (ADR-001 de lifecycle) já **mergeado em `hml`**. O A2 não deve começar o WP-02 sem o ADR-001 aprovado, porque ele é a fonte da verdade sobre o modelo canônico de estados.
+>
+> **Fluxo de branches:** este projeto usa `feature → hml → main`. Todo PR de agente mira `hml`. A promoção `hml → main` é manual, por decisão do owner do repo, fora do loop dos agentes.
 >
 > **Posição no ensaio serial:** segundo WP. Ainda sem paralelismo com outros agentes. Valida o fluxo em código real (primeiro commit de conteúdo técnico, não só docs).
 
@@ -122,7 +124,7 @@ Rode e cole o output:
   git log --oneline -n 5
 
 Confirme que:
-  - Está em `main` atualizada (git pull --ff-only se não estiver).
+  - Está em `hml` atualizada (git pull --ff-only se não estiver).
   - ADR-001 existe em docs/adr/ADR-001-subscription-lifecycle.md.
     Se não existir, PARE — o A1 precisa terminar o WP-01 primeiro.
   - docs/integrity-baseline.json existe. Se não, o gate de
@@ -238,7 +240,7 @@ documentando no chat).
 
   git push -u origin agent-a2/WP-02-grace-period-migration
   gh pr create \
-    --base main \
+    --base hml \
     --head agent-a2/WP-02-grace-period-migration \
     --title "A2/WP-02 — migration grace_period em subscriptions" \
     --body-file <(cat <<'BODY'
@@ -265,9 +267,9 @@ BODY
 Aguarde o CI. Se gate de regressão `pending` (baseline ausente),
 siga. Se `fail`, PARE e me mande o Integrity Report.
 
-### 7) Fechamento (só após merge)
+### 7) Fechamento (só após merge em `hml`)
 
-  git checkout main && git pull
+  git checkout hml && git pull
   git checkout -b agent-a2/WP-02-close
   # editar docs/TASKS.md: [?] → [x], mover para Concluídos
   # marcar WP-03 como elegível (remove anotação "bloqueado por WP-02")
@@ -305,8 +307,8 @@ Só depois disso começamos.
 
 ### Pré-requisitos antes de ativar
 
-- [ ] PR do WP-01 mergeado em `main`.
-- [ ] `docs/adr/ADR-001-subscription-lifecycle.md` presente na `main`.
+- [ ] PR do WP-01 mergeado em `hml`.
+- [ ] `docs/adr/ADR-001-subscription-lifecycle.md` presente na `hml`.
 - [ ] Idealmente, `docs/integrity-baseline.json` presente (PR `sprint-0/baseline-freeze` mergeado). Se não, o CI vai ficar em `pending` na camada `regression` — aceitável, mas perdemos o gate automático de regressão de bundle.
 - [ ] A2 vai abrir branch nova — confira que a branch protection permite isso com sua aprovação como fallback (CODEOWNERS aponta para `@a2-backend` que ainda é placeholder).
 
