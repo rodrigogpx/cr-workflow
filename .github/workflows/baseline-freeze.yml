@@ -1,0 +1,220 @@
+name: Baseline Freeze
+
+# Roda capture-baseline.sh em Ubuntu (mesmo OS do CI de integridade), abre
+# automaticamente um PR sprint-0/baseline-freeze contra hml com docs/integrity-baseline.{md,json}
+# atualizados.
+#
+# Disparo: workflow_dispatch (manual). Owner do repo dispara após Sprint 0.5
+# (WP-S0-A + WP-S0-B + WP-S0-C) estar 100% mergeado em hml.
+#
+# Pré-condição validada pelo próprio job: pnpm prettier --check, pnpm run check,
+# pnpm test e pnpm run build precisam passar antes do capture-baseline.sh.
+# Se qualquer um falhar, o workflow para sem abrir PR.
+#
+# Referência: docs/wp/WP-S0-C.md §7, docs/PLANO-MULTI-AGENTE.md §7.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Branch base do PR de baseline (default: hml)'
+        required: false
+        default: 'hml'
+      dry_run:
+        description: 'Se true, roda mas não abre PR (somente artifact)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: baseline-freeze
+  cancel-in-progress: false
+
+jobs:
+  freeze:
+    name: Capture baseline & open PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # -------------------------------------------------------------------
+      # Pré-condições: tudo verde antes de capturar baseline
+      # -------------------------------------------------------------------
+      - name: Pre-flight — prettier
+        run: pnpm prettier --check .
+
+      - name: Pre-flight — typecheck
+        run: pnpm run check
+
+      - name: Pre-flight — unit tests
+        run: pnpm test
+
+      - name: Pre-flight — build
+        run: pnpm run build
+
+      # -------------------------------------------------------------------
+      # Capture
+      # -------------------------------------------------------------------
+      - name: Run capture-baseline.sh
+        run: |
+          chmod +x scripts/capture-baseline.sh
+          scripts/capture-baseline.sh 2>&1 | tee /tmp/baseline-output.log
+
+      - name: Verify generated artifacts
+        run: |
+          if [[ ! -f docs/integrity-baseline.md ]]; then
+            echo "❌ docs/integrity-baseline.md não foi gerado"
+            exit 1
+          fi
+          if [[ ! -f docs/integrity-baseline.json ]]; then
+            echo "❌ docs/integrity-baseline.json não foi gerado"
+            exit 1
+          fi
+          echo "--- integrity-baseline.json ---"
+          cat docs/integrity-baseline.json
+          echo "--- sanity checks ---"
+          python3 - <<'PY'
+          import json, sys
+          with open("docs/integrity-baseline.json") as f:
+              data = json.load(f)
+          errors = []
+          if not data.get("commit"):
+              errors.append("commit ausente")
+          bundle = data.get("bundle_client_kb")
+          if not isinstance(bundle, (int, float)) or bundle <= 0:
+              errors.append(f"bundle_client_kb inválido: {bundle}")
+          build_ms = (data.get("durations_ms") or {}).get("build")
+          if not isinstance(build_ms, (int, float)) or build_ms <= 0:
+              errors.append(f"durations_ms.build inválido: {build_ms}")
+          fail = (data.get("summary") or {}).get("fail")
+          if fail != 0:
+              errors.append(f"summary.fail={fail} (esperado 0)")
+          if errors:
+              print("❌ Sanity checks falharam:")
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+          print("✅ Sanity checks OK")
+          PY
+
+      - name: Upload baseline artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-${{ github.run_id }}
+          path: |
+            docs/integrity-baseline.md
+            docs/integrity-baseline.json
+            /tmp/baseline-output.log
+
+      # -------------------------------------------------------------------
+      # Stop here in dry-run mode
+      # -------------------------------------------------------------------
+      - name: Dry run — stop before opening PR
+        if: ${{ inputs.dry_run == 'true' }}
+        run: |
+          echo "✅ Dry run concluído. Baseline gerado e disponível como artifact, mas PR não foi aberto."
+          exit 0
+
+      # -------------------------------------------------------------------
+      # Open PR sprint-0/baseline-freeze → ${{ inputs.base_branch }}
+      # -------------------------------------------------------------------
+      - name: Configure git
+        if: ${{ inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "baseline-freeze-bot"
+          git config user.email "baseline-freeze-bot@users.noreply.github.com"
+
+      - name: Create branch and commit
+        if: ${{ inputs.dry_run != 'true' }}
+        id: commit
+        run: |
+          BRANCH="sprint-0/baseline-freeze-$(date +%Y%m%d-%H%M%S)"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          git checkout -b "$BRANCH"
+          git add docs/integrity-baseline.md docs/integrity-baseline.json
+          if git diff --cached --quiet; then
+            echo "⚠ Nenhuma mudança em docs/integrity-baseline.* — baseline já está atualizado."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          HEAD_HASH=$(git rev-parse --short HEAD)
+          git commit -m "chore(sprint-0): congelar baseline de integridade
+
+          Gerado por scripts/capture-baseline.sh em ambiente Ubuntu/CI,
+          sobre ${{ inputs.base_branch }} no commit $HEAD_HASH.
+
+          Registra bundle_client_kb, bundle_server_kb e durations_ms
+          por camada para alimentar o gate de regressão do workflow
+          .github/workflows/integrity.yml.
+
+          Ref: docs/wp/WP-S0-C.md §7, docs/PLANO-MULTI-AGENTE.md §7
+
+          Co-Authored-By: baseline-freeze-bot <baseline-freeze-bot@users.noreply.github.com>"
+          git push origin "$BRANCH"
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR
+        if: ${{ inputs.dry_run != 'true' && steps.commit.outputs.skipped != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base "${{ inputs.base_branch }}" \
+            --head "${{ steps.commit.outputs.branch }}" \
+            --title "chore(sprint-0): congelar baseline de integridade" \
+            --body "$(cat <<'BODY'
+          ## Contexto
+
+          Gerado automaticamente pelo workflow `.github/workflows/baseline-freeze.yml` (Marco 2 do Sprint 0). O job rodou `scripts/capture-baseline.sh` em ambiente Ubuntu (mesmo OS do CI), depois de validar:
+
+          - `pnpm prettier --check .` ✓
+          - `pnpm run check` ✓
+          - `pnpm test` ✓
+          - `pnpm run build` ✓
+
+          Antes deste PR, o gate de regressão do `integrity.yml` retornava `pending` em todos os PRs dos agentes. Após o merge, PRs subsequentes comparam suas métricas com este baseline.
+
+          ## Conteúdo
+
+          - `docs/integrity-baseline.md` — versão legível (commit, data, durações, bundle).
+          - `docs/integrity-baseline.json` — versão parseável pelo gate Python do workflow.
+
+          ## Thresholds iniciais
+
+          Definidos em `docs/integrity-baseline.json`, seção `thresholds`:
+
+          - `bundle_client_pct_max`: 5 (cresce mais que 5% no bundle cliente → fail)
+          - `build_time_pct_max`: 20 (cresce mais que 20% no tempo de build → fail)
+
+          ## Riscos e rollback
+
+          Baixo. Apenas 2 arquivos modificados. `git revert` simples; gate volta ao estado `pending`.
+
+          ## Próximo passo
+
+          Após merge: ativar primeiros WPs reais (WP-01, WP-02, WP-03, WP-R1) — ver `docs/TASKS.md` Sprint 1.
+          BODY
+          )"
