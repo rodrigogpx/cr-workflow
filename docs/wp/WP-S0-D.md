@@ -1,4 +1,4 @@
-# WP-S0-D — Alinhar versão pnpm em workflows com `packageManager`
+# WP-S0-D — Alinhar versão pnpm em workflows + reconciliar lockfile
 
 > **Sprint:** 0.5 (fechamento)
 > **Owner sugerido:** A1 (allowlist `.github/**`)
@@ -34,10 +34,11 @@ Alternativa rejeitada: trocar `version: 9` por `version: 10` hardcoded. Resolve 
 
 ### Arquivos modificados
 
-- `.github/workflows/integrity.yml` (linhas 28–31)
-- `.github/workflows/baseline-freeze.yml` (linhas 49–52)
+- `.github/workflows/integrity.yml` (linhas 28–31): remover `with: version: 9`
+- `.github/workflows/baseline-freeze.yml` (linhas 49–52): idem
+- `pnpm-lock.yaml`: regeneração via `pnpm 10.15.1` para reconciliar drift pré-existente em `hml` (descoberto durante este WP)
 
-### Diff conceitual (idêntico nos dois arquivos)
+### Diff conceitual nos workflows (idêntico nos dois)
 
 ```diff
        - name: Setup pnpm
@@ -46,18 +47,34 @@ Alternativa rejeitada: trocar `version: 9` por `version: 10` hardcoded. Resolve 
 -          version: 9
 ```
 
+### Reconciliação do lockfile (efeito colateral necessário)
+
+O lockfile gerado anteriormente por `pnpm 9` mascarava drift em `hml`: itens declarados em `package.json` não estavam refletidos no lockfile, mas `pnpm 9` regenerava silenciosamente em memória sem falhar `--frozen-lockfile`. Após este WP, `pnpm 10` (lido do `packageManager`) detecta o drift e exige reconciliação.
+
+Itens reconciliados (nenhum é regressão de código, todos correspondem a estados já presentes em `package.json` de `hml`):
+
+- `jspdf`, `jspdf-autotable` adicionados (presentes em `dependencies` desde commit anterior)
+- `vite-plugin-manus-runtime`, `@medv/finder` removidos (já fora do `package.json`)
+- `@tailwindcss/oxide`, `@tailwindcss/vite`, `@builder.io/vite-plugin-jsx-loc` movidos `devDependencies → dependencies` (refletindo uso em runtime do Tailwind 4)
+- `jose` specifier `6.1.0 → ^6.1.0` (mudança de pin)
+- `wouter@3.7.1` preservado (canário do patch em `patches/`)
+
 ### Fora de escopo
 
-- Não tocar em `package.json`. O `packageManager: pnpm@10.15.1` já está correto e será o source of truth daqui em diante.
+- Não tocar em `package.json`. O `packageManager: pnpm@10.15.1` já está correto.
 - Não criar workflows novos.
 - Não mexer em outras steps dos workflows.
+- Não corrigir o anti-pattern conhecido de pacotes Tailwind duplicados em `dependencies` + `devDependencies` (deixar pra hygiene futura — não bloqueia).
 
 ## 4. Aceitação
 
-1. `git diff origin/hml` mostra somente remoção de 2 linhas em cada workflow (4 linhas no total).
-2. Workflow `integrity.yml` roda em PR de smoke (qualquer PR vivo que toque `client/**` ou `server/**` serve) e passa o step `pnpm install --frozen-lockfile`.
-3. Workflow `baseline-freeze.yml` roda em modo `dry_run: true` (workflow_dispatch manual) e passa todos os pre-flights (`prettier`, `tsc`, `test`, `build`).
-4. Sem regressão: nenhum outro step dos workflows precisa de mudança colateral.
+1. `git diff origin/hml -- .github/workflows/` mostra somente remoção de 2 linhas em cada workflow (4 linhas no total).
+2. `git diff origin/hml -- pnpm-lock.yaml` mostra apenas reconciliação dos 6 itens de drift listados em §3 — nenhuma mudança de versão em pacotes não-declarados em `package.json`.
+3. `wouter@3.7.1` permanece no lockfile (canário do patch em `patches/`).
+4. `pnpm install --frozen-lockfile` passa local e em CI.
+5. Workflow `integrity.yml` roda neste PR e passa o step `pnpm install --frozen-lockfile`.
+6. Workflow `baseline-freeze.yml` roda em modo `dry_run: true` (workflow_dispatch manual) e passa todos os pre-flights (`prettier`, `tsc`, `test`, `build`) — esta validação é pós-merge.
+7. Sem regressão: nenhum outro step dos workflows precisa de mudança colateral.
 
 ## 5. Integrity Report obrigatório
 
