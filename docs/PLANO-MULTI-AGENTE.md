@@ -52,25 +52,25 @@ Este plano descreve como coordenar três agentes de desenvolvimento — um Arqui
 
 Três agentes foram definidos para equilibrar paralelismo e custo de coordenação. Cada agente opera em sua própria sessão Windsurf, com sua própria branch e seu próprio conjunto de regras de contexto (`.windsurfrules` ou equivalente).
 
-| Agente | Responsabilidades | Artefatos | NÃO faz |
-|---|---|---|---|
-| **A1 — Arquiteto / Revisor** | Define contratos de API, schemas do DB, decide padrões. Revisa todos os PRs. Gera ADRs. | ADRs em `docs/adr/`, specs tRPC, checklists | NÃO implementa features; foca em direção técnica |
-| **A2 — Backend** | DB (drizzle + migrations), routers tRPC, middlewares, cron, emailService, limites | Migrations, `server/routers/*`, `server/_core/trpc.ts`, jobs, testes backend | NÃO altera UI nem componentes React |
-| **A3 — Frontend** | Páginas React, componentes de gating (Paywall, Banner), hooks, formulários | `client/src/pages/*`, `client/src/components/billing/*`, hooks, testes e2e | NÃO altera schema do DB nem rotas tRPC |
+| Agente                       | Responsabilidades                                                                       | Artefatos                                                                    | NÃO faz                                          |
+| ---------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
+| **A1 — Arquiteto / Revisor** | Define contratos de API, schemas do DB, decide padrões. Revisa todos os PRs. Gera ADRs. | ADRs em `docs/adr/`, specs tRPC, checklists                                  | NÃO implementa features; foca em direção técnica |
+| **A2 — Backend**             | DB (drizzle + migrations), routers tRPC, middlewares, cron, emailService, limites       | Migrations, `server/routers/*`, `server/_core/trpc.ts`, jobs, testes backend | NÃO altera UI nem componentes React              |
+| **A3 — Frontend**            | Páginas React, componentes de gating (Paywall, Banner), hooks, formulários              | `client/src/pages/*`, `client/src/components/billing/*`, hooks, testes e2e   | NÃO altera schema do DB nem rotas tRPC           |
 
 ### 2.1. Matriz RACI resumida
 
-| Atividade | A1 Arq | A2 Back | A3 Front | Tech lead |
-|---|:-:|:-:|:-:|:-:|
-| Definir contrato de tRPC | R/A | C | C | I |
-| Desenhar schema | A | R | I | C |
-| Escrever migration | C | R | I | A |
-| Implementar rota backend | C | R/A | I | I |
-| Implementar UI + hooks | C | C | R/A | I |
-| Escrever testes | I | R/A | R/A | I |
-| Revisar PR | R/A | C | C | I |
-| Aprovar e mergear PR | R | I | I | A |
-| Deploy em hml | I | C | C | R/A |
+| Atividade                | A1 Arq | A2 Back | A3 Front | Tech lead |
+| ------------------------ | :----: | :-----: | :------: | :-------: |
+| Definir contrato de tRPC |  R/A   |    C    |    C     |     I     |
+| Desenhar schema          |   A    |    R    |    I     |     C     |
+| Escrever migration       |   C    |    R    |    I     |     A     |
+| Implementar rota backend |   C    |   R/A   |    I     |     I     |
+| Implementar UI + hooks   |   C    |    C    |   R/A    |     I     |
+| Escrever testes          |   I    |   R/A   |   R/A    |     I     |
+| Revisar PR               |  R/A   |    C    |    C     |     I     |
+| Aprovar e mergear PR     |   R    |    I    |    I     |     A     |
+| Deploy em hml            |   I    |    C    |    C     |    R/A    |
 
 **Legenda:** R = Responsável, A = Aprova, C = Consultado, I = Informado.
 
@@ -83,6 +83,7 @@ O Windsurf Cascade é o agente de IDE que roda dentro do Windsurf (editor basead
 ### 3.1. Visão topológica
 
 Cada sessão Cascade tem:
+
 - Workspace local (clone do repo) apontando para uma branch específica do agente.
 - Arquivo `.windsurfrules` na raiz — define comportamento do agente.
 - Context docs — referências obrigatórias em `.windsurf/context/*.md`.
@@ -111,11 +112,11 @@ scripts/
 
 ### 3.3. Escopo de edição por agente (allowlist)
 
-| Agente | Caminhos permitidos |
-|---|---|
-| **A1 Arq** | `docs/**`, `.windsurf/**`, `README.md`. Modo leitura: todo o repo. Qualquer mudança em código é feita via PR do A2 ou A3 sob orientação do A1. |
-| **A2 Back** | `server/**`, `drizzle/**`, `shared/**`, `scripts/**`, `package.json` (com justificativa), `tests/backend/**` |
-| **A3 Front** | `client/**`, `public/**`, `index.html`, `vite.config.*`, `tests/frontend/**`, `styles.**` |
+| Agente       | Caminhos permitidos                                                                                                                            |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A1 Arq**   | `docs/**`, `.windsurf/**`, `README.md`. Modo leitura: todo o repo. Qualquer mudança em código é feita via PR do A2 ou A3 sob orientação do A1. |
+| **A2 Back**  | `server/**`, `drizzle/**`, `shared/**`, `scripts/**`, `package.json` (com justificativa), `tests/backend/**`                                   |
+| **A3 Front** | `client/**`, `public/**`, `index.html`, `vite.config.*`, `tests/frontend/**`, `styles.**`                                                      |
 
 ### 3.4. Ferramentas Cascade utilizadas
 
@@ -161,7 +162,7 @@ Adotamos **trunk-based development** com branches curtas por agente, baseadas em
 
 ### 5.1. Contexto compartilhado (single source of truth)
 
-- **ADRs em `docs/adr/**`** — única fonte de verdade para decisões técnicas.
+- **ADRs em `docs/adr/**`\*\* — única fonte de verdade para decisões técnicas.
 - **Tipos tRPC exportados em `shared/`** — contrato backend ↔ frontend.
 - **OpenAPI-like spec em `docs/specs/*.md`** — escrita pelo A1 antes do A2 implementar.
 - **Issues do GitHub** — task atômica vinculada a uma fase e a um agente.
@@ -169,6 +170,7 @@ Adotamos **trunk-based development** com branches curtas por agente, baseadas em
 ### 5.2. Handoff A1 → A2 (arquiteto para backend)
 
 Entrega obrigatória do A1 antes de o A2 iniciar:
+
 - ADR aprovado (contexto, decisão, consequências, alternativas).
 - Esboço da migration (tabelas + colunas + índices + FKs).
 - Assinatura de cada rota tRPC nova (input/output em TypeScript-like ou Zod pseudo-schema).
@@ -177,6 +179,7 @@ Entrega obrigatória do A1 antes de o A2 iniciar:
 ### 5.3. Handoff A2 → A3 (backend para frontend)
 
 Entrega obrigatória do A2:
+
 - Branch A2 mergeada em hml com tipos tRPC disponíveis via npm workspace ou via `shared/`.
 - Exemplo de chamada no README do PR (curl ou snippet tRPC).
 - Erros esperados documentados (`TRPCError`) — A3 precisa saber o que renderizar em toast.
@@ -202,14 +205,14 @@ Para evitar colisão entre agentes, garantir rastreabilidade e dar visibilidade 
 
 ### 6.2. Estados de uma tarefa
 
-| Estado | Marcador | Significado |
-|---|:-:|---|
-| `available` | `[ ]` | Ainda não reivindicada; qualquer agente elegível pode pegá-la. |
-| `claimed` | `[~]` | Reivindicada; metadados preenchidos (agente, branch, timestamp, ADR). Locked para outros. |
-| `in_progress` | `[>]` | Trabalho iniciado de fato; primeiro commit de código feito; PR draft aberto. |
-| `review` | `[?]` | Implementação concluída + integridade verificada; aguardando review do A1. |
-| `completed` | `[x]` | PR mergeado em `hml`; link do PR + hash do commit registrados. |
-| `blocked` | `[!]` | Dependência externa impediu progresso. Motivo documentado. Retorna a `available` após desbloqueio. |
+| Estado        | Marcador | Significado                                                                                        |
+| ------------- | :------: | -------------------------------------------------------------------------------------------------- |
+| `available`   |  `[ ]`   | Ainda não reivindicada; qualquer agente elegível pode pegá-la.                                     |
+| `claimed`     |  `[~]`   | Reivindicada; metadados preenchidos (agente, branch, timestamp, ADR). Locked para outros.          |
+| `in_progress` |  `[>]`   | Trabalho iniciado de fato; primeiro commit de código feito; PR draft aberto.                       |
+| `review`      |  `[?]`   | Implementação concluída + integridade verificada; aguardando review do A1.                         |
+| `completed`   |  `[x]`   | PR mergeado em `hml`; link do PR + hash do commit registrados.                                     |
+| `blocked`     |  `[!]`   | Dependência externa impediu progresso. Motivo documentado. Retorna a `available` após desbloqueio. |
 
 ### 6.3. Workflow obrigatório: claim → work → release
 
@@ -270,29 +273,29 @@ Antes de marcar uma tarefa como `review [?]` e solicitar aprovação, o agente *
 
 ### 7.1. Camadas de verificação
 
-| # | Camada | O que valida | Como executar |
-|:-:|---|---|---|
-| 1 | Estática | Lint + TypeScript + formatação | `npm run lint && npm run typecheck && npm run format:check` |
-| 2 | Unit | Lógica isolada (helpers, pure functions) | `npm test -- --run` |
-| 3 | Integração | Rotas tRPC + DB em memória | `npm run test:integration` |
-| 4 | Build | Frontend e backend compilam sem erros novos | `npm run build` |
-| 5 | Smoke | App sobe; rota saúde OK; login funciona | `npm run dev` + `curl /api/health` |
-| 6 | Regressão | Áreas NÃO relacionadas continuam funcionando | E2E em módulos não tocados |
-| 7 | Migrations | Migrations up/down aplicam sem erro | DB limpo → migrations → seed → testes |
-| 8 | Impacto | Impacto em módulos adjacentes (auth, workflow CR, email) | Testes dos módulos listados em "Impacto em" do ADR |
+|  #  | Camada     | O que valida                                             | Como executar                                               |
+| :-: | ---------- | -------------------------------------------------------- | ----------------------------------------------------------- |
+|  1  | Estática   | Lint + TypeScript + formatação                           | `npm run lint && npm run typecheck && npm run format:check` |
+|  2  | Unit       | Lógica isolada (helpers, pure functions)                 | `npm test -- --run`                                         |
+|  3  | Integração | Rotas tRPC + DB em memória                               | `npm run test:integration`                                  |
+|  4  | Build      | Frontend e backend compilam sem erros novos              | `npm run build`                                             |
+|  5  | Smoke      | App sobe; rota saúde OK; login funciona                  | `npm run dev` + `curl /api/health`                          |
+|  6  | Regressão  | Áreas NÃO relacionadas continuam funcionando             | E2E em módulos não tocados                                  |
+|  7  | Migrations | Migrations up/down aplicam sem erro                      | DB limpo → migrations → seed → testes                       |
+|  8  | Impacto    | Impacto em módulos adjacentes (auth, workflow CR, email) | Testes dos módulos listados em "Impacto em" do ADR          |
 
 ### 7.2. Matriz de obrigatoriedade por agente
 
-| Camada | A1 Arq | A2 Back | A3 Front | Observação |
-|---|:-:|:-:|:-:|---|
-| 1 Estática | — | **OBR** | **OBR** | A1 valida via lint de markdown em `docs/` |
-| 2 Unit | — | **OBR** | **OBR** | |
-| 3 Integração | — | **OBR** | — | A3 mocka tRPC |
-| 4 Build | — | **OBR** | **OBR** | |
-| 5 Smoke | — | **OBR** | **OBR** | |
-| 6 Regressão | — | **OBR** | **OBR** | Parcial se tarefa pequena + ADR autoriza |
-| 7 Migrations | — | **CND** | — | Só se tocou `drizzle/**` |
-| 8 Impacto | — | **OBR** | **OBR** | Lista do ADR define escopo |
+| Camada       | A1 Arq | A2 Back | A3 Front | Observação                                |
+| ------------ | :----: | :-----: | :------: | ----------------------------------------- |
+| 1 Estática   |   —    | **OBR** | **OBR**  | A1 valida via lint de markdown em `docs/` |
+| 2 Unit       |   —    | **OBR** | **OBR**  |                                           |
+| 3 Integração |   —    | **OBR** |    —     | A3 mocka tRPC                             |
+| 4 Build      |   —    | **OBR** | **OBR**  |                                           |
+| 5 Smoke      |   —    | **OBR** | **OBR**  |                                           |
+| 6 Regressão  |   —    | **OBR** | **OBR**  | Parcial se tarefa pequena + ADR autoriza  |
+| 7 Migrations |   —    | **CND** |    —     | Só se tocou `drizzle/**`                  |
+| 8 Impacto    |   —    | **OBR** | **OBR**  | Lista do ADR define escopo                |
 
 **OBR** = obrigatório; **CND** = condicional; **—** = não aplicável.
 
@@ -325,36 +328,37 @@ Integrity Report (WP-XX) — executado em <timestamp UTC>
 
 ### 8.1. Bloco FINANCEIRO — 8 fases
 
-| ID | Fase | Pacote | Owner | Depende | ADR |
-|---|---|---|:-:|---|---|
-| WP-01 | F1 ACL | Schema: catálogo de planos, featureOverrides JSONB | A2 | — | ADR-001 |
-| WP-02 | F1 ACL | `reconcileFeatures(tenant)` + `requirePlan` + tests | A2 | WP-01 | ADR-001 |
-| WP-03 | F1 ACL | `useSubscription` hook + `<Paywall/>` + banners | A3 | WP-01 | ADR-001 |
-| WP-04 | F2 Lifecycle | `subscriptionEvents` table + migration + helpers | A2 | WP-02 | ADR-002 |
-| WP-05 | F2 Lifecycle | `cron.billing.dailyTick` + `lifecycleTick` | A2 | WP-04 | ADR-002 |
-| WP-06 | F2 Lifecycle | `billingBypass` decorator + allowlist em suspended | A2 | WP-02 | ADR-002 |
-| WP-07 | F3 Billing admin | Rotas tRPC: `confirmPayment`, `voidInvoice`, `adjustInvoice` | A2 | WP-04 | ADR-003 |
-| WP-08 | F3 Billing admin | UI SuperAdmin: Faturamento, MRR/ARR/inadimplência | A3 | WP-07 | ADR-003 |
-| WP-09 | F4 Emails billing | Templates D-7/D-0/D+3/D+5/suspended/receipt | A2 | WP-05 | ADR-004 |
-| WP-10 | F5 Self-service | Página "Minha assinatura" | A3 | WP-08 | ADR-005 |
-| WP-11 | F5 Self-service | Rotas: `requestUpgrade`, `requestDowngrade`, `requestCancel` | A2 | WP-07 | ADR-005 |
-| WP-12 | F6 LGPD | `cron.lgpd.purge` + `tenants.requestDeletion` | A2 | WP-05 | ADR-006 |
-| WP-13 | F6 LGPD | UI super admin: pedidos LGPD, janela 30d | A3 | WP-12 | ADR-006 |
-| WP-14 | F7 Gateway | Skeleton Stripe/PagSeguro (sandbox) — *opcional* | A2 | WP-07 | ADR-007 |
-| WP-15 | F8 Fiscal | Emissão NFS-e — *opcional* | A2 | WP-14 | ADR-008 |
+| ID    | Fase              | Pacote                                                       | Owner | Depende | ADR     |
+| ----- | ----------------- | ------------------------------------------------------------ | :---: | ------- | ------- |
+| WP-01 | F1 ACL            | Schema: catálogo de planos, featureOverrides JSONB           |  A2   | —       | ADR-001 |
+| WP-02 | F1 ACL            | `reconcileFeatures(tenant)` + `requirePlan` + tests          |  A2   | WP-01   | ADR-001 |
+| WP-03 | F1 ACL            | `useSubscription` hook + `<Paywall/>` + banners              |  A3   | WP-01   | ADR-001 |
+| WP-04 | F2 Lifecycle      | `subscriptionEvents` table + migration + helpers             |  A2   | WP-02   | ADR-002 |
+| WP-05 | F2 Lifecycle      | `cron.billing.dailyTick` + `lifecycleTick`                   |  A2   | WP-04   | ADR-002 |
+| WP-06 | F2 Lifecycle      | `billingBypass` decorator + allowlist em suspended           |  A2   | WP-02   | ADR-002 |
+| WP-07 | F3 Billing admin  | Rotas tRPC: `confirmPayment`, `voidInvoice`, `adjustInvoice` |  A2   | WP-04   | ADR-003 |
+| WP-08 | F3 Billing admin  | UI SuperAdmin: Faturamento, MRR/ARR/inadimplência            |  A3   | WP-07   | ADR-003 |
+| WP-09 | F4 Emails billing | Templates D-7/D-0/D+3/D+5/suspended/receipt                  |  A2   | WP-05   | ADR-004 |
+| WP-10 | F5 Self-service   | Página "Minha assinatura"                                    |  A3   | WP-08   | ADR-005 |
+| WP-11 | F5 Self-service   | Rotas: `requestUpgrade`, `requestDowngrade`, `requestCancel` |  A2   | WP-07   | ADR-005 |
+| WP-12 | F6 LGPD           | `cron.lgpd.purge` + `tenants.requestDeletion`                |  A2   | WP-05   | ADR-006 |
+| WP-13 | F6 LGPD           | UI super admin: pedidos LGPD, janela 30d                     |  A3   | WP-12   | ADR-006 |
+| WP-14 | F7 Gateway        | Skeleton Stripe/PagSeguro (sandbox) — _opcional_             |  A2   | WP-07   | ADR-007 |
+| WP-15 | F8 Fiscal         | Emissão NFS-e — _opcional_                                   |  A2   | WP-14   | ADR-008 |
 
 ### 8.2. Bloco RBAC Platform Admin — 4 frentes
 
-| ID | Frente | Pacote | Owner | Depende | ADR |
-|---|---|---|:-:|---|---|
-| WP-R1 | DB layer | 8 funções em `server/dbLayer`: getAllPlatformAdmins, create, update, changePassword, setStatus, setRole, delete, countActiveSuperAdmins | A2 | — | ADR-R1 |
-| WP-R2 | tRPC routers | Router `platformAdmins.*` + guards granulares | A2 | WP-R1 | ADR-R1 |
-| WP-R3 | Bootstrap | `auth.bootstrapSuperAdmin` + script CLI | A2 | WP-R2 | ADR-R2 |
-| WP-R4 | UI | PlatformAdminUsers, AdminList, AdminForm, ChangePasswordDialog | A3 | WP-R2 | ADR-R1 |
+| ID    | Frente       | Pacote                                                                                                                                  | Owner | Depende | ADR    |
+| ----- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------- | :---: | ------- | ------ |
+| WP-R1 | DB layer     | 8 funções em `server/dbLayer`: getAllPlatformAdmins, create, update, changePassword, setStatus, setRole, delete, countActiveSuperAdmins |  A2   | —       | ADR-R1 |
+| WP-R2 | tRPC routers | Router `platformAdmins.*` + guards granulares                                                                                           |  A2   | WP-R1   | ADR-R1 |
+| WP-R3 | Bootstrap    | `auth.bootstrapSuperAdmin` + script CLI                                                                                                 |  A2   | WP-R2   | ADR-R2 |
+| WP-R4 | UI           | PlatformAdminUsers, AdminList, AdminForm, ChangePasswordDialog                                                                          |  A3   | WP-R2   | ADR-R1 |
 
 ### 8.3. Grafo de paralelismo
 
 Onde paralelizar:
+
 - WP-02 (A2) || WP-03 (A3) — A3 consome tipo via mock até A2 mergear.
 - WP-07 (A2) || WP-10 (A3 com mocks) || WP-R4 (A3).
 - WP-12 (A2) || WP-13 (A3 preparando UI com mocks).
@@ -367,19 +371,19 @@ Onde paralelizar:
 
 Sprints de 1 semana. Total estimado: **11 sprints (~3 meses)** para o MVP (fases 1–6 + RBAC).
 
-| Sprint | Work Packages | Objetivo |
-|:-:|---|---|
-| S1 | ADRs 001–003 + WP-01 + WP-R1 | Fundação ACL e schema DB |
-| S2 | WP-02 + WP-03 + WP-R2 | Middleware `requirePlan` + paywall + rotas RBAC |
-| S3 | WP-04 + WP-06 + WP-R3 + WP-R4 | Lifecycle base + bootstrap superadmin + UI RBAC |
-| S4 | WP-05 + ADR-004 | Cron billing ciclo completo |
-| S5 | WP-07 + WP-09 | Billing admin API + emails billing |
-| S6 | WP-08 | UI super admin Faturamento + MRR/ARR |
-| S7 | WP-11 + ADR-005 | APIs self-service |
-| S8 | WP-10 | UI self-service "Minha assinatura" |
-| S9 | WP-12 + WP-13 + ADR-006 | LGPD: purge + UI + audit |
-| S10 | Hardening + testes e2e | Corrida de bugs; testes em hml |
-| S11 | UAT + go-live hml→main | Aprovação e deploy |
+| Sprint | Work Packages                 | Objetivo                                        |
+| :----: | ----------------------------- | ----------------------------------------------- |
+|   S1   | ADRs 001–003 + WP-01 + WP-R1  | Fundação ACL e schema DB                        |
+|   S2   | WP-02 + WP-03 + WP-R2         | Middleware `requirePlan` + paywall + rotas RBAC |
+|   S3   | WP-04 + WP-06 + WP-R3 + WP-R4 | Lifecycle base + bootstrap superadmin + UI RBAC |
+|   S4   | WP-05 + ADR-004               | Cron billing ciclo completo                     |
+|   S5   | WP-07 + WP-09                 | Billing admin API + emails billing              |
+|   S6   | WP-08                         | UI super admin Faturamento + MRR/ARR            |
+|   S7   | WP-11 + ADR-005               | APIs self-service                               |
+|   S8   | WP-10                         | UI self-service "Minha assinatura"              |
+|   S9   | WP-12 + WP-13 + ADR-006       | LGPD: purge + UI + audit                        |
+|  S10   | Hardening + testes e2e        | Corrida de bugs; testes em hml                  |
+|  S11   | UAT + go-live hml→main        | Aprovação e deploy                              |
 
 Sprints 12+ (opcional): WP-14 (gateway, 3 sprints) + WP-15 (fiscal, 3 sprints).
 
@@ -388,12 +392,14 @@ Sprints 12+ (opcional): WP-14 (gateway, 3 sprints) + WP-15 (fiscal, 3 sprints).
 ## 10. Quality gates e critérios de aceite
 
 ### 10.1. Gate 1 — Antes de abrir PR
+
 - Lint OK (`npm run lint`).
 - TypeScript check OK (`npm run typecheck`).
 - Testes unitários passando (cobertura ≥ 70% na área alterada).
 - Commit seguindo Conventional Commits.
 
 ### 10.2. Gate 2 — Revisão do A1
+
 - Aderência ao ADR correspondente.
 - Contratos tRPC backward compatible (salvo ADR explícito).
 - Convenções de nomes cumpridas.
@@ -401,12 +407,14 @@ Sprints 12+ (opcional): WP-14 (gateway, 3 sprints) + WP-15 (fiscal, 3 sprints).
 - UI cumpre padrões de acessibilidade.
 
 ### 10.3. Gate 3 — Aprovação do tech lead
+
 - CI verde (lint, typecheck, tests, build).
 - Smoke manual em preview do Railway OU localmente.
 - Documentação atualizada.
 - Issue do GitHub ligada ao PR.
 
 ### 10.4. Gate 4 — Aceitação em hml
+
 - Railway deploy concluído.
 - Migração aplicada (logs confirmam).
 - Fluxo end-to-end manual validado.
@@ -416,16 +424,16 @@ Sprints 12+ (opcional): WP-14 (gateway, 3 sprints) + WP-15 (fiscal, 3 sprints).
 
 ## 11. Gestão de risco e pontos de atenção
 
-| Risco | Severidade | Mitigação |
-|---|:-:|---|
-| Agentes entram em conflito (dois editam o mesmo arquivo) | ALTA | Allowlist estrita (§3.3); branches separadas; A1 detecta no review |
-| Contrato tRPC muda e quebra o frontend | ALTA | A2 isola mudanças de tipos em PR específico; `typecheck` no CI |
-| Migrations incompatíveis aplicadas em ordem errada | ALTA | Numeração sequencial; só A2 cria; A1 revisa |
-| Agente perde contexto entre sessões Cascade | MÉDIA | Contexto em `.windsurf/context/`; `.windsurfrules` referencia ADRs |
-| Alucinação de API inexistente | MÉDIA | `.windsurfrules` exige Grep antes de usar API; CI falha se import não resolve |
-| PRs muito grandes tornam review infactível | MÉDIA | Regra: PR ≤ 600 linhas de diff |
-| Agente commita segredos | ALTA | Hook pre-commit (gitleaks); `.gitignore`; regra proíbe `.env` |
-| Custo de tokens dispara | MÉDIA | Monitorar por agente; Haiku 4.5 para tarefas simples |
+| Risco                                                    | Severidade | Mitigação                                                                     |
+| -------------------------------------------------------- | :--------: | ----------------------------------------------------------------------------- |
+| Agentes entram em conflito (dois editam o mesmo arquivo) |    ALTA    | Allowlist estrita (§3.3); branches separadas; A1 detecta no review            |
+| Contrato tRPC muda e quebra o frontend                   |    ALTA    | A2 isola mudanças de tipos em PR específico; `typecheck` no CI                |
+| Migrations incompatíveis aplicadas em ordem errada       |    ALTA    | Numeração sequencial; só A2 cria; A1 revisa                                   |
+| Agente perde contexto entre sessões Cascade              |   MÉDIA    | Contexto em `.windsurf/context/`; `.windsurfrules` referencia ADRs            |
+| Alucinação de API inexistente                            |   MÉDIA    | `.windsurfrules` exige Grep antes de usar API; CI falha se import não resolve |
+| PRs muito grandes tornam review infactível               |   MÉDIA    | Regra: PR ≤ 600 linhas de diff                                                |
+| Agente commita segredos                                  |    ALTA    | Hook pre-commit (gitleaks); `.gitignore`; regra proíbe `.env`                 |
+| Custo de tokens dispara                                  |   MÉDIA    | Monitorar por agente; Haiku 4.5 para tarefas simples                          |
 
 ---
 
@@ -589,6 +597,7 @@ no backend — use mock no frontend e sinalize dependência no PR.
 Cole no template de PR do GitHub.
 
 ### Para todos os agentes
+
 - [ ] Branch segue convenção `feat/<agente>/<slug>`.
 - [ ] Commits seguem Conventional Commits.
 - [ ] Diff ≤ 600 linhas (excluindo lock files).
@@ -601,6 +610,7 @@ Cole no template de PR do GitHub.
 - [ ] Nenhuma outra tarefa do mesmo agente está em `[~]` ou `[>]` neste momento.
 
 ### Adicional Backend (A2)
+
 - [ ] Migration tem rollback documentado no ADR.
 - [ ] Toda rota tem validação Zod.
 - [ ] Middlewares aplicados conforme ADR.
@@ -608,6 +618,7 @@ Cole no template de PR do GitHub.
 - [ ] Logs estruturados (nada de `console.log` solto).
 
 ### Adicional Frontend (A3)
+
 - [ ] Loading/error/empty states implementados.
 - [ ] Acessibilidade: labels, keyboard, contraste.
 - [ ] Nenhum hardcode de string — i18n quando disponível.
@@ -615,6 +626,7 @@ Cole no template de PR do GitHub.
 - [ ] Build de produção passa sem warnings novos.
 
 ### Adicional Arquiteto (A1)
+
 - [ ] ADR segue TEMPLATE.md (contexto, decisão, consequências, alternativas).
 - [ ] Numeração ADR sequencial e única.
 - [ ] Referências cruzadas a ADRs anteriores quando houver.
@@ -628,6 +640,7 @@ Cole no template de PR do GitHub.
 # TASKS.md — Fila oficial de trabalho
 
 ## Legenda
+
 - [ ] available — aguarda reivindicação
 - [~] claimed — reivindicado, sem código ainda
 - [>] in_progress — em desenvolvimento
@@ -788,7 +801,7 @@ exit 0
 
 ## Aprovações
 
-| Responsável | Data / Assinatura |
-|---|---|
-| Tech Lead | |
-| Product Owner | |
+| Responsável   | Data / Assinatura |
+| ------------- | ----------------- |
+| Tech Lead     |                   |
+| Product Owner |                   |

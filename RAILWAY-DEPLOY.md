@@ -26,12 +26,12 @@
 
 ### 1.1 Contas Necessárias
 
-| Serviço | Finalidade | Link |
-|---------|------------|------|
-| **Railway** | Hospedagem da aplicação e banco de dados | [railway.app](https://railway.app) |
-| **GitHub** | Repositório do código (para deploy automático) | [github.com](https://github.com) |
-| **AWS S3** ou **Cloudflare R2** | Armazenamento de arquivos (documentos) | Opcional |
-| **Provedor SMTP** | Envio de emails | Gmail, SendGrid, etc. |
+| Serviço                         | Finalidade                                     | Link                               |
+| ------------------------------- | ---------------------------------------------- | ---------------------------------- |
+| **Railway**                     | Hospedagem da aplicação e banco de dados       | [railway.app](https://railway.app) |
+| **GitHub**                      | Repositório do código (para deploy automático) | [github.com](https://github.com)   |
+| **AWS S3** ou **Cloudflare R2** | Armazenamento de arquivos (documentos)         | Opcional                           |
+| **Provedor SMTP**               | Envio de emails                                | Gmail, SendGrid, etc.              |
 
 ### 1.2 Requisitos do Projeto
 
@@ -60,6 +60,7 @@
 ### Passo 3: Configuração Inicial
 
 O Railway irá:
+
 - Detectar o Dockerfile automaticamente
 - Criar um ambiente de deploy
 - Aguardar configuração das variáveis de ambiente
@@ -83,6 +84,7 @@ O Railway irá:
 3. Copie o valor de `DATABASE_URL`
 
 Formato da URL:
+
 ```
 postgresql://postgres:SENHA@containers-us-west-XXX.railway.app:PORTA/railway
 ```
@@ -104,41 +106,41 @@ postgresql://postgres:SENHA@containers-us-west-XXX.railway.app:PORTA/railway
 
 No serviço da aplicação, vá em **Settings** → **Variables** e adicione:
 
-| Variável | Valor | Descrição |
-|----------|-------|-----------|
-| `DATABASE_URL` | *(referência do PostgreSQL)* | URL de conexão com o banco |
-| `JWT_SECRET` | `sua_chave_secreta_muito_longa_aqui_123!` | Chave para tokens JWT (mín. 32 caracteres) |
-| `ADMIN_EMAIL` | `admin@seudominio.com` | Email do administrador inicial |
-| `ADMIN_PASSWORD` | `senha_forte_admin` | Senha do administrador inicial |
-| `NODE_ENV` | `production` | Ambiente de execução |
-| `PORT` | `3000` | Porta da aplicação (Railway usa $PORT) |
+| Variável         | Valor                                     | Descrição                                  |
+| ---------------- | ----------------------------------------- | ------------------------------------------ |
+| `DATABASE_URL`   | _(referência do PostgreSQL)_              | URL de conexão com o banco                 |
+| `JWT_SECRET`     | `sua_chave_secreta_muito_longa_aqui_123!` | Chave para tokens JWT (mín. 32 caracteres) |
+| `ADMIN_EMAIL`    | `admin@seudominio.com`                    | Email do administrador inicial             |
+| `ADMIN_PASSWORD` | `senha_forte_admin`                       | Senha do administrador inicial             |
+| `NODE_ENV`       | `production`                              | Ambiente de execução                       |
+| `PORT`           | `3000`                                    | Porta da aplicação (Railway usa $PORT)     |
 
 ### Variáveis Opcionais (Frontend)
 
-| Variável | Valor | Descrição |
-|----------|-------|-----------|
+| Variável         | Valor                                | Descrição           |
+| ---------------- | ------------------------------------ | ------------------- |
 | `VITE_APP_TITLE` | `CAC 360 – Gestão de Ciclo Completo` | Título da aplicação |
-| `VITE_APP_LOGO` | `/logo.png` | Caminho do logo |
+| `VITE_APP_LOGO`  | `/logo.png`                          | Caminho do logo     |
 
 ### Variáveis para Envio de Email (SMTP)
 
-| Variável | Valor Exemplo | Descrição |
-|----------|---------------|-----------|
-| `SMTP_HOST` | `smtp.gmail.com` | Servidor SMTP |
-| `SMTP_PORT` | `587` | Porta SMTP (587 para TLS, 465 para SSL) |
-| `SMTP_USER` | `seu-email@gmail.com` | Usuário SMTP |
-| `SMTP_PASS` | `sua-senha-app` | Senha ou App Password |
-| `SMTP_FROM` | `CAC 360 <noreply@firingrange.com>` | Remetente dos emails |
-| `SMTP_SECURE` | `false` | `true` para SSL, `false` para TLS |
+| Variável      | Valor Exemplo                       | Descrição                               |
+| ------------- | ----------------------------------- | --------------------------------------- |
+| `SMTP_HOST`   | `smtp.gmail.com`                    | Servidor SMTP                           |
+| `SMTP_PORT`   | `587`                               | Porta SMTP (587 para TLS, 465 para SSL) |
+| `SMTP_USER`   | `seu-email@gmail.com`               | Usuário SMTP                            |
+| `SMTP_PASS`   | `sua-senha-app`                     | Senha ou App Password                   |
+| `SMTP_FROM`   | `CAC 360 <noreply@firingrange.com>` | Remetente dos emails                    |
+| `SMTP_SECURE` | `false`                             | `true` para SSL, `false` para TLS       |
 
 ### Variáveis para S3 (Armazenamento de Arquivos)
 
-| Variável | Valor | Descrição |
-|----------|-------|-----------|
-| `AWS_ACCESS_KEY_ID` | `AKIAXXXXXXXX` | Chave de acesso AWS |
-| `AWS_SECRET_ACCESS_KEY` | `xxxxx` | Chave secreta AWS |
-| `AWS_REGION` | `us-east-1` | Região do bucket |
-| `AWS_BUCKET_NAME` | `firing-range-docs` | Nome do bucket S3 |
+| Variável                | Valor               | Descrição           |
+| ----------------------- | ------------------- | ------------------- |
+| `AWS_ACCESS_KEY_ID`     | `AKIAXXXXXXXX`      | Chave de acesso AWS |
+| `AWS_SECRET_ACCESS_KEY` | `xxxxx`             | Chave secreta AWS   |
+| `AWS_REGION`            | `us-east-1`         | Região do bucket    |
+| `AWS_BUCKET_NAME`       | `firing-range-docs` | Nome do bucket S3   |
 
 ### Exemplo de Configuração Completa
 
@@ -187,6 +189,7 @@ AWS_BUCKET_NAME=firing-range-documentos
 ### Passo 2: Verificar Build
 
 O Railway executará:
+
 ```
 1. Build do frontend (Vite)
 2. Build do backend (esbuild)
@@ -201,6 +204,7 @@ O Railway executará:
 3. Verifique os logs de inicialização
 
 Logs esperados:
+
 ```
 [drizzle-kit] Push complete
 [seed] Admin user created
@@ -227,8 +231,8 @@ Logs esperados:
 
 No seu provedor de DNS, adicione:
 
-| Tipo | Nome | Valor |
-|------|------|-------|
+| Tipo  | Nome       | Valor                                   |
+| ----- | ---------- | --------------------------------------- |
 | CNAME | `workflow` | `cr-workflow-production.up.railway.app` |
 
 Ou para domínio raiz:
@@ -349,6 +353,7 @@ SMTP_PASS=xxxxxx
 ### Métricas
 
 O Railway fornece métricas de:
+
 - **CPU Usage**
 - **Memory Usage**
 - **Network I/O**
@@ -356,6 +361,7 @@ O Railway fornece métricas de:
 ### Alertas (Opcional)
 
 Configure webhooks para Discord/Slack:
+
 1. Vá em **Project Settings** → **Integrations**
 2. Adicione webhook de notificação
 
@@ -368,6 +374,7 @@ Configure webhooks para Discord/Slack:
 **Causa**: `DATABASE_URL` não configurada corretamente.
 
 **Solução**:
+
 1. Verifique se PostgreSQL está rodando
 2. Use referência de variável: `${{Postgres.DATABASE_URL}}`
 3. Redeploy a aplicação
@@ -377,6 +384,7 @@ Configure webhooks para Discord/Slack:
 **Causa**: Conflito de porta.
 
 **Solução**:
+
 1. Certifique-se que `PORT=3000` está configurado
 2. O Railway injeta `$PORT` automaticamente
 
@@ -385,6 +393,7 @@ Configure webhooks para Discord/Slack:
 **Causa**: Dockerfile não instalou pnpm.
 
 **Solução**: O Dockerfile atual já instala pnpm. Se persistir, rebuilde sem cache:
+
 1. Vá em **Deployments** → **Settings**
 2. Clique em **"Clear Build Cache"**
 3. Redeploy
@@ -394,6 +403,7 @@ Configure webhooks para Discord/Slack:
 **Causa**: Variável de ambiente não definida.
 
 **Solução**:
+
 1. Adicione `JWT_SECRET` nas variáveis
 2. Use uma string longa e aleatória (32+ caracteres)
 
@@ -402,6 +412,7 @@ Configure webhooks para Discord/Slack:
 **Causa**: Credenciais SMTP incorretas.
 
 **Solução**:
+
 1. Verifique todas as variáveis SMTP
 2. Para Gmail, use "Senha de App", não senha normal
 3. Verifique se a porta está correta (587 para TLS)
@@ -411,6 +422,7 @@ Configure webhooks para Discord/Slack:
 **Causa**: Build demorando muito ou falhou.
 
 **Solução**:
+
 1. Cancele o deploy atual
 2. Limpe cache: **Settings** → **Clear Build Cache**
 3. Redeploy
@@ -421,21 +433,21 @@ Configure webhooks para Discord/Slack:
 
 ### Railway Pricing (Nov/2025)
 
-| Plano | Custo | Recursos |
-|-------|-------|----------|
-| **Trial** | $5 crédito grátis | Teste inicial |
-| **Hobby** | $5/mês | 512MB RAM, 1 vCPU |
-| **Pro** | $20/mês base + uso | Recursos escaláveis |
+| Plano     | Custo              | Recursos            |
+| --------- | ------------------ | ------------------- |
+| **Trial** | $5 crédito grátis  | Teste inicial       |
+| **Hobby** | $5/mês             | 512MB RAM, 1 vCPU   |
+| **Pro**   | $20/mês base + uso | Recursos escaláveis |
 
 ### Estimativa Mensal (Produção Pequena)
 
-| Serviço | Custo Estimado |
-|---------|----------------|
-| Railway App | $5-10/mês |
-| Railway PostgreSQL | $5-10/mês |
-| Cloudflare R2 (1GB) | ~$0.15/mês |
-| SendGrid (100 emails/dia) | Grátis |
-| **Total** | **~$10-25/mês** |
+| Serviço                   | Custo Estimado  |
+| ------------------------- | --------------- |
+| Railway App               | $5-10/mês       |
+| Railway PostgreSQL        | $5-10/mês       |
+| Cloudflare R2 (1GB)       | ~$0.15/mês      |
+| SendGrid (100 emails/dia) | Grátis          |
+| **Total**                 | **~$10-25/mês** |
 
 ---
 
@@ -464,22 +476,26 @@ Configure webhooks para Discord/Slack:
 ## 13. Comandos Úteis
 
 ### Forçar Redeploy
+
 ```bash
 # Via Railway CLI
 railway up --detach
 ```
 
 ### Acessar Logs
+
 ```bash
 railway logs
 ```
 
 ### Conectar ao Banco (Debug)
+
 ```bash
 railway connect postgres
 ```
 
 ### Variáveis de Ambiente
+
 ```bash
 railway variables
 ```

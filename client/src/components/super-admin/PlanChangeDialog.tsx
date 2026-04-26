@@ -19,18 +19,28 @@ function formatBRL(centavos: number): string {
   return `R$ ${(centavos / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 }
 
-export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, onClose, onSuccess }: PlanChangeDialogProps) {
+export function PlanChangeDialog({
+  tenantId,
+  tenantName,
+  currentSubscription,
+  onClose,
+  onSuccess,
+}: PlanChangeDialogProps) {
   const { data: plans = [], isLoading } = trpc.plans.list.useQuery();
 
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(currentSubscription?.planId ?? null);
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly" | "lifetime">(
-    currentSubscription?.billingCycle ?? "monthly"
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(
+    currentSubscription?.planId ?? null
   );
+  const [billingCycle, setBillingCycle] = useState<
+    "monthly" | "yearly" | "lifetime"
+  >(currentSubscription?.billingCycle ?? "monthly");
   const [discount, setDiscount] = useState(0);
   const [overrideMaxUsers, setOverrideMaxUsers] = useState<string>("");
   const [overrideMaxClients, setOverrideMaxClients] = useState<string>("");
   const [overrideMaxStorageGB, setOverrideMaxStorageGB] = useState<string>("");
-  const [status, setStatus] = useState<"active" | "trialing">(currentSubscription ? "active" : "trialing");
+  const [status, setStatus] = useState<"active" | "trialing">(
+    currentSubscription ? "active" : "trialing"
+  );
 
   const createMutation = trpc.subscriptions.create.useMutation({
     onSuccess: () => {
@@ -46,7 +56,7 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
       ? selectedPlan.priceYearlyBRL
       : selectedPlan.priceMonthlyBRL
     : 0;
-  const finalPrice = Math.max(0, basePrice - (discount * 100));
+  const finalPrice = Math.max(0, basePrice - discount * 100);
 
   const handleSubmit = () => {
     if (!selectedPlanId) {
@@ -61,9 +71,15 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
       priceBRL: basePrice,
       discountBRL: discount * 100,
       status,
-      overrideMaxUsers: overrideMaxUsers ? parseInt(overrideMaxUsers) : undefined,
-      overrideMaxClients: overrideMaxClients ? parseInt(overrideMaxClients) : undefined,
-      overrideMaxStorageGB: overrideMaxStorageGB ? parseInt(overrideMaxStorageGB) : undefined,
+      overrideMaxUsers: overrideMaxUsers
+        ? parseInt(overrideMaxUsers)
+        : undefined,
+      overrideMaxClients: overrideMaxClients
+        ? parseInt(overrideMaxClients)
+        : undefined,
+      overrideMaxStorageGB: overrideMaxStorageGB
+        ? parseInt(overrideMaxStorageGB)
+        : undefined,
     });
   };
 
@@ -77,7 +93,10 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
             <h2 className="text-white font-semibold">Alterar Plano</h2>
             <p className="text-white/60 text-sm">{tenantName}</p>
           </div>
-          <button onClick={onClose} className="text-white/60 hover:text-white p-1 rounded">
+          <button
+            onClick={onClose}
+            className="text-white/60 hover:text-white p-1 rounded"
+          >
             <XCircle className="h-5 w-5" />
           </button>
         </div>
@@ -109,7 +128,9 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
                         ) : (
                           <div className="h-4 w-4 rounded-full border-2 border-gray-300 shrink-0" />
                         )}
-                        <span className="font-medium text-gray-900">{plan.name}</span>
+                        <span className="font-medium text-gray-900">
+                          {plan.name}
+                        </span>
                         {plan.highlightLabel && (
                           <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
                             {plan.highlightLabel}
@@ -137,7 +158,7 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
           <div className="space-y-2">
             <Label>Ciclo de Cobrança</Label>
             <div className="flex gap-2">
-              {(["monthly", "yearly", "lifetime"] as const).map((cycle) => (
+              {(["monthly", "yearly", "lifetime"] as const).map(cycle => (
                 <button
                   key={cycle}
                   className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
@@ -147,7 +168,11 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
                   }`}
                   onClick={() => setBillingCycle(cycle)}
                 >
-                  {cycle === "monthly" ? "Mensal" : cycle === "yearly" ? "Anual" : "Vitalício"}
+                  {cycle === "monthly"
+                    ? "Mensal"
+                    : cycle === "yearly"
+                      ? "Anual"
+                      : "Vitalício"}
                 </button>
               ))}
             </div>
@@ -157,7 +182,7 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
           <div className="space-y-2">
             <Label>Status Inicial</Label>
             <div className="flex gap-2">
-              {(["active", "trialing"] as const).map((s) => (
+              {(["active", "trialing"] as const).map(s => (
                 <button
                   key={s}
                   className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
@@ -180,7 +205,9 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
               type="number"
               min="0"
               value={discount}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDiscount(Math.max(0, Number(e.target.value)))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setDiscount(Math.max(0, Number(e.target.value)))
+              }
               placeholder="0"
             />
           </div>
@@ -197,7 +224,9 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
                   type="number"
                   min="1"
                   value={overrideMaxUsers}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOverrideMaxUsers(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setOverrideMaxUsers(e.target.value)
+                  }
                   placeholder={selectedPlan?.maxUsers ?? "—"}
                 />
               </div>
@@ -207,7 +236,9 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
                   type="number"
                   min="1"
                   value={overrideMaxClients}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOverrideMaxClients(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setOverrideMaxClients(e.target.value)
+                  }
                   placeholder={selectedPlan?.maxClients ?? "—"}
                 />
               </div>
@@ -217,7 +248,9 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
                   type="number"
                   min="1"
                   value={overrideMaxStorageGB}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOverrideMaxStorageGB(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setOverrideMaxStorageGB(e.target.value)
+                  }
                   placeholder={selectedPlan?.maxStorageGB ?? "—"}
                 />
               </div>
@@ -230,12 +263,18 @@ export function PlanChangeDialog({ tenantId, tenantName, currentSubscription, on
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-indigo-600" />
-                  <span className="text-sm font-medium text-indigo-900">Valor a cobrar</span>
+                  <span className="text-sm font-medium text-indigo-900">
+                    Valor a cobrar
+                  </span>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-indigo-900 text-lg">{formatBRL(finalPrice)}</p>
+                  <p className="font-bold text-indigo-900 text-lg">
+                    {formatBRL(finalPrice)}
+                  </p>
                   {discount > 0 && (
-                    <p className="text-xs text-indigo-500 line-through">{formatBRL(basePrice)}</p>
+                    <p className="text-xs text-indigo-500 line-through">
+                      {formatBRL(basePrice)}
+                    </p>
                   )}
                 </div>
               </CardContent>

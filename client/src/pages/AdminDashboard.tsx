@@ -5,10 +5,11 @@ import { Users, Target, Clock, CheckCircle2, Loader2 } from "lucide-react";
 
 export default function AdminDashboard() {
   const { data: users, isLoading: usersLoading } = trpc.users.list.useQuery();
-  const { data: clients, isLoading: clientsLoading } = trpc.clients.list.useQuery();
+  const { data: clients, isLoading: clientsLoading } =
+    trpc.clients.list.useQuery();
 
-  const operators = users?.filter(u => u.role === 'operator') || [];
-  const admins = users?.filter(u => u.role === 'admin') || [];
+  const operators = users?.filter(u => u.role === "operator") || [];
+  const admins = users?.filter(u => u.role === "admin") || [];
   const totalUsers = users?.length || 0;
   const totalClients = clients?.length || 0;
 
@@ -26,7 +27,9 @@ export default function AdminDashboard() {
     <TenantAdminLayout active="dashboard">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Painel de Administração</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Painel de Administração
+          </h1>
           <p className="text-sm text-muted-foreground">
             Visão geral do seu clube
           </p>
@@ -57,7 +60,9 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-yellow-600">{totalClients}</p>
+              <p className="text-3xl font-bold text-yellow-600">
+                {totalClients}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Processos ativos
               </p>
@@ -73,9 +78,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-green-600">0</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                CRs emitidos
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">CRs emitidos</p>
             </CardContent>
           </Card>
         </div>
@@ -92,14 +95,22 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center">
                 <p className="text-3xl font-bold">{totalUsers}</p>
-                <p className="text-xs text-muted-foreground mt-1">Total de Usuários</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total de Usuários
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-blue-600">{admins.length}</p>
-                <p className="text-xs text-muted-foreground mt-1">Administradores</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {admins.length}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Administradores
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-green-600">{operators.length}</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {operators.length}
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">Operadores</p>
               </div>
             </div>
@@ -113,20 +124,32 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             {operators.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum operador cadastrado.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhum operador cadastrado.
+              </p>
             ) : (
               <div className="space-y-3">
-                {operators.map((op) => {
-                  const clientCount = clients?.filter(c => c.operatorId === op.id).length || 0;
+                {operators.map(op => {
+                  const clientCount =
+                    clients?.filter(c => c.operatorId === op.id).length || 0;
                   return (
-                    <div key={op.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div
+                      key={op.id}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    >
                       <div>
-                        <p className="font-medium text-sm">{op.name || op.email}</p>
-                        <p className="text-xs text-muted-foreground">{op.email}</p>
+                        <p className="font-medium text-sm">
+                          {op.name || op.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {op.email}
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-lg">{clientCount}</p>
-                        <p className="text-xs text-muted-foreground">clientes</p>
+                        <p className="text-xs text-muted-foreground">
+                          clientes
+                        </p>
                       </div>
                     </div>
                   );

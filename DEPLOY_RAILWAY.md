@@ -1,6 +1,7 @@
 # 🚀 Guia de Deploy no Railway
 
 ## Alterações Realizadas
+
 - ✅ Templates de email (Exército → Polícia Federal)
 - ✅ Campo de assinatura no tenant
 - ✅ Rotas de admin atualizadas
@@ -35,10 +36,12 @@ git push origin main
 ### 2️⃣ Deploy Automático no Railway
 
 Se você tem **Auto Deploy** configurado no Railway:
+
 - ✅ Fazer push automaticamente dispara novo deploy
 - ✅ Verifique em Railway → Deployments
 
 Se precisa fazer **Deploy Manual**:
+
 1. Acesse [railway.app](https://railway.app)
 2. Selecione seu projeto
 3. Clique em **Deploy**
@@ -69,6 +72,7 @@ railway logs
 ```
 
 Procure por mensagens como:
+
 ```
 ✅ Migration successful: 202604141500_add_signature_responsible_name.sql
 ```
@@ -88,6 +92,7 @@ psql <sua-connection-string>
 ```
 
 Procure por:
+
 ```
  signature_responsible_name | character varying(255)
 ```
@@ -95,6 +100,7 @@ Procure por:
 ### 2. Testar Funcionamento
 
 **A. Criar Tenant com Assinatura**
+
 ```bash
 curl -X POST https://seu-dominio.railway.app/api/trpc/tenant.create \
   -H "Content-Type: application/json" \
@@ -114,6 +120,7 @@ curl -X POST https://seu-dominio.railway.app/api/trpc/tenant.create \
 ```
 
 **B. Atualizar Assinatura**
+
 ```bash
 curl -X POST https://seu-dominio.railway.app/api/trpc/tenant.update \
   -H "Content-Type: application/json" \
@@ -124,6 +131,7 @@ curl -X POST https://seu-dominio.railway.app/api/trpc/tenant.update \
 ```
 
 **C. Gerar PDF e Verificar**
+
 - Crie um cliente de teste
 - Gere encaminhamento para avaliação psicológica
 - Verifique se o nome aparece em **letra cursiva** no PDF
@@ -132,13 +140,13 @@ curl -X POST https://seu-dominio.railway.app/api/trpc/tenant.update \
 
 ## 📊 Timeline de Deployment
 
-| Etapa | Tempo | Status |
-|-------|-------|--------|
-| Commit e Push | < 1 min | ✅ |
-| Deploy no Railway | 2-5 min | 🔄 |
-| Executar Migração | < 1 min | ⚠️ Manual |
-| Verificação | 2-3 min | 🔍 |
-| **Total** | **~10 min** | |
+| Etapa             | Tempo       | Status    |
+| ----------------- | ----------- | --------- |
+| Commit e Push     | < 1 min     | ✅        |
+| Deploy no Railway | 2-5 min     | 🔄        |
+| Executar Migração | < 1 min     | ⚠️ Manual |
+| Verificação       | 2-3 min     | 🔍        |
+| **Total**         | **~10 min** |           |
 
 ---
 
@@ -177,6 +185,7 @@ ALTER TABLE tenants DROP COLUMN signature_responsible_name;
 ## 📞 Suporte
 
 **Problema: Migração não executada**
+
 ```bash
 # Verificar status das migrações
 railway logs | grep -i migration
@@ -186,10 +195,12 @@ SELECT * FROM drizzle_migrations ORDER BY id DESC LIMIT 1;
 ```
 
 **Problema: PDF não mostra assinatura em cursiva**
+
 - Verificar se arquivo `server/fonts/DancingScript-Regular.ttf` existe no Railway
 - Verificar logs: `railway logs | grep -i font`
 
 **Problema: Campo não aparece no banco**
+
 - Executar migração manualmente:
   ```bash
   railway run npm run migrate
@@ -217,4 +228,3 @@ Quando tudo estiver ok:
 - **Campo opcional**: `signatureResponsibleName` pode ser NULL
 - **Fallback**: Se não configurado, usa nome do admin ou "CAC 360"
 - **Seguro**: Sem exposição de dados sensíveis
-

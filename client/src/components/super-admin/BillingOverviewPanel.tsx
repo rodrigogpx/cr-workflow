@@ -150,8 +150,7 @@ function MarkPaidDialog({
         <DialogHeader>
           <DialogTitle>Marcar fatura como paga</DialogTitle>
           <DialogDescription>
-            Fatura #{invoice?.id} —{" "}
-            {invoice ? formatBRL(invoice.totalBRL) : ""}
+            Fatura #{invoice?.id} — {invoice ? formatBRL(invoice.totalBRL) : ""}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
@@ -159,7 +158,7 @@ function MarkPaidDialog({
             <Label>Método de pagamento</Label>
             <Input
               value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
+              onChange={e => setPaymentMethod(e.target.value)}
               placeholder="Ex: PIX, boleto, cartão..."
               className="mt-1"
             />
@@ -168,7 +167,7 @@ function MarkPaidDialog({
             <Label>Referência (opcional)</Label>
             <Input
               value={paymentReference}
-              onChange={(e) => setPaymentReference(e.target.value)}
+              onChange={e => setPaymentReference(e.target.value)}
               placeholder="Código de transação, comprovante..."
               className="mt-1"
             />
@@ -214,8 +213,8 @@ function CancelDialog({
         <DialogHeader>
           <DialogTitle>Cancelar fatura</DialogTitle>
           <DialogDescription>
-            Confirma o cancelamento da fatura #{invoice?.id}?
-            Esta ação não pode ser desfeita.
+            Confirma o cancelamento da fatura #{invoice?.id}? Esta ação não pode
+            ser desfeita.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -245,20 +244,23 @@ function RevenueChart({ invoices }: { invoices: any[] }) {
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const label = d.toLocaleString("pt-BR", { month: "short", year: "2-digit" });
+      const label = d.toLocaleString("pt-BR", {
+        month: "short",
+        year: "2-digit",
+      });
       months.push({ key, label: `${label}`, total: 0 });
     }
 
     invoices
-      .filter((inv) => inv.status === "paid" && inv.paidAt)
-      .forEach((inv) => {
+      .filter(inv => inv.status === "paid" && inv.paidAt)
+      .forEach(inv => {
         const d = new Date(inv.paidAt);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        const month = months.find((m) => m.key === key);
+        const month = months.find(m => m.key === key);
         if (month) month.total += inv.totalBRL;
       });
 
-    return months.map((m) => ({ ...m, totalBRL: m.total / 100 }));
+    return months.map(m => ({ ...m, totalBRL: m.total / 100 }));
   }, [invoices]);
 
   return (
@@ -271,8 +273,15 @@ function RevenueChart({ invoices }: { invoices: any[] }) {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+          <BarChart
+            data={chartData}
+            margin={{ top: 4, right: 8, left: 8, bottom: 0 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="#e5e7eb"
+            />
             <XAxis
               dataKey="label"
               tick={{ fontSize: 11, fill: "#6b7280" }}
@@ -283,10 +292,10 @@ function RevenueChart({ invoices }: { invoices: any[] }) {
               tick={{ fontSize: 11, fill: "#6b7280" }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(v) => `R$${(v as number).toLocaleString("pt-BR")}`}
+              tickFormatter={v => `R$${(v as number).toLocaleString("pt-BR")}`}
             />
             <Tooltip
-              formatter={(v) =>
+              formatter={v =>
                 (v as number).toLocaleString("pt-BR", {
                   style: "currency",
                   currency: "BRL",
@@ -294,7 +303,12 @@ function RevenueChart({ invoices }: { invoices: any[] }) {
               }
               labelStyle={{ fontWeight: 600 }}
             />
-            <Bar dataKey="totalBRL" fill="#123A63" radius={[4, 4, 0, 0]} name="Receita paga" />
+            <Bar
+              dataKey="totalBRL"
+              fill="#123A63"
+              radius={[4, 4, 0, 0]}
+              name="Receita paga"
+            />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -315,7 +329,7 @@ function exportCSV(invoices: any[], tenantNameMap: Map<number, string>) {
     "Notas",
   ].join(",");
 
-  const rows = invoices.map((inv) => {
+  const rows = invoices.map(inv => {
     const tenant = tenantNameMap.get(inv.tenantId) || `#${inv.tenantId}`;
     const total = (inv.totalBRL / 100).toFixed(2);
     return [
@@ -364,8 +378,9 @@ export function BillingOverviewPanel() {
   // Queries
   const { data: tenants = [] } = trpc.tenants.list.useQuery();
   const { data: billingMetrics } = trpc.billing.metrics.useQuery();
-  const { data: invoices = [], isLoading } =
-    trpc.billing.allInvoices.useQuery({});
+  const { data: invoices = [], isLoading } = trpc.billing.allInvoices.useQuery(
+    {}
+  );
 
   const markPaidMutation = trpc.billing.markPaid.useMutation({
     onSuccess: () => {
@@ -428,8 +443,7 @@ export function BillingOverviewPanel() {
   const mrrBRL = billingMetrics?.mrrBRL ?? 0;
   const arrBRL = mrrBRL * 12;
   const activeTenantCount = useMemo(
-    () =>
-      tenants.filter((t: any) => t.subscriptionStatus === "active").length,
+    () => tenants.filter((t: any) => t.subscriptionStatus === "active").length,
     [tenants]
   );
   const pendingRevenue = useMemo(
@@ -459,17 +473,17 @@ export function BillingOverviewPanel() {
   const filteredInvoices = useMemo(() => {
     let result = invoices as any[];
     if (statusFilter !== "all") {
-      result = result.filter((inv) => inv.status === statusFilter);
+      result = result.filter(inv => inv.status === statusFilter);
     }
     if (tenantSearch.trim()) {
       const q = tenantSearch.toLowerCase();
-      result = result.filter((inv) => {
+      result = result.filter(inv => {
         const name = (tenantNameMap.get(inv.tenantId) || "").toLowerCase();
         return name.includes(q);
       });
     }
     if (monthFilter !== "all") {
-      result = result.filter((inv) => {
+      result = result.filter(inv => {
         if (!inv.periodStart) return false;
         const d = new Date(inv.periodStart);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -618,7 +632,7 @@ export function BillingOverviewPanel() {
             <Input
               placeholder="Buscar por tenant..."
               value={tenantSearch}
-              onChange={(e) => setTenantSearch(e.target.value)}
+              onChange={e => setTenantSearch(e.target.value)}
               className="w-52 h-9 text-sm"
             />
 
@@ -628,7 +642,7 @@ export function BillingOverviewPanel() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os meses</SelectItem>
-                {monthOptions.map((m) => {
+                {monthOptions.map(m => {
                   const [year, month] = m.split("-");
                   const label = new Date(
                     Number(year),
@@ -690,9 +704,7 @@ export function BillingOverviewPanel() {
                           {tenantNameMap.get(inv.tenantId) ||
                             `Tenant #${inv.tenantId}`}
                         </p>
-                        <span className="text-xs text-gray-400">
-                          #{inv.id}
-                        </span>
+                        <span className="text-xs text-gray-400">#{inv.id}</span>
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
                         {formatDate(inv.periodStart)} –{" "}
@@ -752,9 +764,7 @@ export function BillingOverviewPanel() {
       )}
 
       {activeTab === "plans" && <PlansManagement />}
-      {activeTab === "reports" && (
-        <ClientsByPlanReport />
-      )}
+      {activeTab === "reports" && <ClientsByPlanReport />}
 
       {/* Mark Paid Dialog */}
       {markPaidInvoice && (
@@ -906,7 +916,10 @@ function PlansManagement() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {plans.map((plan: any) => (
-            <Card key={plan.id} className={`${!plan.isActive ? "opacity-60" : ""}`}>
+            <Card
+              key={plan.id}
+              className={`${!plan.isActive ? "opacity-60" : ""}`}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -953,7 +966,12 @@ function PlansManagement() {
                 <div className="pt-2 border-t space-y-1 text-xs text-gray-600">
                   <p>{plan.maxUsers} usuários</p>
                   <p>{plan.maxClients} clientes</p>
-                  <p>{Number(plan.maxStorageGB) < 1 ? `${Math.round(Number(plan.maxStorageGB) * 1024)} MB` : `${Number(plan.maxStorageGB)} GB`} armazenamento</p>
+                  <p>
+                    {Number(plan.maxStorageGB) < 1
+                      ? `${Math.round(Number(plan.maxStorageGB) * 1024)} MB`
+                      : `${Number(plan.maxStorageGB)} GB`}{" "}
+                    armazenamento
+                  </p>
                   <p>{plan.trialDays} dias trial</p>
                 </div>
               </CardContent>
@@ -965,7 +983,9 @@ function PlansManagement() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingPlan ? "Editar Plano" : "Novo Plano"}</DialogTitle>
+            <DialogTitle>
+              {editingPlan ? "Editar Plano" : "Novo Plano"}
+            </DialogTitle>
             <DialogDescription>
               Configure os detalhes do plano de assinatura
             </DialogDescription>
@@ -976,7 +996,7 @@ function PlansManagement() {
                 <Label>Slug</Label>
                 <Input
                   value={formData.slug}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({ ...formData, slug: e.target.value })
                   }
                   placeholder="starter"
@@ -986,7 +1006,7 @@ function PlansManagement() {
                 <Label>Nome</Label>
                 <Input
                   value={formData.name}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({ ...formData, name: e.target.value })
                   }
                   placeholder="Starter"
@@ -997,7 +1017,7 @@ function PlansManagement() {
               <Label>Descrição</Label>
               <Textarea
                 value={formData.description}
-                onChange={(e) =>
+                onChange={e =>
                   setFormData({ ...formData, description: e.target.value })
                 }
                 placeholder="Plano ideal para começar"
@@ -1012,10 +1032,12 @@ function PlansManagement() {
                   step="0.01"
                   placeholder="Ex: 150.00"
                   value={(formData.priceMonthlyBRL / 100).toFixed(2)}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({
                       ...formData,
-                      priceMonthlyBRL: Math.round(parseFloat(e.target.value || "0") * 100),
+                      priceMonthlyBRL: Math.round(
+                        parseFloat(e.target.value || "0") * 100
+                      ),
                     })
                   }
                 />
@@ -1028,10 +1050,12 @@ function PlansManagement() {
                   step="0.01"
                   placeholder="Ex: 1500.00"
                   value={(formData.priceYearlyBRL / 100).toFixed(2)}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({
                       ...formData,
-                      priceYearlyBRL: Math.round(parseFloat(e.target.value || "0") * 100),
+                      priceYearlyBRL: Math.round(
+                        parseFloat(e.target.value || "0") * 100
+                      ),
                     })
                   }
                 />
@@ -1043,7 +1067,7 @@ function PlansManagement() {
                 <Input
                   type="number"
                   value={formData.maxUsers}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({
                       ...formData,
                       maxUsers: parseInt(e.target.value),
@@ -1056,7 +1080,7 @@ function PlansManagement() {
                 <Input
                   type="number"
                   value={formData.maxClients}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({
                       ...formData,
                       maxClients: parseInt(e.target.value),
@@ -1065,13 +1089,18 @@ function PlansManagement() {
                 />
               </div>
               <div>
-                <Label>Storage (GB) <span className="text-xs text-gray-400 font-normal">mín. 0.1 GB</span></Label>
+                <Label>
+                  Storage (GB){" "}
+                  <span className="text-xs text-gray-400 font-normal">
+                    mín. 0.1 GB
+                  </span>
+                </Label>
                 <Input
                   type="number"
                   min="0.1"
                   step="0.1"
                   value={formData.maxStorageGB}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({
                       ...formData,
                       maxStorageGB: parseFloat(e.target.value) || 0.1,
@@ -1086,7 +1115,7 @@ function PlansManagement() {
                 <Input
                   type="number"
                   value={formData.trialDays}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({
                       ...formData,
                       trialDays: parseInt(e.target.value),
@@ -1097,7 +1126,7 @@ function PlansManagement() {
               <div className="flex items-center gap-2 pt-6">
                 <Switch
                   checked={formData.isActive}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={checked =>
                     setFormData({ ...formData, isActive: checked })
                   }
                 />
@@ -1129,25 +1158,28 @@ function PlansManagement() {
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 function durationLabel(days: number): string {
   if (days < 30) return `${days} dia${days !== 1 ? "s" : ""}`;
-  if (days < 365) return `${Math.round(days / 30)} mês${Math.round(days / 30) !== 1 ? "es" : ""}`;
+  if (days < 365)
+    return `${Math.round(days / 30)} mês${Math.round(days / 30) !== 1 ? "es" : ""}`;
   const y = Math.floor(days / 365);
   const m = Math.round((days % 365) / 30);
-  return m > 0 ? `${y} ano${y !== 1 ? "s" : ""} e ${m} mês${m !== 1 ? "es" : ""}` : `${y} ano${y !== 1 ? "s" : ""}`;
+  return m > 0
+    ? `${y} ano${y !== 1 ? "s" : ""} e ${m} mês${m !== 1 ? "es" : ""}`
+    : `${y} ano${y !== 1 ? "s" : ""}`;
 }
 
 const STATUS_SUB: Record<string, { label: string; color: string }> = {
-  active:    { label: "Ativo",     color: "bg-green-100 text-green-700" },
-  trialing:  { label: "Trial",     color: "bg-blue-100 text-blue-700" },
-  past_due:  { label: "Atrasado",  color: "bg-yellow-100 text-yellow-700" },
+  active: { label: "Ativo", color: "bg-green-100 text-green-700" },
+  trialing: { label: "Trial", color: "bg-blue-100 text-blue-700" },
+  past_due: { label: "Atrasado", color: "bg-yellow-100 text-yellow-700" },
   cancelled: { label: "Cancelado", color: "bg-gray-100 text-gray-500" },
-  expired:   { label: "Expirado",  color: "bg-red-100 text-red-600" },
-  suspended: { label: "Suspenso",  color: "bg-red-100 text-red-600" },
+  expired: { label: "Expirado", color: "bg-red-100 text-red-600" },
+  suspended: { label: "Suspenso", color: "bg-red-100 text-red-600" },
 };
 
 const INVOICE_STATUS_COLOR: Record<string, string> = {
-  paid:      "text-green-600",
-  pending:   "text-yellow-600",
-  overdue:   "text-red-600",
+  paid: "text-green-600",
+  pending: "text-yellow-600",
+  overdue: "text-red-600",
   cancelled: "text-gray-400",
 };
 
@@ -1164,21 +1196,48 @@ function normalizeTenantId(value: unknown): number | null {
 // ─── Detalhe financeiro inline (expandido dentro do card do tenant) ──────────
 function TenantDetailInline({ tenantId }: { tenantId: number }) {
   const safeTenantId = normalizeTenantId(tenantId);
-  const { data, isLoading, isError, error, refetch } = (trpc as any).billing.tenantDetail.useQuery(
+  const { data, isLoading, isError, error, refetch } = (
+    trpc as any
+  ).billing.tenantDetail.useQuery(
     { tenantId: safeTenantId ?? 0 },
     { enabled: safeTenantId != null, retry: false }
   );
 
-  if (safeTenantId == null) return <p className="text-xs text-gray-400 py-2">Não foi possível identificar este tenant.</p>;
-  if (isLoading) return <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-[#123A63]" /></div>;
-  if (isError) return (
-    <div className="py-3 space-y-1.5 text-center">
-      <p className="text-xs text-gray-500">Erro ao carregar detalhes.</p>
-      <p className="text-[0.65rem] text-gray-400">{String((error as any)?.message || "Erro inesperado")}</p>
-      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => refetch()}>Tentar novamente</Button>
-    </div>
-  );
-  if (!data) return <p className="text-xs text-gray-400 py-2 text-center">Nenhum dado financeiro encontrado.</p>;
+  if (safeTenantId == null)
+    return (
+      <p className="text-xs text-gray-400 py-2">
+        Não foi possível identificar este tenant.
+      </p>
+    );
+  if (isLoading)
+    return (
+      <div className="flex justify-center py-4">
+        <Loader2 className="h-5 w-5 animate-spin text-[#123A63]" />
+      </div>
+    );
+  if (isError)
+    return (
+      <div className="py-3 space-y-1.5 text-center">
+        <p className="text-xs text-gray-500">Erro ao carregar detalhes.</p>
+        <p className="text-[0.65rem] text-gray-400">
+          {String((error as any)?.message || "Erro inesperado")}
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs"
+          onClick={() => refetch()}
+        >
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  if (!data)
+    return (
+      <p className="text-xs text-gray-400 py-2 text-center">
+        Nenhum dado financeiro encontrado.
+      </p>
+    );
 
   return (
     <div className="space-y-3 pt-3">
@@ -1195,57 +1254,98 @@ function TenantDetailInline({ tenantId }: { tenantId: number }) {
         )}
         <span className="text-gray-500 text-[0.65rem] flex items-center gap-1">
           <Calendar className="h-3 w-3" />
-          Cliente há {data.clientSinceDays != null ? durationLabel(data.clientSinceDays) : "—"}
+          Cliente há{" "}
+          {data.clientSinceDays != null
+            ? durationLabel(data.clientSinceDays)
+            : "—"}
         </span>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-2">
         <div className="bg-[#123A63]/5 rounded-lg p-2.5">
-          <p className="text-[0.6rem] text-gray-500 uppercase tracking-wide mb-0.5">Total Faturado</p>
-          <p className="text-sm font-bold text-[#123A63]">{formatBRL(data.totalPaidBRL)}</p>
+          <p className="text-[0.6rem] text-gray-500 uppercase tracking-wide mb-0.5">
+            Total Faturado
+          </p>
+          <p className="text-sm font-bold text-[#123A63]">
+            {formatBRL(data.totalPaidBRL)}
+          </p>
         </div>
         <div className="bg-[#123A63]/5 rounded-lg p-2.5">
-          <p className="text-[0.6rem] text-gray-500 uppercase tracking-wide mb-0.5">Faturas</p>
+          <p className="text-[0.6rem] text-gray-500 uppercase tracking-wide mb-0.5">
+            Faturas
+          </p>
           <div className="flex items-end gap-1">
-            <p className="text-sm font-bold text-[#123A63]">{data.invoices.length}</p>
+            <p className="text-sm font-bold text-[#123A63]">
+              {data.invoices.length}
+            </p>
             <p className="text-[0.6rem] text-gray-500 mb-0.5">total</p>
           </div>
           <div className="flex flex-wrap gap-1 mt-0.5 text-[0.55rem]">
-            <span className="text-green-600">{data.invoices.filter((i: any) => i.status === "paid").length} pagas</span>
-            {data.invoices.filter((i: any) => i.status === "overdue").length > 0 && (
-              <span className="text-red-500 font-semibold">{data.invoices.filter((i: any) => i.status === "overdue").length} vencidas</span>
+            <span className="text-green-600">
+              {data.invoices.filter((i: any) => i.status === "paid").length}{" "}
+              pagas
+            </span>
+            {data.invoices.filter((i: any) => i.status === "overdue").length >
+              0 && (
+              <span className="text-red-500 font-semibold">
+                {
+                  data.invoices.filter((i: any) => i.status === "overdue")
+                    .length
+                }{" "}
+                vencidas
+              </span>
             )}
-            {data.invoices.filter((i: any) => i.status === "pending").length > 0 && (
-              <span className="text-yellow-600">{data.invoices.filter((i: any) => i.status === "pending").length} pendentes</span>
+            {data.invoices.filter((i: any) => i.status === "pending").length >
+              0 && (
+              <span className="text-yellow-600">
+                {
+                  data.invoices.filter((i: any) => i.status === "pending")
+                    .length
+                }{" "}
+                pendentes
+              </span>
             )}
           </div>
         </div>
       </div>
 
       {/* Plano atual */}
-      {data.subscriptions.filter((s: any) => ["active","trialing"].includes(s.status)).slice(0,1).map((sub: any) => (
-        <div key={sub.id} className="border border-[#123A63]/20 rounded-lg p-2.5">
-          <p className="text-[0.6rem] font-semibold text-[#123A63] uppercase tracking-wide mb-1.5 flex items-center gap-1">
-            <Layers className="h-3 w-3" /> Plano Atual
-          </p>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-gray-900 text-xs">{sub.planName}</p>
-              <p className="text-[0.65rem] text-gray-500 mt-0.5">
-                Desde {new Date(sub.startDate).toLocaleDateString("pt-BR")}
-                {sub.endDate && ` · até ${new Date(sub.endDate).toLocaleDateString("pt-BR")}`}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className={`text-[0.6rem] px-1.5 py-0.5 rounded-full font-medium ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}>
-                {STATUS_SUB[sub.status]?.label ?? sub.status}
-              </span>
-              <p className="text-[0.6rem] text-gray-500 mt-0.5">{durationLabel(sub.durationDays)} no plano</p>
+      {data.subscriptions
+        .filter((s: any) => ["active", "trialing"].includes(s.status))
+        .slice(0, 1)
+        .map((sub: any) => (
+          <div
+            key={sub.id}
+            className="border border-[#123A63]/20 rounded-lg p-2.5"
+          >
+            <p className="text-[0.6rem] font-semibold text-[#123A63] uppercase tracking-wide mb-1.5 flex items-center gap-1">
+              <Layers className="h-3 w-3" /> Plano Atual
+            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-gray-900 text-xs">
+                  {sub.planName}
+                </p>
+                <p className="text-[0.65rem] text-gray-500 mt-0.5">
+                  Desde {new Date(sub.startDate).toLocaleDateString("pt-BR")}
+                  {sub.endDate &&
+                    ` · até ${new Date(sub.endDate).toLocaleDateString("pt-BR")}`}
+                </p>
+              </div>
+              <div className="text-right">
+                <span
+                  className={`text-[0.6rem] px-1.5 py-0.5 rounded-full font-medium ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}
+                >
+                  {STATUS_SUB[sub.status]?.label ?? sub.status}
+                </span>
+                <p className="text-[0.6rem] text-gray-500 mt-0.5">
+                  {durationLabel(sub.durationDays)} no plano
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
 
       {/* Histórico de planos */}
       {data.subscriptions.length > 0 && (
@@ -1255,20 +1355,33 @@ function TenantDetailInline({ tenantId }: { tenantId: number }) {
           </p>
           <div className="space-y-1">
             {data.subscriptions.map((sub: any, idx: number) => (
-              <div key={sub.id} className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-gray-50 border border-gray-100">
+              <div
+                key={sub.id}
+                className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-gray-50 border border-gray-100"
+              >
                 <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${idx === 0 ? "bg-[#123A63]" : "bg-gray-300"}`} />
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${idx === 0 ? "bg-[#123A63]" : "bg-gray-300"}`}
+                  />
                   <div>
-                    <p className="text-xs font-medium text-gray-800">{sub.planName}</p>
+                    <p className="text-xs font-medium text-gray-800">
+                      {sub.planName}
+                    </p>
                     <p className="text-[0.6rem] text-gray-400">
                       {new Date(sub.startDate).toLocaleDateString("pt-BR")}
-                      {sub.endDate ? ` → ${new Date(sub.endDate).toLocaleDateString("pt-BR")}` : " → atual"}
+                      {sub.endDate
+                        ? ` → ${new Date(sub.endDate).toLocaleDateString("pt-BR")}`
+                        : " → atual"}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[0.6rem] font-semibold text-gray-700">{durationLabel(sub.durationDays)}</p>
-                  <span className={`text-[0.55rem] px-1 py-0.5 rounded-full ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}>
+                  <p className="text-[0.6rem] font-semibold text-gray-700">
+                    {durationLabel(sub.durationDays)}
+                  </p>
+                  <span
+                    className={`text-[0.55rem] px-1 py-0.5 rounded-full ${STATUS_SUB[sub.status]?.color ?? "bg-gray-100 text-gray-500"}`}
+                  >
                     {STATUS_SUB[sub.status]?.label ?? sub.status}
                   </span>
                 </div>
@@ -1286,15 +1399,33 @@ function TenantDetailInline({ tenantId }: { tenantId: number }) {
           </p>
           <div className="space-y-1">
             {data.invoices.slice(0, 8).map((inv: any) => (
-              <div key={inv.id} className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-gray-50 border border-gray-100">
+              <div
+                key={inv.id}
+                className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-gray-50 border border-gray-100"
+              >
                 <p className="text-[0.65rem] text-gray-500">
-                  {inv.periodStart ? new Date(inv.periodStart).toLocaleDateString("pt-BR", { month: "short", year: "numeric" }) : `Fatura #${inv.id}`}
+                  {inv.periodStart
+                    ? new Date(inv.periodStart).toLocaleDateString("pt-BR", {
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : `Fatura #${inv.id}`}
                 </p>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[0.65rem] font-medium ${INVOICE_STATUS_COLOR[inv.status] ?? "text-gray-500"}`}>
-                    {inv.status === "paid" ? "Paga" : inv.status === "pending" ? "Pendente" : inv.status === "overdue" ? "Vencida" : inv.status}
+                  <span
+                    className={`text-[0.65rem] font-medium ${INVOICE_STATUS_COLOR[inv.status] ?? "text-gray-500"}`}
+                  >
+                    {inv.status === "paid"
+                      ? "Paga"
+                      : inv.status === "pending"
+                        ? "Pendente"
+                        : inv.status === "overdue"
+                          ? "Vencida"
+                          : inv.status}
                   </span>
-                  <span className="text-xs font-semibold text-gray-900">{formatBRL(inv.totalBRL)}</span>
+                  <span className="text-xs font-semibold text-gray-900">
+                    {formatBRL(inv.totalBRL)}
+                  </span>
                 </div>
               </div>
             ))}
@@ -1303,7 +1434,9 @@ function TenantDetailInline({ tenantId }: { tenantId: number }) {
       )}
 
       {data.subscriptions.length === 0 && data.invoices.length === 0 && (
-        <p className="text-xs text-gray-400 text-center py-4">Nenhum histórico financeiro encontrado.</p>
+        <p className="text-xs text-gray-400 text-center py-4">
+          Nenhum histórico financeiro encontrado.
+        </p>
       )}
     </div>
   );
@@ -1314,7 +1447,12 @@ function PlanTenantsContent({
   plan,
   onClose,
 }: {
-  plan: { planName: string; planSlug: string; count: number; tenants: any[] } | null;
+  plan: {
+    planName: string;
+    planSlug: string;
+    count: number;
+    tenants: any[];
+  } | null;
   onClose: () => void;
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -1336,7 +1474,8 @@ function PlanTenantsContent({
               <h2 className="text-base font-semibold">{plan.planName}</h2>
             </div>
             <p className="text-xs text-blue-200">
-              {plan.count} tenant{plan.count !== 1 ? "s" : ""} neste plano — clique para ver detalhes financeiros
+              {plan.count} tenant{plan.count !== 1 ? "s" : ""} neste plano —
+              clique para ver detalhes financeiros
             </p>
           </div>
           <button
@@ -1352,7 +1491,8 @@ function PlanTenantsContent({
       {/* Lista de tenants com expand/collapse */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
         {plan.tenants.map((t: any) => {
-          const ss = STATUS_SUB[t.subStatus ?? t.subscriptionStatus ?? ""] ?? null;
+          const ss =
+            STATUS_SUB[t.subStatus ?? t.subscriptionStatus ?? ""] ?? null;
           const isExpanded = expandedId === t.id;
           const tenantId = normalizeTenantId(t.id);
 
@@ -1370,18 +1510,24 @@ function PlanTenantsContent({
                 className="w-full flex items-center justify-between p-4 text-left group"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-gray-900 truncate text-sm">{t.name}</p>
+                  <p className="font-semibold text-gray-900 truncate text-sm">
+                    {t.name}
+                  </p>
                   <p className="text-xs text-gray-400 mt-0.5">{t.slug}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
                   {ss && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ss.color}`}>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${ss.color}`}
+                    >
                       {ss.label}
                     </span>
                   )}
                   <ChevronDown
                     className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                      isExpanded ? "rotate-180 text-[#123A63]" : "group-hover:text-[#123A63]"
+                      isExpanded
+                        ? "rotate-180 text-[#123A63]"
+                        : "group-hover:text-[#123A63]"
                     }`}
                   />
                 </div>
@@ -1395,14 +1541,18 @@ function PlanTenantsContent({
               )}
               {isExpanded && tenantId == null && (
                 <div className="px-4 pb-4 border-t border-gray-100">
-                  <p className="text-xs text-gray-400 py-2">Não foi possível identificar este tenant.</p>
+                  <p className="text-xs text-gray-400 py-2">
+                    Não foi possível identificar este tenant.
+                  </p>
                 </div>
               )}
             </div>
           );
         })}
         {plan.tenants.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-12">Nenhum tenant neste plano.</p>
+          <p className="text-sm text-gray-400 text-center py-12">
+            Nenhum tenant neste plano.
+          </p>
         )}
       </div>
     </div>
@@ -1411,25 +1561,33 @@ function PlanTenantsContent({
 
 // ─── Clients by Plan Report — cascata de slides ───────────────────────────────
 function ClientsByPlanReport() {
-  const { data: enrichedTenants = [], isLoading } = (trpc as any).billing.tenantsWithPlans.useQuery();
+  const { data: enrichedTenants = [], isLoading } = (
+    trpc as any
+  ).billing.tenantsWithPlans.useQuery();
 
   const [selectedPlan, setSelectedPlan] = useState<{
-    planName: string; planSlug: string; count: number; tenants: any[];
+    planName: string;
+    planSlug: string;
+    count: number;
+    tenants: any[];
   } | null>(null);
 
   const slide1Open = selectedPlan != null;
   const closeAll = () => setSelectedPlan(null);
 
-  const planStats = (enrichedTenants as any[]).reduce((acc: any, tenant: any) => {
-    const planSlug = tenant.planSlug || "sem-plano";
-    const planName = tenant.planName || "Sem Plano";
-    if (!acc[planSlug]) {
-      acc[planSlug] = { planName, planSlug, count: 0, tenants: [] };
-    }
-    acc[planSlug].count++;
-    acc[planSlug].tenants.push(tenant);
-    return acc;
-  }, {});
+  const planStats = (enrichedTenants as any[]).reduce(
+    (acc: any, tenant: any) => {
+      const planSlug = tenant.planSlug || "sem-plano";
+      const planName = tenant.planName || "Sem Plano";
+      if (!acc[planSlug]) {
+        acc[planSlug] = { planName, planSlug, count: 0, tenants: [] };
+      }
+      acc[planSlug].count++;
+      acc[planSlug].tenants.push(tenant);
+      return acc;
+    },
+    {}
+  );
 
   const sortedPlans = Object.values(planStats).sort(
     (a: any, b: any) => b.count - a.count
@@ -1438,9 +1596,9 @@ function ClientsByPlanReport() {
   const totalTenants = (enrichedTenants as any[]).length;
 
   const STATUS_COLORS: Record<string, string> = {
-    active:    "bg-green-500",
-    trialing:  "bg-blue-400",
-    past_due:  "bg-yellow-400",
+    active: "bg-green-500",
+    trialing: "bg-blue-400",
+    past_due: "bg-yellow-400",
     cancelled: "bg-gray-300",
     suspended: "bg-red-400",
   };
@@ -1458,9 +1616,12 @@ function ClientsByPlanReport() {
       {/* ── Plan cards ── */}
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Distribuição de Clientes por Plano</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Distribuição de Clientes por Plano
+          </h3>
           <p className="text-sm text-gray-500 mt-1">
-            Clique em um plano para ver seus tenants — depois clique no tenant para detalhes financeiros
+            Clique em um plano para ver seus tenants — depois clique no tenant
+            para detalhes financeiros
           </p>
         </div>
 
@@ -1493,30 +1654,58 @@ function ClientsByPlanReport() {
                         <div className="flex justify-between text-xs text-gray-500 mb-1">
                           <span>Participação</span>
                           <span className="font-semibold">
-                            {totalTenants > 0 ? `${((stat.count / totalTenants) * 100).toFixed(1)}%` : "—"}
+                            {totalTenants > 0
+                              ? `${((stat.count / totalTenants) * 100).toFixed(1)}%`
+                              : "—"}
                           </span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-[#123A63] rounded-full"
-                            style={{ width: totalTenants > 0 ? `${(stat.count / totalTenants) * 100}%` : "0%" }}
+                            style={{
+                              width:
+                                totalTenants > 0
+                                  ? `${(stat.count / totalTenants) * 100}%`
+                                  : "0%",
+                            }}
                           />
                         </div>
                       </div>
                       {Object.keys(statusCounts).length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
-                          {Object.entries(statusCounts).map(([status, count]: any) => (
-                            <span key={status} className={`inline-flex items-center gap-1 text-[0.65rem] px-1.5 py-0.5 rounded-full font-medium ${
-                              status === "active" ? "bg-green-100 text-green-700" :
-                              status === "trialing" ? "bg-blue-100 text-blue-700" :
-                              status === "past_due" ? "bg-yellow-100 text-yellow-700" :
-                              status === "suspended" ? "bg-red-100 text-red-600" :
-                              "bg-gray-100 text-gray-500"
-                            }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_COLORS[status] ?? "bg-gray-400"}`} />
-                              {count} {status === "active" ? "ativo" : status === "trialing" ? "trial" : status === "past_due" ? "atrasado" : status === "suspended" ? "suspenso" : status}{count !== 1 ? "s" : ""}
-                            </span>
-                          ))}
+                          {Object.entries(statusCounts).map(
+                            ([status, count]: any) => (
+                              <span
+                                key={status}
+                                className={`inline-flex items-center gap-1 text-[0.65rem] px-1.5 py-0.5 rounded-full font-medium ${
+                                  status === "active"
+                                    ? "bg-green-100 text-green-700"
+                                    : status === "trialing"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : status === "past_due"
+                                        ? "bg-yellow-100 text-yellow-700"
+                                        : status === "suspended"
+                                          ? "bg-red-100 text-red-600"
+                                          : "bg-gray-100 text-gray-500"
+                                }`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${STATUS_COLORS[status] ?? "bg-gray-400"}`}
+                                />
+                                {count}{" "}
+                                {status === "active"
+                                  ? "ativo"
+                                  : status === "trialing"
+                                    ? "trial"
+                                    : status === "past_due"
+                                      ? "atrasado"
+                                      : status === "suspended"
+                                        ? "suspenso"
+                                        : status}
+                                {count !== 1 ? "s" : ""}
+                              </span>
+                            )
+                          )}
                         </div>
                       )}
                       <p className="text-xs text-[#123A63] font-medium flex items-center gap-1">
@@ -1538,20 +1727,28 @@ function ClientsByPlanReport() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-xs text-gray-600">Total de Tenants</p>
-                <p className="text-2xl font-bold text-gray-900">{totalTenants}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {totalTenants}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-600">Planos Diferentes</p>
-                <p className="text-2xl font-bold text-gray-900">{sortedPlans.length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {sortedPlans.length}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-600">Plano Mais Popular</p>
-                <p className="text-sm font-bold text-gray-900 mt-1">{sortedPlans[0]?.planName || "N/A"}</p>
+                <p className="text-sm font-bold text-gray-900 mt-1">
+                  {sortedPlans[0]?.planName || "N/A"}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-600">Concentração</p>
                 <p className="text-sm font-bold text-gray-900 mt-1">
-                  {sortedPlans[0] && totalTenants > 0 ? `${((sortedPlans[0].count / totalTenants) * 100).toFixed(1)}%` : "N/A"}
+                  {sortedPlans[0] && totalTenants > 0
+                    ? `${((sortedPlans[0].count / totalTenants) * 100).toFixed(1)}%`
+                    : "N/A"}
                 </p>
               </div>
             </div>
@@ -1563,46 +1760,46 @@ function ClientsByPlanReport() {
            (elemento <html>) em vez de document.body porque o Radix SheetContent
            aplica overflow:hidden no body enquanto aberto, o que bloqueia
            position:fixed dos slides. O <html> não recebe esse overflow:hidden. ── */}
-      {typeof window !== "undefined" && createPortal(
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={(e: any) => { if (e.target === e.currentTarget) closeAll(); }}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.35)",
-              zIndex: 1000,
-              opacity: slide1Open ? 1 : 0,
-              pointerEvents: slide1Open ? "auto" : "none",
-              transition: "opacity 0.3s ease",
-            }}
-          />
-
-          {/* ── Slide 1 — Lista de tenants (60 vw) ── */}
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              right: 0,
-              height: "100vh",
-              width: `${SLIDE1_W}vw`,
-              zIndex: 1001,
-              background: "white",
-              overflow: "hidden",
-              boxShadow: "-6px 0 32px rgba(0,0,0,0.22)",
-              transform: slide1Open ? "translateX(0)" : "translateX(105%)",
-              transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
-            }}
-          >
-            <PlanTenantsContent
-              plan={selectedPlan}
-              onClose={closeAll}
+      {typeof window !== "undefined" &&
+        createPortal(
+          <>
+            {/* Backdrop */}
+            <div
+              onClick={(e: any) => {
+                if (e.target === e.currentTarget) closeAll();
+              }}
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.35)",
+                zIndex: 1000,
+                opacity: slide1Open ? 1 : 0,
+                pointerEvents: slide1Open ? "auto" : "none",
+                transition: "opacity 0.3s ease",
+              }}
             />
-          </div>
-        </>,
-        document.documentElement
-      )}
+
+            {/* ── Slide 1 — Lista de tenants (60 vw) ── */}
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                right: 0,
+                height: "100vh",
+                width: `${SLIDE1_W}vw`,
+                zIndex: 1001,
+                background: "white",
+                overflow: "hidden",
+                boxShadow: "-6px 0 32px rgba(0,0,0,0.22)",
+                transform: slide1Open ? "translateX(0)" : "translateX(105%)",
+                transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+              }}
+            >
+              <PlanTenantsContent plan={selectedPlan} onClose={closeAll} />
+            </div>
+          </>,
+          document.documentElement
+        )}
     </>
   );
 }

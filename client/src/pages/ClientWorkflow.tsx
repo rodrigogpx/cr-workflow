@@ -2,9 +2,15 @@ import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { PendingDocumentsQueue } from "@/components/PendingDocumentsQueue";
 import { useAuth } from "@/_core/hooks/useAuth";
-import JSZip from 'jszip';
+import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +34,7 @@ import {
   CheckCircle,
   Circle,
   Info,
-  ExternalLink
+  ExternalLink,
 } from "lucide-react";
 import {
   HoverCard,
@@ -39,14 +45,27 @@ import { toast } from "sonner";
 import React, { useState, useEffect, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { updateClientSchema, type UpdateClientInput, formatCPF, formatPhone, formatCEP, isValidCPF } from "@shared/validations";
+import {
+  updateClientSchema,
+  type UpdateClientInput,
+  formatCPF,
+  formatPhone,
+  formatCEP,
+  isValidCPF,
+} from "@shared/validations";
 import { PsychReferralPanel } from "@/components/PsychReferralPanel";
 import { UploadModal } from "@/components/UploadModal";
 import { Input } from "@/components/ui/input";
 import Footer from "@/components/Footer";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -71,23 +90,34 @@ function SinarmCommentsInline({ stepId }: { stepId: number }) {
         Histórico de Comentários
       </p>
       {!comments || comments.length === 0 ? (
-        <p className="text-xs text-gray-400 italic">Nenhum comentário registrado.</p>
+        <p className="text-xs text-gray-400 italic">
+          Nenhum comentário registrado.
+        </p>
       ) : (
         <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
           {comments.map((c: any) => (
-            <div key={c.id} className="p-2.5 bg-white rounded border border-purple-100 space-y-1">
+            <div
+              key={c.id}
+              className="p-2.5 bg-white rounded border border-purple-100 space-y-1"
+            >
               <div className="flex items-center justify-between text-xs text-gray-500">
-                <span className="font-medium text-gray-700">{c.createdByName || 'Usuário'}</span>
-                <span>{new Date(c.createdAt).toLocaleString('pt-BR')}</span>
+                <span className="font-medium text-gray-700">
+                  {c.createdByName || "Usuário"}
+                </span>
+                <span>{new Date(c.createdAt).toLocaleString("pt-BR")}</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 {c.oldStatus && (
                   <>
-                    <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">{c.oldStatus}</span>
+                    <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">
+                      {c.oldStatus}
+                    </span>
                     <span className="text-gray-400">→</span>
                   </>
                 )}
-                <span className="px-1.5 py-0.5 bg-purple-100 rounded text-purple-800 font-medium">{c.newStatus}</span>
+                <span className="px-1.5 py-0.5 bg-purple-100 rounded text-purple-800 font-medium">
+                  {c.newStatus}
+                </span>
               </div>
               {c.comment && (
                 <p className="text-xs text-gray-600 mt-0.5">{c.comment}</p>
@@ -103,115 +133,136 @@ function SinarmCommentsInline({ stepId }: { stepId: number }) {
 // ─── Informações sobre cada tipo de documento exigido na Juntada ─────────────
 // Fonte: "Lista Completa de Certidões para Obtenção do CR CAC - Pessoa Física" (Out/2025)
 // Sistema de solicitação: SisGCorp — https://sisgcorp.eb.mil.br/#/solicitar-servico
-const DOCUMENT_INFO: Record<string, {
-  description: string;
-  issuer: string;
-  obs?: string;
-  link?: string;
-  linkLabel?: string;
-  cost?: string;
-}> = {
+const DOCUMENT_INFO: Record<
+  string,
+  {
+    description: string;
+    issuer: string;
+    obs?: string;
+    link?: string;
+    linkLabel?: string;
+    cost?: string;
+  }
+> = {
   // ── Identificação ───────────────────────────────────────────────────────────
-  'Documento de Identificação Pessoal': {
-    description: 'RG, CNH ou outro documento oficial com foto, em original e cópia. Deve estar dentro do prazo de validade.',
-    issuer: 'SSP (RG) · DETRAN (CNH) · Polícia Federal (Passaporte)',
+  "Documento de Identificação Pessoal": {
+    description:
+      "RG, CNH ou outro documento oficial com foto, em original e cópia. Deve estar dentro do prazo de validade.",
+    issuer: "SSP (RG) · DETRAN (CNH) · Polícia Federal (Passaporte)",
   },
 
   // ── Certidões criminais ──────────────────────────────────────────────────────
-  'Certidão de Antecedente Criminal Justiça Federal': {
-    description: 'Comprova ausência de antecedentes criminais na Justiça Federal. Certidão unificada válida para todas as regiões do país. Gratuita e emitida online.',
-    issuer: 'Conselho da Justiça Federal (CJF)',
-    obs: 'Validade: 90 dias a partir da emissão.',
-    link: 'https://certidao-unificada.cjf.jus.br/',
-    linkLabel: 'Emitir Certidão Federal Unificada (CJF)',
+  "Certidão de Antecedente Criminal Justiça Federal": {
+    description:
+      "Comprova ausência de antecedentes criminais na Justiça Federal. Certidão unificada válida para todas as regiões do país. Gratuita e emitida online.",
+    issuer: "Conselho da Justiça Federal (CJF)",
+    obs: "Validade: 90 dias a partir da emissão.",
+    link: "https://certidao-unificada.cjf.jus.br/",
+    linkLabel: "Emitir Certidão Federal Unificada (CJF)",
   },
-  'Certidão de Antecedente Criminal Justiça Estadual': {
-    description: 'Comprova ausência de antecedentes criminais na Justiça Estadual, incluindo Juizados Especiais Criminais. Deve conter distribuição e execução criminal.',
-    issuer: 'Tribunal de Justiça do Estado (TJ)',
-    obs: 'O site varia por estado. Validade: 90 dias. Consulte o TJ do seu estado.',
-    link: 'https://www.cnj.jus.br/certidao-negativa/',
-    linkLabel: 'Portal CNJ – Localize seu Tribunal Estadual',
+  "Certidão de Antecedente Criminal Justiça Estadual": {
+    description:
+      "Comprova ausência de antecedentes criminais na Justiça Estadual, incluindo Juizados Especiais Criminais. Deve conter distribuição e execução criminal.",
+    issuer: "Tribunal de Justiça do Estado (TJ)",
+    obs: "O site varia por estado. Validade: 90 dias. Consulte o TJ do seu estado.",
+    link: "https://www.cnj.jus.br/certidao-negativa/",
+    linkLabel: "Portal CNJ – Localize seu Tribunal Estadual",
   },
-  'Certidão de Antecedente Criminal Justiça Eleitoral': {
-    description: 'Certidão de crimes eleitorais emitida pelo TSE. Válida para todos os estados. ATENÇÃO: não confundir com a certidão de quitação eleitoral — são documentos diferentes.',
-    issuer: 'Tribunal Superior Eleitoral (TSE)',
-    obs: 'Validade: 90 dias. Gratuita e emitida online.',
-    link: 'https://www.tse.jus.br/eleitor/certidoes/certidao-de-crimes-eleitorais',
-    linkLabel: 'Emitir Certidão Eleitoral (TSE)',
+  "Certidão de Antecedente Criminal Justiça Eleitoral": {
+    description:
+      "Certidão de crimes eleitorais emitida pelo TSE. Válida para todos os estados. ATENÇÃO: não confundir com a certidão de quitação eleitoral — são documentos diferentes.",
+    issuer: "Tribunal Superior Eleitoral (TSE)",
+    obs: "Validade: 90 dias. Gratuita e emitida online.",
+    link: "https://www.tse.jus.br/eleitor/certidoes/certidao-de-crimes-eleitorais",
+    linkLabel: "Emitir Certidão Eleitoral (TSE)",
   },
-  'Certidão de Antecedente Criminal Justiça Militar': {
-    description: 'Comprova ausência de antecedentes na Justiça Militar Federal. Emitida pelo Superior Tribunal Militar (STM). Válida para todos os estados.',
-    issuer: 'Superior Tribunal Militar (STM)',
-    obs: 'Validade: 90 dias. Gratuita e emitida online.',
-    link: 'https://www.stm.jus.br/servicos-stm/certidao-negativa',
-    linkLabel: 'Emitir Certidão Militar (STM)',
+  "Certidão de Antecedente Criminal Justiça Militar": {
+    description:
+      "Comprova ausência de antecedentes na Justiça Militar Federal. Emitida pelo Superior Tribunal Militar (STM). Válida para todos os estados.",
+    issuer: "Superior Tribunal Militar (STM)",
+    obs: "Validade: 90 dias. Gratuita e emitida online.",
+    link: "https://www.stm.jus.br/servicos-stm/certidao-negativa",
+    linkLabel: "Emitir Certidão Militar (STM)",
   },
 
   // ── Declarações (geradas no SisGCorp) ───────────────────────────────────────
-  'Declaração de não estar respondendo': {
-    description: 'Declaração formal assinada pelo requerente afirmando que não responde a inquérito policial ou processo criminal em curso.',
-    issuer: 'Gerada automaticamente pelo sistema SisGCorp durante o cadastro',
-    link: 'https://sisgcorp.eb.mil.br/#/solicitar-servico',
-    linkLabel: 'Acessar SisGCorp (Exército Brasileiro)',
+  "Declaração de não estar respondendo": {
+    description:
+      "Declaração formal assinada pelo requerente afirmando que não responde a inquérito policial ou processo criminal em curso.",
+    issuer: "Gerada automaticamente pelo sistema SisGCorp durante o cadastro",
+    link: "https://sisgcorp.eb.mil.br/#/solicitar-servico",
+    linkLabel: "Acessar SisGCorp (Exército Brasileiro)",
   },
-  'Declaração de Segurança do Acervo': {
-    description: 'Declaração sobre as condições de segurança do local onde as armas serão guardadas (cofre, armário reforçado etc.), conforme normas do Exército Brasileiro.',
-    issuer: 'Gerada automaticamente pelo sistema SisGCorp durante o cadastro',
-    link: 'https://sisgcorp.eb.mil.br/#/solicitar-servico',
-    linkLabel: 'Acessar SisGCorp (Exército Brasileiro)',
+  "Declaração de Segurança do Acervo": {
+    description:
+      "Declaração sobre as condições de segurança do local onde as armas serão guardadas (cofre, armário reforçado etc.), conforme normas do Exército Brasileiro.",
+    issuer: "Gerada automaticamente pelo sistema SisGCorp durante o cadastro",
+    link: "https://sisgcorp.eb.mil.br/#/solicitar-servico",
+    linkLabel: "Acessar SisGCorp (Exército Brasileiro)",
   },
-  'Declaração com compromisso de comprovar a habitualidade': {
-    description: 'Exigida de atiradores desportivos: compromisso de comprovar habitualidade de prática de tiro (participação mínima em competições), conforme R-105 e normas do Exército.',
-    issuer: 'Declaração pessoal / Clube de tiro registrado',
-    obs: 'Dispensado para colecionadores.',
+  "Declaração com compromisso de comprovar a habitualidade": {
+    description:
+      "Exigida de atiradores desportivos: compromisso de comprovar habitualidade de prática de tiro (participação mínima em competições), conforme R-105 e normas do Exército.",
+    issuer: "Declaração pessoal / Clube de tiro registrado",
+    obs: "Dispensado para colecionadores.",
   },
 
   // ── Comprovantes ────────────────────────────────────────────────────────────
-  'Comprovante de Residência Fixa': {
-    description: 'Conta de luz, água, telefone, contrato de aluguel ou similar, em nome do requerente, com no máximo 90 dias de emissão.',
-    issuer: 'Concessionárias de serviços públicos / Cartório (contrato de aluguel)',
+  "Comprovante de Residência Fixa": {
+    description:
+      "Conta de luz, água, telefone, contrato de aluguel ou similar, em nome do requerente, com no máximo 90 dias de emissão.",
+    issuer:
+      "Concessionárias de serviços públicos / Cartório (contrato de aluguel)",
   },
-  'Comprovante de Ocupação Lícita': {
-    description: 'Comprova atividade profissional legal: carteira de trabalho assinada, contracheque, declaração de autônomo, pró-labore ou contrato de prestação de serviços.',
-    issuer: 'Empregador / Contador / Órgão competente',
+  "Comprovante de Ocupação Lícita": {
+    description:
+      "Comprova atividade profissional legal: carteira de trabalho assinada, contracheque, declaração de autônomo, pró-labore ou contrato de prestação de serviços.",
+    issuer: "Empregador / Contador / Órgão competente",
   },
-  'Comprovante de Capacidade Técnica': {
-    description: 'Certificado de aprovação em teste prático de tiro (laudo de tiro), emitido por instrutor de armamento credenciado pela Polícia Federal. Custo estimado: R$ 170,00 a R$ 450,00.',
-    issuer: 'Instrutor credenciado pela Polícia Federal / Clube de tiro',
-    obs: 'Apenas instrutores credenciados pela PF podem emitir este documento.',
-    link: 'https://www.gov.br/pf/pt-br/assuntos/armas',
-    linkLabel: 'PF – Consultar instrutores credenciados',
+  "Comprovante de Capacidade Técnica": {
+    description:
+      "Certificado de aprovação em teste prático de tiro (laudo de tiro), emitido por instrutor de armamento credenciado pela Polícia Federal. Custo estimado: R$ 170,00 a R$ 450,00.",
+    issuer: "Instrutor credenciado pela Polícia Federal / Clube de tiro",
+    obs: "Apenas instrutores credenciados pela PF podem emitir este documento.",
+    link: "https://www.gov.br/pf/pt-br/assuntos/armas",
+    linkLabel: "PF – Consultar instrutores credenciados",
   },
-  'Laudo de Aptidão Psicológica': {
-    description: 'Avaliação psicológica realizada por psicólogo credenciado pela Polícia Federal, atestando aptidão para o manuseio de arma de fogo. Custo estimado: R$ 300,00 a R$ 800,00.',
-    issuer: 'Psicólogo credenciado pela Polícia Federal',
-    obs: 'Somente psicólogos credenciados pela PF podem emitir este laudo.',
-    link: 'https://www.gov.br/pf/pt-br/assuntos/armas/psicologos/psicologos-crediciados',
-    linkLabel: 'PF – Consultar psicólogos credenciados',
+  "Laudo de Aptidão Psicológica": {
+    description:
+      "Avaliação psicológica realizada por psicólogo credenciado pela Polícia Federal, atestando aptidão para o manuseio de arma de fogo. Custo estimado: R$ 300,00 a R$ 800,00.",
+    issuer: "Psicólogo credenciado pela Polícia Federal",
+    obs: "Somente psicólogos credenciados pela PF podem emitir este laudo.",
+    link: "https://www.gov.br/pf/pt-br/assuntos/armas/psicologos/psicologos-crediciados",
+    linkLabel: "PF – Consultar psicólogos credenciados",
   },
-  'Comprovante de filiação a entidade de tiro desportivo': {
-    description: 'Documento emitido pelo clube de tiro desportivo reconhecido, comprovando filiação ativa do requerente à modalidade.',
-    issuer: 'Clube de tiro desportivo registrado no Exército / CBATIRO',
-    obs: 'Dispensado para atividade de colecionamento (Portaria 150-COLOG, 05/12/2019).',
-    link: 'https://www.cbatiro.org.br',
-    linkLabel: 'CBATIRO – Confederação Brasileira de Tiro',
+  "Comprovante de filiação a entidade de tiro desportivo": {
+    description:
+      "Documento emitido pelo clube de tiro desportivo reconhecido, comprovando filiação ativa do requerente à modalidade.",
+    issuer: "Clube de tiro desportivo registrado no Exército / CBATIRO",
+    obs: "Dispensado para atividade de colecionamento (Portaria 150-COLOG, 05/12/2019).",
+    link: "https://www.cbatiro.org.br",
+    linkLabel: "CBATIRO – Confederação Brasileira de Tiro",
   },
-  'Comprovante de filiação a entidade de caça': {
-    description: 'Documento emitido por associação de caça reconhecida, comprovando filiação ativa do requerente à modalidade de caça regulamentada.',
-    issuer: 'Associação de caça reconhecida',
-    obs: 'Dispensado para atividade de colecionamento (Portaria 150-COLOG, 05/12/2019).',
-    link: 'https://www.gov.br/ibama/pt-br',
-    linkLabel: 'Portal IBAMA',
+  "Comprovante de filiação a entidade de caça": {
+    description:
+      "Documento emitido por associação de caça reconhecida, comprovando filiação ativa do requerente à modalidade de caça regulamentada.",
+    issuer: "Associação de caça reconhecida",
+    obs: "Dispensado para atividade de colecionamento (Portaria 150-COLOG, 05/12/2019).",
+    link: "https://www.gov.br/ibama/pt-br",
+    linkLabel: "Portal IBAMA",
   },
-  'Comprovante da necessidade de abate de fauna invasora': {
-    description: 'Documento expedido pelo IBAMA autorizando e comprovando a necessidade de controle de espécie invasora em propriedade rural.',
-    issuer: 'IBAMA – Instituto Brasileiro do Meio Ambiente e dos Recursos Naturais Renováveis',
-    link: 'https://www.gov.br/ibama/pt-br/assuntos/fauna/controle-e-erradicacao',
-    linkLabel: 'IBAMA – Controle de Fauna Invasora',
+  "Comprovante da necessidade de abate de fauna invasora": {
+    description:
+      "Documento expedido pelo IBAMA autorizando e comprovando a necessidade de controle de espécie invasora em propriedade rural.",
+    issuer:
+      "IBAMA – Instituto Brasileiro do Meio Ambiente e dos Recursos Naturais Renováveis",
+    link: "https://www.gov.br/ibama/pt-br/assuntos/fauna/controle-e-erradicacao",
+    linkLabel: "IBAMA – Controle de Fauna Invasora",
   },
-  'Comprovante de Segundo Endereço': {
-    description: 'Comprovante de um segundo endereço do requerente (imóvel de temporada, fazenda, sítio ou endereço comercial), para fins de cadastro no Exército.',
-    issuer: 'Concessionárias de serviços / Documentos do imóvel',
+  "Comprovante de Segundo Endereço": {
+    description:
+      "Comprovante de um segundo endereço do requerente (imóvel de temporada, fazenda, sítio ou endereço comercial), para fins de cadastro no Exército.",
+    issuer: "Concessionárias de serviços / Documentos do imóvel",
   },
 };
 
@@ -219,7 +270,7 @@ const DOCUMENT_INFO: Record<string, {
  *  Usa HoverCard (não Tooltip) para permitir links clicáveis dentro do balão. */
 function DocumentInfoTooltip({ label }: { label: string }) {
   // Busca por substring do label — case-sensitive, primeiro match wins
-  const key = Object.keys(DOCUMENT_INFO).find((k) => label.includes(k));
+  const key = Object.keys(DOCUMENT_INFO).find(k => label.includes(k));
   const info = key ? DOCUMENT_INFO[key] : null;
   if (!info) return null;
 
@@ -243,22 +294,30 @@ function DocumentInfoTooltip({ label }: { label: string }) {
       >
         {/* Cabeçalho */}
         <div className="bg-blue-50 border-b border-blue-100 px-4 py-2.5">
-          <p className="text-xs font-semibold text-blue-800 leading-snug">{label}</p>
+          <p className="text-xs font-semibold text-blue-800 leading-snug">
+            {label}
+          </p>
         </div>
 
         {/* Corpo */}
         <div className="px-4 py-3 space-y-2.5 bg-white">
-          <p className="text-xs text-gray-600 leading-relaxed">{info.description}</p>
+          <p className="text-xs text-gray-600 leading-relaxed">
+            {info.description}
+          </p>
 
           <div className="flex items-start gap-1.5">
-            <span className="text-[0.65rem] font-semibold text-gray-400 uppercase tracking-wide mt-0.5 shrink-0">Emitido por</span>
+            <span className="text-[0.65rem] font-semibold text-gray-400 uppercase tracking-wide mt-0.5 shrink-0">
+              Emitido por
+            </span>
             <span className="text-xs text-gray-700">{info.issuer}</span>
           </div>
 
           {info.obs && (
             <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
               <span className="text-amber-500 mt-0.5 shrink-0">⚠</span>
-              <span className="text-xs text-amber-800 leading-snug">{info.obs}</span>
+              <span className="text-xs text-amber-800 leading-snug">
+                {info.obs}
+              </span>
             </div>
           )}
 
@@ -270,7 +329,7 @@ function DocumentInfoTooltip({ label }: { label: string }) {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors w-full"
             >
               <ExternalLink className="h-3 w-3 shrink-0" />
-              {info.linkLabel ?? 'Acessar portal de emissão'}
+              {info.linkLabel ?? "Acessar portal de emissão"}
             </a>
           )}
         </div>
@@ -281,13 +340,15 @@ function DocumentInfoTooltip({ label }: { label: string }) {
 
 /** Badge de status do Portal do Cliente + botão Reenviar Convite */
 function PortalStatusBadge({ clientId }: { clientId: number }) {
-  const { data: portalStatus, isLoading } = (trpc as any).portal.getStatus.useQuery(
-    { clientId },
-    { enabled: !!clientId }
-  );
-  const reenviarMutation = (trpc as any).clients.reenviarConvitePortal.useMutation({
+  const { data: portalStatus, isLoading } = (
+    trpc as any
+  ).portal.getStatus.useQuery({ clientId }, { enabled: !!clientId });
+  const reenviarMutation = (
+    trpc as any
+  ).clients.reenviarConvitePortal.useMutation({
     onSuccess: () => toast.success("Convite reenviado com sucesso!"),
-    onError: (err: any) => toast.error(err.message || "Erro ao reenviar convite"),
+    onError: (err: any) =>
+      toast.error(err.message || "Erro ao reenviar convite"),
   });
 
   if (isLoading) return null;
@@ -322,7 +383,9 @@ function PortalStatusBadge({ clientId }: { clientId: number }) {
         onClick={() => reenviarMutation.mutate({ clientId })}
       >
         {reenviarMutation.isPending ? (
-          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Enviando...</>
+          <>
+            <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Enviando...
+          </>
         ) : (
           <>✉ Reenviar Convite</>
         )}
@@ -338,14 +401,24 @@ export default function ClientWorkflow() {
   const tenantSlug = useTenantSlug();
   const { user, isAuthenticated } = useAuth();
   const [expandedSteps, setExpandedSteps] = useState<number[]>([]);
-  const [schedulingData, setSchedulingData] = useState<{[key: number]: {date: string, examiner: string}}>({});
+  const [schedulingData, setSchedulingData] = useState<{
+    [key: number]: { date: string; examiner: string };
+  }>({});
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [selectedSubTask, setSelectedSubTask] = useState<{id: number, label: string, stepId: number} | null>(null);
+  const [selectedSubTask, setSelectedSubTask] = useState<{
+    id: number;
+    label: string;
+    stepId: number;
+  } | null>(null);
 
   const [isOutdatedDocDialogOpen, setIsOutdatedDocDialogOpen] = useState(false);
-  const [outdatedDocInfo, setOutdatedDocInfo] = useState<{ outdated: any; latest: any } | null>(null);
+  const [outdatedDocInfo, setOutdatedDocInfo] = useState<{
+    outdated: any;
+    latest: any;
+  } | null>(null);
 
-  const [isSinarmStatusDialogOpen, setIsSinarmStatusDialogOpen] = useState(false);
+  const [isSinarmStatusDialogOpen, setIsSinarmStatusDialogOpen] =
+    useState(false);
   const [pendingSinarmStatusChange, setPendingSinarmStatusChange] = useState<{
     stepId: number;
     status: string;
@@ -370,10 +443,13 @@ export default function ClientWorkflow() {
     { enabled: !!clientId && isAuthenticated }
   );
 
-  const { data: emailTemplates, isLoading: templatesLoading, error: templatesError } = trpc.emails.getAllTemplates.useQuery(
-    undefined,
-    { enabled: isAuthenticated }
-  );
+  const {
+    data: emailTemplates,
+    isLoading: templatesLoading,
+    error: templatesError,
+  } = trpc.emails.getAllTemplates.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
 
   const {
     register,
@@ -389,60 +465,63 @@ export default function ClientWorkflow() {
       if (!client) return {};
       return {
         id: Number(clientId),
-        name: client.name || '',
-        cpf: client.cpf || '',
-        phone: client.phone || '',
-        email: client.email || '',
-        identityNumber: client.identityNumber || '',
-        identityIssueDate: client.identityIssueDate || '',
-        identityIssuer: client.identityIssuer || '',
-        identityUf: client.identityUf || '',
-        birthDate: client.birthDate || '',
-        birthCountry: client.birthCountry || 'Brasil',
-        birthUf: client.birthUf || '',
-        birthPlace: client.birthPlace || '',
-        gender: client.gender || '',
-        profession: client.profession || '',
-        otherProfession: client.otherProfession || '',
-        registrationNumber: client.registrationNumber || '',
-        currentActivities: client.currentActivities || '',
+        name: client.name || "",
+        cpf: client.cpf || "",
+        phone: client.phone || "",
+        email: client.email || "",
+        identityNumber: client.identityNumber || "",
+        identityIssueDate: client.identityIssueDate || "",
+        identityIssuer: client.identityIssuer || "",
+        identityUf: client.identityUf || "",
+        birthDate: client.birthDate || "",
+        birthCountry: client.birthCountry || "Brasil",
+        birthUf: client.birthUf || "",
+        birthPlace: client.birthPlace || "",
+        gender: client.gender || "",
+        profession: client.profession || "",
+        otherProfession: client.otherProfession || "",
+        registrationNumber: client.registrationNumber || "",
+        currentActivities: client.currentActivities || "",
         apostilamentoActivities: (() => {
           try {
-            const parsed = JSON.parse((client as any).apostilamentoActivities || '[]');
+            const parsed = JSON.parse(
+              (client as any).apostilamentoActivities || "[]"
+            );
             return Array.isArray(parsed) ? parsed : [];
           } catch {
             return [];
           }
         })(),
-        hasSecondCollectionAddress: !!(client as any).hasSecondCollectionAddress,
-        phone2: client.phone2 || '',
-        motherName: client.motherName || '',
-        fatherName: client.fatherName || '',
-        maritalStatus: client.maritalStatus || '',
-        requestType: client.requestType || '',
-        cacNumber: client.cacNumber || '',
-        cacCategory: client.cacCategory || '',
-        previousCrNumber: client.previousCrNumber || '',
-        psychReportValidity: client.psychReportValidity || '',
-        techReportValidity: client.techReportValidity || '',
-        residenceUf: client.residenceUf || '',
-        cep: client.cep || '',
-        address: client.address || '',
-        addressNumber: client.addressNumber || '',
-        neighborhood: client.neighborhood || '',
-        city: client.city || '',
-        complement: client.complement || '',
-        latitude: client.latitude || '',
-        longitude: client.longitude || '',
-        acervoCep: client.acervoCep || '',
-        acervoAddress: client.acervoAddress || '',
-        acervoAddressNumber: client.acervoAddressNumber || '',
-        acervoNeighborhood: client.acervoNeighborhood || '',
-        acervoCity: client.acervoCity || '',
-        acervoUf: client.acervoUf || '',
-        acervoComplement: client.acervoComplement || '',
-        acervoLatitude: client.acervoLatitude || '',
-        acervoLongitude: client.acervoLongitude || '',
+        hasSecondCollectionAddress: !!(client as any)
+          .hasSecondCollectionAddress,
+        phone2: client.phone2 || "",
+        motherName: client.motherName || "",
+        fatherName: client.fatherName || "",
+        maritalStatus: client.maritalStatus || "",
+        requestType: client.requestType || "",
+        cacNumber: client.cacNumber || "",
+        cacCategory: client.cacCategory || "",
+        previousCrNumber: client.previousCrNumber || "",
+        psychReportValidity: client.psychReportValidity || "",
+        techReportValidity: client.techReportValidity || "",
+        residenceUf: client.residenceUf || "",
+        cep: client.cep || "",
+        address: client.address || "",
+        addressNumber: client.addressNumber || "",
+        neighborhood: client.neighborhood || "",
+        city: client.city || "",
+        complement: client.complement || "",
+        latitude: client.latitude || "",
+        longitude: client.longitude || "",
+        acervoCep: client.acervoCep || "",
+        acervoAddress: client.acervoAddress || "",
+        acervoAddressNumber: client.acervoAddressNumber || "",
+        acervoNeighborhood: client.acervoNeighborhood || "",
+        acervoCity: client.acervoCity || "",
+        acervoUf: client.acervoUf || "",
+        acervoComplement: client.acervoComplement || "",
+        acervoLatitude: client.acervoLatitude || "",
+        acervoLongitude: client.acervoLongitude || "",
       };
     }, [client, clientId]),
   });
@@ -451,71 +530,79 @@ export default function ClientWorkflow() {
     if (client) {
       reset({
         id: Number(clientId),
-        name: client.name || '',
-        cpf: client.cpf || '',
-        phone: client.phone || '',
-        email: client.email || '',
-        identityNumber: client.identityNumber || '',
-        identityIssueDate: client.identityIssueDate || '',
-        identityIssuer: client.identityIssuer || '',
-        identityUf: client.identityUf || '',
-        birthDate: client.birthDate || '',
-        birthCountry: client.birthCountry || 'Brasil',
-        birthUf: client.birthUf || '',
-        birthPlace: client.birthPlace || '',
-        gender: client.gender || '',
-        profession: client.profession || '',
-        otherProfession: client.otherProfession || '',
-        registrationNumber: client.registrationNumber || '',
-        currentActivities: client.currentActivities || '',
+        name: client.name || "",
+        cpf: client.cpf || "",
+        phone: client.phone || "",
+        email: client.email || "",
+        identityNumber: client.identityNumber || "",
+        identityIssueDate: client.identityIssueDate || "",
+        identityIssuer: client.identityIssuer || "",
+        identityUf: client.identityUf || "",
+        birthDate: client.birthDate || "",
+        birthCountry: client.birthCountry || "Brasil",
+        birthUf: client.birthUf || "",
+        birthPlace: client.birthPlace || "",
+        gender: client.gender || "",
+        profession: client.profession || "",
+        otherProfession: client.otherProfession || "",
+        registrationNumber: client.registrationNumber || "",
+        currentActivities: client.currentActivities || "",
         apostilamentoActivities: (() => {
           try {
-            const parsed = JSON.parse((client as any).apostilamentoActivities || '[]');
+            const parsed = JSON.parse(
+              (client as any).apostilamentoActivities || "[]"
+            );
             return Array.isArray(parsed) ? parsed : [];
           } catch {
             return [];
           }
         })(),
-        hasSecondCollectionAddress: !!(client as any).hasSecondCollectionAddress,
-        phone2: client.phone2 || '',
-        motherName: client.motherName || '',
-        fatherName: client.fatherName || '',
-        maritalStatus: client.maritalStatus || '',
-        requestType: client.requestType || '',
-        cacNumber: client.cacNumber || '',
-        cacCategory: client.cacCategory || '',
-        previousCrNumber: client.previousCrNumber || '',
-        psychReportValidity: client.psychReportValidity || '',
-        techReportValidity: client.techReportValidity || '',
-        residenceUf: client.residenceUf || '',
-        cep: client.cep || '',
-        address: client.address || '',
-        addressNumber: client.addressNumber || '',
-        neighborhood: client.neighborhood || '',
-        city: client.city || '',
-        complement: client.complement || '',
-        latitude: client.latitude || '',
-        longitude: client.longitude || '',
-        acervoCep: client.acervoCep || '',
-        acervoAddress: client.acervoAddress || '',
-        acervoAddressNumber: client.acervoAddressNumber || '',
-        acervoNeighborhood: client.acervoNeighborhood || '',
-        acervoCity: client.acervoCity || '',
-        acervoUf: client.acervoUf || '',
-        acervoComplement: client.acervoComplement || '',
-        acervoLatitude: client.acervoLatitude || '',
-        acervoLongitude: client.acervoLongitude || '',
+        hasSecondCollectionAddress: !!(client as any)
+          .hasSecondCollectionAddress,
+        phone2: client.phone2 || "",
+        motherName: client.motherName || "",
+        fatherName: client.fatherName || "",
+        maritalStatus: client.maritalStatus || "",
+        requestType: client.requestType || "",
+        cacNumber: client.cacNumber || "",
+        cacCategory: client.cacCategory || "",
+        previousCrNumber: client.previousCrNumber || "",
+        psychReportValidity: client.psychReportValidity || "",
+        techReportValidity: client.techReportValidity || "",
+        residenceUf: client.residenceUf || "",
+        cep: client.cep || "",
+        address: client.address || "",
+        addressNumber: client.addressNumber || "",
+        neighborhood: client.neighborhood || "",
+        city: client.city || "",
+        complement: client.complement || "",
+        latitude: client.latitude || "",
+        longitude: client.longitude || "",
+        acervoCep: client.acervoCep || "",
+        acervoAddress: client.acervoAddress || "",
+        acervoAddressNumber: client.acervoAddressNumber || "",
+        acervoNeighborhood: client.acervoNeighborhood || "",
+        acervoCity: client.acervoCity || "",
+        acervoUf: client.acervoUf || "",
+        acervoComplement: client.acervoComplement || "",
+        acervoLatitude: client.acervoLatitude || "",
+        acervoLongitude: client.acervoLongitude || "",
       });
     }
   }, [client, clientId, reset]);
 
-  const selectedApostilamentoActivities = (watch("apostilamentoActivities") as string[] | undefined) || [];
-  const watchRequestType = (watch("requestType") as string) || '';
-  const isConcessao = watchRequestType.toLowerCase() === 'concessão' || watchRequestType.toLowerCase() === 'concessao';
+  const selectedApostilamentoActivities =
+    (watch("apostilamentoActivities") as string[] | undefined) || [];
+  const watchRequestType = (watch("requestType") as string) || "";
+  const isConcessao =
+    watchRequestType.toLowerCase() === "concessão" ||
+    watchRequestType.toLowerCase() === "concessao";
 
   const updateStepMutation = trpc.workflow.updateStep.useMutation({
     onSuccess: (data: any, variables: any) => {
-      utils.workflow.getSinarmCommentsHistory.invalidate({ stepId: variables.stepId });
+      utils.workflow.getSinarmCommentsHistory.invalidate({
+        stepId: variables.stepId,
+      });
       refetch();
       toast.success("Etapa atualizada com sucesso!");
     },
@@ -529,8 +616,8 @@ export default function ClientWorkflow() {
   });
 
   const generatePDFMutation = trpc.workflow.generateWelcomePDF.useMutation({
-    onSuccess: (data) => {
-      window.open(data.url, '_blank');
+    onSuccess: data => {
+      window.open(data.url, "_blank");
       toast.success("PDF gerado com sucesso!");
     },
   });
@@ -547,7 +634,7 @@ export default function ClientWorkflow() {
       refetch();
       toast.success("Dados do cliente atualizados com sucesso!");
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Erro ao atualizar: ${error.message}`);
     },
   });
@@ -557,33 +644,45 @@ export default function ClientWorkflow() {
       toast.success("Email de confirmação de agendamento enviado com sucesso!");
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Erro ao enviar email: ${error.message}`);
     },
   });
 
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadEnxovalMutation, setDownloadEnxovalMutation] = useState<{isPending: boolean}>({isPending: false});
+  const [downloadEnxovalMutation, setDownloadEnxovalMutation] = useState<{
+    isPending: boolean;
+  }>({ isPending: false });
 
-  const handleDownloadEnxoval = async (stepId: number, stepSubTaskIds: number[] = []) => {
+  const handleDownloadEnxoval = async (
+    stepId: number,
+    stepSubTaskIds: number[] = []
+  ) => {
     if (isDownloading) return;
-    
+
     try {
       setIsDownloading(true);
-      setDownloadEnxovalMutation({isPending: true});
+      setDownloadEnxovalMutation({ isPending: true });
       toast.info("Buscando documentos...");
 
       const subTaskIdSet = new Set(stepSubTaskIds);
-      const stepDocs = (documents || []).filter((doc: any) =>
-        doc.workflowStepId === stepId ||
-        (doc.subTaskId != null && subTaskIdSet.has(doc.subTaskId))
+      const stepDocs = (documents || []).filter(
+        (doc: any) =>
+          doc.workflowStepId === stepId ||
+          (doc.subTaskId != null && subTaskIdSet.has(doc.subTaskId))
       );
 
       const latestDocsByKey = new Map<string, any>();
       for (const doc of stepDocs) {
-        const key = doc.subTaskId ? `subtask:${doc.subTaskId}` : `doc:${doc.id}`;
+        const key = doc.subTaskId
+          ? `subtask:${doc.subTaskId}`
+          : `doc:${doc.id}`;
         const current = latestDocsByKey.get(key);
-        if (!current || new Date(doc.createdAt).getTime() > new Date(current.createdAt).getTime()) {
+        if (
+          !current ||
+          new Date(doc.createdAt).getTime() >
+            new Date(current.createdAt).getTime()
+        ) {
           latestDocsByKey.set(key, doc);
         }
       }
@@ -596,22 +695,34 @@ export default function ClientWorkflow() {
 
       // Buscar PDF com dados do cadastro
       try {
-        enxovalData = await trpc.documents.downloadEnxoval.query({ clientId: Number(clientId) });
+        enxovalData = await trpc.documents.downloadEnxoval.query({
+          clientId: Number(clientId),
+        });
         if (enxovalData.clientDataPdf) {
-          const pdfBytes = Uint8Array.from(atob(enxovalData.clientDataPdf), c => c.charCodeAt(0));
-          zip.file('00-Dados-do-Cadastro.pdf', pdfBytes);
+          const pdfBytes = Uint8Array.from(atob(enxovalData.clientDataPdf), c =>
+            c.charCodeAt(0)
+          );
+          zip.file("00-Dados-do-Cadastro.pdf", pdfBytes);
         }
       } catch (pdfError) {
-        console.error('Erro ao gerar PDF do cadastro:', pdfError);
+        console.error("Erro ao gerar PDF do cadastro:", pdfError);
       }
 
-      const backendDocs = Array.isArray(enxovalData?.documents) ? enxovalData.documents : [];
+      const backendDocs = Array.isArray(enxovalData?.documents)
+        ? enxovalData.documents
+        : [];
       const combinedDocs = [...latestStepDocs, ...backendDocs];
       const latestCombinedByKey = new Map<string, any>();
       for (const doc of combinedDocs) {
-        const key = doc.subTaskId ? `subtask:${doc.subTaskId}` : `file:${doc.fileUrl || doc.fileName}`;
+        const key = doc.subTaskId
+          ? `subtask:${doc.subTaskId}`
+          : `file:${doc.fileUrl || doc.fileName}`;
         const current = latestCombinedByKey.get(key);
-        if (!current || new Date(doc.createdAt).getTime() > new Date(current.createdAt).getTime()) {
+        if (
+          !current ||
+          new Date(doc.createdAt).getTime() >
+            new Date(current.createdAt).getTime()
+        ) {
           latestCombinedByKey.set(key, doc);
         }
       }
@@ -628,9 +739,9 @@ export default function ClientWorkflow() {
 
       const content = await zip.generateAsync({ type: "blob" });
       const url = window.URL.createObjectURL(content);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `enxoval-${client?.name?.replace(/\s+/g, '-') || 'cliente'}.zip`;
+      link.download = `enxoval-${client?.name?.replace(/\s+/g, "-") || "cliente"}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -638,29 +749,31 @@ export default function ClientWorkflow() {
 
       toast.success("Download concluído!");
     } catch (error) {
-      console.error('Erro ao baixar enxoval:', error);
+      console.error("Erro ao baixar enxoval:", error);
       toast.error("Erro ao preparar download");
     } finally {
       setIsDownloading(false);
-      setDownloadEnxovalMutation({isPending: false});
+      setDownloadEnxovalMutation({ isPending: false });
     }
   };
 
   const toggleStep = (stepId: number, currentCompleted: boolean) => {
     const step = workflow?.find((s: any) => s.id === stepId);
     const isJuntadaStep =
-      step?.stepId === 'juntada-documento' ||
-      step?.stepId === 'juntada-documentos' ||
-      step?.stepTitle?.toLowerCase?.().includes('juntada') === true;
+      step?.stepId === "juntada-documento" ||
+      step?.stepId === "juntada-documentos" ||
+      step?.stepTitle?.toLowerCase?.().includes("juntada") === true;
 
     if (!currentCompleted && isJuntadaStep) {
       const subTasks = step?.subTasks || [];
-      const missing = subTasks.filter((st: any) =>
-        !(documents || []).some((d: any) => d.subTaskId === st.id)
+      const missing = subTasks.filter(
+        (st: any) => !(documents || []).some((d: any) => d.subTaskId === st.id)
       );
 
       if (subTasks.length > 0 && missing.length > 0) {
-        toast.error('Para concluir a Juntada de Documentos, anexe todos os documentos obrigatórios.');
+        toast.error(
+          "Para concluir a Juntada de Documentos, anexe todos os documentos obrigatórios."
+        );
         return;
       }
     }
@@ -729,11 +842,23 @@ export default function ClientWorkflow() {
   // Ordem das fases (UI e progress bar devem seguir exatamente esta ordem)
   // Obs: removida a fase "Central de Mensagens" (stepId: 'boas-vindas').
   const PHASES: Array<{ number: number; stepId: string; label: string }> = [
-    { number: 1, stepId: 'cadastro', label: 'Cadastro' },
-    { number: 2, stepId: 'agendamento-psicotecnico', label: 'Avaliação Psicológica' },
-    { number: 3, stepId: 'agendamento-laudo', label: 'Laudo de Capacidade Técnica' },
-    { number: 4, stepId: 'juntada-documento', label: 'Juntada de Documentos' },
-    { number: 5, stepId: 'acompanhamento-sinarm', label: 'Submissão ao SINARM-CAC' },
+    { number: 1, stepId: "cadastro", label: "Cadastro" },
+    {
+      number: 2,
+      stepId: "agendamento-psicotecnico",
+      label: "Avaliação Psicológica",
+    },
+    {
+      number: 3,
+      stepId: "agendamento-laudo",
+      label: "Laudo de Capacidade Técnica",
+    },
+    { number: 4, stepId: "juntada-documento", label: "Juntada de Documentos" },
+    {
+      number: 5,
+      stepId: "acompanhamento-sinarm",
+      label: "Submissão ao SINARM-CAC",
+    },
   ];
 
   const calcularProgresso = (steps: any[]) => {
@@ -742,9 +867,11 @@ export default function ClientWorkflow() {
     return Math.round((completed / steps.length) * 100);
   };
 
-  const orderedWorkflow = PHASES.map((p) => workflow.find((s: any) => s.stepId === p.stepId)).filter(Boolean) as any[];
+  const orderedWorkflow = PHASES.map(p =>
+    workflow.find((s: any) => s.stepId === p.stepId)
+  ).filter(Boolean) as any[];
   const progressoTotal = calcularProgresso(orderedWorkflow);
-  const phaseStates = PHASES.map((def) => {
+  const phaseStates = PHASES.map(def => {
     const found = orderedWorkflow.find((s: any) => s.stepId === def.stepId);
     return {
       ...def,
@@ -752,27 +879,42 @@ export default function ClientWorkflow() {
       exists: Boolean(found),
     };
   });
-  const nextPhaseNumber = (phaseStates.find(s => s.exists && !s.completed) || phaseStates.find(s => !s.completed) || null)?.number ?? null;
+  const nextPhaseNumber =
+    (
+      phaseStates.find(s => s.exists && !s.completed) ||
+      phaseStates.find(s => !s.completed) ||
+      null
+    )?.number ?? null;
 
   return (
     <div className="min-h-screen">
       {/* Header Moderno */}
-      <header style={{backgroundColor: '#1c1c1c'}} className="border-b shadow-sm sticky top-0 z-10">
+      <header
+        style={{ backgroundColor: "#1c1c1c" }}
+        className="border-b shadow-sm sticky top-0 z-10"
+      >
         <div className="container py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="icon"
-                style={{color: '#cfcece'}}
+                style={{ color: "#cfcece" }}
                 className="hover:bg-gray-700"
-                onClick={() => setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
+                onClick={() =>
+                  setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))
+                }
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 style={{color: '#faf9f9'}} className="text-3xl font-bold">{client.name}</h1>
-                <div className="flex items-center gap-4 mt-1 text-sm" style={{color: '#b8b7b7'}}>
+                <h1 style={{ color: "#faf9f9" }} className="text-3xl font-bold">
+                  {client.name}
+                </h1>
+                <div
+                  className="flex items-center gap-4 mt-1 text-sm"
+                  style={{ color: "#b8b7b7" }}
+                >
                   <span className="flex items-center gap-1">
                     <User className="h-4 w-4" />
                     {client.cpf && formatCPF(client.cpf)}
@@ -791,7 +933,6 @@ export default function ClientWorkflow() {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </header>
@@ -802,353 +943,533 @@ export default function ClientWorkflow() {
           <PendingDocumentsQueue
             clientId={Number(clientId)}
             subTasks={(orderedWorkflow ?? []).flatMap((step: any) =>
-              (step.subTasks ?? []).map((st: any) => ({ id: st.id, label: st.label }))
+              (step.subTasks ?? []).map((st: any) => ({
+                id: st.id,
+                label: st.label,
+              }))
             )}
           />
 
           {/* Card de Progresso Geral */}
           <Card className="mb-6 shadow-lg border-0">
-          <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Target className="h-5 w-5 text-primary" />
-              Progresso do Workflow
-            </CardTitle>
-            <CardDescription>Acompanhe o andamento de todas as etapas do processo</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {/* Progress Step Line */}
-            <div className="relative">
-              {/* Linha de conexão de fundo - do centro do primeiro ao centro do último círculo */}
-              <div className="absolute top-5 h-1 bg-gray-200" style={{ left: '10%', right: '10%' }} />
-              <div 
-                className="absolute top-5 h-1 bg-primary transition-all duration-500"
-                style={{ 
-                  left: '10%',
-                  width: `${Math.max(0, Math.min(100, progressoTotal)) * 0.8}%`
-                }}
-              />
-              
-              {/* Steps */}
-              <div className="relative flex justify-between items-start gap-2">
-                {phaseStates.map((s) => (
-                  <div key={String(s.number)} className="flex flex-col items-center flex-1 min-w-0">
-                    <div className={`
-                      w-10 h-10 rounded-full flex items-center justify-center z-10 transition-all duration-300
-                      ${s.completed
-                        ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                        : s.number === nextPhaseNumber
-                          ? 'bg-white text-primary border-2 border-primary shadow-md'
-                          : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
-                      }
-                    `}>
-                      {s.completed ? (
-                        <CheckCircle className="h-5 w-5" />
-                      ) : (
-                        <span className="text-sm font-bold">{s.number}</span>
-                      )}
-                    </div>
-                    <div className="mt-2 text-center">
-                      <h4 className={`font-semibold text-[0.7rem] leading-tight ${s.completed ? 'text-primary' : 'text-gray-700'}`}>
-                        {s.label}
-                      </h4>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Target className="h-5 w-5 text-primary" />
+                Progresso do Workflow
+              </CardTitle>
+              <CardDescription>
+                Acompanhe o andamento de todas as etapas do processo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {/* Progress Step Line */}
+              <div className="relative">
+                {/* Linha de conexão de fundo - do centro do primeiro ao centro do último círculo */}
+                <div
+                  className="absolute top-5 h-1 bg-gray-200"
+                  style={{ left: "10%", right: "10%" }}
+                />
+                <div
+                  className="absolute top-5 h-1 bg-primary transition-all duration-500"
+                  style={{
+                    left: "10%",
+                    width: `${Math.max(0, Math.min(100, progressoTotal)) * 0.8}%`,
+                  }}
+                />
 
-            {/* Progresso Geral Compacto */}
-            {(() => {
-              const diasDesdeCadastro = client.createdAt 
-                ? Math.floor((new Date().getTime() - new Date(client.createdAt).getTime()) / (1000 * 60 * 60 * 24))
-                : 0;
-              return (
-                <div className="mt-8 flex items-center justify-center gap-4 py-3 px-4 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-600">Progresso Geral</span>
-                  <div className="relative w-48 h-6 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full transition-all duration-300"
-                      style={{ width: `${progressoTotal}%`, backgroundColor: '#4d9702' }}
-                    />
-                    <span 
-                      className="absolute inset-0 flex items-center justify-center text-xs font-bold"
-                      style={{ color: progressoTotal >= 50 ? '#ffffff' : '#1c5c00', textShadow: progressoTotal >= 50 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none' }}
+                {/* Steps */}
+                <div className="relative flex justify-between items-start gap-2">
+                  {phaseStates.map(s => (
+                    <div
+                      key={String(s.number)}
+                      className="flex flex-col items-center flex-1 min-w-0"
                     >
-                      {progressoTotal === 100 ? '✓ Concluído' : `${diasDesdeCadastro} ${diasDesdeCadastro === 1 ? 'dia' : 'dias'}`}
+                      <div
+                        className={`
+                      w-10 h-10 rounded-full flex items-center justify-center z-10 transition-all duration-300
+                      ${
+                        s.completed
+                          ? "bg-primary text-white shadow-lg shadow-primary/30"
+                          : s.number === nextPhaseNumber
+                            ? "bg-white text-primary border-2 border-primary shadow-md"
+                            : "bg-gray-100 text-gray-400 border-2 border-gray-300"
+                      }
+                    `}
+                      >
+                        {s.completed ? (
+                          <CheckCircle className="h-5 w-5" />
+                        ) : (
+                          <span className="text-sm font-bold">{s.number}</span>
+                        )}
+                      </div>
+                      <div className="mt-2 text-center">
+                        <h4
+                          className={`font-semibold text-[0.7rem] leading-tight ${s.completed ? "text-primary" : "text-gray-700"}`}
+                        >
+                          {s.label}
+                        </h4>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Progresso Geral Compacto */}
+              {(() => {
+                const diasDesdeCadastro = client.createdAt
+                  ? Math.floor(
+                      (new Date().getTime() -
+                        new Date(client.createdAt).getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    )
+                  : 0;
+                return (
+                  <div className="mt-8 flex items-center justify-center gap-4 py-3 px-4 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-600">
+                      Progresso Geral
+                    </span>
+                    <div className="relative w-48 h-6 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full transition-all duration-300"
+                        style={{
+                          width: `${progressoTotal}%`,
+                          backgroundColor: "#4d9702",
+                        }}
+                      />
+                      <span
+                        className="absolute inset-0 flex items-center justify-center text-xs font-bold"
+                        style={{
+                          color: progressoTotal >= 50 ? "#ffffff" : "#1c5c00",
+                          textShadow:
+                            progressoTotal >= 50
+                              ? "0 1px 2px rgba(0,0,0,0.3)"
+                              : "none",
+                        }}
+                      >
+                        {progressoTotal === 100
+                          ? "✓ Concluído"
+                          : `${diasDesdeCadastro} ${diasDesdeCadastro === 1 ? "dia" : "dias"}`}
+                      </span>
+                    </div>
+                    <span className="text-lg font-bold text-primary">
+                      {progressoTotal}%
                     </span>
                   </div>
-                  <span className="text-lg font-bold text-primary">{progressoTotal}%</span>
-                </div>
-              );
-            })()}
-          </CardContent>
-        </Card>
+                );
+              })()}
+            </CardContent>
+          </Card>
 
-        {/* Etapas do Workflow */}
-        <div className="space-y-4">
-          {orderedWorkflow.map((step: any) => {
-            const isExpanded = isStepExpanded(step.id);
-            const completedSubTasks = step.subTasks?.filter((st: any) => st.completed).length || 0;
-            const totalSubTasks = step.subTasks?.length || 0;
-            const subTaskProgress = totalSubTasks > 0 ? Math.round((completedSubTasks / totalSubTasks) * 100) : 0;
-            const isPsychEvaluationForwardStep =
-              step.stepTitle?.includes("Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo") ?? false;
-            const canExpand =
-              isPsychEvaluationForwardStep ||
-              totalSubTasks > 0 ||
-              step.stepId === "cadastro" ||
-              step.stepId === "agendamento-psicotecnico" ||
-              step.stepId === "agendamento-laudo" ||
-              step.stepId === "juntada-documento" ||
-              step.stepId === "acompanhamento-sinarm";
+          {/* Etapas do Workflow */}
+          <div className="space-y-4">
+            {orderedWorkflow.map((step: any) => {
+              const isExpanded = isStepExpanded(step.id);
+              const completedSubTasks =
+                step.subTasks?.filter((st: any) => st.completed).length || 0;
+              const totalSubTasks = step.subTasks?.length || 0;
+              const subTaskProgress =
+                totalSubTasks > 0
+                  ? Math.round((completedSubTasks / totalSubTasks) * 100)
+                  : 0;
+              const isPsychEvaluationForwardStep =
+                step.stepTitle?.includes(
+                  "Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo"
+                ) ?? false;
+              const canExpand =
+                isPsychEvaluationForwardStep ||
+                totalSubTasks > 0 ||
+                step.stepId === "cadastro" ||
+                step.stepId === "agendamento-psicotecnico" ||
+                step.stepId === "agendamento-laudo" ||
+                step.stepId === "juntada-documento" ||
+                step.stepId === "acompanhamento-sinarm";
 
-            return (
-              <Card 
-                key={step.id} 
-                className={`shadow-md border-l-4 transition-all hover:shadow-lg ${
-                  step.completed 
-                    ? 'border-l-green-500 bg-green-50/50' 
-                    : 'border-l-gray-300 bg-white'
-                }`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1">
-                      <Checkbox
-                        checked={step.completed}
-                        onCheckedChange={() => toggleStep(step.id, step.completed)}
-                        className="mt-1 h-6 w-6"
-                      />
-                      <div className="flex-1">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          {step.stepTitle || (
-                            step.stepId === 'cadastro' ? 'Cadastro' :
-                            step.stepId === 'agendamento-psicotecnico' ? 'Avaliação Psicológica' :
-                            step.stepId === 'juntada-documento' ? 'Juntada de Documentos' :
-                            step.stepId === 'agendamento-laudo' ? 'Agendamento de Laudo' :
-                            step.stepId === 'despachante' ? 'Despachante' :
-                            step.stepId === 'acompanhamento-sinarm' ? 'Submissão ao SINARM-CAC' :
-                            'Etapa'
-                          )}
-                        </CardTitle>
-                        
-                        {/* Sub-tarefas Progress */}
-                        {totalSubTasks > 0 && (
-                          <div className="mt-3">
-                            <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                              <span>{completedSubTasks} de {totalSubTasks} documentos</span>
-                              <span className="font-semibold">{subTaskProgress}%</span>
+              return (
+                <Card
+                  key={step.id}
+                  className={`shadow-md border-l-4 transition-all hover:shadow-lg ${
+                    step.completed
+                      ? "border-l-green-500 bg-green-50/50"
+                      : "border-l-gray-300 bg-white"
+                  }`}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3 flex-1">
+                        <Checkbox
+                          checked={step.completed}
+                          onCheckedChange={() =>
+                            toggleStep(step.id, step.completed)
+                          }
+                          className="mt-1 h-6 w-6"
+                        />
+                        <div className="flex-1">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            {step.stepTitle ||
+                              (step.stepId === "cadastro"
+                                ? "Cadastro"
+                                : step.stepId === "agendamento-psicotecnico"
+                                  ? "Avaliação Psicológica"
+                                  : step.stepId === "juntada-documento"
+                                    ? "Juntada de Documentos"
+                                    : step.stepId === "agendamento-laudo"
+                                      ? "Agendamento de Laudo"
+                                      : step.stepId === "despachante"
+                                        ? "Despachante"
+                                        : step.stepId ===
+                                            "acompanhamento-sinarm"
+                                          ? "Submissão ao SINARM-CAC"
+                                          : "Etapa")}
+                          </CardTitle>
+
+                          {/* Sub-tarefas Progress */}
+                          {totalSubTasks > 0 && (
+                            <div className="mt-3">
+                              <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                <span>
+                                  {completedSubTasks} de {totalSubTasks}{" "}
+                                  documentos
+                                </span>
+                                <span className="font-semibold">
+                                  {subTaskProgress}%
+                                </span>
+                              </div>
+                              <Progress
+                                value={subTaskProgress}
+                                className="h-1.5"
+                              />
                             </div>
-                            <Progress value={subTaskProgress} className="h-1.5" />
-                          </div>
+                          )}
+
+                          {/* Indicador de Formulário para Cadastro */}
+                          {step.stepTitle === "Cadastro" && (
+                            <div className="mt-2">
+                              <span className="text-xs text-teal-600 font-medium">
+                                📋 Formulário de dados do cliente
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {step.completed && (
+                          <Badge className="bg-green-600">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Concluído
+                          </Badge>
                         )}
-                        
-                        {/* Indicador de Formulário para Cadastro */}
-                        {step.stepTitle === "Cadastro" && (
-                          <div className="mt-2">
-                            <span className="text-xs text-teal-600 font-medium">
-                              📋 Formulário de dados do cliente
-                            </span>
-                          </div>
+                        {canExpand && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpanded(step.id)}
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
                         )}
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {step.completed && (
-                        <Badge className="bg-green-600">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Concluído
-                        </Badge>
-                      )}
-                      {canExpand && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpanded(step.id)}
-                        >
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
 
-                {/* Conteúdo Expandido */}
-                {isExpanded && canExpand && (
-                  <CardContent className="pt-0">
-                    <Separator className="mb-4" />
-                    
-                    {/* Sub-tarefas */}
-                    {step.subTasks && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
-                        <FolderOpen className="h-4 w-4" />
-                        Documentos Necessários
-                      </div>
-                      
-                      {[...step.subTasks].sort((a, b) => a.id - b.id).map((subTask) => {
-                        const subTaskDocs = documents?.filter(doc => doc.subTaskId === subTask.id) || [];
-                        const subTaskDocsSorted = [...subTaskDocs].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                        const latestSubTaskDoc = subTaskDocsSorted[0] || null;
-                        return (
-                          <div key={subTask.id} className={`p-3 rounded-lg border ${subTask.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                            <div className="flex items-start gap-3 justify-between">
-                              <div className="flex items-start gap-3 flex-1">
-                                <Checkbox checked={subTask.completed} onCheckedChange={() => toggleSubTask(subTask.id, subTask.completed)} className="mt-0.5" />
-                                <div className="flex-1 min-w-0">
-                                  <span className="flex items-center gap-1.5 flex-wrap">
-                                    <p className={`font-medium ${subTask.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>{subTask.label}</p>
-                                    <DocumentInfoTooltip label={subTask.label} />
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                {user?.role !== 'despachante' && (
-                                  <Button variant="outline" size="sm" onClick={() => { setSelectedSubTask({ id: subTask.id, label: subTask.label, stepId: step.id }); setUploadModalOpen(true); }}><Upload className="h-3 w-3 mr-1" />Anexar</Button>
-                                )}
-                                {subTask.completed && <CheckCircle className="h-5 w-5 text-green-600" />}
-                              </div>
-                            </div>
-                            {subTaskDocsSorted.length > 0 && (
-                              <div className="mt-3 ml-7 space-y-1 pt-3 border-t border-gray-200">
-                                <p className="text-xs font-semibold text-gray-600 mb-2">Documentos ({subTaskDocsSorted.length}):</p>
-                                {subTaskDocsSorted.map((doc: any) => {
-                                  const isLatest = latestSubTaskDoc?.id === doc.id;
-                                  const rowClass = isLatest
-                                    ? ''
-                                    : 'opacity-60 bg-[repeating-linear-gradient(135deg,rgba(0,0,0,0.06),rgba(0,0,0,0.06)_6px,transparent_6px,transparent_12px)] rounded px-1';
-                                  const nameClass = isLatest
-                                    ? 'text-blue-600 font-medium hover:underline'
-                                    : 'text-gray-700 font-medium line-through';
+                  {/* Conteúdo Expandido */}
+                  {isExpanded && canExpand && (
+                    <CardContent className="pt-0">
+                      <Separator className="mb-4" />
 
-                                  return (
-                                    <div key={doc.id} className={`flex items-center gap-2 text-xs ${rowClass}`}>
-                                      <FileText className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                      {/* Sub-tarefas */}
+                      {step.subTasks && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+                            <FolderOpen className="h-4 w-4" />
+                            Documentos Necessários
+                          </div>
 
-                                      {isLatest ? (
-                                        <a
-                                          href={doc.fileUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className={`${nameClass} truncate flex-1 min-w-0`}
-                                        >
-                                          {doc.fileName}
-                                        </a>
-                                      ) : (
-                                        <button
-                                          type="button"
+                          {[...step.subTasks]
+                            .sort((a, b) => a.id - b.id)
+                            .map(subTask => {
+                              const subTaskDocs =
+                                documents?.filter(
+                                  doc => doc.subTaskId === subTask.id
+                                ) || [];
+                              const subTaskDocsSorted = [...subTaskDocs].sort(
+                                (a: any, b: any) =>
+                                  new Date(b.createdAt).getTime() -
+                                  new Date(a.createdAt).getTime()
+                              );
+                              const latestSubTaskDoc =
+                                subTaskDocsSorted[0] || null;
+                              return (
+                                <div
+                                  key={subTask.id}
+                                  className={`p-3 rounded-lg border ${subTask.completed ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}
+                                >
+                                  <div className="flex items-start gap-3 justify-between">
+                                    <div className="flex items-start gap-3 flex-1">
+                                      <Checkbox
+                                        checked={subTask.completed}
+                                        onCheckedChange={() =>
+                                          toggleSubTask(
+                                            subTask.id,
+                                            subTask.completed
+                                          )
+                                        }
+                                        className="mt-0.5"
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <span className="flex items-center gap-1.5 flex-wrap">
+                                          <p
+                                            className={`font-medium ${subTask.completed ? "text-green-900 line-through" : "text-gray-900"}`}
+                                          >
+                                            {subTask.label}
+                                          </p>
+                                          <DocumentInfoTooltip
+                                            label={subTask.label}
+                                          />
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {user?.role !== "despachante" && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
                                           onClick={() => {
-                                            setOutdatedDocInfo({ outdated: doc, latest: latestSubTaskDoc });
-                                            setIsOutdatedDocDialogOpen(true);
+                                            setSelectedSubTask({
+                                              id: subTask.id,
+                                              label: subTask.label,
+                                              stepId: step.id,
+                                            });
+                                            setUploadModalOpen(true);
                                           }}
-                                          className={`${nameClass} truncate flex-1 min-w-0 text-left`}
                                         >
-                                          {doc.fileName}
-                                        </button>
-                                      )}
-
-                                      {isLatest && (
-                                        <Button variant="ghost" size="sm" asChild className="h-5 w-5 p-0 flex-shrink-0">
-                                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                                            <Download className="h-3 w-3" />
-                                          </a>
+                                          <Upload className="h-3 w-3 mr-1" />
+                                          Anexar
                                         </Button>
                                       )}
+                                      {subTask.completed && (
+                                        <CheckCircle className="h-5 w-5 text-green-600" />
+                                      )}
                                     </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {step.subTasks && step.subTasks.length > 0 && (() => {
-                        const allStepDocs = documents?.filter((doc: any) => step.subTasks.some((st: any) => st.id === doc.subTaskId)) || [];
-                        const latestAllStepDocsMap = new Map<number, any>();
-                        for (const doc of allStepDocs) {
-                          if (!doc.subTaskId) continue;
-                          const current = latestAllStepDocsMap.get(doc.subTaskId);
-                          if (!current || new Date(doc.createdAt).getTime() > new Date(current.createdAt).getTime()) {
-                            latestAllStepDocsMap.set(doc.subTaskId, doc);
-                          }
-                        }
-                        const latestAllStepDocs = Array.from(latestAllStepDocsMap.values());
-                        if (latestAllStepDocs.length > 0) {
-                          return (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <Button onClick={() => handleDownloadEnxoval(step.id, step.subTasks?.map((st: any) => st.id) || [])} disabled={downloadEnxovalMutation.isPending} className="w-full">
-                                {downloadEnxovalMutation.isPending
-                                  ? 'Gerando...'
-                                  : `Enxoval (${latestAllStepDocs.length})`
+                                  </div>
+                                  {subTaskDocsSorted.length > 0 && (
+                                    <div className="mt-3 ml-7 space-y-1 pt-3 border-t border-gray-200">
+                                      <p className="text-xs font-semibold text-gray-600 mb-2">
+                                        Documentos ({subTaskDocsSorted.length}):
+                                      </p>
+                                      {subTaskDocsSorted.map((doc: any) => {
+                                        const isLatest =
+                                          latestSubTaskDoc?.id === doc.id;
+                                        const rowClass = isLatest
+                                          ? ""
+                                          : "opacity-60 bg-[repeating-linear-gradient(135deg,rgba(0,0,0,0.06),rgba(0,0,0,0.06)_6px,transparent_6px,transparent_12px)] rounded px-1";
+                                        const nameClass = isLatest
+                                          ? "text-blue-600 font-medium hover:underline"
+                                          : "text-gray-700 font-medium line-through";
+
+                                        return (
+                                          <div
+                                            key={doc.id}
+                                            className={`flex items-center gap-2 text-xs ${rowClass}`}
+                                          >
+                                            <FileText className="h-3 w-3 text-blue-600 flex-shrink-0" />
+
+                                            {isLatest ? (
+                                              <a
+                                                href={doc.fileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`${nameClass} truncate flex-1 min-w-0`}
+                                              >
+                                                {doc.fileName}
+                                              </a>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setOutdatedDocInfo({
+                                                    outdated: doc,
+                                                    latest: latestSubTaskDoc,
+                                                  });
+                                                  setIsOutdatedDocDialogOpen(
+                                                    true
+                                                  );
+                                                }}
+                                                className={`${nameClass} truncate flex-1 min-w-0 text-left`}
+                                              >
+                                                {doc.fileName}
+                                              </button>
+                                            )}
+
+                                            {isLatest && (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                asChild
+                                                className="h-5 w-5 p-0 flex-shrink-0"
+                                              >
+                                                <a
+                                                  href={doc.fileUrl}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                >
+                                                  <Download className="h-3 w-3" />
+                                                </a>
+                                              </Button>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          {step.subTasks &&
+                            step.subTasks.length > 0 &&
+                            (() => {
+                              const allStepDocs =
+                                documents?.filter((doc: any) =>
+                                  step.subTasks.some(
+                                    (st: any) => st.id === doc.subTaskId
+                                  )
+                                ) || [];
+                              const latestAllStepDocsMap = new Map<
+                                number,
+                                any
+                              >();
+                              for (const doc of allStepDocs) {
+                                if (!doc.subTaskId) continue;
+                                const current = latestAllStepDocsMap.get(
+                                  doc.subTaskId
+                                );
+                                if (
+                                  !current ||
+                                  new Date(doc.createdAt).getTime() >
+                                    new Date(current.createdAt).getTime()
+                                ) {
+                                  latestAllStepDocsMap.set(doc.subTaskId, doc);
                                 }
-                              </Button>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                    )}
-
-                    {/* Encaminhamento Avaliação Psicológica */}
-                    {isPsychEvaluationForwardStep && (
-                      <PsychReferralPanel
-                        clientId={Number(clientId)}
-                        stepId={step.id}
-                        referralSentAt={step.referralSentAt}
-                        referralType={step.referralType}
-                        onSuccess={() => refetch()}
-                      />
-                    )}
-
-                    {/* Formulário de Cadastro */}
-                    {step.stepTitle === "Cadastro" && (
-                      <form 
-                        onSubmit={handleSubmit(handleClientDataUpdate)}
-                        className="mt-6 p-6 bg-yellow-50 rounded-lg border border-yellow-200"
-                      >
-                        <div className="flex items-center gap-2 text-sm font-semibold text-yellow-900 mb-4">
-                          <User className="h-4 w-4" />
-                          1. Confira os dados do Solicitante
+                              }
+                              const latestAllStepDocs = Array.from(
+                                latestAllStepDocsMap.values()
+                              );
+                              if (latestAllStepDocs.length > 0) {
+                                return (
+                                  <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <Button
+                                      onClick={() =>
+                                        handleDownloadEnxoval(
+                                          step.id,
+                                          step.subTasks?.map(
+                                            (st: any) => st.id
+                                          ) || []
+                                        )
+                                      }
+                                      disabled={
+                                        downloadEnxovalMutation.isPending
+                                      }
+                                      className="w-full"
+                                    >
+                                      {downloadEnxovalMutation.isPending
+                                        ? "Gerando..."
+                                        : `Enxoval (${latestAllStepDocs.length})`}
+                                    </Button>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                         </div>
-                        
-                        <div className="space-y-6">
-                            <div className="text-xs font-semibold text-yellow-900 uppercase tracking-wide">Dados pessoais</div>
+                      )}
+
+                      {/* Encaminhamento Avaliação Psicológica */}
+                      {isPsychEvaluationForwardStep && (
+                        <PsychReferralPanel
+                          clientId={Number(clientId)}
+                          stepId={step.id}
+                          referralSentAt={step.referralSentAt}
+                          referralType={step.referralType}
+                          onSuccess={() => refetch()}
+                        />
+                      )}
+
+                      {/* Formulário de Cadastro */}
+                      {step.stepTitle === "Cadastro" && (
+                        <form
+                          onSubmit={handleSubmit(handleClientDataUpdate)}
+                          className="mt-6 p-6 bg-yellow-50 rounded-lg border border-yellow-200"
+                        >
+                          <div className="flex items-center gap-2 text-sm font-semibold text-yellow-900 mb-4">
+                            <User className="h-4 w-4" />
+                            1. Confira os dados do Solicitante
+                          </div>
+
+                          <div className="space-y-6">
+                            <div className="text-xs font-semibold text-yellow-900 uppercase tracking-wide">
+                              Dados pessoais
+                            </div>
 
                             {/* Nome Completo + Sexo */}
                             <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-4">
                               <div>
-                                <Label htmlFor="name" className="text-sm font-medium">Nome Completo</Label>
+                                <Label
+                                  htmlFor="name"
+                                  className="text-sm font-medium"
+                                >
+                                  Nome Completo
+                                </Label>
                                 <Input
                                   id="name"
                                   {...register("name")}
-                                  className={`mt-1 font-semibold ${errors.name ? 'border-red-500' : ''}`}
+                                  className={`mt-1 font-semibold ${errors.name ? "border-red-500" : ""}`}
                                 />
-                                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
+                                {errors.name && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.name.message}
+                                  </p>
+                                )}
                               </div>
                               <div>
-                                <Label className="text-sm font-medium">Sexo</Label>
+                                <Label className="text-sm font-medium">
+                                  Sexo
+                                </Label>
                                 <Controller
                                   name="gender"
                                   control={control}
                                   render={({ field }: { field: any }) => (
                                     <RadioGroup
-                                      value={field.value || ''}
+                                      value={field.value || ""}
                                       onValueChange={field.onChange}
                                       className="flex gap-4 mt-2"
                                     >
                                       <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="M" id="gender-m" />
-                                        <Label htmlFor="gender-m" className="cursor-pointer">M</Label>
+                                        <RadioGroupItem
+                                          value="M"
+                                          id="gender-m"
+                                        />
+                                        <Label
+                                          htmlFor="gender-m"
+                                          className="cursor-pointer"
+                                        >
+                                          M
+                                        </Label>
                                       </div>
                                       <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="F" id="gender-f" />
-                                        <Label htmlFor="gender-f" className="cursor-pointer">F</Label>
+                                        <RadioGroupItem
+                                          value="F"
+                                          id="gender-f"
+                                        />
+                                        <Label
+                                          htmlFor="gender-f"
+                                          className="cursor-pointer"
+                                        >
+                                          F
+                                        </Label>
                                       </div>
                                     </RadioGroup>
                                   )}
@@ -1156,890 +1477,1476 @@ export default function ClientWorkflow() {
                               </div>
                             </div>
 
-                          {/* Linha: CPF, Nº Identidade, Data de Expedição, Órgão Emissor, UF */}
-                          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                            <div>
-                              <Label htmlFor="cpf" className="text-sm font-medium text-teal-600">Número de Inscrição (CPF)</Label>
-                              <Input
-                                id="cpf"
-                                {...register("cpf")}
-                                onChange={(e: any) => {
-                                  const formatted = formatCPF(e.target.value);
-                                  e.target.value = formatted;
-                                  register("cpf").onChange(e);
-                                }}
-                                className={`mt-1 ${errors.cpf ? 'border-red-500' : ''}`}
-                              />
-                              {errors.cpf && <p className="text-xs text-red-500 mt-1">{errors.cpf.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="identityNumber" className="text-sm font-medium text-teal-600">Nº Identidade</Label>
-                              <Input
-                                id="identityNumber"
-                                {...register("identityNumber")}
-                                className={`mt-1 ${errors.identityNumber ? 'border-red-500' : ''}`}
-                              />
-                              {errors.identityNumber && <p className="text-xs text-red-500 mt-1">{errors.identityNumber.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="identityIssueDate" className="text-sm font-medium text-teal-600">Data de Expedição</Label>
-                              <Input
-                                id="identityIssueDate"
-                                type="date"
-                                {...register("identityIssueDate")}
-                                className={`mt-1 ${errors.identityIssueDate ? 'border-red-500' : ''}`}
-                              />
-                              {errors.identityIssueDate && <p className="text-xs text-red-500 mt-1">{errors.identityIssueDate.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="identityIssuer" className="text-sm font-medium text-teal-600">Órgão Emissor</Label>
-                              <Input
-                                id="identityIssuer"
-                                placeholder="ssp"
-                                {...register("identityIssuer")}
-                                className={`mt-1 ${errors.identityIssuer ? 'border-red-500' : ''}`}
-                              />
-                              {errors.identityIssuer && <p className="text-xs text-red-500 mt-1">{errors.identityIssuer.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="identityUf" className="text-sm font-medium text-teal-600">UF</Label>
-                              <Input
-                                id="identityUf"
-                                placeholder="DF"
-                                maxLength={2}
-                                {...register("identityUf")}
-                                onChange={(e: any) => {
-                                  e.target.value = e.target.value.toUpperCase();
-                                  register("identityUf").onChange(e);
-                                }}
-                                className={`mt-1 ${errors.identityUf ? 'border-red-500' : ''}`}
-                              />
-                              {errors.identityUf && <p className="text-xs text-red-500 mt-1">{errors.identityUf.message}</p>}
-                            </div>
-                          </div>
-
-                          {/* Linha: Estado Civil */}
-                          <div>
-                            <Label htmlFor="maritalStatus" className="text-sm font-medium text-teal-600">Estado Civil</Label>
-                            <Controller
-                              name="maritalStatus"
-                              control={control}
-                              render={({ field }: { field: any }) => (
-                                <Select
-                                  value={field.value || ''}
-                                  onValueChange={field.onChange}
+                            {/* Linha: CPF, Nº Identidade, Data de Expedição, Órgão Emissor, UF */}
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                              <div>
+                                <Label
+                                  htmlFor="cpf"
+                                  className="text-sm font-medium text-teal-600"
                                 >
-                                  <SelectTrigger id="maritalStatus" className={`mt-1 ${errors.maritalStatus ? 'border-red-500' : ''}`}>
-                                    <SelectValue placeholder="Selecione" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>
-                                    <SelectItem value="Casado(a)">Casado(a)</SelectItem>
-                                    <SelectItem value="União estável">União estável</SelectItem>
-                                    <SelectItem value="Separado(a)">Separado(a)</SelectItem>
-                                    <SelectItem value="Divorciado(a)">Divorciado(a)</SelectItem>
-                                    <SelectItem value="Viúvo(a)">Viúvo(a)</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            />
-                            {errors.maritalStatus && <p className="text-xs text-red-500 mt-1">{errors.maritalStatus.message}</p>}
-                          </div>
-
-                          {/* Linha: Data de Nascimento, País, UF, Local de Nascimento */}
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                              <Label htmlFor="birthDate" className="text-sm font-medium text-teal-600">Data de Nascimento</Label>
-                              <Input
-                                id="birthDate"
-                                type="date"
-                                {...register("birthDate")}
-                                className={`mt-1 ${errors.birthDate ? 'border-red-500' : ''}`}
-                              />
-                              {errors.birthDate && <p className="text-xs text-red-500 mt-1">{errors.birthDate.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="birthCountry" className="text-sm font-medium text-teal-600">País</Label>
-                              <Input
-                                id="birthCountry"
-                                {...register("birthCountry")}
-                                className={`mt-1 ${errors.birthCountry ? 'border-red-500' : ''}`}
-                              />
-                              {errors.birthCountry && <p className="text-xs text-red-500 mt-1">{errors.birthCountry.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="birthUf" className="text-sm font-medium text-teal-600">UF</Label>
-                              <Input
-                                id="birthUf"
-                                maxLength={2}
-                                {...register("birthUf")}
-                                onChange={(e: any) => {
-                                  e.target.value = e.target.value.toUpperCase();
-                                  register("birthUf").onChange(e);
-                                }}
-                                className={`mt-1 ${errors.birthUf ? 'border-red-500' : ''}`}
-                              />
-                              {errors.birthUf && <p className="text-xs text-red-500 mt-1">{errors.birthUf.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="birthPlace" className="text-sm font-medium text-teal-600">Local de Nascimento</Label>
-                              <Input
-                                id="birthPlace"
-                                {...register("birthPlace")}
-                                className={`mt-1 ${errors.birthPlace ? 'border-red-500' : ''}`}
-                              />
-                              {errors.birthPlace && <p className="text-xs text-red-500 mt-1">{errors.birthPlace.message}</p>}
-                            </div>
-                          </div>
-
-                          {/* Linha: Profissão, Outra Profissão */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="profession" className="text-sm font-medium text-teal-600">Profissão</Label>
-                              <Input
-                                id="profession"
-                                {...register("profession")}
-                                className={`mt-1 ${errors.profession ? 'border-red-500' : ''}`}
-                              />
-                              {errors.profession && <p className="text-xs text-red-500 mt-1">{errors.profession.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="otherProfession" className="text-sm font-medium text-teal-600">Outra Profissão</Label>
-                              <Input
-                                id="otherProfession"
-                                {...register("otherProfession")}
-                                className={`mt-1 ${errors.otherProfession ? 'border-red-500' : ''}`}
-                              />
-                              {errors.otherProfession && <p className="text-xs text-red-500 mt-1">{errors.otherProfession.message}</p>}
-                            </div>
-                          </div>
-
-                          {/* Linha: Nº Registro, Atividade(s) Atual(is) */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="registrationNumber" className="text-sm font-medium text-teal-600">Nº Registro</Label>
-                              <Input
-                                id="registrationNumber"
-                                {...register("registrationNumber")}
-                                className={`mt-1 ${errors.registrationNumber ? 'border-red-500' : ''}`}
-                              />
-                              {errors.registrationNumber && <p className="text-xs text-red-500 mt-1">{errors.registrationNumber.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="currentActivities" className="text-sm font-medium text-teal-600">Atividade(s) Atual(is)</Label>
-                              <Input
-                                id="currentActivities"
-                                {...register("currentActivities")}
-                                className={`mt-1 ${errors.currentActivities ? 'border-red-500' : ''}`}
-                              />
-                              {errors.currentActivities && <p className="text-xs text-red-500 mt-1">{errors.currentActivities.message}</p>}
-                            </div>
-                          </div>
-
-                          <div className="rounded-md border border-teal-200 bg-teal-50/50 p-4 space-y-3">
-                            <div className="text-xs font-semibold text-teal-900 uppercase tracking-wide">Atividades para Apostilamento</div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                              {[
-                                { value: 'atirador', label: 'Atirador' },
-                                { value: 'cacador', label: 'Caçador' },
-                                { value: 'colecionador', label: 'Colecionador' },
-                              ].map((opt) => (
-                                <label key={opt.value} className="flex items-center gap-2 text-sm text-slate-700">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedApostilamentoActivities.includes(opt.value)}
-                                    onChange={(e: any) => {
-                                      const next = e.target.checked
-                                        ? [...selectedApostilamentoActivities, opt.value]
-                                        : selectedApostilamentoActivities.filter((v) => v !== opt.value);
-                                      setValue('apostilamentoActivities', next as any, { shouldDirty: true });
-                                    }}
-                                  />
-                                  {opt.label}
-                                </label>
-                              ))}
-                            </div>
-
-                            <label className="flex items-center gap-2 text-sm text-slate-700">
-                              <input
-                                type="checkbox"
-                                checked={!!watch('hasSecondCollectionAddress')}
-                                onChange={(e: any) => setValue('hasSecondCollectionAddress', e.target.checked, { shouldDirty: true })}
-                              />
-                              Possui segundo endereço de acervo
-                            </label>
-                          </div>
-
-                          <div className="pt-4 border-t border-yellow-200 space-y-4">
-                            <div className="text-xs font-semibold text-yellow-900 uppercase tracking-wide">Dados do CR / CAC</div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <Label htmlFor="requestType" className="text-sm font-medium text-teal-600">Tipo de Solicitação</Label>
-                                <Controller
-                                  name="requestType"
-                                  control={control}
-                                  render={({ field }: { field: any }) => (
-                                    <Select
-                                      value={field.value || ""}
-                                      onValueChange={field.onChange}
-                                    >
-                                      <SelectTrigger className={`mt-1 ${errors.requestType ? 'border-red-500' : ''}`}>
-                                        <SelectValue placeholder="Selecione" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="Concessão">Concessão</SelectItem>
-                                        <SelectItem value="Renovação">Renovação</SelectItem>
-                                        <SelectItem value="2ª Via">2ª Via</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  )}
-                                />
-                                {errors.requestType && <p className="text-xs text-red-500 mt-1">{errors.requestType.message}</p>}
-                              </div>
-                              {!isConcessao && (
-                              <div>
-                                <Label htmlFor="cacNumber" className="text-sm font-medium text-teal-600">Nº CAC</Label>
+                                  Número de Inscrição (CPF)
+                                </Label>
                                 <Input
-                                  id="cacNumber"
-                                  {...register("cacNumber")}
-                                  className={`mt-1 ${errors.cacNumber ? 'border-red-500' : ''}`}
+                                  id="cpf"
+                                  {...register("cpf")}
+                                  onChange={(e: any) => {
+                                    const formatted = formatCPF(e.target.value);
+                                    e.target.value = formatted;
+                                    register("cpf").onChange(e);
+                                  }}
+                                  className={`mt-1 ${errors.cpf ? "border-red-500" : ""}`}
                                 />
-                                {errors.cacNumber && <p className="text-xs text-red-500 mt-1">{errors.cacNumber.message}</p>}
-                              </div>
-                              )}
-                              {!isConcessao && (
-                              <div>
-                                <Label htmlFor="cacCategory" className="text-sm font-medium text-teal-600">Categoria CAC</Label>
-                                <Input
-                                  id="cacCategory"
-                                  {...register("cacCategory")}
-                                  className={`mt-1 ${errors.cacCategory ? 'border-red-500' : ''}`}
-                                />
-                                {errors.cacCategory && <p className="text-xs text-red-500 mt-1">{errors.cacCategory.message}</p>}
-                              </div>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {!isConcessao && (
-                              <div>
-                                <Label htmlFor="previousCrNumber" className="text-sm font-medium text-teal-600">Nº CR Anterior (se houver)</Label>
-                                <Input
-                                  id="previousCrNumber"
-                                  {...register("previousCrNumber")}
-                                  className={`mt-1 ${errors.previousCrNumber ? 'border-red-500' : ''}`}
-                                />
-                                {errors.previousCrNumber && <p className="text-xs text-red-500 mt-1">{errors.previousCrNumber.message}</p>}
-                              </div>
-                              )}
-                              <div>
-                                <Label htmlFor="psychReportValidity" className="text-sm font-medium text-teal-600">Validade Laudo Psicológico</Label>
-                                <Input
-                                  id="psychReportValidity"
-                                  type="date"
-                                  {...register("psychReportValidity")}
-                                  className={`mt-1 ${errors.psychReportValidity ? 'border-red-500' : ''}`}
-                                />
-                                {errors.psychReportValidity && <p className="text-xs text-red-500 mt-1">{errors.psychReportValidity.message}</p>}
-                              </div>
-                              <div>
-                                <Label htmlFor="techReportValidity" className="text-sm font-medium text-teal-600">Validade Laudo Capacidade Técnica</Label>
-                                <Input
-                                  id="techReportValidity"
-                                  type="date"
-                                  {...register("techReportValidity")}
-                                  className={`mt-1 ${errors.techReportValidity ? 'border-red-500' : ''}`}
-                                />
-                                {errors.techReportValidity && <p className="text-xs text-red-500 mt-1">{errors.techReportValidity.message}</p>}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">Contato</div>
-                          {/* Linha: Telefone 1, Telefone 2, Email */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <Label htmlFor="phone" className="text-sm font-medium text-teal-600">Telefone 1</Label>
-                              <Input
-                                id="phone"
-                                {...register("phone")}
-                                onChange={(e: any) => {
-                                  const formatted = formatPhone(e.target.value);
-                                  e.target.value = formatted;
-                                  register("phone").onChange(e);
-                                }}
-                                className={`mt-1 ${errors.phone ? 'border-red-500' : ''}`}
-                              />
-                              {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="phone2" className="text-sm font-medium text-teal-600">Telefone 2</Label>
-                              <Input
-                                id="phone2"
-                                {...register("phone2")}
-                                onChange={(e: any) => {
-                                  const formatted = formatPhone(e.target.value);
-                                  e.target.value = formatted;
-                                  register("phone2").onChange(e);
-                                }}
-                                className={`mt-1 ${errors.phone2 ? 'border-red-500' : ''}`}
-                              />
-                              {errors.phone2 && <p className="text-xs text-red-500 mt-1">{errors.phone2.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="email" className="text-sm font-medium text-teal-600">Email</Label>
-                              <Input
-                                id="email"
-                                type="email"
-                                {...register("email")}
-                                className={`mt-1 ${errors.email ? 'border-red-500' : ''}`}
-                              />
-                              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
-                            </div>
-                          </div>
-
-                          {/* Linha: Nome da Mãe */}
-                          <div>
-                            <Label htmlFor="motherName" className="text-sm font-medium text-teal-600">Nome da Mãe</Label>
-                            <Input
-                              id="motherName"
-                              {...register("motherName")}
-                              className="mt-1"
-                            />
-                          </div>
-
-                          {/* Linha: Nome do Pai */}
-                          <div>
-                            <Label htmlFor="fatherName" className="text-sm font-medium text-teal-600">Nome do Pai</Label>
-                            <Input
-                              id="fatherName"
-                              {...register("fatherName")}
-                              className="mt-1"
-                            />
-                          </div>
-
-                          <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">Endereço</div>
-                          {/* Linha: CEP, Endereço Residencial, Nº */}
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                              <Label htmlFor="cep" className="text-sm font-medium text-teal-600">CEP</Label>
-                              <Input
-                                id="cep"
-                                {...register("cep")}
-                                onChange={(e: any) => {
-                                  const formatted = formatCEP(e.target.value);
-                                  e.target.value = formatted;
-                                  register("cep").onChange(e);
-                                }}
-                                className={`mt-1 ${errors.cep ? 'border-red-500' : ''}`}
-                              />
-                              {errors.cep && <p className="text-xs text-red-500 mt-1">{errors.cep.message}</p>}
-                            </div>
-                            <div className="md:col-span-2">
-                              <Label htmlFor="address" className="text-sm font-medium text-teal-600">Endereço Residencial</Label>
-                              <Input
-                                id="address"
-                                {...register("address")}
-                                className={`mt-1 ${errors.address ? 'border-red-500' : ''}`}
-                              />
-                              {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="addressNumber" className="text-sm font-medium text-teal-600">Nº</Label>
-                              <Input
-                                id="addressNumber"
-                                {...register("addressNumber")}
-                                className={`mt-1 ${errors.addressNumber ? 'border-red-500' : ''}`}
-                              />
-                              {errors.addressNumber && <p className="text-xs text-red-500 mt-1">{errors.addressNumber.message}</p>}
-                            </div>
-                          </div>
-
-                          {/* Linha: Bairro, Cidade, UF */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <Label htmlFor="neighborhood" className="text-sm font-medium text-teal-600">Bairro</Label>
-                              <Input
-                                id="neighborhood"
-                                {...register("neighborhood")}
-                                className={`mt-1 ${errors.neighborhood ? 'border-red-500' : ''}`}
-                              />
-                              {errors.neighborhood && <p className="text-xs text-red-500 mt-1">{errors.neighborhood.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="city" className="text-sm font-medium text-teal-600">Cidade</Label>
-                              <Input
-                                id="city"
-                                {...register("city")}
-                                className={`mt-1 ${errors.city ? 'border-red-500' : ''}`}
-                              />
-                              {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="residenceUf" className="text-sm font-medium text-teal-600">UF</Label>
-                              <Input
-                                id="residenceUf"
-                                maxLength={2}
-                                {...register("residenceUf")}
-                                onChange={(e: any) => {
-                                  e.target.value = e.target.value.toUpperCase();
-                                  register("residenceUf").onChange(e);
-                                }}
-                                className={`mt-1 ${errors.residenceUf ? 'border-red-500' : ''}`}
-                              />
-                              {errors.residenceUf && <p className="text-xs text-red-500 mt-1">{errors.residenceUf.message}</p>}
-                            </div>
-                          </div>
-
-                          {/* Linha: Complemento */}
-                          <div>
-                            <Label htmlFor="complement" className="text-sm font-medium text-teal-600">Complemento</Label>
-                            <Input
-                              id="complement"
-                              {...register("complement")}
-                              className={`mt-1 ${errors.complement ? 'border-red-500' : ''}`}
-                            />
-                            {errors.complement && <p className="text-xs text-red-500 mt-1">{errors.complement.message}</p>}
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="latitude" className="text-sm font-medium text-teal-600">Latitude</Label>
-                              <Input
-                                id="latitude"
-                                {...register("latitude")}
-                                className={`mt-1 ${errors.latitude ? 'border-red-500' : ''}`}
-                              />
-                              {errors.latitude && <p className="text-xs text-red-500 mt-1">{errors.latitude.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="longitude" className="text-sm font-medium text-teal-600">Longitude</Label>
-                              <Input
-                                id="longitude"
-                                {...register("longitude")}
-                                className={`mt-1 ${errors.longitude ? 'border-red-500' : ''}`}
-                              />
-                              {errors.longitude && <p className="text-xs text-red-500 mt-1">{errors.longitude.message}</p>}
-                            </div>
-                          </div>
-
-                          {watch('hasSecondCollectionAddress') && (<>
-                          <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">Segundo Endereço do Acervo</div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                              <Label htmlFor="acervoCep" className="text-sm font-medium text-teal-600">CEP</Label>
-                              <Input
-                                id="acervoCep"
-                                {...register("acervoCep")}
-                                onChange={(e: any) => {
-                                  const formatted = formatCEP(e.target.value);
-                                  e.target.value = formatted;
-                                  register("acervoCep").onChange(e);
-                                }}
-                                className={`mt-1 ${errors.acervoCep ? 'border-red-500' : ''}`}
-                              />
-                              {errors.acervoCep && <p className="text-xs text-red-500 mt-1">{errors.acervoCep.message}</p>}
-                            </div>
-                            <div className="md:col-span-2">
-                              <Label htmlFor="acervoAddress" className="text-sm font-medium text-teal-600">Endereço</Label>
-                              <Input
-                                id="acervoAddress"
-                                {...register("acervoAddress")}
-                                className={`mt-1 ${errors.acervoAddress ? 'border-red-500' : ''}`}
-                              />
-                              {errors.acervoAddress && <p className="text-xs text-red-500 mt-1">{errors.acervoAddress.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="acervoAddressNumber" className="text-sm font-medium text-teal-600">Nº</Label>
-                              <Input
-                                id="acervoAddressNumber"
-                                {...register("acervoAddressNumber")}
-                                className={`mt-1 ${errors.acervoAddressNumber ? 'border-red-500' : ''}`}
-                              />
-                              {errors.acervoAddressNumber && <p className="text-xs text-red-500 mt-1">{errors.acervoAddressNumber.message}</p>}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <Label htmlFor="acervoNeighborhood" className="text-sm font-medium text-teal-600">Bairro</Label>
-                              <Input
-                                id="acervoNeighborhood"
-                                {...register("acervoNeighborhood")}
-                                className={`mt-1 ${errors.acervoNeighborhood ? 'border-red-500' : ''}`}
-                              />
-                              {errors.acervoNeighborhood && <p className="text-xs text-red-500 mt-1">{errors.acervoNeighborhood.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="acervoCity" className="text-sm font-medium text-teal-600">Cidade</Label>
-                              <Input
-                                id="acervoCity"
-                                {...register("acervoCity")}
-                                className={`mt-1 ${errors.acervoCity ? 'border-red-500' : ''}`}
-                              />
-                              {errors.acervoCity && <p className="text-xs text-red-500 mt-1">{errors.acervoCity.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="acervoUf" className="text-sm font-medium text-teal-600">UF</Label>
-                              <Input
-                                id="acervoUf"
-                                maxLength={2}
-                                {...register("acervoUf")}
-                                onChange={(e: any) => {
-                                  e.target.value = e.target.value.toUpperCase();
-                                  register("acervoUf").onChange(e);
-                                }}
-                                className={`mt-1 ${errors.acervoUf ? 'border-red-500' : ''}`}
-                              />
-                              {errors.acervoUf && <p className="text-xs text-red-500 mt-1">{errors.acervoUf.message}</p>}
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="acervoComplement" className="text-sm font-medium text-teal-600">Complemento</Label>
-                            <Input
-                              id="acervoComplement"
-                              {...register("acervoComplement")}
-                              className={`mt-1 ${errors.acervoComplement ? 'border-red-500' : ''}`}
-                            />
-                            {errors.acervoComplement && <p className="text-xs text-red-500 mt-1">{errors.acervoComplement.message}</p>}
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="acervoLatitude" className="text-sm font-medium text-teal-600">Latitude</Label>
-                              <Input
-                                id="acervoLatitude"
-                                {...register("acervoLatitude")}
-                                className={`mt-1 ${errors.acervoLatitude ? 'border-red-500' : ''}`}
-                              />
-                              {errors.acervoLatitude && <p className="text-xs text-red-500 mt-1">{errors.acervoLatitude.message}</p>}
-                            </div>
-                            <div>
-                              <Label htmlFor="acervoLongitude" className="text-sm font-medium text-teal-600">Longitude</Label>
-                              <Input
-                                id="acervoLongitude"
-                                {...register("acervoLongitude")}
-                                className={`mt-1 ${errors.acervoLongitude ? 'border-red-500' : ''}`}
-                              />
-                              {errors.acervoLongitude && <p className="text-xs text-red-500 mt-1">{errors.acervoLongitude.message}</p>}
-                            </div>
-                          </div>
-                          </>)}
-
-                          {/* Botão Salvar */}
-                          <Button
-                            type="submit"
-                            disabled={updateClientMutation.isPending || !isDirty}
-                            className="w-full bg-primary hover:bg-primary/90"
-                          >
-                            {updateClientMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Salvando...
-                              </>
-                            ) : (
-                              'Salvar Dados do Cliente'
-                            )}
-                          </Button>
-                        </div>
-                      </form>
-                    )}
-
-                    {/* Agendamento de Laudo de Capacidade Técnica */}
-                    {(step.stepTitle === "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)" || step.stepTitle === "Exame de Capacidade Técnica") && (
-                      <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 mb-3">
-                          <Calendar className="h-4 w-4" />
-                          Agendamento de Laudo
-                        </div>
-                        
-                        {step.scheduledDate ? (
-                          <div className="space-y-3">
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-amber-700" />
-                                <span className="font-medium">Data e Hora:</span>
-                                <span>{new Date(step.scheduledDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-amber-700" />
-                                <span className="font-medium">Examinador:</span>
-                                <span>{step.examinerName || 'Não informado'}</span>
-                              </div>
-                            </div>
-                            
-                            {/* Botões de ação */}
-                            <div className="flex gap-2 mt-2">
-                              {/* Botão para reenviar agendamento */}
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => {
-                                  if (!client?.email) {
-                                    toast.error("Cliente não possui email cadastrado");
-                                    return;
-                                  }
-                                  
-                                  sendEmailMutation.mutate({
-                                    clientId: Number(clientId),
-                                    recipientEmail: client.email,
-                                    templateKey: "agendamento_laudo",
-                                    subject: "Confirmação de Agendamento - Laudo de Capacidade Técnica",
-                                    content: "", // Será preenchido pelo template
-                                  });
-                                }}
-                                disabled={sendEmailMutation.isPending || !step.scheduledDate}
-                                className="flex-1"
-                              >
-                                {sendEmailMutation.isPending ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Enviando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    Reenviar Agendamento
-                                  </>
+                                {errors.cpf && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.cpf.message}
+                                  </p>
                                 )}
-                              </Button>
-                              
-                              {/* Botão para alterar agendamento */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  updateSchedulingMutation.mutate({
-                                    clientId: Number(clientId),
-                                    stepId: step.id,
-                                    scheduledDate: undefined,
-                                    examinerName: undefined,
-                                  });
-                                }}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="identityNumber"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Nº Identidade
+                                </Label>
+                                <Input
+                                  id="identityNumber"
+                                  {...register("identityNumber")}
+                                  className={`mt-1 ${errors.identityNumber ? "border-red-500" : ""}`}
+                                />
+                                {errors.identityNumber && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.identityNumber.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="identityIssueDate"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Data de Expedição
+                                </Label>
+                                <Input
+                                  id="identityIssueDate"
+                                  type="date"
+                                  {...register("identityIssueDate")}
+                                  className={`mt-1 ${errors.identityIssueDate ? "border-red-500" : ""}`}
+                                />
+                                {errors.identityIssueDate && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.identityIssueDate.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="identityIssuer"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Órgão Emissor
+                                </Label>
+                                <Input
+                                  id="identityIssuer"
+                                  placeholder="ssp"
+                                  {...register("identityIssuer")}
+                                  className={`mt-1 ${errors.identityIssuer ? "border-red-500" : ""}`}
+                                />
+                                {errors.identityIssuer && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.identityIssuer.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="identityUf"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  UF
+                                </Label>
+                                <Input
+                                  id="identityUf"
+                                  placeholder="DF"
+                                  maxLength={2}
+                                  {...register("identityUf")}
+                                  onChange={(e: any) => {
+                                    e.target.value =
+                                      e.target.value.toUpperCase();
+                                    register("identityUf").onChange(e);
+                                  }}
+                                  className={`mt-1 ${errors.identityUf ? "border-red-500" : ""}`}
+                                />
+                                {errors.identityUf && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.identityUf.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Linha: Estado Civil */}
+                            <div>
+                              <Label
+                                htmlFor="maritalStatus"
+                                className="text-sm font-medium text-teal-600"
                               >
-                                Alterar Agendamento
-                              </Button>
+                                Estado Civil
+                              </Label>
+                              <Controller
+                                name="maritalStatus"
+                                control={control}
+                                render={({ field }: { field: any }) => (
+                                  <Select
+                                    value={field.value || ""}
+                                    onValueChange={field.onChange}
+                                  >
+                                    <SelectTrigger
+                                      id="maritalStatus"
+                                      className={`mt-1 ${errors.maritalStatus ? "border-red-500" : ""}`}
+                                    >
+                                      <SelectValue placeholder="Selecione" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Solteiro(a)">
+                                        Solteiro(a)
+                                      </SelectItem>
+                                      <SelectItem value="Casado(a)">
+                                        Casado(a)
+                                      </SelectItem>
+                                      <SelectItem value="União estável">
+                                        União estável
+                                      </SelectItem>
+                                      <SelectItem value="Separado(a)">
+                                        Separado(a)
+                                      </SelectItem>
+                                      <SelectItem value="Divorciado(a)">
+                                        Divorciado(a)
+                                      </SelectItem>
+                                      <SelectItem value="Viúvo(a)">
+                                        Viúvo(a)
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
+                              {errors.maritalStatus && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {errors.maritalStatus.message}
+                                </p>
+                              )}
                             </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
+
+                            {/* Linha: Data de Nascimento, País, UF, Local de Nascimento */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div>
+                                <Label
+                                  htmlFor="birthDate"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Data de Nascimento
+                                </Label>
+                                <Input
+                                  id="birthDate"
+                                  type="date"
+                                  {...register("birthDate")}
+                                  className={`mt-1 ${errors.birthDate ? "border-red-500" : ""}`}
+                                />
+                                {errors.birthDate && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.birthDate.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="birthCountry"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  País
+                                </Label>
+                                <Input
+                                  id="birthCountry"
+                                  {...register("birthCountry")}
+                                  className={`mt-1 ${errors.birthCountry ? "border-red-500" : ""}`}
+                                />
+                                {errors.birthCountry && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.birthCountry.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="birthUf"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  UF
+                                </Label>
+                                <Input
+                                  id="birthUf"
+                                  maxLength={2}
+                                  {...register("birthUf")}
+                                  onChange={(e: any) => {
+                                    e.target.value =
+                                      e.target.value.toUpperCase();
+                                    register("birthUf").onChange(e);
+                                  }}
+                                  className={`mt-1 ${errors.birthUf ? "border-red-500" : ""}`}
+                                />
+                                {errors.birthUf && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.birthUf.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="birthPlace"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Local de Nascimento
+                                </Label>
+                                <Input
+                                  id="birthPlace"
+                                  {...register("birthPlace")}
+                                  className={`mt-1 ${errors.birthPlace ? "border-red-500" : ""}`}
+                                />
+                                {errors.birthPlace && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.birthPlace.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Linha: Profissão, Outra Profissão */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label
+                                  htmlFor="profession"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Profissão
+                                </Label>
+                                <Input
+                                  id="profession"
+                                  {...register("profession")}
+                                  className={`mt-1 ${errors.profession ? "border-red-500" : ""}`}
+                                />
+                                {errors.profession && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.profession.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="otherProfession"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Outra Profissão
+                                </Label>
+                                <Input
+                                  id="otherProfession"
+                                  {...register("otherProfession")}
+                                  className={`mt-1 ${errors.otherProfession ? "border-red-500" : ""}`}
+                                />
+                                {errors.otherProfession && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.otherProfession.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Linha: Nº Registro, Atividade(s) Atual(is) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label
+                                  htmlFor="registrationNumber"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Nº Registro
+                                </Label>
+                                <Input
+                                  id="registrationNumber"
+                                  {...register("registrationNumber")}
+                                  className={`mt-1 ${errors.registrationNumber ? "border-red-500" : ""}`}
+                                />
+                                {errors.registrationNumber && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.registrationNumber.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="currentActivities"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Atividade(s) Atual(is)
+                                </Label>
+                                <Input
+                                  id="currentActivities"
+                                  {...register("currentActivities")}
+                                  className={`mt-1 ${errors.currentActivities ? "border-red-500" : ""}`}
+                                />
+                                {errors.currentActivities && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.currentActivities.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="rounded-md border border-teal-200 bg-teal-50/50 p-4 space-y-3">
+                              <div className="text-xs font-semibold text-teal-900 uppercase tracking-wide">
+                                Atividades para Apostilamento
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                {[
+                                  { value: "atirador", label: "Atirador" },
+                                  { value: "cacador", label: "Caçador" },
+                                  {
+                                    value: "colecionador",
+                                    label: "Colecionador",
+                                  },
+                                ].map(opt => (
+                                  <label
+                                    key={opt.value}
+                                    className="flex items-center gap-2 text-sm text-slate-700"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedApostilamentoActivities.includes(
+                                        opt.value
+                                      )}
+                                      onChange={(e: any) => {
+                                        const next = e.target.checked
+                                          ? [
+                                              ...selectedApostilamentoActivities,
+                                              opt.value,
+                                            ]
+                                          : selectedApostilamentoActivities.filter(
+                                              v => v !== opt.value
+                                            );
+                                        setValue(
+                                          "apostilamentoActivities",
+                                          next as any,
+                                          { shouldDirty: true }
+                                        );
+                                      }}
+                                    />
+                                    {opt.label}
+                                  </label>
+                                ))}
+                              </div>
+
+                              <label className="flex items-center gap-2 text-sm text-slate-700">
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    !!watch("hasSecondCollectionAddress")
+                                  }
+                                  onChange={(e: any) =>
+                                    setValue(
+                                      "hasSecondCollectionAddress",
+                                      e.target.checked,
+                                      { shouldDirty: true }
+                                    )
+                                  }
+                                />
+                                Possui segundo endereço de acervo
+                              </label>
+                            </div>
+
+                            <div className="pt-4 border-t border-yellow-200 space-y-4">
+                              <div className="text-xs font-semibold text-yellow-900 uppercase tracking-wide">
+                                Dados do CR / CAC
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <Label
+                                    htmlFor="requestType"
+                                    className="text-sm font-medium text-teal-600"
+                                  >
+                                    Tipo de Solicitação
+                                  </Label>
+                                  <Controller
+                                    name="requestType"
+                                    control={control}
+                                    render={({ field }: { field: any }) => (
+                                      <Select
+                                        value={field.value || ""}
+                                        onValueChange={field.onChange}
+                                      >
+                                        <SelectTrigger
+                                          className={`mt-1 ${errors.requestType ? "border-red-500" : ""}`}
+                                        >
+                                          <SelectValue placeholder="Selecione" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="Concessão">
+                                            Concessão
+                                          </SelectItem>
+                                          <SelectItem value="Renovação">
+                                            Renovação
+                                          </SelectItem>
+                                          <SelectItem value="2ª Via">
+                                            2ª Via
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  />
+                                  {errors.requestType && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                      {errors.requestType.message}
+                                    </p>
+                                  )}
+                                </div>
+                                {!isConcessao && (
+                                  <div>
+                                    <Label
+                                      htmlFor="cacNumber"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      Nº CAC
+                                    </Label>
+                                    <Input
+                                      id="cacNumber"
+                                      {...register("cacNumber")}
+                                      className={`mt-1 ${errors.cacNumber ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.cacNumber && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.cacNumber.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                                {!isConcessao && (
+                                  <div>
+                                    <Label
+                                      htmlFor="cacCategory"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      Categoria CAC
+                                    </Label>
+                                    <Input
+                                      id="cacCategory"
+                                      {...register("cacCategory")}
+                                      className={`mt-1 ${errors.cacCategory ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.cacCategory && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.cacCategory.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {!isConcessao && (
+                                  <div>
+                                    <Label
+                                      htmlFor="previousCrNumber"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      Nº CR Anterior (se houver)
+                                    </Label>
+                                    <Input
+                                      id="previousCrNumber"
+                                      {...register("previousCrNumber")}
+                                      className={`mt-1 ${errors.previousCrNumber ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.previousCrNumber && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.previousCrNumber.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                                <div>
+                                  <Label
+                                    htmlFor="psychReportValidity"
+                                    className="text-sm font-medium text-teal-600"
+                                  >
+                                    Validade Laudo Psicológico
+                                  </Label>
+                                  <Input
+                                    id="psychReportValidity"
+                                    type="date"
+                                    {...register("psychReportValidity")}
+                                    className={`mt-1 ${errors.psychReportValidity ? "border-red-500" : ""}`}
+                                  />
+                                  {errors.psychReportValidity && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                      {errors.psychReportValidity.message}
+                                    </p>
+                                  )}
+                                </div>
+                                <div>
+                                  <Label
+                                    htmlFor="techReportValidity"
+                                    className="text-sm font-medium text-teal-600"
+                                  >
+                                    Validade Laudo Capacidade Técnica
+                                  </Label>
+                                  <Input
+                                    id="techReportValidity"
+                                    type="date"
+                                    {...register("techReportValidity")}
+                                    className={`mt-1 ${errors.techReportValidity ? "border-red-500" : ""}`}
+                                  />
+                                  {errors.techReportValidity && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                      {errors.techReportValidity.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">
+                              Contato
+                            </div>
+                            {/* Linha: Telefone 1, Telefone 2, Email */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Label
+                                  htmlFor="phone"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Telefone 1
+                                </Label>
+                                <Input
+                                  id="phone"
+                                  {...register("phone")}
+                                  onChange={(e: any) => {
+                                    const formatted = formatPhone(
+                                      e.target.value
+                                    );
+                                    e.target.value = formatted;
+                                    register("phone").onChange(e);
+                                  }}
+                                  className={`mt-1 ${errors.phone ? "border-red-500" : ""}`}
+                                />
+                                {errors.phone && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.phone.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="phone2"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Telefone 2
+                                </Label>
+                                <Input
+                                  id="phone2"
+                                  {...register("phone2")}
+                                  onChange={(e: any) => {
+                                    const formatted = formatPhone(
+                                      e.target.value
+                                    );
+                                    e.target.value = formatted;
+                                    register("phone2").onChange(e);
+                                  }}
+                                  className={`mt-1 ${errors.phone2 ? "border-red-500" : ""}`}
+                                />
+                                {errors.phone2 && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.phone2.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="email"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Email
+                                </Label>
+                                <Input
+                                  id="email"
+                                  type="email"
+                                  {...register("email")}
+                                  className={`mt-1 ${errors.email ? "border-red-500" : ""}`}
+                                />
+                                {errors.email && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.email.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Linha: Nome da Mãe */}
                             <div>
-                              <Label htmlFor={`date-${step.id}`} className="text-sm">Data e Hora do Agendamento</Label>
+                              <Label
+                                htmlFor="motherName"
+                                className="text-sm font-medium text-teal-600"
+                              >
+                                Nome da Mãe
+                              </Label>
                               <Input
-                                id={`date-${step.id}`}
-                                type="datetime-local"
-                                value={schedulingData[step.id]?.date || ''}
-                                onChange={(e) => setSchedulingData(prev => ({
-                                  ...prev,
-                                  [step.id]: { ...prev[step.id], date: e.target.value }
-                                }))}
+                                id="motherName"
+                                {...register("motherName")}
                                 className="mt-1"
                               />
                             </div>
+
+                            {/* Linha: Nome do Pai */}
                             <div>
-                              <Label htmlFor={`examiner-${step.id}`} className="text-sm">Nome do Examinador</Label>
+                              <Label
+                                htmlFor="fatherName"
+                                className="text-sm font-medium text-teal-600"
+                              >
+                                Nome do Pai
+                              </Label>
                               <Input
-                                id={`examiner-${step.id}`}
-                                type="text"
-                                placeholder="Digite o nome do examinador"
-                                value={schedulingData[step.id]?.examiner || ''}
-                                onChange={(e) => setSchedulingData(prev => ({
-                                  ...prev,
-                                  [step.id]: { ...prev[step.id], examiner: e.target.value }
-                                }))}
+                                id="fatherName"
+                                {...register("fatherName")}
                                 className="mt-1"
                               />
                             </div>
+
+                            <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">
+                              Endereço
+                            </div>
+                            {/* Linha: CEP, Endereço Residencial, Nº */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div>
+                                <Label
+                                  htmlFor="cep"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  CEP
+                                </Label>
+                                <Input
+                                  id="cep"
+                                  {...register("cep")}
+                                  onChange={(e: any) => {
+                                    const formatted = formatCEP(e.target.value);
+                                    e.target.value = formatted;
+                                    register("cep").onChange(e);
+                                  }}
+                                  className={`mt-1 ${errors.cep ? "border-red-500" : ""}`}
+                                />
+                                {errors.cep && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.cep.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="md:col-span-2">
+                                <Label
+                                  htmlFor="address"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Endereço Residencial
+                                </Label>
+                                <Input
+                                  id="address"
+                                  {...register("address")}
+                                  className={`mt-1 ${errors.address ? "border-red-500" : ""}`}
+                                />
+                                {errors.address && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.address.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="addressNumber"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Nº
+                                </Label>
+                                <Input
+                                  id="addressNumber"
+                                  {...register("addressNumber")}
+                                  className={`mt-1 ${errors.addressNumber ? "border-red-500" : ""}`}
+                                />
+                                {errors.addressNumber && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.addressNumber.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Linha: Bairro, Cidade, UF */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Label
+                                  htmlFor="neighborhood"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Bairro
+                                </Label>
+                                <Input
+                                  id="neighborhood"
+                                  {...register("neighborhood")}
+                                  className={`mt-1 ${errors.neighborhood ? "border-red-500" : ""}`}
+                                />
+                                {errors.neighborhood && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.neighborhood.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="city"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Cidade
+                                </Label>
+                                <Input
+                                  id="city"
+                                  {...register("city")}
+                                  className={`mt-1 ${errors.city ? "border-red-500" : ""}`}
+                                />
+                                {errors.city && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.city.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="residenceUf"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  UF
+                                </Label>
+                                <Input
+                                  id="residenceUf"
+                                  maxLength={2}
+                                  {...register("residenceUf")}
+                                  onChange={(e: any) => {
+                                    e.target.value =
+                                      e.target.value.toUpperCase();
+                                    register("residenceUf").onChange(e);
+                                  }}
+                                  className={`mt-1 ${errors.residenceUf ? "border-red-500" : ""}`}
+                                />
+                                {errors.residenceUf && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.residenceUf.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Linha: Complemento */}
+                            <div>
+                              <Label
+                                htmlFor="complement"
+                                className="text-sm font-medium text-teal-600"
+                              >
+                                Complemento
+                              </Label>
+                              <Input
+                                id="complement"
+                                {...register("complement")}
+                                className={`mt-1 ${errors.complement ? "border-red-500" : ""}`}
+                              />
+                              {errors.complement && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {errors.complement.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label
+                                  htmlFor="latitude"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Latitude
+                                </Label>
+                                <Input
+                                  id="latitude"
+                                  {...register("latitude")}
+                                  className={`mt-1 ${errors.latitude ? "border-red-500" : ""}`}
+                                />
+                                {errors.latitude && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.latitude.message}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor="longitude"
+                                  className="text-sm font-medium text-teal-600"
+                                >
+                                  Longitude
+                                </Label>
+                                <Input
+                                  id="longitude"
+                                  {...register("longitude")}
+                                  className={`mt-1 ${errors.longitude ? "border-red-500" : ""}`}
+                                />
+                                {errors.longitude && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors.longitude.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {watch("hasSecondCollectionAddress") && (
+                              <>
+                                <div className="pt-4 border-t border-yellow-200 text-xs font-semibold text-yellow-900 uppercase tracking-wide">
+                                  Segundo Endereço do Acervo
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                  <div>
+                                    <Label
+                                      htmlFor="acervoCep"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      CEP
+                                    </Label>
+                                    <Input
+                                      id="acervoCep"
+                                      {...register("acervoCep")}
+                                      onChange={(e: any) => {
+                                        const formatted = formatCEP(
+                                          e.target.value
+                                        );
+                                        e.target.value = formatted;
+                                        register("acervoCep").onChange(e);
+                                      }}
+                                      className={`mt-1 ${errors.acervoCep ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.acervoCep && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.acervoCep.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="md:col-span-2">
+                                    <Label
+                                      htmlFor="acervoAddress"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      Endereço
+                                    </Label>
+                                    <Input
+                                      id="acervoAddress"
+                                      {...register("acervoAddress")}
+                                      className={`mt-1 ${errors.acervoAddress ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.acervoAddress && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.acervoAddress.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <Label
+                                      htmlFor="acervoAddressNumber"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      Nº
+                                    </Label>
+                                    <Input
+                                      id="acervoAddressNumber"
+                                      {...register("acervoAddressNumber")}
+                                      className={`mt-1 ${errors.acervoAddressNumber ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.acervoAddressNumber && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.acervoAddressNumber.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <div>
+                                    <Label
+                                      htmlFor="acervoNeighborhood"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      Bairro
+                                    </Label>
+                                    <Input
+                                      id="acervoNeighborhood"
+                                      {...register("acervoNeighborhood")}
+                                      className={`mt-1 ${errors.acervoNeighborhood ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.acervoNeighborhood && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.acervoNeighborhood.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <Label
+                                      htmlFor="acervoCity"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      Cidade
+                                    </Label>
+                                    <Input
+                                      id="acervoCity"
+                                      {...register("acervoCity")}
+                                      className={`mt-1 ${errors.acervoCity ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.acervoCity && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.acervoCity.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <Label
+                                      htmlFor="acervoUf"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      UF
+                                    </Label>
+                                    <Input
+                                      id="acervoUf"
+                                      maxLength={2}
+                                      {...register("acervoUf")}
+                                      onChange={(e: any) => {
+                                        e.target.value =
+                                          e.target.value.toUpperCase();
+                                        register("acervoUf").onChange(e);
+                                      }}
+                                      className={`mt-1 ${errors.acervoUf ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.acervoUf && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.acervoUf.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <Label
+                                    htmlFor="acervoComplement"
+                                    className="text-sm font-medium text-teal-600"
+                                  >
+                                    Complemento
+                                  </Label>
+                                  <Input
+                                    id="acervoComplement"
+                                    {...register("acervoComplement")}
+                                    className={`mt-1 ${errors.acervoComplement ? "border-red-500" : ""}`}
+                                  />
+                                  {errors.acervoComplement && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                      {errors.acervoComplement.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <Label
+                                      htmlFor="acervoLatitude"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      Latitude
+                                    </Label>
+                                    <Input
+                                      id="acervoLatitude"
+                                      {...register("acervoLatitude")}
+                                      className={`mt-1 ${errors.acervoLatitude ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.acervoLatitude && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.acervoLatitude.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <Label
+                                      htmlFor="acervoLongitude"
+                                      className="text-sm font-medium text-teal-600"
+                                    >
+                                      Longitude
+                                    </Label>
+                                    <Input
+                                      id="acervoLongitude"
+                                      {...register("acervoLongitude")}
+                                      className={`mt-1 ${errors.acervoLongitude ? "border-red-500" : ""}`}
+                                    />
+                                    {errors.acervoLongitude && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        {errors.acervoLongitude.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+
+                            {/* Botão Salvar */}
                             <Button
-                              onClick={() => handleSchedulingUpdate(step.id)}
-                              disabled={updateSchedulingMutation.isPending || !schedulingData[step.id]?.date}
-                              className="w-full"
+                              type="submit"
+                              disabled={
+                                updateClientMutation.isPending || !isDirty
+                              }
+                              className="w-full bg-primary hover:bg-primary/90"
                             >
-                              {updateSchedulingMutation.isPending ? (
+                              {updateClientMutation.isPending ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   Salvando...
                                 </>
                               ) : (
-                                'Confirmar Agendamento'
+                                "Salvar Dados do Cliente"
                               )}
                             </Button>
                           </div>
-                        )}
-                      </div>
-                    )}
+                        </form>
+                      )}
 
-                    {/* Dados do Processo Sinarm-CAC */}
-                    {step.stepId === "acompanhamento-sinarm" && (
-                      <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-purple-900 mb-4">
-                          <Target className="h-4 w-4" />
-                          Dados do Processo Sinarm-CAC
-                        </div>
-                        
-                        <div className="space-y-4">
-                          {/* Linha com 3 campos: Nº Protocolo | Data Abertura | Status */}
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <Label htmlFor="protocolNumber" className="text-sm font-medium text-gray-700">Número de Protocolo</Label>
-                              <Input
-                                id="protocolNumber"
-                                type="text"
-                                placeholder="Ex: 2025/12345"
-                                defaultValue={step.protocolNumber || ""}
-                                onBlur={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                  if (e.target.value !== (step.protocolNumber || "")) {
-                                    updateStepMutation.mutate({
-                                      stepId: step.id,
-                                      protocolNumber: e.target.value,
-                                    });
-                                  }
-                                }}
-                                className="mt-1"
-                              />
-                            </div>
-
-                            <div>
-                              <Label htmlFor="sinarmOpenDate" className="text-sm font-medium text-gray-700">Data de Abertura</Label>
-                              <Input
-                                id="sinarmOpenDate"
-                                type="date"
-                                defaultValue={step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : ""}
-                                onBlur={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                  const newVal = e.target.value;
-                                  const currentVal = step.sinarmOpenDate ? new Date(step.sinarmOpenDate).toISOString().split('T')[0] : "";
-                                  if (newVal !== currentVal) {
-                                    updateStepMutation.mutate({
-                                      stepId: step.id,
-                                      sinarmOpenDate: newVal ? new Date(newVal).toISOString() : undefined,
-                                    });
-                                  }
-                                }}
-                                className="mt-1"
-                              />
-                            </div>
-
-                            <div>
-                              <Label htmlFor="sinarmStatus" className="text-sm font-medium text-gray-700">Status do Processo</Label>
-                              <Select
-                                value={step.sinarmStatus || ""}
-                                onValueChange={(value: string) => {
-                                  const protocolEl = document.getElementById("protocolNumber") as HTMLInputElement | null;
-                                  const dateEl = document.getElementById("sinarmOpenDate") as HTMLInputElement | null;
-                                  const hasProtocol = protocolEl?.value?.trim() || step.protocolNumber;
-                                  const hasDate = dateEl?.value?.trim() || step.sinarmOpenDate;
-                                  if (!hasProtocol || !hasDate) {
-                                    toast.error("Para alterar o status, preencha o Número de Protocolo e a Data de Abertura.");
-                                    return;
-                                  }
-                                  setPendingSinarmStatusChange({
-                                    stepId: step.id,
-                                    status: value,
-                                    protocolNumber: protocolEl?.value?.trim() || step.protocolNumber || undefined,
-                                    sinarmOpenDate: dateEl?.value?.trim()
-                                      ? new Date(dateEl.value).toISOString()
-                                      : step.sinarmOpenDate
-                                        ? new Date(step.sinarmOpenDate).toISOString()
-                                        : undefined,
-                                  });
-                                  setSinarmComment("");
-                                  setIsSinarmStatusDialogOpen(true);
-                                }}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="Selecione o status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Iniciado">Iniciado</SelectItem>
-                                  <SelectItem value="Solicitado">Solicitado</SelectItem>
-                                  <SelectItem value="Aguardando Baixa GRU">Aguardando Baixa GRU</SelectItem>
-                                  <SelectItem value="Em Análise">Em Análise</SelectItem>
-                                  <SelectItem value="Restituído">Restituído</SelectItem>
-                                  <SelectItem value="Deferido">Deferido</SelectItem>
-                                  <SelectItem value="Indeferido">Indeferido</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                      {/* Agendamento de Laudo de Capacidade Técnica */}
+                      {(step.stepTitle ===
+                        "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)" ||
+                        step.stepTitle === "Exame de Capacidade Técnica") && (
+                        <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 mb-3">
+                            <Calendar className="h-4 w-4" />
+                            Agendamento de Laudo
                           </div>
 
-                          {/* Modal de alteração de status */}
-                          <Dialog open={isSinarmStatusDialogOpen} onOpenChange={setIsSinarmStatusDialogOpen}>
-                            <DialogContent className="sm:max-w-lg">
-                              <DialogHeader>
-                                <DialogTitle>Alterar status do SINARM</DialogTitle>
-                                <DialogDescription>
-                                  Você pode registrar um comentário sobre esta alteração (opcional).
-                                </DialogDescription>
-                              </DialogHeader>
+                          {step.scheduledDate ? (
+                            <div className="space-y-3">
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-amber-700" />
+                                  <span className="font-medium">
+                                    Data e Hora:
+                                  </span>
+                                  <span>
+                                    {new Date(
+                                      step.scheduledDate
+                                    ).toLocaleString("pt-BR", {
+                                      dateStyle: "short",
+                                      timeStyle: "short",
+                                    })}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-amber-700" />
+                                  <span className="font-medium">
+                                    Examinador:
+                                  </span>
+                                  <span>
+                                    {step.examinerName || "Não informado"}
+                                  </span>
+                                </div>
+                              </div>
 
-                              <div className="space-y-2">
-                                <Label htmlFor="sinarmComment" className="text-sm font-medium text-gray-700">
-                                  Comentário (opcional)
+                              {/* Botões de ação */}
+                              <div className="flex gap-2 mt-2">
+                                {/* Botão para reenviar agendamento */}
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (!client?.email) {
+                                      toast.error(
+                                        "Cliente não possui email cadastrado"
+                                      );
+                                      return;
+                                    }
+
+                                    sendEmailMutation.mutate({
+                                      clientId: Number(clientId),
+                                      recipientEmail: client.email,
+                                      templateKey: "agendamento_laudo",
+                                      subject:
+                                        "Confirmação de Agendamento - Laudo de Capacidade Técnica",
+                                      content: "", // Será preenchido pelo template
+                                    });
+                                  }}
+                                  disabled={
+                                    sendEmailMutation.isPending ||
+                                    !step.scheduledDate
+                                  }
+                                  className="flex-1"
+                                >
+                                  {sendEmailMutation.isPending ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Enviando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Mail className="h-4 w-4 mr-2" />
+                                      Reenviar Agendamento
+                                    </>
+                                  )}
+                                </Button>
+
+                                {/* Botão para alterar agendamento */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    updateSchedulingMutation.mutate({
+                                      clientId: Number(clientId),
+                                      stepId: step.id,
+                                      scheduledDate: undefined,
+                                      examinerName: undefined,
+                                    });
+                                  }}
+                                >
+                                  Alterar Agendamento
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <div>
+                                <Label
+                                  htmlFor={`date-${step.id}`}
+                                  className="text-sm"
+                                >
+                                  Data e Hora do Agendamento
                                 </Label>
-                                <Textarea
-                                  id="sinarmComment"
-                                  value={sinarmComment}
-                                  onChange={(e) => setSinarmComment(e.target.value)}
-                                  placeholder="Ex: enviado comprovante, aguardando retorno, etc."
+                                <Input
+                                  id={`date-${step.id}`}
+                                  type="datetime-local"
+                                  value={schedulingData[step.id]?.date || ""}
+                                  onChange={e =>
+                                    setSchedulingData(prev => ({
+                                      ...prev,
+                                      [step.id]: {
+                                        ...prev[step.id],
+                                        date: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label
+                                  htmlFor={`examiner-${step.id}`}
+                                  className="text-sm"
+                                >
+                                  Nome do Examinador
+                                </Label>
+                                <Input
+                                  id={`examiner-${step.id}`}
+                                  type="text"
+                                  placeholder="Digite o nome do examinador"
+                                  value={
+                                    schedulingData[step.id]?.examiner || ""
+                                  }
+                                  onChange={e =>
+                                    setSchedulingData(prev => ({
+                                      ...prev,
+                                      [step.id]: {
+                                        ...prev[step.id],
+                                        examiner: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                  className="mt-1"
+                                />
+                              </div>
+                              <Button
+                                onClick={() => handleSchedulingUpdate(step.id)}
+                                disabled={
+                                  updateSchedulingMutation.isPending ||
+                                  !schedulingData[step.id]?.date
+                                }
+                                className="w-full"
+                              >
+                                {updateSchedulingMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Salvando...
+                                  </>
+                                ) : (
+                                  "Confirmar Agendamento"
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Dados do Processo Sinarm-CAC */}
+                      {step.stepId === "acompanhamento-sinarm" && (
+                        <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-purple-900 mb-4">
+                            <Target className="h-4 w-4" />
+                            Dados do Processo Sinarm-CAC
+                          </div>
+
+                          <div className="space-y-4">
+                            {/* Linha com 3 campos: Nº Protocolo | Data Abertura | Status */}
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <Label
+                                  htmlFor="protocolNumber"
+                                  className="text-sm font-medium text-gray-700"
+                                >
+                                  Número de Protocolo
+                                </Label>
+                                <Input
+                                  id="protocolNumber"
+                                  type="text"
+                                  placeholder="Ex: 2025/12345"
+                                  defaultValue={step.protocolNumber || ""}
+                                  onBlur={(
+                                    e: React.ChangeEvent<HTMLInputElement>
+                                  ) => {
+                                    if (
+                                      e.target.value !==
+                                      (step.protocolNumber || "")
+                                    ) {
+                                      updateStepMutation.mutate({
+                                        stepId: step.id,
+                                        protocolNumber: e.target.value,
+                                      });
+                                    }
+                                  }}
+                                  className="mt-1"
                                 />
                               </div>
 
-                              <DialogFooter>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => {
-                                    setIsSinarmStatusDialogOpen(false);
-                                    setPendingSinarmStatusChange(null);
-                                    setSinarmComment("");
-                                  }}
+                              <div>
+                                <Label
+                                  htmlFor="sinarmOpenDate"
+                                  className="text-sm font-medium text-gray-700"
                                 >
-                                  Cancelar
-                                </Button>
-                                <Button
-                                  onClick={() => {
-                                    if (!pendingSinarmStatusChange) return;
-                                    const trimmed = sinarmComment.trim();
-                                    updateStepMutation.mutate({
-                                      stepId: pendingSinarmStatusChange.stepId,
-                                      sinarmStatus: pendingSinarmStatusChange.status,
-                                      ...(pendingSinarmStatusChange.protocolNumber ? { protocolNumber: pendingSinarmStatusChange.protocolNumber } : {}),
-                                      ...(pendingSinarmStatusChange.sinarmOpenDate ? { sinarmOpenDate: pendingSinarmStatusChange.sinarmOpenDate } : {}),
-                                      ...(trimmed ? { sinarmComment: trimmed } : {}),
+                                  Data de Abertura
+                                </Label>
+                                <Input
+                                  id="sinarmOpenDate"
+                                  type="date"
+                                  defaultValue={
+                                    step.sinarmOpenDate
+                                      ? new Date(step.sinarmOpenDate)
+                                          .toISOString()
+                                          .split("T")[0]
+                                      : ""
+                                  }
+                                  onBlur={(
+                                    e: React.ChangeEvent<HTMLInputElement>
+                                  ) => {
+                                    const newVal = e.target.value;
+                                    const currentVal = step.sinarmOpenDate
+                                      ? new Date(step.sinarmOpenDate)
+                                          .toISOString()
+                                          .split("T")[0]
+                                      : "";
+                                    if (newVal !== currentVal) {
+                                      updateStepMutation.mutate({
+                                        stepId: step.id,
+                                        sinarmOpenDate: newVal
+                                          ? new Date(newVal).toISOString()
+                                          : undefined,
+                                      });
+                                    }
+                                  }}
+                                  className="mt-1"
+                                />
+                              </div>
+
+                              <div>
+                                <Label
+                                  htmlFor="sinarmStatus"
+                                  className="text-sm font-medium text-gray-700"
+                                >
+                                  Status do Processo
+                                </Label>
+                                <Select
+                                  value={step.sinarmStatus || ""}
+                                  onValueChange={(value: string) => {
+                                    const protocolEl = document.getElementById(
+                                      "protocolNumber"
+                                    ) as HTMLInputElement | null;
+                                    const dateEl = document.getElementById(
+                                      "sinarmOpenDate"
+                                    ) as HTMLInputElement | null;
+                                    const hasProtocol =
+                                      protocolEl?.value?.trim() ||
+                                      step.protocolNumber;
+                                    const hasDate =
+                                      dateEl?.value?.trim() ||
+                                      step.sinarmOpenDate;
+                                    if (!hasProtocol || !hasDate) {
+                                      toast.error(
+                                        "Para alterar o status, preencha o Número de Protocolo e a Data de Abertura."
+                                      );
+                                      return;
+                                    }
+                                    setPendingSinarmStatusChange({
+                                      stepId: step.id,
+                                      status: value,
+                                      protocolNumber:
+                                        protocolEl?.value?.trim() ||
+                                        step.protocolNumber ||
+                                        undefined,
+                                      sinarmOpenDate: dateEl?.value?.trim()
+                                        ? new Date(dateEl.value).toISOString()
+                                        : step.sinarmOpenDate
+                                          ? new Date(
+                                              step.sinarmOpenDate
+                                            ).toISOString()
+                                          : undefined,
                                     });
-                                    setIsSinarmStatusDialogOpen(false);
-                                    setPendingSinarmStatusChange(null);
                                     setSinarmComment("");
+                                    setIsSinarmStatusDialogOpen(true);
                                   }}
-                                  disabled={updateStepMutation.isPending || !pendingSinarmStatusChange}
                                 >
-                                  {updateStepMutation.isPending ? (
-                                    <>
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      Salvando...
-                                    </>
-                                  ) : (
-                                    'Salvar'
-                                  )}
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue placeholder="Selecione o status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Iniciado">
+                                      Iniciado
+                                    </SelectItem>
+                                    <SelectItem value="Solicitado">
+                                      Solicitado
+                                    </SelectItem>
+                                    <SelectItem value="Aguardando Baixa GRU">
+                                      Aguardando Baixa GRU
+                                    </SelectItem>
+                                    <SelectItem value="Em Análise">
+                                      Em Análise
+                                    </SelectItem>
+                                    <SelectItem value="Restituído">
+                                      Restituído
+                                    </SelectItem>
+                                    <SelectItem value="Deferido">
+                                      Deferido
+                                    </SelectItem>
+                                    <SelectItem value="Indeferido">
+                                      Indeferido
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
 
-                          {/* Histórico de comentários inline (sempre visível) */}
-                          <SinarmCommentsInline stepId={step.id} />
+                            {/* Modal de alteração de status */}
+                            <Dialog
+                              open={isSinarmStatusDialogOpen}
+                              onOpenChange={setIsSinarmStatusDialogOpen}
+                            >
+                              <DialogContent className="sm:max-w-lg">
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    Alterar status do SINARM
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    Você pode registrar um comentário sobre esta
+                                    alteração (opcional).
+                                  </DialogDescription>
+                                </DialogHeader>
+
+                                <div className="space-y-2">
+                                  <Label
+                                    htmlFor="sinarmComment"
+                                    className="text-sm font-medium text-gray-700"
+                                  >
+                                    Comentário (opcional)
+                                  </Label>
+                                  <Textarea
+                                    id="sinarmComment"
+                                    value={sinarmComment}
+                                    onChange={e =>
+                                      setSinarmComment(e.target.value)
+                                    }
+                                    placeholder="Ex: enviado comprovante, aguardando retorno, etc."
+                                  />
+                                </div>
+
+                                <DialogFooter>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setIsSinarmStatusDialogOpen(false);
+                                      setPendingSinarmStatusChange(null);
+                                      setSinarmComment("");
+                                    }}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                  <Button
+                                    onClick={() => {
+                                      if (!pendingSinarmStatusChange) return;
+                                      const trimmed = sinarmComment.trim();
+                                      updateStepMutation.mutate({
+                                        stepId:
+                                          pendingSinarmStatusChange.stepId,
+                                        sinarmStatus:
+                                          pendingSinarmStatusChange.status,
+                                        ...(pendingSinarmStatusChange.protocolNumber
+                                          ? {
+                                              protocolNumber:
+                                                pendingSinarmStatusChange.protocolNumber,
+                                            }
+                                          : {}),
+                                        ...(pendingSinarmStatusChange.sinarmOpenDate
+                                          ? {
+                                              sinarmOpenDate:
+                                                pendingSinarmStatusChange.sinarmOpenDate,
+                                            }
+                                          : {}),
+                                        ...(trimmed
+                                          ? { sinarmComment: trimmed }
+                                          : {}),
+                                      });
+                                      setIsSinarmStatusDialogOpen(false);
+                                      setPendingSinarmStatusChange(null);
+                                      setSinarmComment("");
+                                    }}
+                                    disabled={
+                                      updateStepMutation.isPending ||
+                                      !pendingSinarmStatusChange
+                                    }
+                                  >
+                                    {updateStepMutation.isPending ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Salvando...
+                                      </>
+                                    ) : (
+                                      "Salvar"
+                                    )}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+
+                            {/* Histórico de comentários inline (sempre visível) */}
+                            <SinarmCommentsInline stepId={step.id} />
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-
+                      )}
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
         {uploadModalOpen && selectedSubTask && (
@@ -2050,38 +2957,49 @@ export default function ClientWorkflow() {
             stepId={selectedSubTask.stepId}
             subTaskId={selectedSubTask.id}
             subTaskLabel={selectedSubTask.label}
-            onUploadSuccess={(subTaskId) => toggleSubTask(subTaskId, false)}
+            onUploadSuccess={subTaskId => toggleSubTask(subTaskId, false)}
           />
         )}
 
-        <Dialog open={isOutdatedDocDialogOpen} onOpenChange={setIsOutdatedDocDialogOpen}>
+        <Dialog
+          open={isOutdatedDocDialogOpen}
+          onOpenChange={setIsOutdatedDocDialogOpen}
+        >
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Documento desatualizado</DialogTitle>
               <DialogDescription>
-                Existe um documento mais atual para este item. Este arquivo serve apenas para consulta.
+                Existe um documento mais atual para este item. Este arquivo
+                serve apenas para consulta.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-2 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <span className="text-muted-foreground">Mais recente</span>
-                <span className="font-medium text-right break-all">{outdatedDocInfo?.latest?.fileName || '-'}</span>
+                <span className="font-medium text-right break-all">
+                  {outdatedDocInfo?.latest?.fileName || "-"}
+                </span>
               </div>
               <div className="flex items-start justify-between gap-3">
                 <span className="text-muted-foreground">Selecionado</span>
-                <span className="font-medium text-right break-all">{outdatedDocInfo?.outdated?.fileName || '-'}</span>
+                <span className="font-medium text-right break-all">
+                  {outdatedDocInfo?.outdated?.fileName || "-"}
+                </span>
               </div>
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsOutdatedDocDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsOutdatedDocDialogOpen(false)}
+              >
                 Fechar
               </Button>
               <Button
                 onClick={() => {
                   if (outdatedDocInfo?.outdated?.fileUrl) {
-                    window.open(outdatedDocInfo.outdated.fileUrl, '_blank');
+                    window.open(outdatedDocInfo.outdated.fileUrl, "_blank");
                   }
                   setIsOutdatedDocDialogOpen(false);
                 }}

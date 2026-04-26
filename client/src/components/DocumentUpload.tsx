@@ -11,11 +11,17 @@ interface DocumentUploadProps {
   stepTitle: string;
 }
 
-export function DocumentUpload({ clientId, stepId, stepTitle }: DocumentUploadProps) {
+export function DocumentUpload({
+  clientId,
+  stepId,
+  stepTitle,
+}: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const { data: documents, refetch } = trpc.documents.list.useQuery({ clientId });
+  const { data: documents, refetch } = trpc.documents.list.useQuery({
+    clientId,
+  });
 
   const uploadMutation = trpc.documents.upload.useMutation({
     onSuccess: () => {
@@ -23,7 +29,7 @@ export function DocumentUpload({ clientId, stepId, stepTitle }: DocumentUploadPr
       setSelectedFile(null);
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error("Erro ao enviar documento: " + error.message);
     },
   });
@@ -33,7 +39,7 @@ export function DocumentUpload({ clientId, stepId, stepTitle }: DocumentUploadPr
       toast.success("Documento excluído!");
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error("Erro ao excluir: " + error.message);
     },
   });
@@ -51,7 +57,7 @@ export function DocumentUpload({ clientId, stepId, stepTitle }: DocumentUploadPr
     setUploading(true);
     try {
       const reader = new FileReader();
-      reader.onload = async (e) => {
+      reader.onload = async e => {
         const base64 = e.target?.result as string;
         await uploadMutation.mutateAsync({
           clientId,
@@ -69,7 +75,8 @@ export function DocumentUpload({ clientId, stepId, stepTitle }: DocumentUploadPr
     }
   };
 
-  const stepDocuments = documents?.filter(d => d.workflowStepId === stepId) || [];
+  const stepDocuments =
+    documents?.filter(d => d.workflowStepId === stepId) || [];
 
   return (
     <Card className="mt-4">
@@ -140,7 +147,7 @@ export function DocumentUpload({ clientId, stepId, stepTitle }: DocumentUploadPr
         {stepDocuments.length > 0 && (
           <div className="space-y-2">
             <p className="text-sm font-medium">Documentos Anexados:</p>
-            {stepDocuments.map((doc) => (
+            {stepDocuments.map(doc => (
               <div
                 key={doc.id}
                 className="flex items-center justify-between p-3 border rounded-lg"
@@ -150,7 +157,7 @@ export function DocumentUpload({ clientId, stepId, stepTitle }: DocumentUploadPr
                   <div>
                     <p className="text-sm font-medium">{doc.fileName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(doc.createdAt).toLocaleDateString('pt-BR')}
+                      {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
                 </div>
@@ -158,7 +165,7 @@ export function DocumentUpload({ clientId, stepId, stepTitle }: DocumentUploadPr
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.open(doc.fileUrl, '_blank')}
+                    onClick={() => window.open(doc.fileUrl, "_blank")}
                   >
                     Abrir
                   </Button>
@@ -166,7 +173,7 @@ export function DocumentUpload({ clientId, stepId, stepTitle }: DocumentUploadPr
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      if (confirm('Deseja realmente excluir este documento?')) {
+                      if (confirm("Deseja realmente excluir este documento?")) {
                         deleteMutation.mutate({ id: doc.id });
                       }
                     }}

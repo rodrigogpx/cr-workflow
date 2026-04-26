@@ -23,7 +23,12 @@ function addMonths(dateStr: string, months: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, onSuccess }: InvoiceCreateDialogProps) {
+export function InvoiceCreateDialog({
+  tenantId,
+  activeSubscriptionId,
+  onClose,
+  onSuccess,
+}: InvoiceCreateDialogProps) {
   const today = todayStr();
   const [periodStart, setPeriodStart] = useState(today);
   const [periodEnd, setPeriodEnd] = useState(addMonths(today, 1));
@@ -70,7 +75,10 @@ export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, o
         {/* Header */}
         <div className="bg-indigo-700 px-6 py-4 flex items-center justify-between rounded-t-xl">
           <h2 className="text-white font-semibold">Nova Fatura Manual</h2>
-          <button onClick={onClose} className="text-white/60 hover:text-white p-1 rounded">
+          <button
+            onClick={onClose}
+            className="text-white/60 hover:text-white p-1 rounded"
+          >
             <XCircle className="h-5 w-5" />
           </button>
         </div>
@@ -82,7 +90,9 @@ export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, o
               <Input
                 type="date"
                 value={periodStart}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeriodStart(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setPeriodStart(e.target.value)
+                }
               />
             </div>
             <div className="space-y-2">
@@ -90,7 +100,9 @@ export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, o
               <Input
                 type="date"
                 value={periodEnd}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPeriodEnd(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setPeriodEnd(e.target.value)
+                }
               />
             </div>
           </div>
@@ -100,7 +112,9 @@ export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, o
             <Input
               type="date"
               value={dueDate}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDueDate(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setDueDate(e.target.value)
+              }
             />
           </div>
 
@@ -112,7 +126,9 @@ export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, o
                 min="0"
                 step="0.01"
                 value={subtotal}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSubtotal(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSubtotal(e.target.value)
+                }
                 placeholder="0,00"
               />
             </div>
@@ -123,7 +139,9 @@ export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, o
                 min="0"
                 step="0.01"
                 value={discount}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDiscount(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setDiscount(e.target.value)
+                }
                 placeholder="0,00"
               />
             </div>
@@ -133,7 +151,10 @@ export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, o
           <div className="bg-gray-50 rounded-lg p-3 flex justify-between items-center">
             <span className="text-sm text-gray-600">Total a cobrar</span>
             <span className="font-bold text-gray-900">
-              R$ {(totalCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              R${" "}
+              {(totalCents / 100).toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+              })}
             </span>
           </div>
 
@@ -142,7 +163,7 @@ export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, o
             <textarea
               className="w-full h-20 p-3 text-sm border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={e => setNotes(e.target.value)}
               placeholder="Referência de pagamento, informações adicionais..."
             />
           </div>
@@ -156,7 +177,9 @@ export function InvoiceCreateDialog({ tenantId, activeSubscriptionId, onClose, o
               onClick={handleSubmit}
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {createMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : null}
               Gerar Fatura
             </Button>
           </div>

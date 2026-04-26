@@ -2,7 +2,14 @@ import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ShieldAlert, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -14,13 +21,15 @@ export default function PlatformAdminLogin() {
   const [password, setPassword] = useState("");
 
   const loginMutation = trpc.auth.platformLogin.useMutation({
-    onSuccess: async (data) => {
+    onSuccess: async data => {
       toast.success(`Bem-vindo, ${data.admin.name}!`);
       // Force reload to ensure TRPC context is completely refreshed with new cookie
       window.location.href = "/platform-admin";
     },
-    onError: (error) => {
-      toast.error(error.message || "Erro ao fazer login. Verifique suas credenciais.");
+    onError: error => {
+      toast.error(
+        error.message || "Erro ao fazer login. Verifique suas credenciais."
+      );
     },
   });
 
@@ -52,30 +61,34 @@ export default function PlatformAdminLogin() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-zinc-300">Email Administrativo</Label>
+              <Label htmlFor="email" className="text-zinc-300">
+                Email Administrativo
+              </Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="admin@cac360.com.br"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-indigo-500"
                 disabled={loginMutation.isPending}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-zinc-300">Senha</Label>
+              <Label htmlFor="password" className="text-zinc-300">
+                Senha
+              </Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 className="bg-zinc-800 border-zinc-700 text-zinc-100 focus-visible:ring-indigo-500"
                 disabled={loginMutation.isPending}
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium h-11 mt-2"
               disabled={loginMutation.isPending}
             >

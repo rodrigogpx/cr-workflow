@@ -329,7 +329,7 @@ Só depois disso começamos.
 
 ### Se algo der errado
 
-- **A2 encosta em `client/**`:** abort + relembrar regra 2 do prompt.
+- **A2 encosta em `client/**`:\*\* abort + relembrar regra 2 do prompt.
 - **A2 funde migration com lógica de domínio no mesmo commit:** peça split ou reabra como novo commit.
 - **A2 desabilita teste para passar CI:** tratar como violação grave — reabrir PR do zero.
 - **Rollback manual falha:** documente no próprio PR como known issue e abra follow-up antes de merge.

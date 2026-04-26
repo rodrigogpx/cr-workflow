@@ -17,13 +17,13 @@ on:
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Branch base do PR de baseline (default: hml)'
+        description: "Branch base do PR de baseline (default: hml)"
         required: false
-        default: 'hml'
+        default: "hml"
       dry_run:
-        description: 'Se true, roda mas não abre PR (somente artifact)'
+        description: "Se true, roda mas não abre PR (somente artifact)"
         required: false
-        default: 'false'
+        default: "false"
 
 permissions:
   contents: write
@@ -52,8 +52,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

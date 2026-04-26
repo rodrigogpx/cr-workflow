@@ -35,17 +35,17 @@ Copie o bloco `INTEGRITY REPORT` da saída para a seção **Relatório** abaixo.
 
 ## Métricas numéricas congeladas
 
-| Métrica | Valor | Medido em |
-| - | - | - |
-| Tempo de `pnpm build` | _— s_ | _— _ |
-| Tempo de `pnpm test` | _— s_ | _— _ |
-| Total de testes unitários | _— _ | _— _ |
-| Testes passando | _— _ | _— _ |
-| Testes falhando | _— _ | _— _ |
-| Bundle size (`dist/client`) | _— KB_ | _— _ |
-| Artefato do servidor (`dist/index.cjs`) | _— KB_ | _— _ |
-| Warnings de typecheck | _— _ | _— _ |
-| Warnings de lint | _— _ | _— _ |
+| Métrica                                 | Valor  | Medido em |
+| --------------------------------------- | ------ | --------- |
+| Tempo de `pnpm build`                   | _— s_  | _— _      |
+| Tempo de `pnpm test`                    | _— s_  | _— _      |
+| Total de testes unitários               | _— _   | _— _      |
+| Testes passando                         | _— _   | _— _      |
+| Testes falhando                         | _— _   | _— _      |
+| Bundle size (`dist/client`)             | _— KB_ | _— _      |
+| Artefato do servidor (`dist/index.cjs`) | _— KB_ | _— _      |
+| Warnings de typecheck                   | _— _   | _— _      |
+| Warnings de lint                        | _— _   | _— _      |
 
 ## Critérios de regressão
 
@@ -60,6 +60,6 @@ A partir deste baseline, qualquer PR que cause:
 
 _Sempre que o baseline for atualizado, registrar aqui a justificativa (ex.: "upgrade de framework", "refatoração legítima de performance")._
 
-| Data | Motivo | PR | Responsável |
-| - | - | - | - |
+| Data | Motivo             | PR   | Responsável   |
+| ---- | ------------------ | ---- | ------------- |
 | _— _ | _baseline inicial_ | _— _ | _@rodrigogpx_ |

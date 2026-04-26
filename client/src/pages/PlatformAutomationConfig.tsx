@@ -6,8 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Bell, Clock, Mail, Play, Save, Loader2, Settings2,
-  AlertTriangle, CheckCircle2, RefreshCw, Database,
+  Bell,
+  Clock,
+  Mail,
+  Play,
+  Save,
+  Loader2,
+  Settings2,
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCw,
+  Database,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,9 +56,16 @@ const DEFAULTS: Record<string, string> = {
 };
 
 export default function PlatformAutomationConfig() {
-  const { data: allSettings, isLoading, refetch } = (trpc as any).platform.settings.getAll.useQuery();
+  const {
+    data: allSettings,
+    isLoading,
+    refetch,
+  } = (trpc as any).platform.settings.getAll.useQuery();
   const bulkSetMut = (trpc as any).platform.settings.bulkSet.useMutation({
-    onSuccess: () => { toast.success("Configurações salvas"); refetch(); },
+    onSuccess: () => {
+      toast.success("Configurações salvas");
+      refetch();
+    },
     onError: (e: any) => toast.error(`Erro: ${e.message}`),
   });
   const runCronMut = (trpc as any).platform.runCron.useMutation({
@@ -64,7 +80,9 @@ export default function PlatformAutomationConfig() {
   useEffect(() => {
     if (allSettings) {
       const init = (keys: string[]) =>
-        Object.fromEntries(keys.map(k => [k, allSettings[k] ?? DEFAULTS[k] ?? ""]));
+        Object.fromEntries(
+          keys.map(k => [k, allSettings[k] ?? DEFAULTS[k] ?? ""])
+        );
       setCronForm(init(CRON_KEYS));
       setEmailForm(init(EMAIL_KEYS));
     }
@@ -78,11 +96,12 @@ export default function PlatformAutomationConfig() {
     runCronMut.mutate({ job }, { onSettled: () => setRunningJob(null) });
   };
 
-  if (isLoading) return (
-    <div className="flex items-center justify-center py-16">
-      <Loader2 className="h-7 w-7 animate-spin text-blue-400" />
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-7 w-7 animate-spin text-blue-400" />
+      </div>
+    );
 
   return (
     <div className="space-y-8">
@@ -103,17 +122,34 @@ export default function PlatformAutomationConfig() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs text-gray-500">Quantos dias antes do vencimento enviar alertas por email ao admin do tenant.</p>
+              <p className="text-xs text-gray-500">
+                Quantos dias antes do vencimento enviar alertas por email ao
+                admin do tenant.
+              </p>
               <div className="grid grid-cols-3 gap-3">
-                {(["cron.alert.days.warning1", "cron.alert.days.warning2", "cron.alert.days.warning3"] as const).map((k, i) => (
+                {(
+                  [
+                    "cron.alert.days.warning1",
+                    "cron.alert.days.warning2",
+                    "cron.alert.days.warning3",
+                  ] as const
+                ).map((k, i) => (
                   <div key={k} className="space-y-1">
-                    <Label className="text-xs text-gray-600">{i === 0 ? "1º Alerta (dias)" : i === 1 ? "2º Alerta (dias)" : "3º Alerta (dias)"}</Label>
+                    <Label className="text-xs text-gray-600">
+                      {i === 0
+                        ? "1º Alerta (dias)"
+                        : i === 1
+                          ? "2º Alerta (dias)"
+                          : "3º Alerta (dias)"}
+                    </Label>
                     <Input
                       type="number"
                       min="1"
                       max="90"
                       value={cronForm[k] ?? ""}
-                      onChange={e => setCronForm(f => ({ ...f, [k]: e.target.value }))}
+                      onChange={e =>
+                        setCronForm(f => ({ ...f, [k]: e.target.value }))
+                      }
                       className="h-8 text-sm"
                     />
                   </div>
@@ -122,25 +158,41 @@ export default function PlatformAutomationConfig() {
 
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div className="space-y-1">
-                  <Label className="text-xs text-gray-600">Graça após vencimento (dias)</Label>
+                  <Label className="text-xs text-gray-600">
+                    Graça após vencimento (dias)
+                  </Label>
                   <Input
                     type="number"
                     min="0"
                     max="30"
                     value={cronForm["cron.suspension.grace"] ?? ""}
-                    onChange={e => setCronForm(f => ({ ...f, "cron.suspension.grace": e.target.value }))}
+                    onChange={e =>
+                      setCronForm(f => ({
+                        ...f,
+                        "cron.suspension.grace": e.target.value,
+                      }))
+                    }
                     className="h-8 text-sm"
                   />
-                  <p className="text-[0.6rem] text-gray-400">Dias após vencimento antes de suspender.</p>
+                  <p className="text-[0.6rem] text-gray-400">
+                    Dias após vencimento antes de suspender.
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-gray-600">Hora do job diário (UTC)</Label>
+                  <Label className="text-xs text-gray-600">
+                    Hora do job diário (UTC)
+                  </Label>
                   <Input
                     type="number"
                     min="0"
                     max="23"
                     value={cronForm["cron.daily.hour"] ?? ""}
-                    onChange={e => setCronForm(f => ({ ...f, "cron.daily.hour": e.target.value }))}
+                    onChange={e =>
+                      setCronForm(f => ({
+                        ...f,
+                        "cron.daily.hour": e.target.value,
+                      }))
+                    }
                     className="h-8 text-sm"
                   />
                 </div>
@@ -154,12 +206,19 @@ export default function PlatformAutomationConfig() {
                   onClick={() => runJob("daily")}
                   disabled={runningJob === "daily"}
                 >
-                  {runningJob === "daily"
-                    ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    : <Play className="h-3 w-3 mr-1" />}
+                  {runningJob === "daily" ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <Play className="h-3 w-3 mr-1" />
+                  )}
                   Executar agora
                 </Button>
-                <Button size="sm" className="bg-[#123A63] hover:bg-[#0e2d4f] h-7 text-xs" onClick={saveCron} disabled={bulkSetMut.isPending}>
+                <Button
+                  size="sm"
+                  className="bg-[#123A63] hover:bg-[#0e2d4f] h-7 text-xs"
+                  onClick={saveCron}
+                  disabled={bulkSetMut.isPending}
+                >
                   <Save className="h-3 w-3 mr-1" /> Salvar
                 </Button>
               </div>
@@ -176,24 +235,38 @@ export default function PlatformAutomationConfig() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-gray-500">
-                Tenants com assinatura expirada são suspensos automaticamente após o período de graça.
-                O job verifica diariamente.
+                Tenants com assinatura expirada são suspensos automaticamente
+                após o período de graça. O job verifica diariamente.
               </p>
               <div className="space-y-1">
-                <Label className="text-xs text-gray-600">Hora do job de suspensão (UTC)</Label>
+                <Label className="text-xs text-gray-600">
+                  Hora do job de suspensão (UTC)
+                </Label>
                 <Input
                   type="number"
                   min="0"
                   max="23"
                   value={cronForm["cron.suspension.hour"] ?? ""}
-                  onChange={e => setCronForm(f => ({ ...f, "cron.suspension.hour": e.target.value }))}
+                  onChange={e =>
+                    setCronForm(f => ({
+                      ...f,
+                      "cron.suspension.hour": e.target.value,
+                    }))
+                  }
                   className="h-8 text-sm w-32"
                 />
               </div>
 
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700 space-y-1">
-                <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Ação irreversível no acesso</p>
-                <p>Ao executar agora, todos os tenants com assinatura expirada há mais de {cronForm["cron.suspension.grace"] ?? "3"} dias serão suspensos imediatamente.</p>
+                <p className="font-semibold flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5" /> Ação irreversível no
+                  acesso
+                </p>
+                <p>
+                  Ao executar agora, todos os tenants com assinatura expirada há
+                  mais de {cronForm["cron.suspension.grace"] ?? "3"} dias serão
+                  suspensos imediatamente.
+                </p>
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t gap-2">
@@ -202,18 +275,29 @@ export default function PlatformAutomationConfig() {
                   variant="outline"
                   className="text-red-700 border-red-300 hover:bg-red-50 h-7 text-xs"
                   onClick={() => {
-                    if (confirm("Confirma execução do job de suspensão agora? Tenants inadimplentes serão suspensos imediatamente.")) {
+                    if (
+                      confirm(
+                        "Confirma execução do job de suspensão agora? Tenants inadimplentes serão suspensos imediatamente."
+                      )
+                    ) {
                       runJob("suspension");
                     }
                   }}
                   disabled={runningJob === "suspension"}
                 >
-                  {runningJob === "suspension"
-                    ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    : <Play className="h-3 w-3 mr-1" />}
+                  {runningJob === "suspension" ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <Play className="h-3 w-3 mr-1" />
+                  )}
                   Executar agora
                 </Button>
-                <Button size="sm" className="bg-[#123A63] hover:bg-[#0e2d4f] h-7 text-xs" onClick={saveCron} disabled={bulkSetMut.isPending}>
+                <Button
+                  size="sm"
+                  className="bg-[#123A63] hover:bg-[#0e2d4f] h-7 text-xs"
+                  onClick={saveCron}
+                  disabled={bulkSetMut.isPending}
+                >
                   <Save className="h-3 w-3 mr-1" /> Salvar
                 </Button>
               </div>
@@ -227,7 +311,12 @@ export default function PlatformAutomationConfig() {
         <h2 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-4 flex items-center gap-2">
           <Mail className="h-3.5 w-3.5" />
           Email da Plataforma
-          <Badge variant="outline" className="text-[0.6rem] border-blue-400/40 text-blue-300 ml-1">SMTP global</Badge>
+          <Badge
+            variant="outline"
+            className="text-[0.6rem] border-blue-400/40 text-blue-300 ml-1"
+          >
+            SMTP global
+          </Badge>
         </h2>
 
         <Card className="bg-white/95 shadow-xl border-white/40">
@@ -237,16 +326,24 @@ export default function PlatformAutomationConfig() {
               SMTP da Plataforma
             </CardTitle>
             <p className="text-xs text-gray-500 mt-0.5">
-              Usado para emails automáticos da plataforma (alertas, faturas). Cada clube pode ter seu próprio SMTP em Configurações.
+              Usado para emails automáticos da plataforma (alertas, faturas).
+              Cada clube pode ter seu próprio SMTP em Configurações.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label className="text-xs text-gray-600">Nome do remetente</Label>
+                <Label className="text-xs text-gray-600">
+                  Nome do remetente
+                </Label>
                 <Input
                   value={emailForm["email.platform.fromName"] ?? ""}
-                  onChange={e => setEmailForm(f => ({ ...f, "email.platform.fromName": e.target.value }))}
+                  onChange={e =>
+                    setEmailForm(f => ({
+                      ...f,
+                      "email.platform.fromName": e.target.value,
+                    }))
+                  }
                   placeholder="CAC 360"
                   className="h-8 text-sm"
                 />
@@ -256,7 +353,12 @@ export default function PlatformAutomationConfig() {
                 <Input
                   type="email"
                   value={emailForm["email.platform.fromAddress"] ?? ""}
-                  onChange={e => setEmailForm(f => ({ ...f, "email.platform.fromAddress": e.target.value }))}
+                  onChange={e =>
+                    setEmailForm(f => ({
+                      ...f,
+                      "email.platform.fromAddress": e.target.value,
+                    }))
+                  }
                   placeholder="noreply@cac360.com.br"
                   className="h-8 text-sm"
                 />
@@ -264,11 +366,18 @@ export default function PlatformAutomationConfig() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs text-gray-600">Reply-to (opcional)</Label>
+              <Label className="text-xs text-gray-600">
+                Reply-to (opcional)
+              </Label>
               <Input
                 type="email"
                 value={emailForm["email.platform.replyTo"] ?? ""}
-                onChange={e => setEmailForm(f => ({ ...f, "email.platform.replyTo": e.target.value }))}
+                onChange={e =>
+                  setEmailForm(f => ({
+                    ...f,
+                    "email.platform.replyTo": e.target.value,
+                  }))
+                }
                 placeholder="suporte@cac360.com.br"
                 className="h-8 text-sm"
               />
@@ -283,7 +392,12 @@ export default function PlatformAutomationConfig() {
                   <Label className="text-xs text-gray-600">Host</Label>
                   <Input
                     value={emailForm["email.platform.smtpHost"] ?? ""}
-                    onChange={e => setEmailForm(f => ({ ...f, "email.platform.smtpHost": e.target.value }))}
+                    onChange={e =>
+                      setEmailForm(f => ({
+                        ...f,
+                        "email.platform.smtpHost": e.target.value,
+                      }))
+                    }
                     placeholder="smtp.gmail.com"
                     className="h-8 text-sm"
                   />
@@ -293,7 +407,12 @@ export default function PlatformAutomationConfig() {
                   <Input
                     type="number"
                     value={emailForm["email.platform.smtpPort"] ?? "587"}
-                    onChange={e => setEmailForm(f => ({ ...f, "email.platform.smtpPort": e.target.value }))}
+                    onChange={e =>
+                      setEmailForm(f => ({
+                        ...f,
+                        "email.platform.smtpPort": e.target.value,
+                      }))
+                    }
                     placeholder="587"
                     className="h-8 text-sm"
                   />
@@ -304,7 +423,12 @@ export default function PlatformAutomationConfig() {
                   <Label className="text-xs text-gray-600">Usuário</Label>
                   <Input
                     value={emailForm["email.platform.smtpUser"] ?? ""}
-                    onChange={e => setEmailForm(f => ({ ...f, "email.platform.smtpUser": e.target.value }))}
+                    onChange={e =>
+                      setEmailForm(f => ({
+                        ...f,
+                        "email.platform.smtpUser": e.target.value,
+                      }))
+                    }
                     placeholder="usuario@dominio.com"
                     className="h-8 text-sm"
                   />
@@ -314,7 +438,12 @@ export default function PlatformAutomationConfig() {
                   <Input
                     type="password"
                     value={emailForm["email.platform.smtpPass"] ?? ""}
-                    onChange={e => setEmailForm(f => ({ ...f, "email.platform.smtpPass": e.target.value }))}
+                    onChange={e =>
+                      setEmailForm(f => ({
+                        ...f,
+                        "email.platform.smtpPass": e.target.value,
+                      }))
+                    }
                     placeholder="••••••••"
                     className="h-8 text-sm"
                   />
@@ -329,9 +458,11 @@ export default function PlatformAutomationConfig() {
                 onClick={saveEmail}
                 disabled={bulkSetMut.isPending}
               >
-                {bulkSetMut.isPending
-                  ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                  : <Save className="h-3 w-3 mr-1" />}
+                {bulkSetMut.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <Save className="h-3 w-3 mr-1" />
+                )}
                 Salvar Configurações de Email
               </Button>
             </div>
@@ -353,7 +484,8 @@ export default function PlatformAutomationConfig() {
               Templates e Dados Iniciais
             </CardTitle>
             <p className="text-xs text-gray-500 mt-0.5">
-              Re-execute os seeds de dados para restaurar templates padrão de email, workflows e configurações.
+              Re-execute os seeds de dados para restaurar templates padrão de
+              email, workflows e configurações.
             </p>
           </CardHeader>
           <CardContent>
@@ -384,14 +516,22 @@ export default function PlatformAutomationConfig() {
                 <div key={item.key} className="border rounded-xl p-4 space-y-2">
                   <div className="flex items-center gap-2">
                     {item.icon}
-                    <p className="text-sm font-semibold text-gray-800">{item.label}</p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {item.label}
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    {item.desc}
+                  </p>
                   <Button
                     size="sm"
                     variant="outline"
                     className={`h-7 text-xs w-full ${item.color}`}
-                    onClick={() => toast.info("Seeds executados via painel de tenants individualmente ou via CLI.")}
+                    onClick={() =>
+                      toast.info(
+                        "Seeds executados via painel de tenants individualmente ou via CLI."
+                      )
+                    }
                   >
                     <RefreshCw className="h-3 w-3 mr-1" />
                     Executar seed

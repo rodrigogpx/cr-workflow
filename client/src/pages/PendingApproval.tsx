@@ -27,7 +27,9 @@ export default function PendingApproval() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground uppercase text-sm tracking-wide">Carregando...</p>
+          <p className="text-muted-foreground uppercase text-sm tracking-wide">
+            Carregando...
+          </p>
         </div>
       </div>
     );
@@ -62,9 +64,9 @@ export default function PendingApproval() {
       <div className="w-full max-w-2xl relative z-10">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <img 
-            src={APP_LOGO} 
-            alt="CAC 360 – Gestão de Ciclo Completo" 
+          <img
+            src={APP_LOGO}
+            alt="CAC 360 – Gestão de Ciclo Completo"
             className="h-24 w-auto"
           />
         </div>
@@ -85,7 +87,9 @@ export default function PendingApproval() {
           <CardContent className="space-y-6">
             <div className="text-center space-y-4">
               <p className="text-white/80 text-lg leading-relaxed">
-                Seu cadastro foi realizado com sucesso! No momento, você está aguardando a aprovação de um administrador para ter acesso ao sistema.
+                Seu cadastro foi realizado com sucesso! No momento, você está
+                aguardando a aprovação de um administrador para ter acesso ao
+                sistema.
               </p>
 
               <div className="bg-[#C41E3A]/10 border border-[#C41E3A]/30 rounded-lg p-6 mt-6">
@@ -94,13 +98,20 @@ export default function PendingApproval() {
                 </p>
                 <ul className="text-white/70 text-left space-y-2 list-disc list-inside">
                   <li>Um administrador irá revisar seu cadastro</li>
-                  <li>Você receberá um perfil de acesso (Operador ou Administrador)</li>
-                  <li>Após a aprovação, você poderá acessar o sistema normalmente</li>
+                  <li>
+                    Você receberá um perfil de acesso (Operador ou
+                    Administrador)
+                  </li>
+                  <li>
+                    Após a aprovação, você poderá acessar o sistema normalmente
+                  </li>
                 </ul>
               </div>
 
               <p className="text-white/60 text-sm mt-6">
-                Entre em contato com o administrador do sistema caso tenha dúvidas ou se a aprovação estiver demorando mais do que o esperado.
+                Entre em contato com o administrador do sistema caso tenha
+                dúvidas ou se a aprovação estiver demorando mais do que o
+                esperado.
               </p>
             </div>
 
@@ -121,10 +132,13 @@ export default function PendingApproval() {
                   localStorage.clear();
                   sessionStorage.clear();
                   // Limpar cookies manualmente
-                  document.cookie.split(";").forEach((c) => {
+                  document.cookie.split(";").forEach(c => {
                     document.cookie = c
                       .replace(/^ +/, "")
-                      .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                      .replace(
+                        /=.*/,
+                        "=;expires=" + new Date().toUTCString() + ";path=/"
+                      );
                   });
                   window.location.href = "/login";
                 }}

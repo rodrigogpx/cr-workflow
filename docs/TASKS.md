@@ -9,14 +9,14 @@
 
 ## Estados
 
-| Marcador | Estado         | Significado                                                                   |
-| -------- | -------------- | ----------------------------------------------------------------------------- |
-| `[ ]`    | available      | Disponível para reivindicação por qualquer agente compatível com o escopo.    |
-| `[~]`    | claimed        | Reivindicado por um agente. Nenhum outro agente pode editar os mesmos paths. |
-| `[>]`    | in_progress    | Agente iniciou commits de implementação.                                      |
-| `[?]`    | review         | PR aberto, aguardando revisão e Integrity Report verde.                       |
-| `[x]`    | completed      | PR merged em `main`. Mover para o histórico ao final do sprint.               |
-| `[!]`    | blocked        | Bloqueado por dependência, decisão pendente ou falha de integridade.          |
+| Marcador | Estado      | Significado                                                                  |
+| -------- | ----------- | ---------------------------------------------------------------------------- |
+| `[ ]`    | available   | Disponível para reivindicação por qualquer agente compatível com o escopo.   |
+| `[~]`    | claimed     | Reivindicado por um agente. Nenhum outro agente pode editar os mesmos paths. |
+| `[>]`    | in_progress | Agente iniciou commits de implementação.                                     |
+| `[?]`    | review      | PR aberto, aguardando revisão e Integrity Report verde.                      |
+| `[x]`    | completed   | PR merged em `main`. Mover para o histórico ao final do sprint.              |
+| `[!]`    | blocked     | Bloqueado por dependência, decisão pendente ou falha de integridade.         |
 
 ## Regras de reivindicação
 

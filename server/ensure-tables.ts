@@ -227,8 +227,12 @@ export async function ensureMissingTables() {
     `);
 
     // Add new columns to iat_courses if missing (for existing tables)
-    await db.execute(sql`ALTER TABLE "iat_courses" ADD COLUMN IF NOT EXISTS "institution_name" varchar(255);`);
-    await db.execute(sql`ALTER TABLE "iat_courses" ADD COLUMN IF NOT EXISTS "completion_date" timestamp;`);
+    await db.execute(
+      sql`ALTER TABLE "iat_courses" ADD COLUMN IF NOT EXISTS "institution_name" varchar(255);`
+    );
+    await db.execute(
+      sql`ALTER TABLE "iat_courses" ADD COLUMN IF NOT EXISTS "completion_date" timestamp;`
+    );
 
     // IAT Schedules
     await db.execute(sql`
@@ -302,12 +306,24 @@ export async function ensureMissingTables() {
     `);
 
     // Adicionar colunas se ainda não existem (migração)
-    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "startDate" date;`);
-    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "endDate" date;`);
-    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "weekDay" integer;`);
-    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "defaultTime" varchar(5);`);
-    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "defaultDurationMinutes" integer DEFAULT 60;`);
-    await db.execute(sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "defaultLocation" varchar(255);`);
+    await db.execute(
+      sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "startDate" date;`
+    );
+    await db.execute(
+      sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "endDate" date;`
+    );
+    await db.execute(
+      sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "weekDay" integer;`
+    );
+    await db.execute(
+      sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "defaultTime" varchar(5);`
+    );
+    await db.execute(
+      sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "defaultDurationMinutes" integer DEFAULT 60;`
+    );
+    await db.execute(
+      sql`ALTER TABLE "iat_course_classes" ADD COLUMN IF NOT EXISTS "defaultLocation" varchar(255);`
+    );
 
     // IAT Class Enrollments (Matrículas)
     await db.execute(sql`
@@ -349,7 +365,10 @@ export async function ensureMissingTables() {
         ON CONFLICT ("classId", "instructorId") DO NOTHING;
       `);
     } catch (migrationErr) {
-      console.warn("[Migration] Error migrating instructors to iat_class_instructors:", migrationErr);
+      console.warn(
+        "[Migration] Error migrating instructors to iat_class_instructors:",
+        migrationErr
+      );
     }
 
     // ============================================
@@ -475,12 +494,20 @@ export async function ensureMissingTables() {
     `);
 
     // Add issueDate to documents and clientPendingDocuments
-    await db.execute(sql`ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "issueDate" timestamp;`);
-    await db.execute(sql`ALTER TABLE "clientPendingDocuments" ADD COLUMN IF NOT EXISTS "issueDate" timestamp;`);
+    await db.execute(
+      sql`ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "issueDate" timestamp;`
+    );
+    await db.execute(
+      sql`ALTER TABLE "clientPendingDocuments" ADD COLUMN IF NOT EXISTS "issueDate" timestamp;`
+    );
 
     // Add psych referral tracking columns to workflowSteps
-    await db.execute(sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "referralSentAt" timestamp;`);
-    await db.execute(sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "referralType" varchar(20);`);
+    await db.execute(
+      sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "referralSentAt" timestamp;`
+    );
+    await db.execute(
+      sql`ALTER TABLE "workflowSteps" ADD COLUMN IF NOT EXISTS "referralType" varchar(20);`
+    );
 
     // ── IAT Phase 1: Sessões de Turma ─────────────────────────────────────────
     await db.execute(sql`
@@ -531,7 +558,9 @@ export async function ensureMissingTables() {
 
     // Migrate CPF unique constraint: UNIQUE(cpf) -> UNIQUE(tenantId, cpf) for tenant isolation
     try {
-      await db.execute(sql`ALTER TABLE "clients" DROP CONSTRAINT IF EXISTS "clients_cpf_unique";`);
+      await db.execute(
+        sql`ALTER TABLE "clients" DROP CONSTRAINT IF EXISTS "clients_cpf_unique";`
+      );
       await db.execute(sql`
         DO $$ BEGIN
           IF NOT EXISTS (
@@ -546,7 +575,9 @@ export async function ensureMissingTables() {
     }
 
     // Adicionar coluna source em clients (origem do cliente)
-    await db.execute(sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "source" varchar(30) DEFAULT 'cr';`);
+    await db.execute(
+      sql`ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "source" varchar(30) DEFAULT 'cr';`
+    );
 
     // ============================================
     // Seed default plan definitions
@@ -575,37 +606,51 @@ export async function ensureMissingTables() {
 
     // Ensure default platform admin exists
     try {
-      const adminEmails = process.env.SUPER_ADMIN_EMAILS 
-        ? process.env.SUPER_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean)
-        : ['admin@acrdigital.com.br', 'admin@acedigital.com.br'];
-        
+      const adminEmails = process.env.SUPER_ADMIN_EMAILS
+        ? process.env.SUPER_ADMIN_EMAILS.split(",")
+            .map((e: string) => e.trim().toLowerCase())
+            .filter(Boolean)
+        : ["admin@acrdigital.com.br", "admin@acedigital.com.br"];
+
       if (adminEmails.length > 0) {
-        const hashedPassword = await hashPassword('admin123'); // Default password, they should change it
-        
+        const hashedPassword = await hashPassword("admin123"); // Default password, they should change it
+
         for (const email of adminEmails) {
           // Check if it already exists - handle both array and { rows: [] } formats from drizzle-orm
-          const rawResult = await db.execute(sql`SELECT id FROM "platformAdmins" WHERE email = ${email} LIMIT 1`);
-          const rows = Array.isArray(rawResult) ? rawResult : (rawResult as any)?.rows ?? [];
-          
+          const rawResult = await db.execute(
+            sql`SELECT id FROM "platformAdmins" WHERE email = ${email} LIMIT 1`
+          );
+          const rows = Array.isArray(rawResult)
+            ? rawResult
+            : ((rawResult as any)?.rows ?? []);
+
           if (!rows || rows.length === 0) {
             await db.execute(sql`
               INSERT INTO "platformAdmins" ("email", "hashedPassword", "name", "isActive", "createdAt", "updatedAt")
               VALUES (${email}, ${hashedPassword}, 'Platform Admin', true, now(), now());
             `);
           } else {
-            await db.execute(sql`UPDATE "platformAdmins" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`);
+            await db.execute(
+              sql`UPDATE "platformAdmins" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`
+            );
           }
 
           // Also ensure admin exists in users table for tenant login
-          const userResult = await db.execute(sql`SELECT id FROM "users" WHERE email = ${email} LIMIT 1`);
-          const userRows = Array.isArray(userResult) ? userResult : (userResult as any)?.rows ?? [];
+          const userResult = await db.execute(
+            sql`SELECT id FROM "users" WHERE email = ${email} LIMIT 1`
+          );
+          const userRows = Array.isArray(userResult)
+            ? userResult
+            : ((userResult as any)?.rows ?? []);
           if (!userRows || userRows.length === 0) {
             await db.execute(sql`
               INSERT INTO "users" ("email", "hashedPassword", "name", "role", "perfil", "createdAt", "updatedAt")
               VALUES (${email}, ${hashedPassword}, 'Administrador', 'admin', 'admin', now(), now());
             `);
           } else {
-            await db.execute(sql`UPDATE "users" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`);
+            await db.execute(
+              sql`UPDATE "users" SET "hashedPassword" = ${hashedPassword}, "updatedAt" = now() WHERE email = ${email}`
+            );
           }
         }
       }
@@ -631,7 +676,10 @@ export async function ensureMissingTables() {
       `);
       console.log("[Migration] Email trigger names corrected (step 3 and 5)");
     } catch (triggerFixErr) {
-      console.warn("[Migration] Trigger name fix skipped (non-fatal):", triggerFixErr);
+      console.warn(
+        "[Migration] Trigger name fix skipped (non-fatal):",
+        triggerFixErr
+      );
     }
 
     // ── Corrigir associações trigger→template incorretas ─────────────────────────
@@ -641,14 +689,20 @@ export async function ensureMissingTables() {
     // do pg não suportam múltiplos statements em uma única chamada de execute).
     // Mapa: triggerEvent → templateKey correto
     try {
-      const triggerTemplateCorrections: Array<{ event: string; correctKey: string }> = [
-        { event: 'STEP_COMPLETED:1', correctKey: 'cadastro_concluido' },
-        { event: 'STEP_COMPLETED:2', correctKey: 'psicotecnico' },
-        { event: 'STEP_COMPLETED:3', correctKey: 'laudo_tecnico_concluido' },
-        { event: 'STEP_COMPLETED:4', correctKey: 'juntada_documentos' },
-        { event: 'STEP_COMPLETED:5', correctKey: 'sinarm_iniciado' },
-        { event: 'CLIENT_CREATED',   correctKey: 'welcome' },
-        { event: 'SCHEDULE_PSYCH_CREATED', correctKey: 'psicotecnico_agendado' },
+      const triggerTemplateCorrections: Array<{
+        event: string;
+        correctKey: string;
+      }> = [
+        { event: "STEP_COMPLETED:1", correctKey: "cadastro_concluido" },
+        { event: "STEP_COMPLETED:2", correctKey: "psicotecnico" },
+        { event: "STEP_COMPLETED:3", correctKey: "laudo_tecnico_concluido" },
+        { event: "STEP_COMPLETED:4", correctKey: "juntada_documentos" },
+        { event: "STEP_COMPLETED:5", correctKey: "sinarm_iniciado" },
+        { event: "CLIENT_CREATED", correctKey: "welcome" },
+        {
+          event: "SCHEDULE_PSYCH_CREATED",
+          correctKey: "psicotecnico_agendado",
+        },
       ];
 
       for (const { event, correctKey } of triggerTemplateCorrections) {
@@ -664,7 +718,7 @@ export async function ensureMissingTables() {
               SELECT id FROM "emailTemplates" WHERE "templateKey" = ${correctKey}
             )
           `);
-          const delCount = (delResult?.rowCount ?? delResult?.rows?.length ?? 0);
+          const delCount = delResult?.rowCount ?? delResult?.rows?.length ?? 0;
 
           // 2) INSERT: cria a associação correta para cada trigger do evento,
           //    escolhendo UM template por tenant, priorizando o tenant-específico.
@@ -688,16 +742,24 @@ export async function ensureMissingTables() {
                 WHERE ett2."triggerId" = et.id AND ett2."templateId" = tmpl.id
               )
           `);
-          const insCount = (insResult?.rowCount ?? insResult?.rows?.length ?? 0);
+          const insCount = insResult?.rowCount ?? insResult?.rows?.length ?? 0;
 
-          console.log(`[Migration] ${event} → ${correctKey} | removidas=${delCount} inseridas=${insCount}`);
+          console.log(
+            `[Migration] ${event} → ${correctKey} | removidas=${delCount} inseridas=${insCount}`
+          );
         } catch (perEventErr) {
-          console.warn(`[Migration] Falha ao corrigir ${event} → ${correctKey}:`, perEventErr);
+          console.warn(
+            `[Migration] Falha ao corrigir ${event} → ${correctKey}:`,
+            perEventErr
+          );
         }
       }
       console.log("[Migration] Trigger→template associations corrected (v2)");
     } catch (assocFixErr) {
-      console.warn("[Migration] Trigger association fix skipped (non-fatal):", assocFixErr);
+      console.warn(
+        "[Migration] Trigger association fix skipped (non-fatal):",
+        assocFixErr
+      );
     }
 
     // ── Fix double-encoding UTF-8 data (Latin-1 misinterpretation) ──────────────
@@ -705,27 +767,28 @@ export async function ensureMissingTables() {
     // A correção converte os bytes Latin-1 de volta para UTF-8 válido.
     try {
       const tables: { table: string; column: string }[] = [
-        { table: 'workflowSteps',  column: 'stepTitle' },
-        { table: 'clients',        column: 'name' },
-        { table: 'clients',        column: 'city' },
-        { table: 'clients',        column: 'neighborhood' },
-        { table: 'clients',        column: 'address' },
-        { table: 'iatCourses',     column: 'name' },
-        { table: 'iatCourseClasses', column: 'name' },
+        { table: "workflowSteps", column: "stepTitle" },
+        { table: "clients", column: "name" },
+        { table: "clients", column: "city" },
+        { table: "clients", column: "neighborhood" },
+        { table: "clients", column: "address" },
+        { table: "iatCourses", column: "name" },
+        { table: "iatCourseClasses", column: "name" },
       ];
 
       for (const { table, column } of tables) {
-        await db.execute(sql.raw(`
+        await db.execute(
+          sql.raw(`
           UPDATE "${table}"
           SET "${column}" = convert_from(convert_to("${column}", 'LATIN1'), 'UTF8')
           WHERE "${column}" LIKE '%Ã%' OR "${column}" LIKE '%Â%'
-        `));
+        `)
+        );
       }
       console.log("[Migration] Charset double-encoding fix applied");
     } catch (charsetErr) {
       console.warn("[Migration] Charset fix skipped (non-fatal):", charsetErr);
     }
-
   } catch (error) {
     console.error("[Migration] Error creating tables:", error);
   }

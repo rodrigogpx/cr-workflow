@@ -9,10 +9,11 @@ import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-let gitCommitHash = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || 'unknown';
-if (gitCommitHash === 'unknown') {
+let gitCommitHash =
+  process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || "unknown";
+if (gitCommitHash === "unknown") {
   try {
-    gitCommitHash = execSync('git rev-parse --short HEAD').toString().trim();
+    gitCommitHash = execSync("git rev-parse --short HEAD").toString().trim();
   } catch (_) {}
 }
 
@@ -39,17 +40,14 @@ export default defineConfig({
   },
   server: {
     host: true,
-    allowedHosts: [
-      "localhost",
-      "127.0.0.1",
-    ],
+    allowedHosts: ["localhost", "127.0.0.1"],
     fs: {
       strict: true,
       deny: ["**/.*"],
     },
     proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
+      "/api": {
+        target: "http://localhost:3000",
         changeOrigin: true,
       },
     },

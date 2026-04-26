@@ -16,7 +16,9 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MainDashboard = lazy(() => import("./pages/MainDashboard"));
 const ClientWorkflow = lazy(() => import("./pages/ClientWorkflow"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
-const PlatformAdminDashboard = lazy(() => import("./pages/PlatformAdminDashboard"));
+const PlatformAdminDashboard = lazy(
+  () => import("./pages/PlatformAdminDashboard")
+);
 // Tenant Admin pages (unified)
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
@@ -29,7 +31,9 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const IATModule = lazy(() => import("./pages/IATModule"));
 const ComplianceModule = lazy(() => import("./pages/ComplianceModule"));
 // Platform Admin pages
-const PlatformAdminBootstrap = lazy(() => import("./pages/PlatformAdminBootstrap"));
+const PlatformAdminBootstrap = lazy(
+  () => import("./pages/PlatformAdminBootstrap")
+);
 const PlatformAdminAdmins = lazy(() => import("./pages/PlatformAdminAdmins"));
 // Portal do Cliente
 const PortalDashboard = lazy(() => import("./pages/portal/PortalDashboard"));
@@ -37,13 +41,15 @@ const PortalLogin = lazy(() => import("./pages/portal/PortalLogin"));
 const PortalAcesso = lazy(() => import("./pages/portal/PortalAcesso"));
 const PortalLgpd = lazy(() => import("./pages/portal/PortalLgpd"));
 const PortalMeusDados = lazy(() => import("./pages/portal/PortalMeusDados"));
-const PortalMeuProcesso = lazy(() => import("./pages/portal/PortalMeuProcesso"));
+const PortalMeuProcesso = lazy(
+  () => import("./pages/portal/PortalMeuProcesso")
+);
 const PortalDocumentos = lazy(() => import("./pages/portal/PortalDocumentos"));
 const Landing = lazy(() => import("./pages/Landing"));
 
 function getBackgroundForPath(path: string) {
   // Considerar tanto rotas raiz quanto rotas com slug de tenant (/:tenantSlug/...).
-  
+
   // CR-Workflow Module - background específico
   if (
     path.includes("/cr-workflow") ||
@@ -52,38 +58,32 @@ function getBackgroundForPath(path: string) {
   ) {
     return "/background-02.webp";
   }
-  
+
   // Portal Module - background específico
-  if (
-    path.includes("/portal") ||
-    path.includes("/landing")
-  ) {
+  if (path.includes("/portal") || path.includes("/landing")) {
     return "/background-01.webp";
   }
-  
+
   // Platform Admin - background específico
-  if (
-    path.includes("/platform-admin") ||
-    path.includes("/super-admin")
-  ) {
+  if (path.includes("/platform-admin") || path.includes("/super-admin")) {
     return "/background-super-admin.png";
   }
-  
+
   // IAT Module - background específico
   if (path.includes("/iat")) {
     return "/background-02.webp";
   }
-  
+
   // Compliance Module - background específico
   if (path.includes("/compliance")) {
     return "/background-02.webp";
   }
-  
+
   // Admin Module - background específico
   if (path.includes("/admin")) {
     return "/background-02.webp";
   }
-  
+
   // Default background para todas as outras páginas
   return "/background-01.webp";
 }
@@ -162,7 +162,9 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function PlatformAdminRoute({ children }: { children: React.ReactNode }) {
-  const { admin, loading } = usePlatformAuth({ redirectOnUnauthenticated: true });
+  const { admin, loading } = usePlatformAuth({
+    redirectOnUnauthenticated: true,
+  });
 
   // loading = isPending (sem dado em cache) — mantém spinner até auth resolver
   if (loading) {
@@ -189,7 +191,8 @@ function Router() {
         <div className="min-h-screen flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      }>
+      }
+    >
       <Switch>
         {/* Landing page pública de marketing */}
         <Route path="/landing" component={Landing} />
@@ -206,14 +209,17 @@ function Router() {
         {/* Platform Admin Routes */}
         <Route path={"/platform-admin/login"} component={PlatformAdminLogin} />
         {/* Bootstrap: rota pública, só funciona quando não há admins cadastrados */}
-        <Route path={"/platform-admin/setup"} component={PlatformAdminBootstrap} />
-        <Route path={"/platform-admin"}>{
-          () => (
+        <Route
+          path={"/platform-admin/setup"}
+          component={PlatformAdminBootstrap}
+        />
+        <Route path={"/platform-admin"}>
+          {() => (
             <PlatformAdminRoute>
               <PlatformAdminDashboard />
             </PlatformAdminRoute>
-          )
-        }</Route>
+          )}
+        </Route>
         <Route path={"/platform-admin/admins"}>
           <PlatformAdminRoute>
             <PlatformAdminAdmins />
@@ -227,7 +233,7 @@ function Router() {
         <Route path={"/platform-admin/tenants"}>
           <Redirect to="/platform-admin" />
         </Route>
-        
+
         {/* Global Auth Routes (no tenant) */}
         <Route path={"/login"} component={Login} />
         <Route path={"/register"} component={Register} />
@@ -236,7 +242,7 @@ function Router() {
             <PendingApproval />
           </AuthenticatedRoute>
         </Route>
-        
+
         {/* Global Dashboard Routes (no tenant) */}
         <Route path={"/dashboard"}>
           <ApprovedRoute>
@@ -253,7 +259,7 @@ function Router() {
             <ClientWorkflow />
           </ApprovedRoute>
         </Route>
-        
+
         {/* Global Admin Routes (no tenant) */}
         <Route path={"/admin"}>
           <AdminRoute>
@@ -290,24 +296,24 @@ function Router() {
             <AdminAudit />
           </AdminRoute>
         </Route>
-        
+
         {/* Global IAT Module (no tenant) */}
         <Route path={"/iat"}>
           <ApprovedRoute>
             <IATModule />
           </ApprovedRoute>
         </Route>
-        
+
         {/* Global Compliance Module (no tenant) */}
         <Route path={"/compliance"}>
           <ApprovedRoute>
             <ComplianceModule />
           </ApprovedRoute>
         </Route>
-        
+
         {/* Root Route */}
         <Route path={"/"} component={Login} />
-        
+
         {/* Tenant-specific Routes - MUST come after all specific routes */}
         <Route path={"/:tenantSlug/login"} component={Login} />
         <Route path={"/:tenantSlug/register"} component={Register} />
@@ -376,7 +382,7 @@ function Router() {
             <ComplianceModule />
           </ApprovedRoute>
         </Route>
-        
+
         {/* Legacy redirects */}
         <Route path={"/:tenantSlug/platform-admin/users"}>
           {({ tenantSlug }: { tenantSlug: string }) => (
@@ -398,14 +404,14 @@ function Router() {
             <Redirect to={buildTenantPath(tenantSlug, "/admin/operators")} />
           )}
         </Route>
-        
+
         {/* Generic tenant redirect - MUST be last before 404 */}
         <Route path={"/:tenantSlug"}>
           {({ tenantSlug }: { tenantSlug: string }) => (
             <Redirect to={buildTenantPath(tenantSlug, "/dashboard")} />
           )}
         </Route>
-        
+
         {/* 404 Routes */}
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />

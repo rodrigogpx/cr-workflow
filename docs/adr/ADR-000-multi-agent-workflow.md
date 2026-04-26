@@ -38,29 +38,29 @@ Adotamos **git-based distributed locking** como mecanismo primário de coordena�
 
 ## 3. Estados canônicos de WP
 
-| Marcador | Estado | Semântica |
-| - | - | - |
-| `[ ]` | available | Qualquer agente com escopo compatível pode reivindicar. |
-| `[~]` | claimed | Reivindicado; nenhum outro agente edita os mesmos paths. |
-| `[>]` | in_progress | Agente iniciou commits de implementação. |
-| `[?]` | review | PR aberto; aguardando revisão e Integrity Report. |
-| `[x]` | completed | Merge em `hml`. Movido para histórico ao final do sprint. (A eventual promoção `hml → main` é ortogonal ao ciclo de vida do WP.) |
-| `[!]` | blocked | Dependência, decisão pendente ou falha de integridade. |
+| Marcador | Estado      | Semântica                                                                                                                        |
+| -------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `[ ]`    | available   | Qualquer agente com escopo compatível pode reivindicar.                                                                          |
+| `[~]`    | claimed     | Reivindicado; nenhum outro agente edita os mesmos paths.                                                                         |
+| `[>]`    | in_progress | Agente iniciou commits de implementação.                                                                                         |
+| `[?]`    | review      | PR aberto; aguardando revisão e Integrity Report.                                                                                |
+| `[x]`    | completed   | Merge em `hml`. Movido para histórico ao final do sprint. (A eventual promoção `hml → main` é ortogonal ao ciclo de vida do WP.) |
+| `[!]`    | blocked     | Dependência, decisão pendente ou falha de integridade.                                                                           |
 
 ## 4. Camadas de integridade (resumo)
 
 Detalhe completo em `docs/PLANO-MULTI-AGENTE.md` §7. Resumo da obrigatoriedade:
 
-| Camada | A1 (docs) | A2 (backend) | A3 (frontend) |
-| - | - | - | - |
-| static (lint/typecheck/format/docs-lint) | ✔ | ✔ | ✔ |
-| unit | — | ✔ | ✔ |
-| integration | — | ✔ | condicional |
-| build | — | ✔ | ✔ |
-| smoke | — | ✔ | ✔ |
-| regression | — | ✔ | ✔ |
-| migrations | — | ✔ (se schema alterado) | — |
-| impact (auth/workflow/email) | — | ✔ (conforme WP) | condicional |
+| Camada                                   | A1 (docs) | A2 (backend)            | A3 (frontend) |
+| ---------------------------------------- | --------- | ----------------------- | ------------- |
+| static (lint/typecheck/format/docs-lint) | ✔        | ✔                      | ✔            |
+| unit                                     | —         | ✔                      | ✔            |
+| integration                              | —         | ✔                      | condicional   |
+| build                                    | —         | ✔                      | ✔            |
+| smoke                                    | —         | ✔                      | ✔            |
+| regression                               | —         | ✔                      | ✔            |
+| migrations                               | —         | ✔ (se schema alterado) | —             |
+| impact (auth/workflow/email)             | —         | ✔ (conforme WP)        | condicional   |
 
 ## 5. Consequências
 

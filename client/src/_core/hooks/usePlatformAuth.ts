@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 
-export type PlatformAdminRole = 'superadmin' | 'admin' | 'support';
+export type PlatformAdminRole = "superadmin" | "admin" | "support";
 
 type UsePlatformAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -10,7 +10,10 @@ type UsePlatformAuthOptions = {
 };
 
 export function usePlatformAuth(options?: UsePlatformAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = "/platform-admin/login" } = options ?? {};
+  const {
+    redirectOnUnauthenticated = false,
+    redirectPath = "/platform-admin/login",
+  } = options ?? {};
   const utils = trpc.useUtils();
 
   const meQuery = trpc.auth.platformMe.useQuery(undefined, {
@@ -29,9 +32,7 @@ export function usePlatformAuth(options?: UsePlatformAuthOptions) {
     try {
       await logoutMutation.mutateAsync();
     } catch (error: any) {
-      if (
-        error?.data?.code === "UNAUTHORIZED"
-      ) {
+      if (error?.data?.code === "UNAUTHORIZED") {
         return;
       }
       throw error;
@@ -43,14 +44,14 @@ export function usePlatformAuth(options?: UsePlatformAuthOptions) {
 
   const state = useMemo(() => {
     const admin = meQuery.data ?? null;
-    const role = (admin as any)?.role as PlatformAdminRole | null ?? null;
+    const role = ((admin as any)?.role as PlatformAdminRole | null) ?? null;
     // isPending = sem dado em cache (mais conservador que isLoading no TanStack Query v5)
     // isLoading = isPending && isFetching — pode ser false antes do fetch começar
     return {
       admin,
       role,
-      isSuperAdmin: role === 'superadmin',
-      isAdminOrSuper: role === 'superadmin' || role === 'admin',
+      isSuperAdmin: role === "superadmin",
+      isAdminOrSuper: role === "superadmin" || role === "admin",
       loading: meQuery.isPending || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(admin),

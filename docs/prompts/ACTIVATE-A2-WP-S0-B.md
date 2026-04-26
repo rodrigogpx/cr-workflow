@@ -269,5 +269,6 @@ Cole APENAS:
 ### Próximo passo após merge
 
 Ativar **em paralelo**:
-  - A2 com `docs/prompts/ACTIVATE-A2-WP-S0-C-server.md`
-  - A3 com `docs/prompts/ACTIVATE-A3-WP-S0-C-client.md`
+
+- A2 com `docs/prompts/ACTIVATE-A2-WP-S0-C-server.md`
+- A3 com `docs/prompts/ACTIVATE-A3-WP-S0-C-client.md`

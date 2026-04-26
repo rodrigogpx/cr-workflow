@@ -1,7 +1,7 @@
 /// <reference types="node" />
-import fs from 'node:fs';
-import path from 'node:path';
-import { Buffer } from 'node:buffer';
+import fs from "node:fs";
+import path from "node:path";
+import { Buffer } from "node:buffer";
 
 const fsPromises = fs.promises;
 
@@ -37,8 +37,23 @@ const ALLOWED_MIME_TYPES = new Set([
 
 // SECURITY: Extensões bloqueadas explicitamente (executáveis e scripts)
 const BLOCKED_EXTENSIONS = new Set([
-  ".exe", ".bat", ".cmd", ".sh", ".ps1", ".msi", ".com", ".scr",
-  ".vbs", ".js", ".ts", ".py", ".rb", ".php", ".pl", ".jar", ".class",
+  ".exe",
+  ".bat",
+  ".cmd",
+  ".sh",
+  ".ps1",
+  ".msi",
+  ".com",
+  ".scr",
+  ".vbs",
+  ".js",
+  ".ts",
+  ".py",
+  ".rb",
+  ".php",
+  ".pl",
+  ".jar",
+  ".class",
 ]);
 
 function sanitizeFileName(name: string): string {
@@ -54,8 +69,13 @@ export function validateFileUpload(fileName: string, mimeType: string): void {
   }
 
   // Verificar MIME type na whitelist
-  if (mimeType && !ALLOWED_MIME_TYPES.has(mimeType.toLowerCase().split(";")[0].trim())) {
-    throw new Error(`[FileStorage] MIME type não permitido: ${mimeType}. Apenas documentos e imagens são aceitos.`);
+  if (
+    mimeType &&
+    !ALLOWED_MIME_TYPES.has(mimeType.toLowerCase().split(";")[0].trim())
+  ) {
+    throw new Error(
+      `[FileStorage] MIME type não permitido: ${mimeType}. Apenas documentos e imagens são aceitos.`
+    );
   }
 }
 
@@ -68,24 +88,37 @@ export async function saveClientDocumentFile(params: {
   tenantId?: number;
   fileName: string;
   buffer: Buffer;
-}): Promise<{ key: string; fullPath: string; publicPath: string; size: number }> {
+}): Promise<{
+  key: string;
+  fullPath: string;
+  publicPath: string;
+  size: number;
+}> {
   const safeName = sanitizeFileName(params.fileName);
 
   // SECURITY: Validate that clientId and tenantId are positive integers to prevent path traversal
   if (!Number.isInteger(params.clientId) || params.clientId <= 0) {
     throw new Error("[FileStorage] Invalid clientId");
   }
-  if (params.tenantId !== undefined && (!Number.isInteger(params.tenantId) || params.tenantId <= 0)) {
+  if (
+    params.tenantId !== undefined &&
+    (!Number.isInteger(params.tenantId) || params.tenantId <= 0)
+  ) {
     throw new Error("[FileStorage] Invalid tenantId");
   }
 
-  // Estrutura: 
+  // Estrutura:
   // Multi-tenant: tenants/<tenantId>/clients/<clientId>/<timestamp>-<fileName>
   // Legado/Sem tenant: clients/<clientId>/<timestamp>-<fileName>
-  
+
   let relDir: string;
   if (params.tenantId) {
-    relDir = path.join("tenants", String(params.tenantId), "clients", String(params.clientId));
+    relDir = path.join(
+      "tenants",
+      String(params.tenantId),
+      "clients",
+      String(params.clientId)
+    );
   } else {
     relDir = path.join("clients", String(params.clientId));
   }
@@ -119,7 +152,7 @@ export async function saveClientDocumentFile(params: {
  */
 export async function getTenantStorageUsage(tenantId: number): Promise<number> {
   const tenantDir = path.join(DOCUMENTS_BASE_DIR, "tenants", String(tenantId));
-  
+
   try {
     await fs.promises.access(tenantDir);
   } catch {
@@ -130,7 +163,7 @@ export async function getTenantStorageUsage(tenantId: number): Promise<number> {
 
   async function calculateDirSize(dirPath: string) {
     const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name);
       if (entry.isDirectory()) {
@@ -154,7 +187,9 @@ export async function getGlobalStorageUsage(): Promise<number> {
 
   async function calculateDirSize(dirPath: string) {
     try {
-      const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
+      const entries = await fs.promises.readdir(dirPath, {
+        withFileTypes: true,
+      });
       for (const entry of entries) {
         const fullPath = path.join(dirPath, entry.name);
         if (entry.isDirectory()) {

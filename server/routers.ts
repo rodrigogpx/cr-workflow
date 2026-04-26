@@ -1,20 +1,58 @@
 /// <reference types="node" />
-import { COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS, SESSION_MAX_AGE_MS, PLATFORM_SESSION_MAX_AGE_MS } from "@shared/const";
+import {
+  COOKIE_NAME,
+  PLATFORM_COOKIE_NAME,
+  ONE_YEAR_MS,
+  SESSION_MAX_AGE_MS,
+  PLATFORM_SESSION_MAX_AGE_MS,
+} from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure, adminProcedure, tenantProcedure, tenantAdminProcedure, platformAdminProcedure, platformSuperAdminProcedure, platformAdminOrSuperProcedure } from "./_core/trpc";
+import {
+  publicProcedure,
+  router,
+  protectedProcedure,
+  adminProcedure,
+  tenantProcedure,
+  tenantAdminProcedure,
+  platformAdminProcedure,
+  platformSuperAdminProcedure,
+  platformAdminOrSuperProcedure,
+} from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
-import { sendEmail, verifyConnection, verifyConnectionWithSettings, sendTestEmailWithSettings, triggerEmails, fetchImageAsBase64, buildInlineLogoAttachment, buildPsychReferralEmailHtml } from "./emailService";
+import {
+  sendEmail,
+  verifyConnection,
+  verifyConnectionWithSettings,
+  sendTestEmailWithSettings,
+  triggerEmails,
+  fetchImageAsBase64,
+  buildInlineLogoAttachment,
+  buildPsychReferralEmailHtml,
+} from "./emailService";
 import * as db from "./db";
-import { invalidateTenantCache, getTenantConfig, getTenantDb } from "./config/tenant.config";
+import {
+  invalidateTenantCache,
+  getTenantConfig,
+  getTenantDb,
+} from "./config/tenant.config";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
-import { saveClientDocumentFile, getTenantStorageUsage, validateFileUpload } from "./fileStorage";
+import {
+  saveClientDocumentFile,
+  getTenantStorageUsage,
+  validateFileUpload,
+} from "./fileStorage";
 import { TRPCError } from "@trpc/server";
 import { comparePassword, hashPassword } from "./_core/auth";
 import { sdk } from "./_core/sdk";
-import { createClientSchema, updateClientSchema, createUserSchema, updateUserSchema } from "@shared/validations";
+import {
+  createClientSchema,
+  updateClientSchema,
+  createUserSchema,
+  updateUserSchema,
+} from "@shared/validations";
 import { seedTenantEmailTemplates } from "./defaults/seedTenant";
 import { iatRouter } from "./routers/iat";
 import type { TrpcContext } from "./_core/context";
@@ -36,49 +74,64 @@ import { Buffer } from "node:buffer";
 function getPortalBaseUrl(ctx: TrpcContext): string {
   const isLocalHostname = (h: string | undefined | null): boolean => {
     if (!h) return true;
-    const hostOnly = h.split(':')[0]?.toLowerCase() ?? '';
+    const hostOnly = h.split(":")[0]?.toLowerCase() ?? "";
     return (
-      hostOnly === '' ||
-      hostOnly === 'localhost' ||
-      hostOnly.startsWith('127.') ||
-      hostOnly === '::1' ||
-      hostOnly === '0.0.0.0'
+      hostOnly === "" ||
+      hostOnly === "localhost" ||
+      hostOnly.startsWith("127.") ||
+      hostOnly === "::1" ||
+      hostOnly === "0.0.0.0"
     );
   };
 
   // 1) DOMAIN env var — fonte de verdade configurada pelo admin
-  const domain = (process.env.DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const domain = (process.env.DOMAIN ?? "")
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "");
   if (domain && !isLocalHostname(domain)) {
     return `https://${domain}`;
   }
 
   // 2) APP_URL env var
-  const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
-  if (appUrl && !appUrl.includes('localhost') && !appUrl.includes('127.0.0.1')) {
-    return appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
+  const appUrl = (process.env.APP_URL ?? "").replace(/\/$/, "");
+  if (
+    appUrl &&
+    !appUrl.includes("localhost") &&
+    !appUrl.includes("127.0.0.1")
+  ) {
+    return appUrl.startsWith("http") ? appUrl : `https://${appUrl}`;
   }
 
   // 3) Host real da requisição (Railway envia x-forwarded-host com o domínio público)
-  const forwardedHost = ctx.req?.headers?.['x-forwarded-host'] as string | undefined;
+  const forwardedHost = ctx.req?.headers?.["x-forwarded-host"] as
+    | string
+    | undefined;
   const hostHeader = ctx.req?.headers?.host as string | undefined;
-  const reqHost = (forwardedHost || hostHeader || '').split(',')[0]?.trim();
+  const reqHost = (forwardedHost || hostHeader || "").split(",")[0]?.trim();
   if (reqHost && !isLocalHostname(reqHost)) {
-    const proto = ((ctx.req?.headers?.['x-forwarded-proto'] as string) || 'https').split(',')[0]?.trim();
+    const proto = (
+      (ctx.req?.headers?.["x-forwarded-proto"] as string) || "https"
+    )
+      .split(",")[0]
+      ?.trim();
     return `${proto}://${reqHost}`;
   }
 
   // 4) RAILWAY_PUBLIC_DOMAIN (ex: cac360-hml.up.railway.app) ou RAILWAY_STATIC_URL
-  const railwayPublic = (process.env.RAILWAY_PUBLIC_DOMAIN ?? '').replace(/\/$/, '');
+  const railwayPublic = (process.env.RAILWAY_PUBLIC_DOMAIN ?? "").replace(
+    /\/$/,
+    ""
+  );
   if (railwayPublic && !isLocalHostname(railwayPublic)) {
-    return `https://${railwayPublic.replace(/^https?:\/\//, '')}`;
+    return `https://${railwayPublic.replace(/^https?:\/\//, "")}`;
   }
-  const railwayUrl = (process.env.RAILWAY_STATIC_URL ?? '').replace(/\/$/, '');
+  const railwayUrl = (process.env.RAILWAY_STATIC_URL ?? "").replace(/\/$/, "");
   if (railwayUrl && !isLocalHostname(railwayUrl)) {
-    return railwayUrl.startsWith('http') ? railwayUrl : `https://${railwayUrl}`;
+    return railwayUrl.startsWith("http") ? railwayUrl : `https://${railwayUrl}`;
   }
 
   // 5) Último recurso — log para diagnóstico e fallback vazio (nunca localhost)
-  console.warn('[getPortalBaseUrl] Nenhuma fonte válida de URL encontrada', {
+  console.warn("[getPortalBaseUrl] Nenhuma fonte válida de URL encontrada", {
     domain: process.env.DOMAIN,
     appUrl: process.env.APP_URL,
     forwardedHost,
@@ -86,68 +139,80 @@ function getPortalBaseUrl(ctx: TrpcContext): string {
     railwayPublic: process.env.RAILWAY_PUBLIC_DOMAIN,
     railwayStatic: process.env.RAILWAY_STATIC_URL,
   });
-  return '';
+  return "";
 }
 
 async function getTenantDbOrNull(ctx: TrpcContext) {
   if (ctx?.tenantSlug && ctx?.tenant) {
     // No single-db mode, usar o platformDb diretamente (sem healthcheck que falha no Railway)
-    const isSingleDbMode = process.env.TENANT_DB_MODE === 'single' || process.env.NODE_ENV === 'production';
+    const isSingleDbMode =
+      process.env.TENANT_DB_MODE === "single" ||
+      process.env.NODE_ENV === "production";
     if (isSingleDbMode) {
       const platformDb = await db.getDb();
       if (!platformDb) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco de dados não disponível' });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Banco de dados não disponível",
+        });
       }
       return platformDb;
     }
     const tenantDb = await getTenantDb(ctx.tenant);
     if (!tenantDb) {
-      throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Banco do tenant indisponível",
+      });
     }
     return tenantDb;
   }
   return null;
 }
 
-type ApostilamentoActivity = 'atirador' | 'cacador' | 'colecionador';
+type ApostilamentoActivity = "atirador" | "cacador" | "colecionador";
 
-const DISPENSADO_PREFIX = '[DISPENSADO] ';
+const DISPENSADO_PREFIX = "[DISPENSADO] ";
 
 const BASE_DOCUMENTS = [
-  'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
-  'Certidão de Antecedente Criminal Justiça Federal',
-  'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
-  'Documento de Identificação Pessoal',
-  'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
-  'Comprovante de Residência Fixa',
-  'Comprovante de Ocupação Lícita',
-  'Certidão de Antecedente Criminal Justiça Estadual',
-  'Declaração de Segurança do Acervo',
-  'Certidão de Antecedente Criminal Justiça Militar',
-  'Certidão de Antecedente Criminal Justiça Eleitoral',
+  "Comprovante de Capacidade Técnica para o manuseio de arma de fogo",
+  "Certidão de Antecedente Criminal Justiça Federal",
+  "Declaração de não estar respondendo a inquérito policial ou a processo criminal",
+  "Documento de Identificação Pessoal",
+  "Laudo de Aptidão Psicológica para o manuseio de arma de fogo",
+  "Comprovante de Residência Fixa",
+  "Comprovante de Ocupação Lícita",
+  "Certidão de Antecedente Criminal Justiça Estadual",
+  "Declaração de Segurança do Acervo",
+  "Certidão de Antecedente Criminal Justiça Militar",
+  "Certidão de Antecedente Criminal Justiça Eleitoral",
 ];
 
 const ATIRADOR_DOCUMENTS = [
-  'Declaração com compromisso de comprovar a habitualidade na forma da norma vigente',
-  'Comprovante de filiação a entidade de tiro desportivo',
+  "Declaração com compromisso de comprovar a habitualidade na forma da norma vigente",
+  "Comprovante de filiação a entidade de tiro desportivo",
 ];
 
 const CACADOR_DOCUMENTS = [
-  'Comprovante de filiação a entidade de caça',
-  'Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama',
+  "Comprovante de filiação a entidade de caça",
+  "Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama",
 ];
 
-const SECOND_ADDRESS_DOCUMENT = 'Comprovante de Segundo Endereço';
+const SECOND_ADDRESS_DOCUMENT = "Comprovante de Segundo Endereço";
 
 function parseApostilamentoActivities(value: unknown): ApostilamentoActivity[] {
   if (Array.isArray(value)) {
-    return value.filter((v): v is ApostilamentoActivity => ['atirador', 'cacador', 'colecionador'].includes(String(v)));
+    return value.filter((v): v is ApostilamentoActivity =>
+      ["atirador", "cacador", "colecionador"].includes(String(v))
+    );
   }
-  if (typeof value === 'string' && value.trim()) {
+  if (typeof value === "string" && value.trim()) {
     try {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) {
-        return parsed.filter((v): v is ApostilamentoActivity => ['atirador', 'cacador', 'colecionador'].includes(String(v)));
+        return parsed.filter((v): v is ApostilamentoActivity =>
+          ["atirador", "cacador", "colecionador"].includes(String(v))
+        );
       }
     } catch {
       // ignore invalid legacy payloads
@@ -156,12 +221,15 @@ function parseApostilamentoActivities(value: unknown): ApostilamentoActivity[] {
   return [];
 }
 
-function buildRequiredJuntadaDocuments(activities: ApostilamentoActivity[], hasSecondCollectionAddress: boolean): string[] {
+function buildRequiredJuntadaDocuments(
+  activities: ApostilamentoActivity[],
+  hasSecondCollectionAddress: boolean
+): string[] {
   const set = new Set<string>(BASE_DOCUMENTS);
-  if (activities.includes('atirador')) {
+  if (activities.includes("atirador")) {
     for (const d of ATIRADOR_DOCUMENTS) set.add(d);
   }
-  if (activities.includes('cacador')) {
+  if (activities.includes("cacador")) {
     for (const d of CACADOR_DOCUMENTS) set.add(d);
   }
   if (hasSecondCollectionAddress) {
@@ -171,47 +239,59 @@ function buildRequiredJuntadaDocuments(activities: ApostilamentoActivity[], hasS
 }
 
 function stripDispensadoPrefix(label: string): string {
-  return label.startsWith(DISPENSADO_PREFIX) ? label.slice(DISPENSADO_PREFIX.length) : label;
+  return label.startsWith(DISPENSADO_PREFIX)
+    ? label.slice(DISPENSADO_PREFIX.length)
+    : label;
 }
 
 async function syncJuntadaSubTasksForClient(
   activeDb: any,
   clientId: number,
-  requiredDocuments: string[],
+  requiredDocuments: string[]
 ) {
   const stepRowsRaw = await activeDb.execute(
-    sql`SELECT id FROM "workflowSteps" WHERE "clientId" = ${clientId} AND "stepId" = 'juntada-documento' LIMIT 1`,
+    sql`SELECT id FROM "workflowSteps" WHERE "clientId" = ${clientId} AND "stepId" = 'juntada-documento' LIMIT 1`
   );
-  const stepRows: any[] = Array.isArray(stepRowsRaw) ? stepRowsRaw : ((stepRowsRaw as any).rows ?? []);
+  const stepRows: any[] = Array.isArray(stepRowsRaw)
+    ? stepRowsRaw
+    : ((stepRowsRaw as any).rows ?? []);
   if (stepRows.length === 0) return;
 
   const workflowStepId = stepRows[0].id as number;
   const requiredSet = new Set(requiredDocuments);
 
   const subTasksRaw = await activeDb.execute(
-    sql`SELECT id, "subTaskId", label, completed FROM "subTasks" WHERE "workflowStepId" = ${workflowStepId} ORDER BY id ASC`,
+    sql`SELECT id, "subTaskId", label, completed FROM "subTasks" WHERE "workflowStepId" = ${workflowStepId} ORDER BY id ASC`
   );
-  const subTasks: any[] = Array.isArray(subTasksRaw) ? subTasksRaw : ((subTasksRaw as any).rows ?? []);
+  const subTasks: any[] = Array.isArray(subTasksRaw)
+    ? subTasksRaw
+    : ((subTasksRaw as any).rows ?? []);
 
   const existingByBaseLabel = new Map<string, any>();
   for (const st of subTasks) {
-    const baseLabel = stripDispensadoPrefix(String(st.label ?? ''));
+    const baseLabel = stripDispensadoPrefix(String(st.label ?? ""));
     if (!existingByBaseLabel.has(baseLabel)) {
       existingByBaseLabel.set(baseLabel, st);
     }
   }
 
   for (const st of subTasks) {
-    const baseLabel = stripDispensadoPrefix(String(st.label ?? ''));
+    const baseLabel = stripDispensadoPrefix(String(st.label ?? ""));
     const shouldBeRequired = requiredSet.has(baseLabel);
-    const currentlyDispensed = String(st.label ?? '').startsWith(DISPENSADO_PREFIX);
+    const currentlyDispensed = String(st.label ?? "").startsWith(
+      DISPENSADO_PREFIX
+    );
 
     if (shouldBeRequired && currentlyDispensed) {
-      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${baseLabel} WHERE id = ${st.id}`);
+      await activeDb.execute(
+        sql`UPDATE "subTasks" SET label = ${baseLabel} WHERE id = ${st.id}`
+      );
     }
 
     if (!shouldBeRequired && !currentlyDispensed) {
-      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${DISPENSADO_PREFIX + baseLabel} WHERE id = ${st.id}`);
+      await activeDb.execute(
+        sql`UPDATE "subTasks" SET label = ${DISPENSADO_PREFIX + baseLabel} WHERE id = ${st.id}`
+      );
     }
   }
 
@@ -220,7 +300,7 @@ async function syncJuntadaSubTasksForClient(
     if (existingByBaseLabel.has(doc)) continue;
     await db.upsertSubTaskToDb(activeDb, {
       workflowStepId,
-      subTaskId: `doc-${String(nextIndex).padStart(2, '0')}`,
+      subTaskId: `doc-${String(nextIndex).padStart(2, "0")}`,
       label: doc,
       completed: false,
     });
@@ -229,7 +309,7 @@ async function syncJuntadaSubTasksForClient(
 }
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
+  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   iat: iatRouter,
   auth: router({
@@ -237,15 +317,17 @@ export const appRouter = router({
       if (!ctx.user) return null;
       // Remover a senha (hashedPassword) do retorno do tRPC
       const { hashedPassword, ...safeUser } = ctx.user;
-      
+
       // Injetar também as features do tenant no payload de usuário, se existir, para o front-end
-      const tenantFeatures = ctx.tenant ? {
-        featureWorkflowCR: ctx.tenant.featureWorkflowCR,
-        featureApostilamento: ctx.tenant.featureApostilamento,
-        featureRenovacao: ctx.tenant.featureRenovacao,
-        featureInsumos: ctx.tenant.featureInsumos,
-        featureIAT: ctx.tenant.featureIAT,
-      } : null;
+      const tenantFeatures = ctx.tenant
+        ? {
+            featureWorkflowCR: ctx.tenant.featureWorkflowCR,
+            featureApostilamento: ctx.tenant.featureApostilamento,
+            featureRenovacao: ctx.tenant.featureRenovacao,
+            featureInsumos: ctx.tenant.featureInsumos,
+            featureIAT: ctx.tenant.featureIAT,
+          }
+        : null;
 
       return {
         ...safeUser,
@@ -262,17 +344,26 @@ export const appRouter = router({
     // Cria o primeiro superadmin quando a tabela platformAdmins está vazia.
     // Retorna 403 se já existir qualquer admin (proteção contra bootstrap repetido).
     bootstrapSuperAdmin: publicProcedure
-      .input(z.object({
-        email: z.string().email(),
-        password: z.string().min(8),
-        name: z.string().min(2),
-      }))
+      .input(
+        z.object({
+          email: z.string().email(),
+          password: z.string().min(8),
+          name: z.string().min(2),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const existing = await db.getAllPlatformAdmins();
         if (existing.length > 0) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Bootstrap não permitido: já existem administradores cadastrados.' });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Bootstrap não permitido: já existem administradores cadastrados.",
+          });
         }
-        const admin = await db.createPlatformAdmin({ ...input, role: 'superadmin' });
+        const admin = await db.createPlatformAdmin({
+          ...input,
+          role: "superadmin",
+        });
         // Fazer login automático após bootstrap
         // Session cookie (sem maxAge) â†’ apagado ao fechar o browser; JWT expira em 8h
         const sessionToken = await sdk.createSessionToken(admin.id.toString(), {
@@ -284,9 +375,9 @@ export const appRouter = router({
         ctx.res.cookie(PLATFORM_COOKIE_NAME, sessionToken, {
           ...cookieOptions,
           // Sem maxAge â†’ session cookie (apagado quando o browser fecha)
-          path: '/',
+          path: "/",
           httpOnly: true,
-          sameSite: 'lax',
+          sameSite: "lax",
         });
         return { success: true, admin };
       }),
@@ -295,14 +386,23 @@ export const appRouter = router({
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const admin = await db.getPlatformAdminByEmail(input.email);
-        
+
         if (!admin || !admin.isActive) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Credenciais inválidas",
+          });
         }
 
-        const passwordMatch = await comparePassword(input.password, admin.hashedPassword);
+        const passwordMatch = await comparePassword(
+          input.password,
+          admin.hashedPassword
+        );
         if (!passwordMatch) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Credenciais inválidas",
+          });
         }
 
         // Session cookie (sem maxAge) â†’ apagado ao fechar o browser; JWT expira em 8h
@@ -336,17 +436,27 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         let tenantSlug = ctx.tenantSlug;
 
-        const user = tenantSlug && ctx.tenant
-          ? await db.getUserByEmailAndTenant(input.email, ctx.tenant.id)
-          : await db.getUserByEmail(input.email);
+        const user =
+          tenantSlug && ctx.tenant
+            ? await db.getUserByEmailAndTenant(input.email, ctx.tenant.id)
+            : await db.getUserByEmail(input.email);
 
         if (!user) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Credenciais inválidas",
+          });
         }
 
-        const passwordMatch = await comparePassword(input.password, user.hashedPassword);
+        const passwordMatch = await comparePassword(
+          input.password,
+          user.hashedPassword
+        );
         if (!passwordMatch) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Credenciais inválidas' });
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Credenciais inválidas",
+          });
         }
 
         // If no tenantSlug in context but user has tenantId, resolve it
@@ -358,8 +468,13 @@ export const appRouter = router({
         } else if (!user.tenantId) {
           // SECURITY: Do NOT auto-associate users without tenant to the first tenant.
           // Legacy users without tenantId must be manually assigned by an admin.
-          console.warn(`[Auth] User ${user.id} (${user.email}) has no tenantId — login blocked until admin assigns a tenant`);
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Usuário sem tenant associado. Contate o administrador.' });
+          console.warn(
+            `[Auth] User ${user.id} (${user.email}) has no tenantId — login blocked until admin assigns a tenant`
+          );
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Usuário sem tenant associado. Contate o administrador.",
+          });
         }
 
         // Session cookie (sem maxAge) â†’ apagado ao fechar o browser; JWT expira em 8h
@@ -380,14 +495,17 @@ export const appRouter = router({
 
         // Log audit entry for login
         if (ctx.tenant?.id || user.tenantId) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
           await db.logAudit({
             tenantId: ctx.tenant?.id || user.tenantId!,
             userId: user.id,
-            action: 'LOGIN',
-            entity: 'AUTH',
+            action: "LOGIN",
+            entity: "AUTH",
             details: JSON.stringify({ email: user.email, role: user.role }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
           });
         }
 
@@ -404,7 +522,13 @@ export const appRouter = router({
       }),
     logout: publicProcedure.mutation(({ ctx }: { ctx: TrpcContext }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      const clearOpts = { ...cookieOptions, maxAge: -1, path: "/", httpOnly: true, sameSite: "lax" as const };
+      const clearOpts = {
+        ...cookieOptions,
+        maxAge: -1,
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax" as const,
+      };
       // SECURITY: Clear BOTH session cookies to fully invalidate tenant and platform admin sessions
       ctx.res.clearCookie(COOKIE_NAME, clearOpts);
       ctx.res.clearCookie(PLATFORM_COOKIE_NAME, clearOpts);
@@ -413,39 +537,54 @@ export const appRouter = router({
       } as const;
     }),
     register: publicProcedure
-      .input(z.object({
-        name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-        email: z.string().email("Email inválido"),
-        password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
-      }))
+      .input(
+        z.object({
+          name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+          email: z.string().email("Email inválido"),
+          password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantSlug = ctx.tenantSlug;
 
         // Verificar se email já existe
-        const existingUser = tenantSlug && ctx.tenant
-          ? await (async () => {
-              const tenantDb = await getTenantDb(ctx.tenant);
-              if (!tenantDb) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
-              }
-              return await db.getUserByEmailFromDb(tenantDb, input.email);
-            })()
-          : await db.getUserByEmail(input.email);
+        const existingUser =
+          tenantSlug && ctx.tenant
+            ? await (async () => {
+                const tenantDb = await getTenantDb(ctx.tenant);
+                if (!tenantDb) {
+                  throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "Banco do tenant indisponível",
+                  });
+                }
+                return await db.getUserByEmailFromDb(tenantDb, input.email);
+              })()
+            : await db.getUserByEmail(input.email);
 
         if (existingUser) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Este email já está cadastrado",
+          });
         }
 
         // Verificar limite de usuários do tenant
         if (tenantSlug && ctx.tenant) {
           const tenantDb = await getTenantDb(ctx.tenant);
           if (tenantDb) {
-            const { checkUserLimit, getEffectiveLimits } = await import("./config/tenant.limits");
+            const { checkUserLimit, getEffectiveLimits } = await import(
+              "./config/tenant.limits"
+            );
             const limits = getEffectiveLimits(ctx.tenant);
-            const check = await checkUserLimit(tenantDb, ctx.tenant.id, limits.maxUsers);
+            const check = await checkUserLimit(
+              tenantDb,
+              ctx.tenant.id,
+              limits.maxUsers
+            );
             if (!check.allowed) {
               throw new TRPCError({
-                code: 'FORBIDDEN',
+                code: "FORBIDDEN",
                 message: `Limite de usuários atingido (${check.current}/${check.max}). Entre em contato com o administrador para upgrade do plano.`,
               });
             }
@@ -456,43 +595,54 @@ export const appRouter = router({
         const hashedPassword = await hashPassword(input.password);
 
         // Criar usuário sem role (aguardando aprovação)
-        const userId = tenantSlug && ctx.tenant
-          ? await (async () => {
-              const tenantDb = await getTenantDb(ctx.tenant);
-              if (!tenantDb) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'Banco do tenant indisponível' });
-              }
-              return await db.upsertUserToDb(tenantDb, {
+        const userId =
+          tenantSlug && ctx.tenant
+            ? await (async () => {
+                const tenantDb = await getTenantDb(ctx.tenant);
+                if (!tenantDb) {
+                  throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "Banco do tenant indisponível",
+                  });
+                }
+                return await db.upsertUserToDb(tenantDb, {
+                  name: input.name,
+                  email: input.email,
+                  hashedPassword,
+                  role: null, // Aguardando aprovação do admin
+                });
+              })()
+            : await db.upsertUser({
                 name: input.name,
                 email: input.email,
                 hashedPassword,
                 role: null, // Aguardando aprovação do admin
               });
-            })()
-          : await db.upsertUser({
-              name: input.name,
-              email: input.email,
-              hashedPassword,
-              role: null, // Aguardando aprovação do admin
-            });
 
         // Log audit entry for registration
         if (tenantSlug && ctx.tenant?.id) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
           await db.logAudit({
             tenantId: ctx.tenant.id,
             userId: userId, // The newly created user ID
-            action: 'CREATE',
-            entity: 'USER',
+            action: "CREATE",
+            entity: "USER",
             entityId: userId,
-            details: JSON.stringify({ email: input.email, type: 'SELF_REGISTER' }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+            details: JSON.stringify({
+              email: input.email,
+              type: "SELF_REGISTER",
+            }),
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
           });
         }
 
         return {
           success: true,
-          message: 'Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.',
+          message:
+            "Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.",
           userId,
         };
       }),
@@ -504,76 +654,115 @@ export const appRouter = router({
       try {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
-        
+
         // Admin vê todos os clientes, operador vê todos os clientes
         // Despachante vê clientes com "Juntada de Documentos" concluída
         let clients: any[] = [];
-        if (ctx.user.role === 'admin') {
-          clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
-        } else if (ctx.user.role === 'operator') {
-          clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
-        } else if (ctx.user.role === 'despachante') {
+        if (ctx.user.role === "admin") {
+          clients = tenantDb
+            ? await db.getAllClientsFromDb(tenantDb, tenantId)
+            : await db.getAllClients();
+        } else if (ctx.user.role === "operator") {
+          clients = tenantDb
+            ? await db.getAllClientsFromDb(tenantDb, tenantId)
+            : await db.getAllClients();
+        } else if (ctx.user.role === "despachante") {
           // Despachante vê TODOS os clientes, mas filtraremos depois pela etapa concluída
-          clients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+          clients = tenantDb
+            ? await db.getAllClientsFromDb(tenantDb, tenantId)
+            : await db.getAllClients();
         } else {
-          clients = tenantDb ? await db.getClientsByOperatorFromDb(tenantDb, ctx.user.id, tenantId) : await db.getClientsByOperator(ctx.user.id);
+          clients = tenantDb
+            ? await db.getClientsByOperatorFromDb(
+                tenantDb,
+                ctx.user.id,
+                tenantId
+              )
+            : await db.getClientsByOperator(ctx.user.id);
         }
 
         const safeClients: any[] = Array.isArray(clients) ? clients : [];
         const clientIds: number[] = safeClients
           .map((c: any) => c.id)
-          .filter((id: any): id is number => typeof id === 'number');
+          .filter((id: any): id is number => typeof id === "number");
 
         const mainDb = tenantDb ? null : await db.getDb();
         const pendingTriageCounts = tenantDb
-          ? await db.getPendingTriageCountsByClients(tenantDb, clientIds, tenantId)
-          : (mainDb ? await db.getPendingTriageCountsByClients(mainDb, clientIds, tenantId) : []);
+          ? await db.getPendingTriageCountsByClients(
+              tenantDb,
+              clientIds,
+              tenantId
+            )
+          : mainDb
+            ? await db.getPendingTriageCountsByClients(
+                mainDb,
+                clientIds,
+                tenantId
+              )
+            : [];
 
         const pendingTriageMap = new Map<number, number>(
-          (pendingTriageCounts || []).map((row: any) => [row.clientId, Number(row.pendingCount) || 0])
+          (pendingTriageCounts || []).map((row: any) => [
+            row.clientId,
+            Number(row.pendingCount) || 0,
+          ])
         );
 
         const assignedUserIds: number[] = safeClients
           .map((c: any) => c.operatorId)
-          .filter((id: any): id is number => typeof id === 'number');
+          .filter((id: any): id is number => typeof id === "number");
 
-        const uniqueAssignedUserIds: number[] = Array.from(new Set<number>(assignedUserIds));
+        const uniqueAssignedUserIds: number[] = Array.from(
+          new Set<number>(assignedUserIds)
+        );
         const assignedUsers = tenantDb
           ? await db.getUsersByIdsFromDb(tenantDb, uniqueAssignedUserIds)
           : await db.getUsersByIds(uniqueAssignedUserIds);
-          
-        const safeAssignedUsers: any[] = Array.isArray(assignedUsers) ? assignedUsers : [];
-        const assignedUserMap = new Map<number, any>(safeAssignedUsers.map((u: any) => [u.id, u]));
-        
+
+        const safeAssignedUsers: any[] = Array.isArray(assignedUsers)
+          ? assignedUsers
+          : [];
+        const assignedUserMap = new Map<number, any>(
+          safeAssignedUsers.map((u: any) => [u.id, u])
+        );
+
         // Ordem canônica das fases do workflow
         const PHASE_ORDER = [
-          'cadastro',
-          'agendamento-psicotecnico',
-          'agendamento-laudo',
-          'juntada-documento',
-          'acompanhamento-sinarm',
+          "cadastro",
+          "agendamento-psicotecnico",
+          "agendamento-laudo",
+          "juntada-documento",
+          "acompanhamento-sinarm",
         ];
 
         // Adicionar estatísticas de workflow para cada cliente
         const clientsWithProgress = await Promise.all(
-          safeClients.map(async (client) => {
+          safeClients.map(async client => {
             const rawWorkflow = tenantDb
               ? await db.getWorkflowByClientFromDb(tenantDb, client.id)
               : await db.getWorkflowByClient(client.id);
-              
-            const workflow: any[] = Array.isArray(rawWorkflow) ? rawWorkflow : [];
-            
+
+            const workflow: any[] = Array.isArray(rawWorkflow)
+              ? rawWorkflow
+              : [];
+
             const totalSteps = workflow.length;
-            const completedSteps = workflow.filter((s: any) => s.completed).length;
-            const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
-            
+            const completedSteps = workflow.filter(
+              (s: any) => s.completed
+            ).length;
+            const progress =
+              totalSteps > 0
+                ? Math.round((completedSteps / totalSteps) * 100)
+                : 0;
+
             // Verificar se "Juntada de Documentos" está concluída (stepId 2 ou título contendo "juntada"/"documentos")
-            const juntadaStep = workflow.find((s: any) => 
-              s.stepId === 2 || 
-              s.stepId === '2' ||
-              s.stepId === 'juntada-documento' ||
-              s.stepTitle?.toLowerCase()?.includes('juntada') ||
-              s.stepTitle?.toLowerCase()?.includes('documentos')
+            const juntadaStep = workflow.find(
+              (s: any) =>
+                s.stepId === 2 ||
+                s.stepId === "2" ||
+                s.stepId === "juntada-documento" ||
+                s.stepTitle?.toLowerCase()?.includes("juntada") ||
+                s.stepTitle?.toLowerCase()?.includes("documentos")
             );
             const juntadaConcluida = juntadaStep?.completed === true;
 
@@ -585,22 +774,30 @@ export const appRouter = router({
               const step = workflow.find((s: any) => s.stepId === phaseId);
               const isCompleted = step ? step.completed : false;
               completedPhases[phaseId] = isCompleted;
-              
+
               if (!isCompleted && !currentPendingStep) {
                 currentPendingStep = phaseId;
               }
             }
             // Se todas as fases canônicas estão concluídas, marcar como 'concluido'
-            if (!currentPendingStep && completedSteps > 0 && completedSteps >= totalSteps) {
-              currentPendingStep = 'concluido';
+            if (
+              !currentPendingStep &&
+              completedSteps > 0 &&
+              completedSteps >= totalSteps
+            ) {
+              currentPendingStep = "concluido";
             }
 
             // Extrair status detalhado do SINARM
-            const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
-            const sinarmStatus: string | null = sinarmStep?.sinarmStatus || null;
-            const protocolNumber: string | null = sinarmStep?.protocolNumber || null;
+            const sinarmStep = workflow.find(
+              (s: any) => s.stepId === "acompanhamento-sinarm"
+            );
+            const sinarmStatus: string | null =
+              sinarmStep?.sinarmStatus || null;
+            const protocolNumber: string | null =
+              sinarmStep?.protocolNumber || null;
             const pendingTriageCount = pendingTriageMap.get(client.id) ?? 0;
-            
+
             return {
               ...client,
               progress,
@@ -613,28 +810,36 @@ export const appRouter = router({
               protocolNumber,
               pendingTriageCount,
               hasPendingTriage: pendingTriageCount > 0,
-              assignedOperator: client.operatorId ? (() => {
-                const u = assignedUserMap.get(client.operatorId);
-                return u ? { id: u.id, name: u.name, email: u.email } : null;
-              })() : null,
+              assignedOperator: client.operatorId
+                ? (() => {
+                    const u = assignedUserMap.get(client.operatorId);
+                    return u
+                      ? { id: u.id, name: u.name, email: u.email }
+                      : null;
+                  })()
+                : null,
             };
           })
         );
-        
+
         // Se for despachante, filtrar apenas clientes com Juntada de Documentos concluída
-        const filteredClients = ctx.user.role === 'despachante'
-          ? clientsWithProgress.filter(c => c.juntadaConcluida)
-          : clientsWithProgress;
-        
+        const filteredClients =
+          ctx.user.role === "despachante"
+            ? clientsWithProgress.filter(c => c.juntadaConcluida)
+            : clientsWithProgress;
+
         return filteredClients;
       } catch (error: any) {
-        console.error('[clients.list] Error:', error);
+        console.error("[clients.list] Error:", error);
         if (error instanceof TRPCError) {
           throw error;
         }
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: error instanceof Error ? `ERROR: ${error.message}\nSTACK: ${error.stack}` : (error?.message || 'Erro interno ao listar clientes'),
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? `ERROR: ${error.message}\nSTACK: ${error.stack}`
+              : error?.message || "Erro interno ao listar clientes",
         });
       }
     }),
@@ -647,14 +852,24 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.id)
           : await db.getClientById(input.id);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
-        
+
         // Verificar permissão: admin, despachante ou operador responsável
-        if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para acessar este cliente' });
+        if (
+          ctx.user.role !== "admin" &&
+          ctx.user.role !== "despachante" &&
+          client.operatorId !== ctx.user.id
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Sem permissão para acessar este cliente",
+          });
         }
-        
+
         return client;
       }),
 
@@ -664,31 +879,44 @@ export const appRouter = router({
         // Permissão:
         // - admin: pode cadastrar e atribuir a qualquer operador
         // - operator: pode cadastrar apenas para si
-        if (ctx.user.role !== 'admin' && ctx.user.role !== 'operator') {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "operator") {
           throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Sem permissão para cadastrar novos clientes.',
+            code: "FORBIDDEN",
+            message: "Sem permissão para cadastrar novos clientes.",
           });
         }
 
         const tenantDb = await getTenantDbOrNull(ctx);
-        const operatorId = ctx.user.role === 'admin' ? (input.operatorId || ctx.user.id) : ctx.user.id;
+        const operatorId =
+          ctx.user.role === "admin"
+            ? input.operatorId || ctx.user.id
+            : ctx.user.id;
 
         // Verificar limite de clientes do tenant
         if (ctx.tenant?.id && tenantDb) {
-          const { checkClientLimit, getEffectiveLimits } = await import("./config/tenant.limits");
+          const { checkClientLimit, getEffectiveLimits } = await import(
+            "./config/tenant.limits"
+          );
           const limits = getEffectiveLimits(ctx.tenant);
-          const check = await checkClientLimit(tenantDb, ctx.tenant.id, limits.maxClients);
+          const check = await checkClientLimit(
+            tenantDb,
+            ctx.tenant.id,
+            limits.maxClients
+          );
           if (!check.allowed) {
             throw new TRPCError({
-              code: 'FORBIDDEN',
+              code: "FORBIDDEN",
               message: `Limite de clientes atingido (${check.current}/${check.max}). Entre em contato com o administrador para upgrade do plano.`,
             });
           }
         }
 
-        const apostilamentoActivities = parseApostilamentoActivities(input.apostilamentoActivities);
-        const hasSecondCollectionAddress = Boolean(input.hasSecondCollectionAddress);
+        const apostilamentoActivities = parseApostilamentoActivities(
+          input.apostilamentoActivities
+        );
+        const hasSecondCollectionAddress = Boolean(
+          input.hasSecondCollectionAddress
+        );
 
         let clientId: number;
         try {
@@ -709,34 +937,45 @@ export const appRouter = router({
               });
         } catch (error: any) {
           // Check for duplicate CPF error (PostgreSQL code 23505)
-          const errMsg = error?.message || '';
+          const errMsg = error?.message || "";
           if (
-            error?.code === '23505' ||
-            errMsg.includes('duplicate key value violates unique constraint') ||
-            errMsg.includes('clients_cpf_unique') ||
-            errMsg.includes('clients_tenantId_cpf_unique')
+            error?.code === "23505" ||
+            errMsg.includes("duplicate key value violates unique constraint") ||
+            errMsg.includes("clients_cpf_unique") ||
+            errMsg.includes("clients_tenantId_cpf_unique")
           ) {
             throw new TRPCError({
-              code: 'CONFLICT',
-              message: 'Este CPF já está cadastrado no sistema.',
+              code: "CONFLICT",
+              message: "Este CPF já está cadastrado no sistema.",
             });
           }
-          
-          console.error('[Clients.create] Error:', error);
+
+          console.error("[Clients.create] Error:", error);
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
+            code: "INTERNAL_SERVER_ERROR",
             message: `Erro ao cadastrar cliente: ${errMsg.substring(0, 100)}`,
           });
         }
-        
+
         // Criar workflow inicial para o cliente - 6 etapas principais
         const initialSteps = [
-          { stepId: 'boas-vindas', stepTitle: 'Central de Mensagens' },
-          { stepId: 'cadastro', stepTitle: 'Cadastro' },
-          { stepId: 'agendamento-psicotecnico', stepTitle: 'Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo' },
-          { stepId: 'agendamento-laudo', stepTitle: 'Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)' },
-          { stepId: 'juntada-documento', stepTitle: 'Juntada de Documentos' },
-          { stepId: 'acompanhamento-sinarm', stepTitle: 'Acompanhamento Sinarm-CAC' },
+          { stepId: "boas-vindas", stepTitle: "Central de Mensagens" },
+          { stepId: "cadastro", stepTitle: "Cadastro" },
+          {
+            stepId: "agendamento-psicotecnico",
+            stepTitle:
+              "Encaminhamento de Avaliação Psicológica para Concessão de Registro e Porte de Arma de Fogo",
+          },
+          {
+            stepId: "agendamento-laudo",
+            stepTitle:
+              "Agendamento de Laudo de Capacidade Técnica para a Obtenção do Certificado de Registro (CR)",
+          },
+          { stepId: "juntada-documento", stepTitle: "Juntada de Documentos" },
+          {
+            stepId: "acompanhamento-sinarm",
+            stepTitle: "Acompanhamento Sinarm-CAC",
+          },
         ];
 
         try {
@@ -756,24 +995,24 @@ export const appRouter = router({
                 });
 
             // Se for a etapa "Juntada de Documento", criar subtarefas dinâmicas de documentos
-            if (step.stepId === 'juntada-documento') {
+            if (step.stepId === "juntada-documento") {
               const documents = buildRequiredJuntadaDocuments(
                 apostilamentoActivities,
-                hasSecondCollectionAddress,
+                hasSecondCollectionAddress
               );
 
               for (let i = 0; i < documents.length; i++) {
                 if (tenantDb) {
                   await db.upsertSubTaskToDb(tenantDb, {
                     workflowStepId,
-                    subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
+                    subTaskId: `doc-${String(i + 1).padStart(2, "0")}`,
                     label: documents[i],
                     completed: false,
                   });
                 } else {
                   await db.upsertSubTask({
                     workflowStepId,
-                    subTaskId: `doc-${String(i + 1).padStart(2, '0')}`,
+                    subTaskId: `doc-${String(i + 1).padStart(2, "0")}`,
                     label: documents[i],
                     completed: false,
                   });
@@ -782,52 +1021,71 @@ export const appRouter = router({
             }
           }
         } catch (wfError: any) {
-          console.error('[Clients.create] Workflow/SubTask creation failed:', {
+          console.error("[Clients.create] Workflow/SubTask creation failed:", {
             clientId,
             message: wfError?.message,
             code: wfError?.code,
             detail: wfError?.detail,
           });
           // Cliente já foi criado — não falhar a mutação inteira
-          console.warn('[Clients.create] Client created but workflow setup incomplete, clientId:', clientId);
+          console.warn(
+            "[Clients.create] Client created but workflow setup incomplete, clientId:",
+            clientId
+          );
         }
 
         // Gerar token de convite para o Portal do Cliente
         try {
-          const activePortalDb = tenantDb || await db.getDb();
+          const activePortalDb = tenantDb || (await db.getDb());
           if (activePortalDb) {
-            await db.createClientInviteToken(activePortalDb, clientId, ctx.tenant?.id);
+            await db.createClientInviteToken(
+              activePortalDb,
+              clientId,
+              ctx.tenant?.id
+            );
           }
         } catch (tokenErr) {
-          console.warn('[Clients.create] Falha ao gerar token de convite do portal:', tokenErr);
+          console.warn(
+            "[Clients.create] Falha ao gerar token de convite do portal:",
+            tokenErr
+          );
           // Não falha o cadastro
         }
 
         // Enviar email de boas-vindas automaticamente
         try {
           const welcomeTemplate = tenantDb
-            ? await db.getEmailTemplateFromDb(tenantDb, 'boasvindas-filiado', undefined, ctx.tenant?.id)
-            : await db.getEmailTemplate('boasvindas-filiado');
-          
+            ? await db.getEmailTemplateFromDb(
+                tenantDb,
+                "boasvindas-filiado",
+                undefined,
+                ctx.tenant?.id
+              )
+            : await db.getEmailTemplate("boasvindas-filiado");
+
           if (welcomeTemplate && input.email) {
             // Buscar logo do tenant para variável {{logo}} e converter para base64
-            const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
-            const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+            const tenantSettings = ctx.tenant?.id
+              ? await db.getTenantSmtpSettings(ctx.tenant.id)
+              : null;
+            const emailLogoUrl = tenantSettings?.emailLogoUrl || "";
             const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
-            
+
             // Logo já está salva como base64 no banco
 
             // Variável {{link_portal}} — link de ativação do portal do cliente
             const portalBaseUrl = getPortalBaseUrl(ctx);
 
-            let portalLink = '';
+            let portalLink = "";
             try {
-              const activePortalDb = tenantDb || await db.getDb();
+              const activePortalDb = tenantDb || (await db.getDb());
               if (activePortalDb) {
                 const rawRows = await activePortalDb.execute(
                   sql`SELECT "token" FROM "clientInviteTokens" WHERE "clientId" = ${clientId} ORDER BY "createdAt" DESC LIMIT 1`
                 );
-                const tokenRows: any[] = Array.isArray(rawRows) ? rawRows : ((rawRows as any).rows ?? []);
+                const tokenRows: any[] = Array.isArray(rawRows)
+                  ? rawRows
+                  : ((rawRows as any).rows ?? []);
                 if (tokenRows[0]?.token) {
                   portalLink = `${portalBaseUrl}/portal/acesso?t=${tokenRows[0].token}`;
                 }
@@ -837,11 +1095,14 @@ export const appRouter = router({
             // Substituir variáveis no template
             const replaceVariables = (text: string) => {
               let result = text;
-              result = result.replace(/{{nome}}/g, input.name || '');
-              result = result.replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'));
-              result = result.replace(/{{email}}/g, input.email || '');
-              result = result.replace(/{{cpf}}/g, input.cpf || '');
-              result = result.replace(/{{telefone}}/g, input.phone || '');
+              result = result.replace(/{{nome}}/g, input.name || "");
+              result = result.replace(
+                /{{data}}/g,
+                new Date().toLocaleDateString("pt-BR")
+              );
+              result = result.replace(/{{email}}/g, input.email || "");
+              result = result.replace(/{{cpf}}/g, input.cpf || "");
+              result = result.replace(/{{telefone}}/g, input.phone || "");
               // Variável {{logo}} — CID inline se tenant tiver logo; fallback logo CAC 360
               const _logoFallback =
                 `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">` +
@@ -850,14 +1111,20 @@ export const appRouter = router({
                 `<span style="font-family:'Arial Black',Arial,sans-serif;font-size:24px;font-weight:900;color:#28a745;letter-spacing:2px;">360</span>` +
                 `</td></tr></table>`;
               if (emailLogoUrl) {
-                result = result.replace(/{{logo}}/g, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
+                result = result.replace(
+                  /{{logo}}/g,
+                  `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`
+                );
               } else {
                 result = result.replace(/{{logo}}/g, _logoFallback);
               }
               // Variável {{link_portal}} — botão de acesso ao portal
-              result = result.replace(/{{link_portal}}/g, portalLink
-                ? `<a href="${portalLink}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold;">Completar Meu Cadastro &#x2192;</a>`
-                : '');
+              result = result.replace(
+                /{{link_portal}}/g,
+                portalLink
+                  ? `<a href="${portalLink}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold;">Completar Meu Cadastro &#x2192;</a>`
+                  : ""
+              );
               return result;
             };
 
@@ -877,7 +1144,7 @@ export const appRouter = router({
             if (tenantDb) {
               await db.logEmailSentToDb(tenantDb, {
                 clientId,
-                templateKey: 'boasvindas-filiado',
+                templateKey: "boasvindas-filiado",
                 recipientEmail: input.email,
                 subject: finalSubject,
                 content: finalContent,
@@ -886,7 +1153,7 @@ export const appRouter = router({
             } else {
               await db.logEmailSent({
                 clientId,
-                templateKey: 'boasvindas-filiado',
+                templateKey: "boasvindas-filiado",
                 recipientEmail: input.email,
                 subject: finalSubject,
                 content: finalContent,
@@ -896,20 +1163,27 @@ export const appRouter = router({
           }
         } catch (emailError) {
           // Não falhar a criação do cliente se o email falhar
-          console.error('[Clients] Failed to send welcome email:', emailError);
+          console.error("[Clients] Failed to send welcome email:", emailError);
         }
 
         // Log audit entry for client creation
         if (ctx.tenant?.id) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
           await db.logAudit({
             tenantId: ctx.tenant.id,
             userId: ctx.user.id,
-            action: 'CREATE',
-            entity: 'CLIENT',
+            action: "CREATE",
+            entity: "CLIENT",
             entityId: clientId,
-            details: JSON.stringify({ name: input.name, cpf: input.cpf, operatorId }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+            details: JSON.stringify({
+              name: input.name,
+              cpf: input.cpf,
+              operatorId,
+            }),
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
           });
         }
 
@@ -921,108 +1195,137 @@ export const appRouter = router({
           if (newClient) {
             // Construir link do portal para {{link_portal}} no template welcome.
             // O token de convite já foi criado acima; apenas lemos o valor.
-            let _welcomePortalLink = '';
+            let _welcomePortalLink = "";
             try {
               const _portalBase = getPortalBaseUrl(ctx);
-              const _pdb = tenantDb || await db.getDb();
+              const _pdb = tenantDb || (await db.getDb());
               if (_pdb) {
                 const _prows: any = await _pdb.execute(
                   sql`SELECT "token" FROM "clientInviteTokens" WHERE "clientId" = ${clientId} ORDER BY "createdAt" DESC LIMIT 1`
                 );
-                const _tokenArr: any[] = Array.isArray(_prows) ? _prows : (_prows?.rows ?? []);
+                const _tokenArr: any[] = Array.isArray(_prows)
+                  ? _prows
+                  : (_prows?.rows ?? []);
                 if (_tokenArr[0]?.token) {
                   _welcomePortalLink = `${_portalBase}/portal/acesso?t=${_tokenArr[0].token}`;
                 }
               }
-            } catch { /* non-fatal — email é enviado mesmo sem link */ }
+            } catch {
+              /* non-fatal — email é enviado mesmo sem link */
+            }
 
-            await triggerEmails('CLIENT_CREATED', {
+            await triggerEmails("CLIENT_CREATED", {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client: newClient,
-              extraData: _welcomePortalLink ? { link_portal: _welcomePortalLink } : undefined,
+              extraData: _welcomePortalLink
+                ? { link_portal: _welcomePortalLink }
+                : undefined,
             });
           }
         } catch (triggerError) {
-          console.error('[Clients] Failed to process email triggers:', triggerError);
+          console.error(
+            "[Clients] Failed to process email triggers:",
+            triggerError
+          );
         }
 
         return { id: clientId };
       }),
 
-        update: protectedProcedure
-          .input(updateClientSchema)
-          .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-            const tenantDb = await getTenantDbOrNull(ctx);
-            const client = tenantDb
-              ? await db.getClientByIdFromDb(tenantDb, input.id)
-              : await db.getClientById(input.id);
-            if (!client) {
-              throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
-            }
-            
-            // Verificar permissão
-            if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-              throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para editar este cliente' });
-            }
-            
-            // Apenas admin pode alterar operador
-            if (input.operatorId && ctx.user.role !== 'admin') {
-              throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas administradores podem delegar clientes' });
-            }
-            
-            const { id, ...updateData } = input;
-            const parsedActivities = parseApostilamentoActivities(updateData.apostilamentoActivities);
-            const normalizedUpdateData: Record<string, any> = {
-              ...updateData,
-              ...(updateData.apostilamentoActivities !== undefined
-                ? { apostilamentoActivities: JSON.stringify(parsedActivities) }
-                : {}),
-            };
+    update: protectedProcedure
+      .input(updateClientSchema)
+      .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const client = tenantDb
+          ? await db.getClientByIdFromDb(tenantDb, input.id)
+          : await db.getClientById(input.id);
+        if (!client) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
+        }
 
-            if (tenantDb) {
-              await db.updateClientToDb(tenantDb, id, normalizedUpdateData);
-            } else {
-              await db.updateClient(id, normalizedUpdateData);
-            }
+        // Verificar permissão
+        if (ctx.user.role !== "admin" && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Sem permissão para editar este cliente",
+          });
+        }
 
-            if (
-              updateData.apostilamentoActivities !== undefined ||
-              updateData.hasSecondCollectionAddress !== undefined
-            ) {
-              const effectiveActivities = updateData.apostilamentoActivities !== undefined
-                ? parsedActivities
-                : parseApostilamentoActivities((client as any).apostilamentoActivities);
-              const effectiveHasSecondAddress = updateData.hasSecondCollectionAddress !== undefined
-                ? Boolean(updateData.hasSecondCollectionAddress)
-                : Boolean((client as any).hasSecondCollectionAddress);
-              const requiredDocuments = buildRequiredJuntadaDocuments(
-                effectiveActivities,
-                effectiveHasSecondAddress,
-              );
+        // Apenas admin pode alterar operador
+        if (input.operatorId && ctx.user.role !== "admin") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Apenas administradores podem delegar clientes",
+          });
+        }
 
-              const activeDb = tenantDb || await db.getDb();
-              if (activeDb) {
-                await syncJuntadaSubTasksForClient(activeDb, id, requiredDocuments);
-              }
-            }
+        const { id, ...updateData } = input;
+        const parsedActivities = parseApostilamentoActivities(
+          updateData.apostilamentoActivities
+        );
+        const normalizedUpdateData: Record<string, any> = {
+          ...updateData,
+          ...(updateData.apostilamentoActivities !== undefined
+            ? { apostilamentoActivities: JSON.stringify(parsedActivities) }
+            : {}),
+        };
 
-            // Log audit entry for client update
-            if (ctx.tenant?.id) {
-              const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
-              await db.logAudit({
-                tenantId: ctx.tenant.id,
-                userId: ctx.user.id,
-                action: 'UPDATE',
-                entity: 'CLIENT',
-                entityId: id,
-                details: JSON.stringify({ updatedFields: Object.keys(normalizedUpdateData) }),
-                ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
-              });
-            }
+        if (tenantDb) {
+          await db.updateClientToDb(tenantDb, id, normalizedUpdateData);
+        } else {
+          await db.updateClient(id, normalizedUpdateData);
+        }
 
-            return { success: true };
-          }),
+        if (
+          updateData.apostilamentoActivities !== undefined ||
+          updateData.hasSecondCollectionAddress !== undefined
+        ) {
+          const effectiveActivities =
+            updateData.apostilamentoActivities !== undefined
+              ? parsedActivities
+              : parseApostilamentoActivities(
+                  (client as any).apostilamentoActivities
+                );
+          const effectiveHasSecondAddress =
+            updateData.hasSecondCollectionAddress !== undefined
+              ? Boolean(updateData.hasSecondCollectionAddress)
+              : Boolean((client as any).hasSecondCollectionAddress);
+          const requiredDocuments = buildRequiredJuntadaDocuments(
+            effectiveActivities,
+            effectiveHasSecondAddress
+          );
+
+          const activeDb = tenantDb || (await db.getDb());
+          if (activeDb) {
+            await syncJuntadaSubTasksForClient(activeDb, id, requiredDocuments);
+          }
+        }
+
+        // Log audit entry for client update
+        if (ctx.tenant?.id) {
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
+          await db.logAudit({
+            tenantId: ctx.tenant.id,
+            userId: ctx.user.id,
+            action: "UPDATE",
+            entity: "CLIENT",
+            entityId: id,
+            details: JSON.stringify({
+              updatedFields: Object.keys(normalizedUpdateData),
+            }),
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
+          });
+        }
+
+        return { success: true };
+      }),
 
     delegateOperator: tenantAdminProcedure
       .input(z.object({ id: z.number(), operatorId: z.number() }))
@@ -1032,25 +1335,33 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.id)
           : await db.getClientById(input.id);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
 
         if (tenantDb) {
-          await db.updateClientToDb(tenantDb, input.id, { operatorId: input.operatorId });
+          await db.updateClientToDb(tenantDb, input.id, {
+            operatorId: input.operatorId,
+          });
         } else {
           await db.updateClient(input.id, { operatorId: input.operatorId });
         }
 
         if (ctx.tenant?.id) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
           await db.logAudit({
             tenantId: ctx.tenant.id,
             userId: ctx.user.id,
-            action: 'UPDATE',
-            entity: 'CLIENT',
+            action: "UPDATE",
+            entity: "CLIENT",
             entityId: input.id,
-            details: JSON.stringify({ updatedFields: ['operatorId'] }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+            details: JSON.stringify({ updatedFields: ["operatorId"] }),
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
           });
         }
 
@@ -1065,9 +1376,12 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.id)
           : await db.getClientById(input.id);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
-        
+
         // Apenas admin pode deletar clientes
         if (tenantDb) {
           await db.deleteClientFromDb(tenantDb, input.id);
@@ -1077,15 +1391,18 @@ export const appRouter = router({
 
         // Log audit entry for client deletion
         if (ctx.tenant?.id) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
           await db.logAudit({
             tenantId: ctx.tenant.id,
             userId: ctx.user.id,
-            action: 'DELETE',
-            entity: 'CLIENT',
+            action: "DELETE",
+            entity: "CLIENT",
             entityId: input.id,
             details: JSON.stringify({ name: client.name, cpf: client.cpf }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
           });
         }
 
@@ -1095,24 +1412,39 @@ export const appRouter = router({
     reenviarConvitePortal: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
-        if (!['admin', 'operator'].includes(ctx.user.role ?? '')) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão.' });
+        if (!["admin", "operator"].includes(ctx.user.role ?? "")) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão." });
         }
 
         const tenantDb = await getTenantDbOrNull(ctx);
-        const activeDb = tenantDb || await (await import('./db')).getDb();
-        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponível.' });
+        const activeDb = tenantDb || (await (await import("./db")).getDb());
+        if (!activeDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Banco indisponível.",
+          });
 
         // Buscar o cliente
         const clientRows = await activeDb.execute(
-          (await import('drizzle-orm')).sql`SELECT * FROM "clients" WHERE "id" = ${input.clientId} LIMIT 1`
+          (await import("drizzle-orm"))
+            .sql`SELECT * FROM "clients" WHERE "id" = ${input.clientId} LIMIT 1`
         );
-        const clientArr = Array.isArray(clientRows) ? clientRows : (clientRows as any).rows || [];
-        if (clientArr.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado.' });
+        const clientArr = Array.isArray(clientRows)
+          ? clientRows
+          : (clientRows as any).rows || [];
+        if (clientArr.length === 0)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado.",
+          });
         const client = clientArr[0];
 
         // Regenerar token
-        const newToken = await db.regenerateClientInviteToken(activeDb, input.clientId, ctx.tenant?.id);
+        const newToken = await db.regenerateClientInviteToken(
+          activeDb,
+          input.clientId,
+          ctx.tenant?.id
+        );
 
         // Montar link do portal — usa host real da requisição para evitar localhost em produção
         const portalBaseUrl = getPortalBaseUrl(ctx);
@@ -1121,14 +1453,16 @@ export const appRouter = router({
         // Enviar email com o link
         if (client.email) {
           try {
-            const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
-            const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+            const tenantSettings = ctx.tenant?.id
+              ? await db.getTenantSmtpSettings(ctx.tenant.id)
+              : null;
+            const emailLogoUrl = tenantSettings?.emailLogoUrl || "";
             const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
 
-            const subject = `Seu link de acesso ao Portal — ${ctx.tenant?.name || 'CAC 360'}`;
+            const subject = `Seu link de acesso ao Portal — ${ctx.tenant?.name || "CAC 360"}`;
             const html = `
               <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-                ${emailLogoUrl ? `<img src="cid:email-logo" alt="Logo" style="max-height:60px;margin-bottom:16px;display:block;" />` : ''}
+                ${emailLogoUrl ? `<img src="cid:email-logo" alt="Logo" style="max-height:60px;margin-bottom:16px;display:block;" />` : ""}
                 <h2 style="color:#7c3aed">Portal do Associado</h2>
                 <p>Olá, <strong>${client.name}</strong>!</p>
                 <p>Seu link de acesso ao Portal foi renovado. Clique no botão abaixo para acessar:</p>
@@ -1154,12 +1488,12 @@ export const appRouter = router({
               tenantId: ctx.tenant?.id,
             });
           } catch (emailErr) {
-            console.warn('[portal.reenviarConvite] Email falhou:', emailErr);
+            console.warn("[portal.reenviarConvite] Email falhou:", emailErr);
             // Não falha o processo — token já foi gerado
           }
         }
 
-        return { success: true, message: 'Convite reenviado com sucesso.' };
+        return { success: true, message: "Convite reenviado com sucesso." };
       }),
   }),
 
@@ -1169,11 +1503,12 @@ export const appRouter = router({
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
-        const activeDb = tenantDb || await (await import('./db')).getDb();
-        if (!activeDb) return { hasToken: false, activated: false, activatedAt: null };
+        const activeDb = tenantDb || (await (await import("./db")).getDb());
+        if (!activeDb)
+          return { hasToken: false, activated: false, activatedAt: null };
 
         const rows = await activeDb.execute(
-          (await import('drizzle-orm')).sql`
+          (await import("drizzle-orm")).sql`
             SELECT "activatedAt", "expiresAt", "createdAt"
             FROM "clientInviteTokens"
             WHERE "clientId" = ${input.clientId}
@@ -1181,7 +1516,8 @@ export const appRouter = router({
           `
         );
         const arr = Array.isArray(rows) ? rows : (rows as any).rows || [];
-        if (arr.length === 0) return { hasToken: false, activated: false, activatedAt: null };
+        if (arr.length === 0)
+          return { hasToken: false, activated: false, activatedAt: null };
 
         return {
           hasToken: true,
@@ -1203,37 +1539,59 @@ export const appRouter = router({
             ? await db.getClientByIdFromDb(tenantDb, input.clientId)
             : await db.getClientById(input.clientId);
           if (!client) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Cliente não encontrado",
+            });
           }
-          
+
           // Verificar permissão (despachante pode ver clientes do operador a que está vinculado)
-          if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+          if (
+            ctx.user.role !== "admin" &&
+            ctx.user.role !== "despachante" &&
+            client.operatorId !== ctx.user.id
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Sem permissão",
+            });
           }
-          
+
           const steps = tenantDb
             ? await db.getWorkflowByClientFromDb(tenantDb, input.clientId)
             : await db.getWorkflowByClient(input.clientId);
-          
+
           // Etapas visíveis para despachante (por stepId ou título)
           const DESPACHANTE_VISIBLE_STEPS = [1, 2, 6]; // Cadastro, Juntada de Documentos, Acompanhamento Sinarm-CAC
-          const DESPACHANTE_VISIBLE_TITLES = ['cadastro', 'juntada', 'documentos', 'sinarm', 'acompanhamento'];
-          
+          const DESPACHANTE_VISIBLE_TITLES = [
+            "cadastro",
+            "juntada",
+            "documentos",
+            "sinarm",
+            "acompanhamento",
+          ];
+
           // Filtrar etapas se for despachante
-          const filteredSteps = ctx.user.role === 'despachante'
-            ? steps.filter(step => 
-                DESPACHANTE_VISIBLE_STEPS.includes(step.stepId) ||
-                DESPACHANTE_VISIBLE_TITLES.some(title => 
-                  step.stepTitle?.toLowerCase()?.includes(title)
+          const filteredSteps =
+            ctx.user.role === "despachante"
+              ? steps.filter(
+                  step =>
+                    DESPACHANTE_VISIBLE_STEPS.includes(step.stepId) ||
+                    DESPACHANTE_VISIBLE_TITLES.some(title =>
+                      step.stepTitle?.toLowerCase()?.includes(title)
+                    )
                 )
-              )
-            : steps;
-          
+              : steps;
+
           // Buscar subtarefas para cada step
           const stepsWithSubTasks = await Promise.all(
-            filteredSteps.map(async (step) => {
+            filteredSteps.map(async step => {
               const subTasksList = tenantDb
-                ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, step.id, ctx.tenant?.id ?? undefined)
+                ? await db.getSubTasksByWorkflowStepFromDb(
+                    tenantDb,
+                    step.id,
+                    ctx.tenant?.id ?? undefined
+                  )
                 : await db.getSubTasksByWorkflowStep(step.id);
               return {
                 ...step,
@@ -1241,25 +1599,34 @@ export const appRouter = router({
               };
             })
           );
-          
+
           return stepsWithSubTasks;
         } catch (error: any) {
-          console.error('[workflow.getByClient] ERROR:', error?.message || error, { clientId: input.clientId, tenantSlug: ctx.tenantSlug });
+          console.error(
+            "[workflow.getByClient] ERROR:",
+            error?.message || error,
+            { clientId: input.clientId, tenantSlug: ctx.tenantSlug }
+          );
           if (error instanceof TRPCError) throw error;
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Erro ao carregar workflow: ${error?.message || 'erro desconhecido'}` });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Erro ao carregar workflow: ${error?.message || "erro desconhecido"}`,
+          });
         }
       }),
 
     updateStep: protectedProcedure
-      .input(z.object({
-        clientId: z.number().optional(),
-        stepId: z.number(),
-        completed: z.boolean().optional(),
-        sinarmStatus: z.string().optional(),
-        sinarmOpenDate: z.string().optional().nullable(),
-        protocolNumber: z.string().optional().nullable(),
-        sinarmComment: z.string().optional()
-      }))
+      .input(
+        z.object({
+          clientId: z.number().optional(),
+          stepId: z.number(),
+          completed: z.boolean().optional(),
+          sinarmStatus: z.string().optional(),
+          sinarmOpenDate: z.string().optional().nullable(),
+          protocolNumber: z.string().optional().nullable(),
+          sinarmComment: z.string().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         // Buscar etapa atual
@@ -1267,53 +1634,65 @@ export const appRouter = router({
           ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
           : await db.getWorkflowStepById(input.stepId);
         if (!currentStep) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Etapa não encontrada",
+          });
         }
-        
+
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, currentStep.clientId)
           : await db.getClientById(currentStep.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
-        
+
         // Verificar permissão
         // Despachantes podem alterar sinarmStatus e protocolNumber na fase Acompanhamento Sinarm-CAC
-        const isDespachante = ctx.user.role === 'despachante';
-        const isUpdatingSinarmOnly = (
-          input.sinarmStatus !== undefined || 
-          input.protocolNumber !== undefined ||
-          input.sinarmOpenDate !== undefined ||
-          input.sinarmComment !== undefined
-        ) && input.completed === undefined;
-        const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
-        
+        const isDespachante = ctx.user.role === "despachante";
+        const isUpdatingSinarmOnly =
+          (input.sinarmStatus !== undefined ||
+            input.protocolNumber !== undefined ||
+            input.sinarmOpenDate !== undefined ||
+            input.sinarmComment !== undefined) &&
+          input.completed === undefined;
+        const hasGeneralPermission =
+          ctx.user.role === "admin" || client.operatorId === ctx.user.id;
+
         if (!hasGeneralPermission && !(isDespachante && isUpdatingSinarmOnly)) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
 
         // Regra: Agendamento de Laudo só pode ser concluído se Avaliação Psicológica estiver concluída
         if (input.completed === true) {
           const isLaudoStep =
-            currentStep.stepId === 'agendamento-laudo' ||
-            currentStep.stepTitle?.toLowerCase()?.includes('laudo') === true;
+            currentStep.stepId === "agendamento-laudo" ||
+            currentStep.stepTitle?.toLowerCase()?.includes("laudo") === true;
 
           if (isLaudoStep) {
             // Buscar todas as etapas do cliente
             const allSteps = tenantDb
-              ? await db.getWorkflowByClientFromDb(tenantDb, currentStep.clientId)
+              ? await db.getWorkflowByClientFromDb(
+                  tenantDb,
+                  currentStep.clientId
+                )
               : await db.getWorkflowByClient(currentStep.clientId);
-            
-            const avaliacaoStep = allSteps.find((s: any) => 
-              s.stepId === 'agendamento-psicotecnico' || 
-              s.stepTitle?.toLowerCase()?.includes('avaliação psicológica') ||
-              s.stepTitle?.toLowerCase()?.includes('psicotécnico')
+
+            const avaliacaoStep = allSteps.find(
+              (s: any) =>
+                s.stepId === "agendamento-psicotecnico" ||
+                s.stepTitle?.toLowerCase()?.includes("avaliação psicológica") ||
+                s.stepTitle?.toLowerCase()?.includes("psicotécnico")
             );
-            
+
             if (avaliacaoStep && !avaliacaoStep.completed) {
               throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Não é possível concluir o Laudo de Capacidade Técnica: a fase de Avaliação Psicológica deve ser concluída primeiro.',
+                code: "BAD_REQUEST",
+                message:
+                  "Não é possível concluir o Laudo de Capacidade Técnica: a fase de Avaliação Psicológica deve ser concluída primeiro.",
               });
             }
           }
@@ -1322,29 +1701,39 @@ export const appRouter = router({
         // Regra: Juntada de Documentos só pode ser concluída se todos os documentos forem anexados
         if (input.completed === true) {
           const isJuntadaStep =
-            currentStep.stepId === 'juntada-documento' ||
-            currentStep.stepId === 'juntada-documentos' ||
-            currentStep.stepTitle?.toLowerCase()?.includes('juntada') === true;
+            currentStep.stepId === "juntada-documento" ||
+            currentStep.stepId === "juntada-documentos" ||
+            currentStep.stepTitle?.toLowerCase()?.includes("juntada") === true;
 
           if (isJuntadaStep) {
             const subTasksList = tenantDb
-              ? await db.getSubTasksByWorkflowStepFromDb(tenantDb, currentStep.id, ctx.tenant?.id ?? undefined)
+              ? await db.getSubTasksByWorkflowStepFromDb(
+                  tenantDb,
+                  currentStep.id,
+                  ctx.tenant?.id ?? undefined
+                )
               : await db.getSubTasksByWorkflowStep(currentStep.id);
 
             const docs = tenantDb
-              ? await db.getDocumentsByClientFromDb(tenantDb, currentStep.clientId)
+              ? await db.getDocumentsByClientFromDb(
+                  tenantDb,
+                  currentStep.clientId
+                )
               : await db.getDocumentsByClient(currentStep.clientId);
 
-            const missing = subTasksList.filter((st: any) => !docs.some((d: any) => d.subTaskId === st.id));
+            const missing = subTasksList.filter(
+              (st: any) => !docs.some((d: any) => d.subTaskId === st.id)
+            );
             if (subTasksList.length > 0 && missing.length > 0) {
               throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Não é possível concluir a Juntada de Documentos: ainda existem documentos obrigatórios não anexados.',
+                code: "BAD_REQUEST",
+                message:
+                  "Não é possível concluir a Juntada de Documentos: ainda existem documentos obrigatórios não anexados.",
               });
             }
           }
         }
-        
+
         // Construir objeto de atualização apenas com campos fornecidos
         const updateData: any = {
           id: input.stepId,
@@ -1352,12 +1741,18 @@ export const appRouter = router({
           stepId: currentStep.stepId,
           stepTitle: currentStep.stepTitle,
         };
-        
-        if (input.completed !== undefined) updateData.completed = input.completed;
-        if (input.sinarmStatus !== undefined) updateData.sinarmStatus = input.sinarmStatus;
-        if (input.sinarmOpenDate !== undefined) updateData.sinarmOpenDate = input.sinarmOpenDate ? new Date(input.sinarmOpenDate) : null;
-        if (input.protocolNumber !== undefined) updateData.protocolNumber = input.protocolNumber;
-        
+
+        if (input.completed !== undefined)
+          updateData.completed = input.completed;
+        if (input.sinarmStatus !== undefined)
+          updateData.sinarmStatus = input.sinarmStatus;
+        if (input.sinarmOpenDate !== undefined)
+          updateData.sinarmOpenDate = input.sinarmOpenDate
+            ? new Date(input.sinarmOpenDate)
+            : null;
+        if (input.protocolNumber !== undefined)
+          updateData.protocolNumber = input.protocolNumber;
+
         if (tenantDb) {
           await db.upsertWorkflowStepToDb(tenantDb, updateData);
         } else {
@@ -1366,46 +1761,83 @@ export const appRouter = router({
 
         // Registrar comentário no histórico para qualquer alteração Sinarm
         try {
-          const hasStatusChange = input.sinarmStatus !== undefined && input.sinarmStatus !== (currentStep.sinarmStatus || '');
-          const oldProtocol = currentStep.protocolNumber || '';
-          const newProtocol = input.protocolNumber !== undefined ? (input.protocolNumber || '') : oldProtocol;
-          const hasProtocolChange = input.protocolNumber !== undefined && newProtocol !== oldProtocol;
+          const hasStatusChange =
+            input.sinarmStatus !== undefined &&
+            input.sinarmStatus !== (currentStep.sinarmStatus || "");
+          const oldProtocol = currentStep.protocolNumber || "";
+          const newProtocol =
+            input.protocolNumber !== undefined
+              ? input.protocolNumber || ""
+              : oldProtocol;
+          const hasProtocolChange =
+            input.protocolNumber !== undefined && newProtocol !== oldProtocol;
 
-          const oldDateRaw = currentStep.sinarmOpenDate ? new Date(currentStep.sinarmOpenDate) : null;
-          const newDateRaw = input.sinarmOpenDate !== undefined
-            ? (input.sinarmOpenDate ? new Date(input.sinarmOpenDate) : null)
-            : oldDateRaw;
-          const oldDateStr = oldDateRaw ? oldDateRaw.toISOString().split('T')[0] : '';
-          const newDateStr = newDateRaw ? newDateRaw.toISOString().split('T')[0] : '';
-          const hasDateChange = input.sinarmOpenDate !== undefined && oldDateStr !== newDateStr;
+          const oldDateRaw = currentStep.sinarmOpenDate
+            ? new Date(currentStep.sinarmOpenDate)
+            : null;
+          const newDateRaw =
+            input.sinarmOpenDate !== undefined
+              ? input.sinarmOpenDate
+                ? new Date(input.sinarmOpenDate)
+                : null
+              : oldDateRaw;
+          const oldDateStr = oldDateRaw
+            ? oldDateRaw.toISOString().split("T")[0]
+            : "";
+          const newDateStr = newDateRaw
+            ? newDateRaw.toISOString().split("T")[0]
+            : "";
+          const hasDateChange =
+            input.sinarmOpenDate !== undefined && oldDateStr !== newDateStr;
 
-          const hasUserComment = typeof input.sinarmComment === 'string' && input.sinarmComment.trim().length > 0;
+          const hasUserComment =
+            typeof input.sinarmComment === "string" &&
+            input.sinarmComment.trim().length > 0;
 
-          if (hasStatusChange || hasProtocolChange || hasDateChange || hasUserComment) {
+          if (
+            hasStatusChange ||
+            hasProtocolChange ||
+            hasDateChange ||
+            hasUserComment
+          ) {
             const parts: string[] = [];
             if (hasStatusChange) {
-              parts.push(`Status: "${currentStep.sinarmStatus || 'Novo'}" â†’ "${input.sinarmStatus}"`);
+              parts.push(
+                `Status: "${currentStep.sinarmStatus || "Novo"}" â†’ "${input.sinarmStatus}"`
+              );
             }
             if (hasProtocolChange) {
-              parts.push(`Protocolo: "${oldProtocol || '—'}" â†’ "${newProtocol || '—'}"`);
+              parts.push(
+                `Protocolo: "${oldProtocol || "—"}" â†’ "${newProtocol || "—"}"`
+              );
             }
             if (hasDateChange) {
-              const fmtOld = oldDateRaw ? oldDateRaw.toLocaleDateString('pt-BR') : '—';
-              const fmtNew = newDateRaw ? newDateRaw.toLocaleDateString('pt-BR') : '—';
+              const fmtOld = oldDateRaw
+                ? oldDateRaw.toLocaleDateString("pt-BR")
+                : "—";
+              const fmtNew = newDateRaw
+                ? newDateRaw.toLocaleDateString("pt-BR")
+                : "—";
               parts.push(`Data abertura: "${fmtOld}" â†’ "${fmtNew}"`);
             }
 
-            const autoComment = parts.length > 0 ? parts.join(' | ') : 'Atualização registrada';
-            const comment = hasUserComment ? input.sinarmComment!.trim() : autoComment;
-            const newStatus = input.sinarmStatus || currentStep.sinarmStatus || 'Novo';
-            const oldStatus = hasStatusChange ? (currentStep.sinarmStatus || 'Novo') : newStatus;
+            const autoComment =
+              parts.length > 0 ? parts.join(" | ") : "Atualização registrada";
+            const comment = hasUserComment
+              ? input.sinarmComment!.trim()
+              : autoComment;
+            const newStatus =
+              input.sinarmStatus || currentStep.sinarmStatus || "Novo";
+            const oldStatus = hasStatusChange
+              ? currentStep.sinarmStatus || "Novo"
+              : newStatus;
 
             const commentData = {
               workflowStepId: input.stepId,
               oldStatus,
               newStatus,
               comment,
-              createdBy: ctx.user.id
+              createdBy: ctx.user.id,
             };
 
             if (tenantDb) {
@@ -1415,23 +1847,32 @@ export const appRouter = router({
             }
           }
         } catch (commentError) {
-          console.error('[Workflow] Failed to insert sinarm comment:', commentError);
+          console.error(
+            "[Workflow] Failed to insert sinarm comment:",
+            commentError
+          );
         }
 
         // Log de auditoria
         try {
-          const ipAddress = ctx.req?.headers?.['x-forwarded-for']?.toString().split(',')[0] || 
-                            ctx.req?.headers?.['x-real-ip']?.toString() || 
-                            ctx.req?.socket?.remoteAddress || 'unknown';
+          const ipAddress =
+            ctx.req?.headers?.["x-forwarded-for"]?.toString().split(",")[0] ||
+            ctx.req?.headers?.["x-real-ip"]?.toString() ||
+            ctx.req?.socket?.remoteAddress ||
+            "unknown";
           const auditDetails: Record<string, unknown> = {
             clientId: currentStep.clientId,
             stepId: input.stepId,
             stepTitle: currentStep.stepTitle,
           };
-          if (input.completed !== undefined) auditDetails.completed = input.completed;
-          if (input.sinarmStatus !== undefined) auditDetails.sinarmStatus = input.sinarmStatus;
-          if (input.sinarmOpenDate !== undefined) auditDetails.sinarmOpenDate = input.sinarmOpenDate;
-          if (input.protocolNumber !== undefined) auditDetails.protocolNumber = input.protocolNumber;
+          if (input.completed !== undefined)
+            auditDetails.completed = input.completed;
+          if (input.sinarmStatus !== undefined)
+            auditDetails.sinarmStatus = input.sinarmStatus;
+          if (input.sinarmOpenDate !== undefined)
+            auditDetails.sinarmOpenDate = input.sinarmOpenDate;
+          if (input.protocolNumber !== undefined)
+            auditDetails.protocolNumber = input.protocolNumber;
 
           if (tenantDb) {
             const auditTenantId = ctx.tenant?.id ?? ctx.user.tenantId;
@@ -1439,8 +1880,8 @@ export const appRouter = router({
               await db.logAuditToDb(tenantDb, {
                 tenantId: auditTenantId,
                 userId: ctx.user.id,
-                action: 'UPDATE',
-                entity: 'WORKFLOW',
+                action: "UPDATE",
+                entity: "WORKFLOW",
                 entityId: input.stepId,
                 details: JSON.stringify(auditDetails),
                 ipAddress,
@@ -1452,8 +1893,8 @@ export const appRouter = router({
               await db.logAudit({
                 tenantId: auditTenantId,
                 userId: ctx.user.id,
-                action: 'UPDATE',
-                entity: 'WORKFLOW',
+                action: "UPDATE",
+                entity: "WORKFLOW",
                 entityId: input.stepId,
                 details: JSON.stringify(auditDetails),
                 ipAddress,
@@ -1461,7 +1902,7 @@ export const appRouter = router({
             }
           }
         } catch (auditError) {
-          console.error('[Workflow] Failed to log audit:', auditError);
+          console.error("[Workflow] Failed to log audit:", auditError);
         }
 
         // Trigger email automation
@@ -1476,65 +1917,83 @@ export const appRouter = router({
             // 4. Juntada de Documentos (juntada-documento)
             // 5. Submissão ao SINARM-CAC (acompanhamento-sinarm-cac)
             const stepIdToNumber: Record<string, string> = {
-              'cadastro': '1',
-              'agendamento-psicotecnico': '2',
-              'agendamento-laudo': '3',
-              'juntada-documento': '4',
-              'acompanhamento-sinarm': '5',
+              cadastro: "1",
+              "agendamento-psicotecnico": "2",
+              "agendamento-laudo": "3",
+              "juntada-documento": "4",
+              "acompanhamento-sinarm": "5",
               // aliases/compat
-              'juntada-documentos': '4',
-              'acompanhamento-sinarm-cac': '5',
-              'central-mensagens': '2',  // legacy alias para psicotecnico
-              'boas-vindas': '2',        // legacy alias para psicotecnico
+              "juntada-documentos": "4",
+              "acompanhamento-sinarm-cac": "5",
+              "central-mensagens": "2", // legacy alias para psicotecnico
+              "boas-vindas": "2", // legacy alias para psicotecnico
             };
-            const stepNumber = stepIdToNumber[currentStep.stepId] || currentStep.stepId.match(/\d+/)?.[0] || currentStep.stepId;
-            
+            const stepNumber =
+              stepIdToNumber[currentStep.stepId] ||
+              currentStep.stepId.match(/\d+/)?.[0] ||
+              currentStep.stepId;
+
             // Preparar extraData com informações de agendamento se disponíveis
             const stepExtraData: Record<string, any> = {};
             if (currentStep.scheduledDate) {
               const schedDate = new Date(currentStep.scheduledDate);
-              stepExtraData.dataAgendamento = schedDate.toLocaleString('pt-BR');
+              stepExtraData.dataAgendamento = schedDate.toLocaleString("pt-BR");
             }
             if (currentStep.examinerName) {
               stepExtraData.examinador = currentStep.examinerName;
             }
             // Determinar tipo de agendamento baseado no step
-            const isPsychStep = String(currentStep.stepId).includes('psico') || currentStep.stepTitle?.toLowerCase()?.includes('psico');
-            const isLaudoStep = String(currentStep.stepId).includes('laudo') || currentStep.stepTitle?.toLowerCase()?.includes('laudo');
+            const isPsychStep =
+              String(currentStep.stepId).includes("psico") ||
+              currentStep.stepTitle?.toLowerCase()?.includes("psico");
+            const isLaudoStep =
+              String(currentStep.stepId).includes("laudo") ||
+              currentStep.stepTitle?.toLowerCase()?.includes("laudo");
             if (isPsychStep) {
-              stepExtraData.tipoAgendamento = 'Avaliação Psicológica';
+              stepExtraData.tipoAgendamento = "Avaliação Psicológica";
             } else if (isLaudoStep) {
-              stepExtraData.tipoAgendamento = 'Laudo Técnico';
+              stepExtraData.tipoAgendamento = "Laudo Técnico";
             }
-            
+
             await triggerEmails(`STEP_COMPLETED:${stepNumber}`, {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client,
-              extraData: Object.keys(stepExtraData).length > 0 ? stepExtraData : undefined,
+              extraData:
+                Object.keys(stepExtraData).length > 0
+                  ? stepExtraData
+                  : undefined,
             });
           }
-          
+
           // Sinarm status change trigger
           if (input.sinarmStatus) {
-            const sinarmEventStatus = input.sinarmStatus === 'Restituído'
-              ? 'Correção Solicitada'
-              : input.sinarmStatus;
+            const sinarmEventStatus =
+              input.sinarmStatus === "Restituído"
+                ? "Correção Solicitada"
+                : input.sinarmStatus;
 
-            const effectiveProtocolNumber = input.protocolNumber !== undefined
-              ? (input.protocolNumber || '')
-              : (currentStep.protocolNumber || '');
+            const effectiveProtocolNumber =
+              input.protocolNumber !== undefined
+                ? input.protocolNumber || ""
+                : currentStep.protocolNumber || "";
             await triggerEmails(`SINARM_STATUS:${sinarmEventStatus}`, {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client,
-              extraData: { sinarmStatus: input.sinarmStatus, protocolNumber: effectiveProtocolNumber },
+              extraData: {
+                sinarmStatus: input.sinarmStatus,
+                protocolNumber: effectiveProtocolNumber,
+              },
             });
           }
         } catch (triggerError) {
-          console.error('[Workflow] Failed to process email triggers:', triggerError);
+          console.error(
+            "[Workflow] Failed to process email triggers:",
+            triggerError
+          );
         }
-        
+
         return { success: true };
       }),
 
@@ -1548,7 +2007,10 @@ export const appRouter = router({
           : await db.getWorkflowStepById(input.stepId);
 
         if (!step) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Etapa não encontrada",
+          });
         }
 
         const client = tenantDb
@@ -1556,51 +2018,68 @@ export const appRouter = router({
           : await db.getClientById(step.clientId);
 
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
 
-        const hasGeneralPermission = ctx.user.role === 'admin' || client.operatorId === ctx.user.id;
-        const isDespachante = ctx.user.role === 'despachante';
+        const hasGeneralPermission =
+          ctx.user.role === "admin" || client.operatorId === ctx.user.id;
+        const isDespachante = ctx.user.role === "despachante";
         const isSinarmStep =
-          step.stepId === 'acompanhamento-sinarm' ||
-          step.stepId === 'acompanhamento-sinarm-cac' ||
-          step.stepTitle?.toLowerCase()?.includes('sinarm') === true;
+          step.stepId === "acompanhamento-sinarm" ||
+          step.stepId === "acompanhamento-sinarm-cac" ||
+          step.stepTitle?.toLowerCase()?.includes("sinarm") === true;
 
         if (!hasGeneralPermission && !(isDespachante && isSinarmStep)) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
 
         return tenantDb
-          ? await db.getSinarmCommentsByWorkflowStepIdFromDb(tenantDb, input.stepId, ctx.tenant?.id ?? undefined)
+          ? await db.getSinarmCommentsByWorkflowStepIdFromDb(
+              tenantDb,
+              input.stepId,
+              ctx.tenant?.id ?? undefined
+            )
           : await db.getSinarmCommentsByWorkflowStepId(input.stepId);
       }),
 
     updateSubTask: protectedProcedure
-      .input(z.object({
-        clientId: z.number(),
-        subTaskId: z.number(),
-        completed: z.boolean(),
-      }))
+      .input(
+        z.object({
+          clientId: z.number(),
+          subTaskId: z.number(),
+          completed: z.boolean(),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
-        
+
         // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        if (ctx.user.role !== "admin" && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
-        
+
         if (tenantDb) {
-          await db.updateSubTaskCompletedToDb(tenantDb, input.subTaskId, input.completed);
+          await db.updateSubTaskCompletedToDb(
+            tenantDb,
+            input.subTaskId,
+            input.completed
+          );
         } else {
           await db.updateSubTaskCompleted(input.subTaskId, input.completed);
         }
-        
+
         return { success: true };
       }),
 
@@ -1612,45 +2091,58 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
-        
+
         // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        if (ctx.user.role !== "admin" && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
-        
-        const { generateWelcomePDF } = await import('./generate-pdf');
+
+        const { generateWelcomePDF } = await import("./generate-pdf");
         const pdfBuffer = await generateWelcomePDF(client);
-        
+
         // Upload para S3
-        const fileName = `boas-vindas-${client.name.replace(/\s+/g, '-').toLowerCase()}.pdf`;
-        const result = await storagePut(fileName, pdfBuffer, 'application/pdf');
-        
+        const fileName = `boas-vindas-${client.name.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+        const result = await storagePut(fileName, pdfBuffer, "application/pdf");
+
         return { url: result.url, fileName };
       }),
 
     sendPsychReferral: protectedProcedure
-      .input(z.object({
-        clientId:  z.number().int(),
-        stepId:    z.number().int(),
-        type:      z.enum(['standard', 'custom']),
-        fileData:  z.string().optional(), // base64 data URI — only for custom
-        fileName:  z.string().optional(), // only for custom
-      }))
+      .input(
+        z.object({
+          clientId: z.number().int(),
+          stepId: z.number().int(),
+          type: z.enum(["standard", "custom"]),
+          fileData: z.string().optional(), // base64 data URI — only for custom
+          fileName: z.string().optional(), // only for custom
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
-        const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco indisponível.' });
+        const activeDb = tenantDb || (await db.getDb());
+        if (!activeDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Banco indisponível.",
+          });
 
         // Buscar cliente
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
-        if (!client) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado.' });
+        if (!client)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado.",
+          });
 
         // Get tenant signature configuration for PDF signature
-        let responsibleName = 'CAC 360';
+        let responsibleName = "CAC 360";
         if (ctx.tenant?.id) {
           // Priority: 1) Signature name configured in tenant, 2) Admin user name, 3) CAC 360
           if ((ctx.tenant as any).signatureResponsibleName) {
@@ -1659,39 +2151,76 @@ export const appRouter = router({
             const tenantAdmins = tenantDb
               ? await db.getAllUsersFromDb(tenantDb, ctx.tenant.id)
               : await db.getAllUsers();
-            const adminUser = tenantAdmins.find(u => u.role === 'admin');
+            const adminUser = tenantAdmins.find(u => u.role === "admin");
             if (adminUser) {
-              responsibleName = adminUser.name || 'CAC 360';
+              responsibleName = adminUser.name || "CAC 360";
             }
           }
         }
 
-        const { generatePsychReferralPDF, generateClientDataPDF } = await import('./generate-pdf');
-        const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-        const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
+        const { generatePsychReferralPDF, generateClientDataPDF } =
+          await import("./generate-pdf");
+        const dateStr = new Date().toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        });
+        const attachments: Array<{
+          filename: string;
+          content: Buffer;
+          contentType: string;
+        }> = [];
 
-        if (input.type === 'standard') {
+        if (input.type === "standard") {
           // Gerar PDF de encaminhamento com nome do responsável
-          const pdfBuf = await generatePsychReferralPDF(client as any, responsibleName);
-          attachments.push({ filename: 'encaminhamento-avaliacao-psicologica.pdf', content: pdfBuf, contentType: 'application/pdf' });
+          const pdfBuf = await generatePsychReferralPDF(
+            client as any,
+            responsibleName
+          );
+          attachments.push({
+            filename: "encaminhamento-avaliacao-psicologica.pdf",
+            content: pdfBuf,
+            contentType: "application/pdf",
+          });
         } else {
           // Encaminhamento personalizado: salvar arquivo e anexar
           if (!input.fileData || !input.fileName) {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Arquivo obrigatório para encaminhamento personalizado.' });
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Arquivo obrigatório para encaminhamento personalizado.",
+            });
           }
           // Decodificar base64
-          const base64Match = input.fileData.match(/^data:([^;]+);base64,(.+)$/);
-          if (!base64Match) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Formato de arquivo inválido.' });
-          const mimeType  = base64Match[1];
-          const fileBuffer = Buffer.from(base64Match[2], 'base64');
-          attachments.push({ filename: input.fileName, content: fileBuffer, contentType: mimeType });
+          const base64Match = input.fileData.match(
+            /^data:([^;]+);base64,(.+)$/
+          );
+          if (!base64Match)
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Formato de arquivo inválido.",
+            });
+          const mimeType = base64Match[1];
+          const fileBuffer = Buffer.from(base64Match[2], "base64");
+          attachments.push({
+            filename: input.fileName,
+            content: fileBuffer,
+            contentType: mimeType,
+          });
           // Anexar também a ficha de dados do cliente
           const clientDataPdf = await generateClientDataPDF(client as any);
-          attachments.push({ filename: 'ficha-cadastral.pdf', content: clientDataPdf, contentType: 'application/pdf' });
+          attachments.push({
+            filename: "ficha-cadastral.pdf",
+            content: clientDataPdf,
+            contentType: "application/pdf",
+          });
         }
 
         // Enviar email ao cliente
-        const html = buildPsychReferralEmailHtml(client.name, input.type, dateStr);
+        const html = buildPsychReferralEmailHtml(
+          client.name,
+          input.type,
+          dateStr
+        );
         await sendEmail({
           to: client.email,
           subject: `Encaminhamento para Avaliação Psicológica — ${responsibleName}`,
@@ -1712,31 +2241,39 @@ export const appRouter = router({
       }),
 
     updateScheduling: protectedProcedure
-      .input(z.object({
-        clientId: z.number(),
-        stepId: z.number(),
-        scheduledDate: z.string().optional(),
-        examinerName: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          clientId: z.number(),
+          stepId: z.number(),
+          scheduledDate: z.string().optional(),
+          examinerName: z.string().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
-        
+
         // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        if (ctx.user.role !== "admin" && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
-        
+
         const currentStep = tenantDb
           ? await db.getWorkflowStepByIdFromDb(tenantDb, input.stepId)
           : await db.getWorkflowStepById(input.stepId);
         if (!currentStep) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Etapa não encontrada' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Etapa não encontrada",
+          });
         }
 
         // Atualizar apenas campos de agendamento, preservando identificadores e título da etapa
@@ -1746,7 +2283,9 @@ export const appRouter = router({
             clientId: currentStep.clientId,
             stepId: currentStep.stepId,
             stepTitle: currentStep.stepTitle,
-            scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
+            scheduledDate: input.scheduledDate
+              ? new Date(input.scheduledDate)
+              : null,
             examinerName: input.examinerName || null,
           });
         } else {
@@ -1755,7 +2294,9 @@ export const appRouter = router({
             clientId: currentStep.clientId,
             stepId: currentStep.stepId,
             stepTitle: currentStep.stepTitle,
-            scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
+            scheduledDate: input.scheduledDate
+              ? new Date(input.scheduledDate)
+              : null,
             examinerName: input.examinerName || null,
           });
         }
@@ -1764,25 +2305,34 @@ export const appRouter = router({
         if (input.scheduledDate) {
           try {
             const scheduledDate = new Date(input.scheduledDate);
-            const isPsych = String(currentStep.stepId).includes('psico') || currentStep.stepTitle?.toLowerCase()?.includes('psico');
-            const eventType = isPsych ? 'SCHEDULE_PSYCH_CREATED' : 'SCHEDULE_TECH_CONFIRMATION';
-            
+            const isPsych =
+              String(currentStep.stepId).includes("psico") ||
+              currentStep.stepTitle?.toLowerCase()?.includes("psico");
+            const eventType = isPsych
+              ? "SCHEDULE_PSYCH_CREATED"
+              : "SCHEDULE_TECH_CONFIRMATION";
+
             await triggerEmails(eventType, {
               tenantDb,
               tenantId: ctx.tenant?.id,
               client,
               scheduledDate,
               extraData: {
-                dataAgendamento: scheduledDate.toLocaleString('pt-BR'),
-                examinador: input.examinerName || '',
-                tipoAgendamento: isPsych ? 'Avaliação Psicológica' : 'Laudo Técnico',
+                dataAgendamento: scheduledDate.toLocaleString("pt-BR"),
+                examinador: input.examinerName || "",
+                tipoAgendamento: isPsych
+                  ? "Avaliação Psicológica"
+                  : "Laudo Técnico",
               },
             });
           } catch (triggerError) {
-            console.error('[Workflow] Failed to process scheduling email triggers:', triggerError);
+            console.error(
+              "[Workflow] Failed to process scheduling email triggers:",
+              triggerError
+            );
           }
         }
-        
+
         return { success: true };
       }),
   }),
@@ -1798,60 +2348,89 @@ export const appRouter = router({
             ? await db.getClientByIdFromDb(tenantDb, input.clientId)
             : await db.getClientById(input.clientId);
           if (!client) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Cliente não encontrado",
+            });
           }
-          
+
           // Verificar permissão
-          if (ctx.user.role !== 'admin' && ctx.user.role !== 'despachante' && client.operatorId !== ctx.user.id) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+          if (
+            ctx.user.role !== "admin" &&
+            ctx.user.role !== "despachante" &&
+            client.operatorId !== ctx.user.id
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Sem permissão",
+            });
           }
-          
+
           return tenantDb
             ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
             : await db.getDocumentsByClient(input.clientId);
         } catch (error: any) {
-          console.error('[documents.list] ERROR:', error?.message || error, { clientId: input.clientId, tenantSlug: ctx.tenantSlug });
+          console.error("[documents.list] ERROR:", error?.message || error, {
+            clientId: input.clientId,
+            tenantSlug: ctx.tenantSlug,
+          });
           if (error instanceof TRPCError) throw error;
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Erro ao listar documentos: ${error?.message || 'erro desconhecido'}` });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Erro ao listar documentos: ${error?.message || "erro desconhecido"}`,
+          });
         }
       }),
 
     upload: protectedProcedure
-      .input(z.object({
-        clientId: z.number(),
-        workflowStepId: z.number().optional(),
-        subTaskId: z.number().optional(),
-        fileName: z.string(),
-        fileData: z.string(), // base64
-        mimeType: z.string(),
-      }))
+      .input(
+        z.object({
+          clientId: z.number(),
+          workflowStepId: z.number().optional(),
+          subTaskId: z.number().optional(),
+          fileName: z.string(),
+          fileData: z.string(), // base64
+          mimeType: z.string(),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
-        
+
         // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        if (ctx.user.role !== "admin" && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
 
         // Despachante não pode fazer upload de documentos
-        if (ctx.user.role === 'despachante') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode fazer upload de documentos' });
+        if (ctx.user.role === "despachante") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Despachante não pode fazer upload de documentos",
+          });
         }
 
         // Verificar limite de armazenamento do tenant
         if (ctx.tenant?.id) {
-          const { checkStorageLimit, getEffectiveLimits } = await import("./config/tenant.limits");
+          const { checkStorageLimit, getEffectiveLimits } = await import(
+            "./config/tenant.limits"
+          );
           const limits = getEffectiveLimits(ctx.tenant);
-          const check = await checkStorageLimit(ctx.tenant.id, limits.maxStorageGB);
+          const check = await checkStorageLimit(
+            ctx.tenant.id,
+            limits.maxStorageGB
+          );
           if (!check.allowed) {
             throw new TRPCError({
-              code: 'FORBIDDEN',
+              code: "FORBIDDEN",
               message: `Limite de armazenamento atingido (${check.currentGB.toFixed(1)} GB / ${check.maxGB} GB). Entre em contato com o administrador para upgrade do plano.`,
             });
           }
@@ -1912,9 +2491,11 @@ export const appRouter = router({
             });
 
         // Log de auditoria - UPLOAD
-        const ipAddress = ctx.req?.headers?.['x-forwarded-for']?.toString().split(',')[0] || 
-                          ctx.req?.headers?.['x-real-ip']?.toString() || 
-                          ctx.req?.socket?.remoteAddress || 'unknown';
+        const ipAddress =
+          ctx.req?.headers?.["x-forwarded-for"]?.toString().split(",")[0] ||
+          ctx.req?.headers?.["x-real-ip"]?.toString() ||
+          ctx.req?.socket?.remoteAddress ||
+          "unknown";
         const auditDetails = {
           clientId: input.clientId,
           fileName: input.fileName,
@@ -1925,8 +2506,8 @@ export const appRouter = router({
           await db.logAuditToDb(tenantDb, {
             tenantId: ctx.user.tenantId!,
             userId: ctx.user.id,
-            action: 'UPLOAD',
-            entity: 'DOCUMENT',
+            action: "UPLOAD",
+            entity: "DOCUMENT",
             entityId: documentId,
             details: JSON.stringify(auditDetails),
             ipAddress,
@@ -1935,14 +2516,14 @@ export const appRouter = router({
           await db.logAudit({
             tenantId: ctx.user.tenantId!,
             userId: ctx.user.id,
-            action: 'UPLOAD',
-            entity: 'DOCUMENT',
+            action: "UPLOAD",
+            entity: "DOCUMENT",
             entityId: documentId,
             details: JSON.stringify(auditDetails),
             ipAddress,
           });
         }
-        
+
         return { id: documentId, url: fileUrl };
       }),
 
@@ -1953,32 +2534,43 @@ export const appRouter = router({
         const doc = tenantDb
           ? await db.getDocumentByIdFromDb(tenantDb, input.id)
           : await db.getDocumentById(input.id);
-        
+
         if (!doc) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Documento não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Documento não encontrado",
+          });
         }
-        
+
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, doc.clientId)
           : await db.getClientById(doc.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
-        
+
         // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        if (ctx.user.role !== "admin" && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
 
         // Despachante não pode excluir documentos
-        if (ctx.user.role === 'despachante') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode excluir documentos' });
+        if (ctx.user.role === "despachante") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Despachante não pode excluir documentos",
+          });
         }
-        
+
         // Log de auditoria - DELETE (antes de deletar para ter os dados)
-        const ipAddress = ctx.req?.headers?.['x-forwarded-for']?.toString().split(',')[0] || 
-                          ctx.req?.headers?.['x-real-ip']?.toString() || 
-                          ctx.req?.socket?.remoteAddress || 'unknown';
+        const ipAddress =
+          ctx.req?.headers?.["x-forwarded-for"]?.toString().split(",")[0] ||
+          ctx.req?.headers?.["x-real-ip"]?.toString() ||
+          ctx.req?.socket?.remoteAddress ||
+          "unknown";
         const auditDetails = {
           clientId: doc.clientId,
           fileName: doc.fileName,
@@ -1988,8 +2580,8 @@ export const appRouter = router({
           await db.logAuditToDb(tenantDb, {
             tenantId: ctx.user.tenantId!,
             userId: ctx.user.id,
-            action: 'DELETE',
-            entity: 'DOCUMENT',
+            action: "DELETE",
+            entity: "DOCUMENT",
             entityId: input.id,
             details: JSON.stringify(auditDetails),
             ipAddress,
@@ -1998,8 +2590,8 @@ export const appRouter = router({
           await db.logAudit({
             tenantId: ctx.user.tenantId!,
             userId: ctx.user.id,
-            action: 'DELETE',
-            entity: 'DOCUMENT',
+            action: "DELETE",
+            entity: "DOCUMENT",
             entityId: input.id,
             details: JSON.stringify(auditDetails),
             ipAddress,
@@ -2022,24 +2614,35 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
-        
+
         // Verificar permissão
-        if (ctx.user.role !== 'admin' && client.operatorId !== ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão' });
+        if (ctx.user.role !== "admin" && client.operatorId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
-        
+
         const docs = tenantDb
           ? await db.getDocumentsByClientFromDb(tenantDb, input.clientId)
           : await db.getDocumentsByClient(input.clientId);
 
         const pendingDocs = tenantDb
-          ? await db.getPendingDocumentsByClient(tenantDb, input.clientId, ctx.tenant?.id ?? null)
-          : await db.getPendingDocumentsByClient(await db.getDb() as any, input.clientId, ctx.tenant?.id ?? null);
+          ? await db.getPendingDocumentsByClient(
+              tenantDb,
+              input.clientId,
+              ctx.tenant?.id ?? null
+            )
+          : await db.getPendingDocumentsByClient(
+              (await db.getDb()) as any,
+              input.clientId,
+              ctx.tenant?.id ?? null
+            );
 
         const portalDocsForEnxoval = (pendingDocs || [])
-          .filter((p: any) => p?.status !== 'linked')
+          .filter((p: any) => p?.status !== "linked")
           .map((p: any) => ({
             id: `pending-${p.id}`,
             fileName: p.fileName,
@@ -2047,12 +2650,12 @@ export const appRouter = router({
             mimeType: p.mimeType,
             createdAt: p.uploadedAt ?? p.createdAt,
           }));
-        
+
         // Gerar PDF com dados do cadastro
-        const { generateClientDataPDF } = await import('./generate-pdf');
+        const { generateClientDataPDF } = await import("./generate-pdf");
         const pdfBuffer = await generateClientDataPDF(client);
-        const pdfBase64 = pdfBuffer.toString('base64');
-        
+        const pdfBase64 = pdfBuffer.toString("base64");
+
         return {
           clientName: client.name,
           clientDataPdf: pdfBase64,
@@ -2071,22 +2674,28 @@ export const appRouter = router({
 
     // Upload de anexo para template (sem clientId)
     uploadTemplateAttachment: protectedProcedure
-      .input(z.object({
-        fileName: z.string(),
-        fileData: z.string(), // base64
-        mimeType: z.string(),
-      }))
+      .input(
+        z.object({
+          fileName: z.string(),
+          fileData: z.string(), // base64
+          mimeType: z.string(),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         // Apenas admin pode fazer upload de anexos de template
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas administradores podem adicionar anexos a templates' });
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Apenas administradores podem adicionar anexos a templates",
+          });
         }
-        
+
         // Upload para S3
-        const buffer = Buffer.from(input.fileData, 'base64');
+        const buffer = Buffer.from(input.fileData, "base64");
         const fileKey = `templates/attachments/${Date.now()}-${input.fileName}`;
         const { url } = await storagePut(fileKey, buffer, input.mimeType);
-        
+
         return { url, fileKey };
       }),
   }),
@@ -2094,21 +2703,21 @@ export const appRouter = router({
   // Email router
   emails: router({
     // SMTP configuration - admin only (tenant-isolated)
-    getSmtpConfig: adminProcedure
-      .query(async ({ ctx }: { ctx: TrpcContext }) => {
+    getSmtpConfig: adminProcedure.query(
+      async ({ ctx }: { ctx: TrpcContext }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
-        
+
         if (!tenantId) {
           const allTenants = await db.getAllTenants();
           if (allTenants && allTenants.length > 0) {
             tenantId = allTenants[0].id;
           }
         }
-        
+
         // Se tem tenantId, busca da tabela tenants
         if (tenantId) {
           const settings = await db.getTenantSmtpSettings(tenantId);
-          
+
           if (!settings) {
             return {
               emailMethod: "gateway" as const,
@@ -2152,30 +2761,33 @@ export const appRouter = router({
           hasPassword: Boolean(process.env.SMTP_PASS),
           source: process.env.SMTP_HOST ? "env" : "none",
         };
-      }),
+      }
+    ),
 
     updateSmtpConfig: adminProcedure
-      .input(z.object({
-        emailMethod: z.enum(["smtp", "gateway"]),
-        smtpHost: z.string().optional(),
-        smtpPort: z.number().int().positive().optional(),
-        smtpUser: z.string().optional(),
-        smtpPass: z.string().optional(),
-        smtpFrom: z.string().min(1),
-        postmanGpxBaseUrl: z.string().optional(),
-        postmanGpxApiKey: z.string().optional(),
-        useSecure: z.boolean().optional(),
-      }))
+      .input(
+        z.object({
+          emailMethod: z.enum(["smtp", "gateway"]),
+          smtpHost: z.string().optional(),
+          smtpPort: z.number().int().positive().optional(),
+          smtpUser: z.string().optional(),
+          smtpPass: z.string().optional(),
+          smtpFrom: z.string().min(1),
+          postmanGpxBaseUrl: z.string().optional(),
+          postmanGpxApiKey: z.string().optional(),
+          useSecure: z.boolean().optional(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
-        
+
         if (!tenantId) {
           const allTenants = await db.getAllTenants();
           if (allTenants && allTenants.length > 0) {
             tenantId = allTenants[0].id;
           }
         }
-        
+
         if (!tenantId) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -2194,9 +2806,10 @@ export const appRouter = router({
 
           // Busca configuração existente para manter senha se não informada
           const existing = await db.getTenantSmtpSettings(tenantId);
-          const smtpPassword = input.smtpPass !== undefined && input.smtpPass !== ""
-            ? input.smtpPass
-            : existing?.smtpPassword || "";
+          const smtpPassword =
+            input.smtpPass !== undefined && input.smtpPass !== ""
+              ? input.smtpPass
+              : existing?.smtpPassword || "";
 
           if (!smtpPassword) {
             throw new TRPCError({
@@ -2223,9 +2836,11 @@ export const appRouter = router({
           }
 
           const existing = await db.getTenantSmtpSettings(tenantId);
-          const postmanGpxApiKey = input.postmanGpxApiKey !== undefined && input.postmanGpxApiKey !== ""
-            ? input.postmanGpxApiKey
-            : (existing as any)?.postmanGpxApiKey || "";
+          const postmanGpxApiKey =
+            input.postmanGpxApiKey !== undefined &&
+            input.postmanGpxApiKey !== ""
+              ? input.postmanGpxApiKey
+              : (existing as any)?.postmanGpxApiKey || "";
 
           if (!postmanGpxApiKey) {
             throw new TRPCError({
@@ -2246,27 +2861,34 @@ export const appRouter = router({
       }),
 
     testSmtpConnection: adminProcedure
-      .input(z.object({
-        testEmail: z.string().email().optional(),
-        subject: z.string().optional(),
-        body: z.string().optional(),
-        useMethod: z.enum(["smtp", "gateway"]).optional(),
-      }).optional())
+      .input(
+        z
+          .object({
+            testEmail: z.string().email().optional(),
+            subject: z.string().optional(),
+            body: z.string().optional(),
+            useMethod: z.enum(["smtp", "gateway"]).optional(),
+          })
+          .optional()
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
-        
+
         if (!tenantId) {
           const allTenants = await db.getAllTenants();
           if (allTenants && allTenants.length > 0) {
             tenantId = allTenants[0].id;
           }
         }
-        
+
         // Buscar settings do tenant
-        const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
-        
+        const tenantSettings = tenantId
+          ? await db.getTenantSmtpSettings(tenantId)
+          : null;
+
         // Determinar método: usa o informado no input ou o configurado no tenant
-        const method = input?.useMethod || tenantSettings?.emailMethod || "gateway";
+        const method =
+          input?.useMethod || tenantSettings?.emailMethod || "gateway";
 
         // Email destinatário
         const toEmail = input?.testEmail || ctx.user?.email;
@@ -2280,7 +2902,8 @@ export const appRouter = router({
         // Enviar email de teste via método escolhido
         const result = await sendTestEmailWithSettings({
           host: tenantSettings?.smtpHost || process.env.SMTP_HOST || "",
-          port: tenantSettings?.smtpPort || Number(process.env.SMTP_PORT) || 587,
+          port:
+            tenantSettings?.smtpPort || Number(process.env.SMTP_PORT) || 587,
           user: tenantSettings?.smtpUser || process.env.SMTP_USER || "",
           pass: tenantSettings?.smtpPassword || process.env.SMTP_PASS || "",
           secure: (tenantSettings?.smtpPort || 587) === 465,
@@ -2289,14 +2912,20 @@ export const appRouter = router({
           subject: input?.subject,
           body: input?.body,
           useGateway: method === "gateway",
-          postmanGpxBaseUrl: (tenantSettings as any)?.postmanGpxBaseUrl || process.env.POSTMANGPX_BASE_URL,
-          postmanGpxApiKey: (tenantSettings as any)?.postmanGpxApiKey || process.env.POSTMANGPX_API_KEY,
+          postmanGpxBaseUrl:
+            (tenantSettings as any)?.postmanGpxBaseUrl ||
+            process.env.POSTMANGPX_BASE_URL,
+          postmanGpxApiKey:
+            (tenantSettings as any)?.postmanGpxApiKey ||
+            process.env.POSTMANGPX_API_KEY,
         });
-        
+
         if (!result.success) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: result.error || "Falha ao enviar email de teste. Verifique as configurações.",
+            message:
+              result.error ||
+              "Falha ao enviar email de teste. Verifique as configurações.",
           });
         }
 
@@ -2305,19 +2934,21 @@ export const appRouter = router({
 
     // Import logo from external URL
     importLogoFromUrl: adminProcedure
-      .input(z.object({
-        logoUrl: z.string().url(),
-      }))
+      .input(
+        z.object({
+          logoUrl: z.string().url(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
-        
+
         if (!tenantId) {
           const allTenants = await db.getAllTenants();
           if (allTenants && allTenants.length > 0) {
             tenantId = allTenants[0].id;
           }
         }
-        
+
         if (!tenantId) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -2331,7 +2962,8 @@ export const appRouter = router({
           try {
             const headResponse = await fetch(input.logoUrl, { method: "HEAD" });
             if (headResponse.ok) {
-              contentType = headResponse.headers.get("content-type") || "image/png";
+              contentType =
+                headResponse.headers.get("content-type") || "image/png";
             }
           } catch {
             // Se HEAD falhar, tenta GET para validar
@@ -2340,7 +2972,7 @@ export const appRouter = router({
           // Se HEAD não funcionou ou não retornou content-type de imagem, tenta GET
           if (!contentType.startsWith("image/")) {
             const response = await fetch(input.logoUrl);
-            
+
             if (!response.ok) {
               throw new TRPCError({
                 code: "BAD_REQUEST",
@@ -2349,18 +2981,19 @@ export const appRouter = router({
             }
 
             contentType = response.headers.get("content-type") || "image/png";
-            
+
             if (!contentType.startsWith("image/")) {
               throw new TRPCError({
                 code: "BAD_REQUEST",
-                message: "A URL deve apontar para uma imagem (jpg, png, gif, etc).",
+                message:
+                  "A URL deve apontar para uma imagem (jpg, png, gif, etc).",
               });
             }
           }
 
           // IMPORTANTE: Converter a imagem para base64 e salvar diretamente no banco.
           // Isso garante que a imagem esteja sempre disponível, independente de URLs externas.
-          
+
           const imageResponse = await fetch(input.logoUrl);
           if (!imageResponse.ok) {
             throw new TRPCError({
@@ -2368,24 +3001,25 @@ export const appRouter = router({
               message: `Não foi possível baixar a imagem: ${imageResponse.statusText}`,
             });
           }
-          
+
           const imageBuffer = await imageResponse.arrayBuffer();
-          const base64 = Buffer.from(imageBuffer).toString('base64');
+          const base64 = Buffer.from(imageBuffer).toString("base64");
           const finalLogoUrl = `data:${contentType};base64,${base64}`;
-          
+
           // Salvar o base64 no banco de dados
           await db.updateTenantSmtpSettings(tenantId, {
             emailLogoUrl: finalLogoUrl,
           });
 
-          return { 
-            success: true, 
+          return {
+            success: true,
             logoUrl: finalLogoUrl,
-            message: "Logo importada com sucesso! Use {{logo}} nos templates de email.",
+            message:
+              "Logo importada com sucesso! Use {{logo}} nos templates de email.",
           };
         } catch (error: any) {
           if (error instanceof TRPCError) throw error;
-          
+
           console.error("[ImportLogo] Error:", error);
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
@@ -2395,10 +3029,10 @@ export const appRouter = router({
       }),
 
     // Remove email logo
-    removeEmailLogo: adminProcedure
-      .mutation(async ({ ctx }: { ctx: TrpcContext }) => {
+    removeEmailLogo: adminProcedure.mutation(
+      async ({ ctx }: { ctx: TrpcContext }) => {
         let tenantId = ctx.tenant?.id || ctx.user?.tenantId;
-        
+
         if (!tenantId) {
           const allTenants = await db.getAllTenants();
           if (allTenants && allTenants.length > 0) {
@@ -2418,43 +3052,59 @@ export const appRouter = router({
         });
 
         return { success: true };
-      }),
+      }
+    ),
 
     // Get email template
     getTemplate: protectedProcedure
-      .input(z.object({
-        templateKey: z.string(),
-        module: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          templateKey: z.string(),
+          module: z.string().optional(),
+        })
+      )
       .query(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         if (tenantDb) {
-          return await db.getEmailTemplateFromDb(tenantDb, input.templateKey, input.module, ctx.tenant?.id);
+          return await db.getEmailTemplateFromDb(
+            tenantDb,
+            input.templateKey,
+            input.module,
+            ctx.tenant?.id
+          );
         }
         return await db.getEmailTemplate(input.templateKey, input.module);
       }),
 
     // Get all email templates (optionally filtered by module)
     getAllTemplates: protectedProcedure
-      .input(z.object({
-        module: z.string().optional(),
-      }).optional())
+      .input(
+        z
+          .object({
+            module: z.string().optional(),
+          })
+          .optional()
+      )
       .query(async ({ input, ctx }) => {
         try {
           const tenantDb = await getTenantDbOrNull(ctx);
           if (tenantDb) {
-            return await db.getAllEmailTemplatesFromDb(tenantDb, input?.module, ctx.tenant?.id);
+            return await db.getAllEmailTemplatesFromDb(
+              tenantDb,
+              input?.module,
+              ctx.tenant?.id
+            );
           }
-          
+
           // For Super Admin (no tenant), return empty array since platform DB doesn't have emailTemplates
           // Super Admin should manage email templates through tenant impersonation or a separate interface
           if (ctx.platformAdmin) {
             return [];
           }
-          
+
           return await db.getAllEmailTemplates(input?.module);
         } catch (error: any) {
-          console.error('[emails.getAllTemplates] Error:', error);
+          console.error("[emails.getAllTemplates] Error:", error);
           if (error instanceof TRPCError) throw error;
           return [];
         }
@@ -2462,14 +3112,16 @@ export const appRouter = router({
 
     // Save email template
     saveTemplate: adminProcedure
-      .input(z.object({
-        templateKey: z.string(),
-        module: z.string().optional(),
-        templateTitle: z.string().optional(),
-        subject: z.string(),
-        content: z.string(),
-        attachments: z.string().optional(), // JSON string of attachments
-      }))
+      .input(
+        z.object({
+          templateKey: z.string(),
+          module: z.string().optional(),
+          templateTitle: z.string().optional(),
+          subject: z.string(),
+          content: z.string(),
+          attachments: z.string().optional(), // JSON string of attachments
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const templateId = tenantDb
@@ -2480,57 +3132,79 @@ export const appRouter = router({
 
     // Delete email template
     deleteTemplate: adminProcedure
-      .input(z.object({
-        templateKey: z.string(),
-        module: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          templateKey: z.string(),
+          module: z.string().optional(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         if (tenantDb) {
-          await db.deleteEmailTemplateFromDb(tenantDb, input.templateKey, input.module, ctx.tenant?.id);
+          await db.deleteEmailTemplateFromDb(
+            tenantDb,
+            input.templateKey,
+            input.module,
+            ctx.tenant?.id
+          );
         } else {
           await db.deleteEmailTemplate(input.templateKey, input.module);
         }
         return { success: true };
       }),
 
-    seedTemplates: adminProcedure
-      .mutation(async ({ ctx }: { ctx: TrpcContext }) => {
+    seedTemplates: adminProcedure.mutation(
+      async ({ ctx }: { ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
         if (!tenantDb || !tenantId) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado ou banco indisponível' });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Tenant não identificado ou banco indisponível",
+          });
         }
         return await seedTenantEmailTemplates(tenantDb, tenantId);
-      }),
+      }
+    ),
 
     // Get email log (check if email was sent and get details)
     getEmailLog: protectedProcedure
-      .input(z.object({
-        clientId: z.number(),
-        templateKey: z.string(),
-      }))
+      .input(
+        z.object({
+          clientId: z.number(),
+          templateKey: z.string(),
+        })
+      )
       .query(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         if (tenantDb) {
-          return await db.getEmailLogFromDb(tenantDb, input.clientId, input.templateKey);
+          return await db.getEmailLogFromDb(
+            tenantDb,
+            input.clientId,
+            input.templateKey
+          );
         }
         return await db.getEmailLog(input.clientId, input.templateKey);
       }),
 
     // Send email
     sendEmail: protectedProcedure
-      .input(z.object({
-        clientId: z.number(),
-        templateKey: z.string(),
-        recipientEmail: z.string(),
-        subject: z.string(),
-        content: z.string(),
-      }))
+      .input(
+        z.object({
+          clientId: z.number(),
+          templateKey: z.string(),
+          recipientEmail: z.string(),
+          subject: z.string(),
+          content: z.string(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         // Despachante não pode enviar emails manualmente
-        if (ctx.user?.role === 'despachante') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Despachante não pode enviar emails manualmente' });
+        if (ctx.user?.role === "despachante") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Despachante não pode enviar emails manualmente",
+          });
         }
 
         const tenantDb = await getTenantDbOrNull(ctx);
@@ -2538,13 +3212,23 @@ export const appRouter = router({
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
 
         const template = tenantDb
-          ? await db.getEmailTemplateFromDb(tenantDb, input.templateKey, undefined, ctx.tenant?.id)
+          ? await db.getEmailTemplateFromDb(
+              tenantDb,
+              input.templateKey,
+              undefined,
+              ctx.tenant?.id
+            )
           : await db.getEmailTemplate(input.templateKey);
-        const attachments = template?.attachments ? JSON.parse(template.attachments) : [];
+        const attachments = template?.attachments
+          ? JSON.parse(template.attachments)
+          : [];
 
         // Calcular progresso do workflow
         const workflow = tenantDb
@@ -2552,22 +3236,29 @@ export const appRouter = router({
           : await db.getWorkflowByClient(input.clientId);
         const totalSteps = workflow.length;
         const completedSteps = workflow.filter((s: any) => s.completed).length;
-        const progressPercentage = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
-        
+        const progressPercentage =
+          totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
         // Buscar status do Sinarm-CAC
-        const sinarmStep = workflow.find((s: any) => s.stepId === 'acompanhamento-sinarm');
-        const sinarmStatus = sinarmStep?.sinarmStatus || 'Iniciado';
-        const protocolNumber = sinarmStep?.protocolNumber || '';
+        const sinarmStep = workflow.find(
+          (s: any) => s.stepId === "acompanhamento-sinarm"
+        );
+        const sinarmStatus = sinarmStep?.sinarmStatus || "Iniciado";
+        const protocolNumber = sinarmStep?.protocolNumber || "";
 
         // Buscar dados de agendamento de laudo (data e examinador)
-        const schedulingStep = workflow.find((s: any) => s.stepId === 'agendamento-laudo');
-        let schedulingDateFormatted = '';
-        let schedulingExaminer = '';
+        const schedulingStep = workflow.find(
+          (s: any) => s.stepId === "agendamento-laudo"
+        );
+        let schedulingDateFormatted = "";
+        let schedulingExaminer = "";
 
         if (schedulingStep?.scheduledDate) {
-          schedulingDateFormatted = new Date(schedulingStep.scheduledDate).toLocaleString('pt-BR', {
-            dateStyle: 'short',
-            timeStyle: 'short',
+          schedulingDateFormatted = new Date(
+            schedulingStep.scheduledDate
+          ).toLocaleString("pt-BR", {
+            dateStyle: "short",
+            timeStyle: "short",
           });
         }
 
@@ -2576,26 +3267,40 @@ export const appRouter = router({
         }
 
         // Buscar logo do tenant (já salva como base64 no banco)
-        const tenantSettings = ctx.tenant?.id ? await db.getTenantSmtpSettings(ctx.tenant.id) : null;
-        const emailLogoUrl = tenantSettings?.emailLogoUrl || '';
+        const tenantSettings = ctx.tenant?.id
+          ? await db.getTenantSmtpSettings(ctx.tenant.id)
+          : null;
+        const emailLogoUrl = tenantSettings?.emailLogoUrl || "";
         const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
-        
-        const isBase64Logo = emailLogoUrl.startsWith('data:');
+
+        const isBase64Logo = emailLogoUrl.startsWith("data:");
 
         const replaceVariables = (text: string, clientData: any) => {
           let result = text;
-          result = result.replace(/{{nome}}/g, clientData.name || '');
-          result = result.replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'));
-          result = result.replace(/{{status}}/g, progressPercentage + '% concluido');
+          result = result.replace(/{{nome}}/g, clientData.name || "");
+          result = result.replace(
+            /{{data}}/g,
+            new Date().toLocaleDateString("pt-BR")
+          );
+          result = result.replace(
+            /{{status}}/g,
+            progressPercentage + "% concluido"
+          );
           result = result.replace(/{{status_sinarm}}/g, sinarmStatus);
-          result = result.replace(/{{protocolNumber}}/g, clientData.protocolNumber || '');
-          result = result.replace(/{{email}}/g, clientData.email || '');
-          result = result.replace(/{{cpf}}/g, clientData.cpf || '');
-          result = result.replace(/{{telefone}}/g, clientData.phone || '');
+          result = result.replace(
+            /{{protocolNumber}}/g,
+            clientData.protocolNumber || ""
+          );
+          result = result.replace(/{{email}}/g, clientData.email || "");
+          result = result.replace(/{{cpf}}/g, clientData.cpf || "");
+          result = result.replace(/{{telefone}}/g, clientData.phone || "");
 
           // Variáveis específicas de agendamento de laudo
           if (schedulingDateFormatted) {
-            result = result.replace(/{{data_agendamento}}/g, schedulingDateFormatted);
+            result = result.replace(
+              /{{data_agendamento}}/g,
+              schedulingDateFormatted
+            );
           }
           if (schedulingExaminer) {
             result = result.replace(/{{examinador}}/g, schedulingExaminer);
@@ -2603,20 +3308,34 @@ export const appRouter = router({
 
           // Variável {{logo}} - renderiza como inline attachment (CID)
           if (emailLogoUrl) {
-            result = result.replace(/{{logo}}/g, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
+            result = result.replace(
+              /{{logo}}/g,
+              `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`
+            );
           } else {
-            result = result.replace(/{{logo}}/g, '');
+            result = result.replace(/{{logo}}/g, "");
           }
 
           return result;
         };
 
         const clientWithProtocol = { ...client, protocolNumber };
-        const finalSubject = replaceVariables(input.subject, clientWithProtocol);
-        const finalContent = replaceVariables(input.content, clientWithProtocol);
+        const finalSubject = replaceVariables(
+          input.subject,
+          clientWithProtocol
+        );
+        const finalContent = replaceVariables(
+          input.content,
+          clientWithProtocol
+        );
 
-        const templateAttachments = attachments.map((att: any) => ({ filename: att.fileName, path: att.fileUrl }));
-        const mergedAttachments = inlineLogo ? [inlineLogo, ...templateAttachments] : templateAttachments;
+        const templateAttachments = attachments.map((att: any) => ({
+          filename: att.fileName,
+          path: att.fileUrl,
+        }));
+        const mergedAttachments = inlineLogo
+          ? [inlineLogo, ...templateAttachments]
+          : templateAttachments;
 
         try {
           await sendEmail({
@@ -2629,9 +3348,10 @@ export const appRouter = router({
           });
         } catch (error) {
           console.error("Email sending failed:", error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Falha ao enviar o email. Verifique as configurações SMTP e tente novamente.',
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "Falha ao enviar o email. Verifique as configurações SMTP e tente novamente.",
           });
         }
 
@@ -2658,9 +3378,11 @@ export const appRouter = router({
 
     // Get email logs for a client
     getLogs: protectedProcedure
-      .input(z.object({
-        clientId: z.number(),
-      }))
+      .input(
+        z.object({
+          clientId: z.number(),
+        })
+      )
       .query(async ({ input, ctx }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         if (tenantDb) {
@@ -2675,7 +3397,9 @@ export const appRouter = router({
     list: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
       const tenantDb = await getTenantDbOrNull(ctx);
       const tenantId = ctx.tenant?.id;
-      return tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
+      return tenantDb
+        ? await db.getAllUsersFromDb(tenantDb, tenantId)
+        : await db.getAllUsers();
     }),
 
     create: tenantAdminProcedure
@@ -2686,7 +3410,10 @@ export const appRouter = router({
           ? await db.getUserByEmailFromDb(tenantDb, input.email)
           : await db.getUserByEmail(input.email);
         if (existingUser) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Este email já está cadastrado",
+          });
         }
 
         const hashedPassword = await hashPassword(input.password);
@@ -2709,15 +3436,18 @@ export const appRouter = router({
 
         // Log audit entry for user creation
         if (ctx.tenant?.id) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
           await db.logAudit({
             tenantId: ctx.tenant.id,
             userId: ctx.user.id,
-            action: 'CREATE',
-            entity: 'USER',
+            action: "CREATE",
+            entity: "USER",
             entityId: userId,
             details: JSON.stringify({ email: input.email, role: input.role }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
           });
         }
 
@@ -2732,11 +3462,19 @@ export const appRouter = router({
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
           : await db.getUserById(input.userId);
         if (!user) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Usuário não encontrado",
+          });
         }
 
-        const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
-        const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
+        const admins = (
+          tenantDb
+            ? await db.getAllUsersFromDb(tenantDb)
+            : await db.getAllUsers()
+        ).filter((u: any) => u.role === "admin");
+        const isLastAdmin =
+          admins.length === 1 && admins[0].id === input.userId;
 
         const updateData: any = {};
 
@@ -2749,16 +3487,20 @@ export const appRouter = router({
             ? await db.getUserByEmailFromDb(tenantDb, input.email)
             : await db.getUserByEmail(input.email);
           if (other && other.id !== input.userId) {
-            throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está em uso por outro usuário' });
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "Este email já está em uso por outro usuário",
+            });
           }
           updateData.email = input.email;
         }
 
         if (input.role !== undefined) {
-          if (isLastAdmin && input.role !== 'admin') {
+          if (isLastAdmin && input.role !== "admin") {
             throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'Não é possível rebaixar o último administrador do sistema.',
+              code: "FORBIDDEN",
+              message:
+                "Não é possível rebaixar o último administrador do sistema.",
             });
           }
           updateData.role = input.role;
@@ -2780,15 +3522,18 @@ export const appRouter = router({
 
         // Log audit entry for user update
         if (ctx.tenant?.id) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
           await db.logAudit({
             tenantId: ctx.tenant.id,
             userId: ctx.user.id,
-            action: 'UPDATE',
-            entity: 'USER',
+            action: "UPDATE",
+            entity: "USER",
             entityId: input.userId,
             details: JSON.stringify({ updatedFields: Object.keys(updateData) }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
           });
         }
 
@@ -2796,26 +3541,37 @@ export const appRouter = router({
       }),
 
     updateRole: tenantAdminProcedure
-      .input(z.object({
-        userId: z.number(),
-        role: z.enum(['operator', 'admin', 'despachante']),
-      }))
+      .input(
+        z.object({
+          userId: z.number(),
+          role: z.enum(["operator", "admin", "despachante"]),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const user = tenantDb
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
           : await db.getUserById(input.userId);
         if (!user) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Usuário não encontrado",
+          });
         }
 
-        const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
-        const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
+        const admins = (
+          tenantDb
+            ? await db.getAllUsersFromDb(tenantDb)
+            : await db.getAllUsers()
+        ).filter((u: any) => u.role === "admin");
+        const isLastAdmin =
+          admins.length === 1 && admins[0].id === input.userId;
 
-        if (isLastAdmin && input.role !== 'admin') {
+        if (isLastAdmin && input.role !== "admin") {
           throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Não é possível rebaixar o último administrador do sistema.',
+            code: "FORBIDDEN",
+            message:
+              "Não é possível rebaixar o último administrador do sistema.",
           });
         }
 
@@ -2827,15 +3583,18 @@ export const appRouter = router({
 
         // Log audit entry for user role update
         if (ctx.tenant?.id) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
           await db.logAudit({
             tenantId: ctx.tenant.id,
             userId: ctx.user.id,
-            action: 'UPDATE',
-            entity: 'USER',
+            action: "UPDATE",
+            entity: "USER",
             entityId: input.userId,
             details: JSON.stringify({ roleChange: input.role }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
           });
         }
 
@@ -2843,26 +3602,37 @@ export const appRouter = router({
       }),
 
     assignRole: tenantAdminProcedure
-      .input(z.object({
-        userId: z.number(),
-        role: z.enum(['operator', 'admin', 'despachante']),
-      }))
+      .input(
+        z.object({
+          userId: z.number(),
+          role: z.enum(["operator", "admin", "despachante"]),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const user = tenantDb
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
           : await db.getUserById(input.userId);
         if (!user) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Usuário não encontrado",
+          });
         }
 
-        const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
-        const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
+        const admins = (
+          tenantDb
+            ? await db.getAllUsersFromDb(tenantDb)
+            : await db.getAllUsers()
+        ).filter((u: any) => u.role === "admin");
+        const isLastAdmin =
+          admins.length === 1 && admins[0].id === input.userId;
 
-        if (isLastAdmin && input.role !== 'admin') {
+        if (isLastAdmin && input.role !== "admin") {
           throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Não é possível rebaixar o último administrador do sistema.',
+            code: "FORBIDDEN",
+            message:
+              "Não é possível rebaixar o último administrador do sistema.",
           });
         }
 
@@ -2876,33 +3646,44 @@ export const appRouter = router({
       }),
 
     deleteUser: tenantAdminProcedure
-      .input(z.object({
-        userId: z.number(),
-      }))
+      .input(
+        z.object({
+          userId: z.number(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         // Impedir exclusão do próprio usuário
         if (input.userId === ctx.user.id) {
-          throw new Error('Você não pode excluir seu próprio usuário');
+          throw new Error("Você não pode excluir seu próprio usuário");
         }
 
         const user = tenantDb
           ? await db.getUserByIdFromDb(tenantDb, input.userId)
           : await db.getUserById(input.userId);
         if (!user) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Usuário não encontrado",
+          });
         }
 
-        const admins = (tenantDb ? await db.getAllUsersFromDb(tenantDb) : await db.getAllUsers()).filter((u: any) => u.role === 'admin');
-        const isLastAdmin = admins.length === 1 && admins[0].id === input.userId;
+        const admins = (
+          tenantDb
+            ? await db.getAllUsersFromDb(tenantDb)
+            : await db.getAllUsers()
+        ).filter((u: any) => u.role === "admin");
+        const isLastAdmin =
+          admins.length === 1 && admins[0].id === input.userId;
 
         if (isLastAdmin) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Não é possível excluir o último administrador do sistema.',
+            code: "FORBIDDEN",
+            message:
+              "Não é possível excluir o último administrador do sistema.",
           });
         }
-        
+
         if (tenantDb) {
           await db.deleteUserFromDb(tenantDb, input.userId);
         } else {
@@ -2911,15 +3692,18 @@ export const appRouter = router({
 
         // Log audit entry for user deletion
         if (ctx.tenant?.id) {
-          const ip = ctx.req.headers['x-forwarded-for'] || ctx.req.socket?.remoteAddress || null;
+          const ip =
+            ctx.req.headers["x-forwarded-for"] ||
+            ctx.req.socket?.remoteAddress ||
+            null;
           await db.logAudit({
             tenantId: ctx.tenant.id,
             userId: ctx.user.id,
-            action: 'DELETE',
-            entity: 'USER',
+            action: "DELETE",
+            entity: "USER",
             entityId: input.userId,
             details: JSON.stringify({ deletedUserId: input.userId }),
-            ipAddress: typeof ip === 'string' ? ip.split(',')[0].trim() : null,
+            ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : null,
           });
         }
 
@@ -2927,64 +3711,90 @@ export const appRouter = router({
       }),
 
     // Listar operadores com estatísticas de clientes
-    listOperatorsWithStats: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
-      const tenantId = ctx.tenant?.id;
-      const allUsers = tenantDb ? await db.getAllUsersFromDb(tenantDb, tenantId) : await db.getAllUsers();
-      const operators = allUsers.filter((u: any) => u.role === 'operator' || u.role === 'admin');
-      const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
+    listOperatorsWithStats: tenantAdminProcedure.query(
+      async ({ ctx }: { ctx: TrpcContext }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id;
+        const allUsers = tenantDb
+          ? await db.getAllUsersFromDb(tenantDb, tenantId)
+          : await db.getAllUsers();
+        const operators = allUsers.filter(
+          (u: any) => u.role === "operator" || u.role === "admin"
+        );
+        const allClients = tenantDb
+          ? await db.getAllClientsFromDb(tenantDb, tenantId)
+          : await db.getAllClients();
 
-      return operators.map((operator: any) => {
-        const operatorClients = allClients.filter((c: any) => c.operatorId === operator.id);
-        return {
-          id: operator.id,
-          name: operator.name,
-          email: operator.email,
-          role: operator.role,
-          clientCount: operatorClients.length,
-        };
-      });
-    }),
+        return operators.map((operator: any) => {
+          const operatorClients = allClients.filter(
+            (c: any) => c.operatorId === operator.id
+          );
+          return {
+            id: operator.id,
+            name: operator.name,
+            email: operator.email,
+            role: operator.role,
+            clientCount: operatorClients.length,
+          };
+        });
+      }
+    ),
 
     // Listar clientes disponíveis para atribuição
-    listClientsForAssignment: tenantAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
-      const tenantDb = await getTenantDbOrNull(ctx);
-      const tenantId = ctx.tenant?.id;
-      const allClients = tenantDb ? await db.getAllClientsFromDb(tenantDb, tenantId) : await db.getAllClients();
-      return allClients.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        cpf: c.cpf,
-        operatorId: c.operatorId,
-      }));
-    }),
+    listClientsForAssignment: tenantAdminProcedure.query(
+      async ({ ctx }: { ctx: TrpcContext }) => {
+        const tenantDb = await getTenantDbOrNull(ctx);
+        const tenantId = ctx.tenant?.id;
+        const allClients = tenantDb
+          ? await db.getAllClientsFromDb(tenantDb, tenantId)
+          : await db.getAllClients();
+        return allClients.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          cpf: c.cpf,
+          operatorId: c.operatorId,
+        }));
+      }
+    ),
 
     // Atribuir cliente a operador
     assignClientToOperator: tenantAdminProcedure
-      .input(z.object({
-        clientId: z.number(),
-        operatorId: z.number(),
-      }))
+      .input(
+        z.object({
+          clientId: z.number(),
+          operatorId: z.number(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const client = tenantDb
           ? await db.getClientByIdFromDb(tenantDb, input.clientId)
           : await db.getClientById(input.clientId);
         if (!client) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado",
+          });
         }
 
         const operator = tenantDb
           ? await db.getUserByIdFromDb(tenantDb, input.operatorId)
           : await db.getUserById(input.operatorId);
         if (!operator) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Operador não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Operador não encontrado",
+          });
         }
 
         if (tenantDb) {
-          await db.updateClientToDb(tenantDb, input.clientId, { operatorId: input.operatorId });
+          await db.updateClientToDb(tenantDb, input.clientId, {
+            operatorId: input.operatorId,
+          });
         } else {
-          await db.updateClient(input.clientId, { operatorId: input.operatorId });
+          await db.updateClient(input.clientId, {
+            operatorId: input.operatorId,
+          });
         }
 
         return { success: true };
@@ -2994,10 +3804,12 @@ export const appRouter = router({
   // Platform Admin / Tenants Management
   tenants: router({
     // Listar todos os tenants
-    list: platformAdminProcedure.query(async ({ ctx }: { ctx: TrpcContext }) => {
-      const tenantsList = await db.getAllTenants();
-      return tenantsList;
-    }),
+    list: platformAdminProcedure.query(
+      async ({ ctx }: { ctx: TrpcContext }) => {
+        const tenantsList = await db.getAllTenants();
+        return tenantsList;
+      }
+    ),
 
     // Buscar tenant por ID
     getById: platformAdminProcedure
@@ -3005,7 +3817,10 @@ export const appRouter = router({
       .query(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         return tenant;
       }),
@@ -3020,54 +3835,70 @@ export const appRouter = router({
 
     // Criar novo tenant
     create: platformAdminOrSuperProcedure
-      .input(z.object({
-        slug: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/),
-        name: z.string().min(2).max(255),
-        // DB config - opcional no modo single-db (usa DATABASE_URL)
-        dbHost: z.string().optional(),
-        dbPort: z.number().default(5432),
-        dbName: z.string().optional(),
-        dbUser: z.string().optional(),
-        dbPassword: z.string().optional(),
-        // Admin credentials
-        adminName: z.string().min(2).max(255),
-        adminEmail: z.string().email(),
-        adminPassword: z.string().min(6),
-        // Customization
-        primaryColor: z.string().optional(),
-        secondaryColor: z.string().optional(),
-        featureWorkflowCR: z.boolean().default(true),
-        featureApostilamento: z.boolean().default(false),
-        featureRenovacao: z.boolean().default(false),
-        featureInsumos: z.boolean().default(false),
-        featureIAT: z.boolean().default(false),
-        plan: z.enum(['starter', 'professional', 'enterprise']).default('starter'),
-        maxUsers: z.number().default(10),
-        maxClients: z.number().default(500),
-        maxStorageGB: z.number().default(50),
-        signatureResponsibleName: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          slug: z
+            .string()
+            .min(2)
+            .max(50)
+            .regex(/^[a-z0-9-]+$/),
+          name: z.string().min(2).max(255),
+          // DB config - opcional no modo single-db (usa DATABASE_URL)
+          dbHost: z.string().optional(),
+          dbPort: z.number().default(5432),
+          dbName: z.string().optional(),
+          dbUser: z.string().optional(),
+          dbPassword: z.string().optional(),
+          // Admin credentials
+          adminName: z.string().min(2).max(255),
+          adminEmail: z.string().email(),
+          adminPassword: z.string().min(6),
+          // Customization
+          primaryColor: z.string().optional(),
+          secondaryColor: z.string().optional(),
+          featureWorkflowCR: z.boolean().default(true),
+          featureApostilamento: z.boolean().default(false),
+          featureRenovacao: z.boolean().default(false),
+          featureInsumos: z.boolean().default(false),
+          featureIAT: z.boolean().default(false),
+          plan: z
+            .enum(["starter", "professional", "enterprise"])
+            .default("starter"),
+          maxUsers: z.number().default(10),
+          maxClients: z.number().default(500),
+          maxStorageGB: z.number().default(50),
+          signatureResponsibleName: z.string().optional(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         // Verificar se slug já existe
         const existing = await db.getTenantBySlug(input.slug);
         if (existing) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Este slug já está em uso' });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Este slug já está em uso",
+          });
         }
 
         // Verificar se email do admin já existe
         const existingUser = await db.getUserByEmail(input.adminEmail);
         if (existingUser) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Este email já está cadastrado' });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Este email já está cadastrado",
+          });
         }
 
         // No modo single-db, usar valores do DATABASE_URL
-        const isSingleDbMode = process.env.TENANT_DB_MODE === 'single' || process.env.NODE_ENV === 'production';
+        const isSingleDbMode =
+          process.env.TENANT_DB_MODE === "single" ||
+          process.env.NODE_ENV === "production";
         let dbConfig = {
-          dbHost: input.dbHost || 'localhost',
+          dbHost: input.dbHost || "localhost",
           dbPort: input.dbPort,
           dbName: input.dbName || `cac360_${input.slug}`,
-          dbUser: input.dbUser || '',
-          dbPassword: input.dbPassword || '',
+          dbUser: input.dbUser || "",
+          dbPassword: input.dbPassword || "",
         };
 
         if (isSingleDbMode) {
@@ -3078,11 +3909,13 @@ export const appRouter = router({
               dbConfig = {
                 dbHost: url.hostname,
                 dbPort: Number(url.port || 5432),
-                dbName: (url.pathname || '').replace(/^\//, ''),
-                dbUser: decodeURIComponent(url.username || ''),
-                dbPassword: decodeURIComponent(url.password || ''),
+                dbName: (url.pathname || "").replace(/^\//, ""),
+                dbUser: decodeURIComponent(url.username || ""),
+                dbPassword: decodeURIComponent(url.password || ""),
               };
-            } catch { /* ignore parse errors */ }
+            } catch {
+              /* ignore parse errors */
+            }
           }
         }
 
@@ -3102,7 +3935,7 @@ export const appRouter = router({
           maxClients: input.maxClients,
           maxStorageGB: input.maxStorageGB,
           signatureResponsibleName: input.signatureResponsibleName,
-          subscriptionStatus: 'trial',
+          subscriptionStatus: "trial",
           isActive: true,
         });
 
@@ -3113,7 +3946,7 @@ export const appRouter = router({
           name: input.adminName,
           email: input.adminEmail,
           hashedPassword,
-          role: 'admin',
+          role: "admin",
         });
 
         // Seed default email templates
@@ -3127,13 +3960,20 @@ export const appRouter = router({
             }
           }
         } catch (seedError) {
-          console.error(`[Tenant] Error seeding email templates for ${input.slug}:`, seedError);
+          console.error(
+            `[Tenant] Error seeding email templates for ${input.slug}:`,
+            seedError
+          );
         }
 
         await db.logTenantActivity({
           tenantId,
-          action: 'created',
-          details: JSON.stringify({ slug: input.slug, plan: input.plan, adminEmail: input.adminEmail }),
+          action: "created",
+          details: JSON.stringify({
+            slug: input.slug,
+            plan: input.plan,
+            adminEmail: input.adminEmail,
+          }),
           performedBy: ctx.platformAdmin.id,
         });
         invalidateTenantCache(input.slug);
@@ -3143,35 +3983,40 @@ export const appRouter = router({
 
     // Atualizar tenant
     update: platformAdminOrSuperProcedure
-      .input(z.object({
-        id: z.number(),
-        name: z.string().optional(),
-        primaryColor: z.string().optional(),
-        secondaryColor: z.string().optional(),
-        logo: z.string().optional(),
-        favicon: z.string().optional(),
-        featureWorkflowCR: z.boolean().optional(),
-        featureApostilamento: z.boolean().optional(),
-        featureRenovacao: z.boolean().optional(),
-        featureInsumos: z.boolean().optional(),
-        featureIAT: z.boolean().optional(),
-        smtpHost: z.string().optional(),
-        smtpPort: z.number().optional(),
-        smtpUser: z.string().optional(),
-        smtpPassword: z.string().optional(),
-        smtpFrom: z.string().optional(),
-        plan: z.enum(['starter', 'professional', 'enterprise']).optional(),
-        maxUsers: z.number().optional(),
-        maxClients: z.number().optional(),
-        maxStorageGB: z.number().optional(),
-        signatureResponsibleName: z.string().optional(),
-        isActive: z.boolean().optional(),
-      }))
+      .input(
+        z.object({
+          id: z.number(),
+          name: z.string().optional(),
+          primaryColor: z.string().optional(),
+          secondaryColor: z.string().optional(),
+          logo: z.string().optional(),
+          favicon: z.string().optional(),
+          featureWorkflowCR: z.boolean().optional(),
+          featureApostilamento: z.boolean().optional(),
+          featureRenovacao: z.boolean().optional(),
+          featureInsumos: z.boolean().optional(),
+          featureIAT: z.boolean().optional(),
+          smtpHost: z.string().optional(),
+          smtpPort: z.number().optional(),
+          smtpUser: z.string().optional(),
+          smtpPassword: z.string().optional(),
+          smtpFrom: z.string().optional(),
+          plan: z.enum(["starter", "professional", "enterprise"]).optional(),
+          maxUsers: z.number().optional(),
+          maxClients: z.number().optional(),
+          maxStorageGB: z.number().optional(),
+          signatureResponsibleName: z.string().optional(),
+          isActive: z.boolean().optional(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const { id, ...updates } = input;
         const tenant = await db.getTenantById(id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         await db.updateTenant(id, updates);
         invalidateTenantCache(tenant.slug);
@@ -3180,21 +4025,29 @@ export const appRouter = router({
 
     // Suspender/Ativar tenant
     setStatus: platformAdminOrSuperProcedure
-      .input(z.object({
-        id: z.number(),
-        status: z.enum(['active', 'suspended', 'trial', 'cancelled']),
-      }))
+      .input(
+        z.object({
+          id: z.number(),
+          status: z.enum(["active", "suspended", "trial", "cancelled"]),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         await db.updateTenant(input.id, { subscriptionStatus: input.status });
         invalidateTenantCache(tenant.slug);
         await db.logTenantActivity({
           tenantId: input.id,
-          action: 'status_changed',
-          details: JSON.stringify({ from: tenant.subscriptionStatus, to: input.status }),
+          action: "status_changed",
+          details: JSON.stringify({
+            from: tenant.subscriptionStatus,
+            to: input.status,
+          }),
           performedBy: ctx.platformAdmin.id,
         });
         return { success: true };
@@ -3206,13 +4059,19 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
-        await db.updateTenant(input.id, { isActive: false, subscriptionStatus: 'cancelled' });
+        await db.updateTenant(input.id, {
+          isActive: false,
+          subscriptionStatus: "cancelled",
+        });
         invalidateTenantCache(tenant.slug);
         await db.logTenantActivity({
           tenantId: input.id,
-          action: 'deleted',
+          action: "deleted",
           details: JSON.stringify({ slug: tenant.slug }),
           performedBy: ctx.platformAdmin.id,
         });
@@ -3225,7 +4084,10 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         await db.hardDeleteTenant(input.id);
         invalidateTenantCache(tenant.slug);
@@ -3238,21 +4100,38 @@ export const appRouter = router({
       .query(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         try {
           const platformDb = await db.getDb();
           if (!platformDb) {
-            return { usersCount: 0, clientsCount: 0, storageUsedGB: 0, lastActivity: null, error: 'DB não disponível' };
+            return {
+              usersCount: 0,
+              clientsCount: 0,
+              storageUsedGB: 0,
+              lastActivity: null,
+              error: "DB não disponível",
+            };
           }
-          const usersRes = await platformDb.execute(sql`SELECT count(*) as count FROM "users" WHERE "tenantId" = ${input.id}`);
+          const usersRes = await platformDb.execute(
+            sql`SELECT count(*) as count FROM "users" WHERE "tenantId" = ${input.id}`
+          );
           const usersCount = Number(usersRes[0]?.count || 0);
-          const clientsRes = await platformDb.execute(sql`SELECT count(*) as count FROM "clients" WHERE "tenantId" = ${input.id}`);
+          const clientsRes = await platformDb.execute(
+            sql`SELECT count(*) as count FROM "clients" WHERE "tenantId" = ${input.id}`
+          );
           const clientsCount = Number(clientsRes[0]?.count || 0);
-          const activityRes = await platformDb.execute(sql`SELECT "createdAt" FROM "auditLogs" WHERE "tenantId" = ${input.id} ORDER BY "createdAt" DESC LIMIT 1`);
+          const activityRes = await platformDb.execute(
+            sql`SELECT "createdAt" FROM "auditLogs" WHERE "tenantId" = ${input.id} ORDER BY "createdAt" DESC LIMIT 1`
+          );
           const lastActivity = activityRes[0]?.createdAt || null;
           const storageBytes = await getTenantStorageUsage(input.id);
-          const storageUsedGB = Number((storageBytes / (1024 * 1024 * 1024)).toFixed(3));
+          const storageUsedGB = Number(
+            (storageBytes / (1024 * 1024 * 1024)).toFixed(3)
+          );
           let dbSizeMB = 0;
           try {
             const tenantDb = await getTenantDb(tenant);
@@ -3261,46 +4140,74 @@ export const appRouter = router({
               dbSizeMB = Number((sizeBytes / (1024 * 1024)).toFixed(2));
             }
           } catch (dbErr: any) {
-            console.error(`[Stats] Error getting DB size for tenant ${tenant.id}:`, dbErr?.message);
+            console.error(
+              `[Stats] Error getting DB size for tenant ${tenant.id}:`,
+              dbErr?.message
+            );
           }
-          return { usersCount, clientsCount, storageUsedGB, dbSizeMB, lastActivity };
+          return {
+            usersCount,
+            clientsCount,
+            storageUsedGB,
+            dbSizeMB,
+            lastActivity,
+          };
         } catch (error: any) {
           console.error(`Error fetching stats for tenant ${tenant.id}:`, error);
-          return { usersCount: 0, clientsCount: 0, storageUsedGB: 0, dbSizeMB: 0, lastActivity: null, error: error.message || 'Erro desconhecido' };
+          return {
+            usersCount: 0,
+            clientsCount: 0,
+            storageUsedGB: 0,
+            dbSizeMB: 0,
+            lastActivity: null,
+            error: error.message || "Erro desconhecido",
+          };
         }
       }),
 
     // Estatísticas Globais (Super Admin Dashboard)
-    getGlobalStats: platformAdminProcedure
-      .query(async () => {
-        const platformDb = await db.getDb();
-        if (!platformDb) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Banco de dados não disponível' });
-        }
-        try {
-          const [tenantsRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "tenants"`);
-          const [usersRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "users"`);
-          const [clientsRes] = await platformDb.execute(sql`SELECT count(*) as count FROM "clients"`);
-          const platformDbSizeBytes = await db.getDatabaseSize(platformDb as any);
-          const platformDbSizeMB = Number((platformDbSizeBytes / (1024 * 1024)).toFixed(2));
-          const { getGlobalStorageUsage } = await import('./fileStorage');
-          const globalStorageBytes = await getGlobalStorageUsage();
-          const globalStorageGB = Number((globalStorageBytes / (1024 * 1024 * 1024)).toFixed(3));
-          return {
-            totalTenants: Number(tenantsRes?.count || 0),
-            totalUsers: Number(usersRes?.count || 0),
-            totalClients: Number(clientsRes?.count || 0),
-            platformDbSizeMB,
-            globalStorageGB,
-          };
-        } catch (error: any) {
-          console.error('[getGlobalStats] Error:', error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: 'Erro ao calcular estatísticas globais: ' + error.message 
-          });
-        }
-      }),
+    getGlobalStats: platformAdminProcedure.query(async () => {
+      const platformDb = await db.getDb();
+      if (!platformDb) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Banco de dados não disponível",
+        });
+      }
+      try {
+        const [tenantsRes] = await platformDb.execute(
+          sql`SELECT count(*) as count FROM "tenants"`
+        );
+        const [usersRes] = await platformDb.execute(
+          sql`SELECT count(*) as count FROM "users"`
+        );
+        const [clientsRes] = await platformDb.execute(
+          sql`SELECT count(*) as count FROM "clients"`
+        );
+        const platformDbSizeBytes = await db.getDatabaseSize(platformDb as any);
+        const platformDbSizeMB = Number(
+          (platformDbSizeBytes / (1024 * 1024)).toFixed(2)
+        );
+        const { getGlobalStorageUsage } = await import("./fileStorage");
+        const globalStorageBytes = await getGlobalStorageUsage();
+        const globalStorageGB = Number(
+          (globalStorageBytes / (1024 * 1024 * 1024)).toFixed(3)
+        );
+        return {
+          totalTenants: Number(tenantsRes?.count || 0),
+          totalUsers: Number(usersRes?.count || 0),
+          totalClients: Number(clientsRes?.count || 0),
+          platformDbSizeMB,
+          globalStorageGB,
+        };
+      } catch (error: any) {
+        console.error("[getGlobalStats] Error:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Erro ao calcular estatísticas globais: " + error.message,
+        });
+      }
+    }),
 
     // Health check do tenant (verifica conexão com banco)
     healthCheck: platformAdminProcedure
@@ -3309,17 +4216,25 @@ export const appRouter = router({
         const startTime = Date.now();
         const tenant = await db.getTenantById(input.id);
         if (!tenant) {
-          return { status: 'error' as const, message: 'Tenant não encontrado', latencyMs: Date.now() - startTime };
+          return {
+            status: "error" as const,
+            message: "Tenant não encontrado",
+            latencyMs: Date.now() - startTime,
+          };
         }
         try {
           const tenantDb = await getTenantDb(tenant);
           if (!tenantDb) {
-            return { status: 'error' as const, message: 'Não foi possível conectar ao banco do tenant', latencyMs: Date.now() - startTime };
+            return {
+              status: "error" as const,
+              message: "Não foi possível conectar ao banco do tenant",
+              latencyMs: Date.now() - startTime,
+            };
           }
           await tenantDb.execute(sql`SELECT 1`);
           return {
-            status: 'healthy' as const,
-            message: 'Conexão OK',
+            status: "healthy" as const,
+            message: "Conexão OK",
             latencyMs: Date.now() - startTime,
             tenant: {
               slug: tenant.slug,
@@ -3329,43 +4244,64 @@ export const appRouter = router({
             },
           };
         } catch (error: any) {
-          return { status: 'error' as const, message: error?.message || 'Erro desconhecido', latencyMs: Date.now() - startTime };
+          return {
+            status: "error" as const,
+            message: error?.message || "Erro desconhecido",
+            latencyMs: Date.now() - startTime,
+          };
         }
       }),
 
     // Impersonate: entrar como admin de um tenant específico
     impersonate: platformAdminOrSuperProcedure
-      .input(z.object({ 
-        tenantId: z.number(),
-        confirmPassword: z.string()
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          confirmPassword: z.string(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
-        const passwordMatch = await comparePassword(input.confirmPassword, ctx.platformAdmin.hashedPassword);
+        const passwordMatch = await comparePassword(
+          input.confirmPassword,
+          ctx.platformAdmin.hashedPassword
+        );
         if (!passwordMatch) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Senha incorreta' });
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Senha incorreta",
+          });
         }
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         const tenantAdmin = await db.getTenantAdmin(input.tenantId);
         if (!tenantAdmin) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Admin do tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Admin do tenant não encontrado",
+          });
         }
-        const impersonationToken = await sdk.createSessionToken(tenantAdmin.id.toString(), {
-          name: tenantAdmin.name || "",
-          tenantSlug: tenant.slug,
-          expiresInMs: 60 * 60 * 1000,
-        });
+        const impersonationToken = await sdk.createSessionToken(
+          tenantAdmin.id.toString(),
+          {
+            name: tenantAdmin.name || "",
+            tenantSlug: tenant.slug,
+            expiresInMs: 60 * 60 * 1000,
+          }
+        );
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, impersonationToken, { 
-          ...cookieOptions, 
-          maxAge: 60 * 60 * 1000, 
+        ctx.res.cookie(COOKIE_NAME, impersonationToken, {
+          ...cookieOptions,
+          maxAge: 60 * 60 * 1000,
           path: "/",
           httpOnly: true,
           sameSite: "lax",
         });
-        ctx.res.cookie('is_impersonating', 'true', {
+        ctx.res.cookie("is_impersonating", "true", {
           maxAge: 60 * 60 * 1000,
           path: "/",
           sameSite: "lax",
@@ -3376,7 +4312,7 @@ export const appRouter = router({
     // ===========================================
     // EMAIL CONFIGURATION (Super Admin)
     // ===========================================
-    
+
     getEmailConfig: platformAdminProcedure
       .input(z.object({ tenantId: z.number() }))
       .query(async ({ input }: { input: any }) => {
@@ -3408,30 +4344,39 @@ export const appRouter = router({
       }),
 
     updateEmailConfig: platformAdminOrSuperProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        emailMethod: z.enum(["smtp", "gateway"]),
-        smtpHost: z.string().optional(),
-        smtpPort: z.number().optional(),
-        smtpUser: z.string().optional(),
-        smtpPassword: z.string().optional(),
-        smtpFrom: z.string(),
-        postmanGpxBaseUrl: z.string().optional(),
-        postmanGpxApiKey: z.string().optional(),
-        emailLogoUrl: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          emailMethod: z.enum(["smtp", "gateway"]),
+          smtpHost: z.string().optional(),
+          smtpPort: z.number().optional(),
+          smtpUser: z.string().optional(),
+          smtpPassword: z.string().optional(),
+          smtpFrom: z.string(),
+          postmanGpxBaseUrl: z.string().optional(),
+          postmanGpxApiKey: z.string().optional(),
+          emailLogoUrl: z.string().optional(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const { tenantId, ...config } = input;
         if (config.emailMethod === "smtp") {
           if (!config.smtpHost || !config.smtpUser) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "SMTP requer host e usuário" });
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "SMTP requer host e usuário",
+            });
           }
           const existing = await db.getTenantSmtpSettings(tenantId);
-          const smtpPassword = config.smtpPassword !== undefined && config.smtpPassword !== ""
-            ? config.smtpPassword
-            : existing?.smtpPassword || "";
+          const smtpPassword =
+            config.smtpPassword !== undefined && config.smtpPassword !== ""
+              ? config.smtpPassword
+              : existing?.smtpPassword || "";
           if (!smtpPassword) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "Informe a senha SMTP" });
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Informe a senha SMTP",
+            });
           }
           await db.updateTenantSmtpSettings(tenantId, {
             emailMethod: "smtp",
@@ -3443,14 +4388,22 @@ export const appRouter = router({
           });
         } else if (config.emailMethod === "gateway") {
           if (!config.postmanGpxBaseUrl) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "Gateway requer URL base" });
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Gateway requer URL base",
+            });
           }
           const existing = await db.getTenantSmtpSettings(tenantId);
-          const postmanGpxApiKey = config.postmanGpxApiKey !== undefined && config.postmanGpxApiKey !== ""
-            ? config.postmanGpxApiKey
-            : (existing as any)?.postmanGpxApiKey || "";
+          const postmanGpxApiKey =
+            config.postmanGpxApiKey !== undefined &&
+            config.postmanGpxApiKey !== ""
+              ? config.postmanGpxApiKey
+              : (existing as any)?.postmanGpxApiKey || "";
           if (!postmanGpxApiKey) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "Informe a API Key do gateway" });
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Informe a API Key do gateway",
+            });
           }
           await db.updateTenantSmtpSettings(tenantId, {
             emailMethod: "gateway",
@@ -3463,14 +4416,19 @@ export const appRouter = router({
       }),
 
     testEmailConfig: platformAdminOrSuperProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        testEmail: z.string().email(),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          testEmail: z.string().email(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const settings = await db.getTenantSmtpSettings(input.tenantId);
         if (!settings) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Configuração não encontrada' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Configuração não encontrada",
+          });
         }
         const tenant = await db.getTenantById(input.tenantId);
         const result = await sendTestEmailWithSettings({
@@ -3481,7 +4439,7 @@ export const appRouter = router({
           secure: settings.smtpPort === 465,
           from: settings.smtpFrom || "",
           toEmail: input.testEmail,
-          subject: `[CAC 360] Teste de Configuração - ${tenant?.name || 'Tenant'}`,
+          subject: `[CAC 360] Teste de Configuração - ${tenant?.name || "Tenant"}`,
           body: `<p>Este é um email de teste da configuração SMTP do tenant <strong>${tenant?.name || input.tenantId}</strong>.</p><p>Enviado por: ${ctx.platformAdmin.name || ctx.platformAdmin.email}</p>`,
           useGateway: settings.emailMethod === "gateway",
           postmanGpxBaseUrl: (settings as any).postmanGpxBaseUrl,
@@ -3491,22 +4449,31 @@ export const appRouter = router({
       }),
 
     getEmailTemplates: platformAdminProcedure
-      .input(z.object({ 
-        tenantId: z.number(),
-        module: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          module: z.string().optional(),
+        })
+      )
       .query(async ({ input }: { input: any }) => {
         try {
           const tenant = await db.getTenantById(input.tenantId);
           if (!tenant) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Tenant não encontrado",
+            });
           }
           let tenantDb: any = null;
           const tenantConfig = await getTenantConfig(tenant.slug);
           if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
           if (!tenantDb) tenantDb = await db.getDb();
           if (!tenantDb) return [];
-          return await db.getAllEmailTemplatesFromDb(tenantDb, input.module, input.tenantId);
+          return await db.getAllEmailTemplatesFromDb(
+            tenantDb,
+            input.module,
+            input.tenantId
+          );
         } catch (error: any) {
           console.error(`[tenants.getEmailTemplates] Error:`, error?.message);
           return [];
@@ -3519,17 +4486,26 @@ export const appRouter = router({
         try {
           const tenant = await db.getTenantById(input.tenantId);
           if (!tenant) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Tenant não encontrado",
+            });
           }
           let tenantDb: any = null;
           const tenantConfig = await getTenantConfig(tenant.slug);
           if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
           if (!tenantDb) tenantDb = await db.getDb();
           if (!tenantDb) return [];
-          const triggers = await db.getEmailTriggersFromDb(tenantDb, input.tenantId);
+          const triggers = await db.getEmailTriggersFromDb(
+            tenantDb,
+            input.tenantId
+          );
           return await Promise.all(
             triggers.map(async (trigger: any) => {
-              const templates = await db.getTemplatesByTriggerIdFromDb(tenantDb, trigger.id);
+              const templates = await db.getTemplatesByTriggerIdFromDb(
+                tenantDb,
+                trigger.id
+              );
               return { ...trigger, templates };
             })
           );
@@ -3540,31 +4516,44 @@ export const appRouter = router({
       }),
 
     saveEmailTemplate: platformAdminOrSuperProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        templateKey: z.string(),
-        module: z.string().optional(),
-        templateTitle: z.string().optional(),
-        subject: z.string(),
-        content: z.string(),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          templateKey: z.string(),
+          module: z.string().optional(),
+          templateTitle: z.string().optional(),
+          subject: z.string(),
+          content: z.string(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
-        const templateId = await db.saveEmailTemplateToDb(tenantDb, {
-          templateKey: input.templateKey,
-          module: input.module,
-          templateTitle: input.templateTitle,
-          subject: input.subject,
-          content: input.content,
-        }, input.tenantId);
+        if (!tenantDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "DB do tenant indisponível",
+          });
+        const templateId = await db.saveEmailTemplateToDb(
+          tenantDb,
+          {
+            templateKey: input.templateKey,
+            module: input.module,
+            templateTitle: input.templateTitle,
+            subject: input.subject,
+            content: input.content,
+          },
+          input.tenantId
+        );
         return { success: true, templateId };
       }),
 
@@ -3573,36 +4562,52 @@ export const appRouter = router({
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        if (!tenantDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "DB do tenant indisponível",
+          });
         return await seedTenantEmailTemplates(tenantDb, input.tenantId);
       }),
 
     createEmailTrigger: platformAdminOrSuperProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        name: z.string().min(1),
-        triggerEvent: z.string().min(1),
-        recipientType: z.string().default('client'),
-        isActive: z.boolean().default(true),
-        sendImmediate: z.boolean().default(true),
-        sendBeforeHours: z.number().nullable().optional(),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          name: z.string().min(1),
+          triggerEvent: z.string().min(1),
+          recipientType: z.string().default("client"),
+          isActive: z.boolean().default(true),
+          sendImmediate: z.boolean().default(true),
+          sendBeforeHours: z.number().nullable().optional(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        if (!tenantDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "DB do tenant indisponível",
+          });
         const { tenantId: _tid, ...triggerData } = input;
         const trigger = await db.createEmailTriggerToDb(tenantDb, {
           ...triggerData,
@@ -3612,53 +4617,77 @@ export const appRouter = router({
       }),
 
     updateEmailTrigger: platformAdminOrSuperProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        triggerId: z.number(),
-        name: z.string().min(1).optional(),
-        triggerEvent: z.string().min(1).optional(),
-        isActive: z.boolean().optional(),
-        recipientType: z.string().optional(),
-        sendImmediate: z.boolean().optional(),
-        sendBeforeHours: z.number().nullable().optional(),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          triggerId: z.number(),
+          name: z.string().min(1).optional(),
+          triggerEvent: z.string().min(1).optional(),
+          isActive: z.boolean().optional(),
+          recipientType: z.string().optional(),
+          sendImmediate: z.boolean().optional(),
+          sendBeforeHours: z.number().nullable().optional(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        if (!tenantDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "DB do tenant indisponível",
+          });
         const { tenantId: _tid, triggerId, ...updateFields } = input;
         const updateData: any = {};
-        if (updateFields.name !== undefined) updateData.name = updateFields.name;
-        if (updateFields.triggerEvent !== undefined) updateData.triggerEvent = updateFields.triggerEvent;
-        if (updateFields.isActive !== undefined) updateData.isActive = updateFields.isActive;
-        if (updateFields.recipientType !== undefined) updateData.recipientType = updateFields.recipientType;
-        if (updateFields.sendImmediate !== undefined) updateData.sendImmediate = updateFields.sendImmediate;
-        if (updateFields.sendBeforeHours !== undefined) updateData.sendBeforeHours = updateFields.sendBeforeHours;
+        if (updateFields.name !== undefined)
+          updateData.name = updateFields.name;
+        if (updateFields.triggerEvent !== undefined)
+          updateData.triggerEvent = updateFields.triggerEvent;
+        if (updateFields.isActive !== undefined)
+          updateData.isActive = updateFields.isActive;
+        if (updateFields.recipientType !== undefined)
+          updateData.recipientType = updateFields.recipientType;
+        if (updateFields.sendImmediate !== undefined)
+          updateData.sendImmediate = updateFields.sendImmediate;
+        if (updateFields.sendBeforeHours !== undefined)
+          updateData.sendBeforeHours = updateFields.sendBeforeHours;
         await db.updateEmailTriggerToDb(tenantDb, triggerId, updateData);
         return { success: true };
       }),
 
     deleteEmailTrigger: platformAdminOrSuperProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        triggerId: z.number(),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          triggerId: z.number(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
+        if (!tenantDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "DB do tenant indisponível",
+          });
         await db.deleteEmailTriggerFromDb(tenantDb, input.triggerId);
         return { success: true };
       }),
@@ -3673,28 +4702,42 @@ export const appRouter = router({
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
         if (!tenantDb) return [];
-        return await db.getTemplatesByTriggerIdFromDb(tenantDb, input.triggerId);
+        return await db.getTemplatesByTriggerIdFromDb(
+          tenantDb,
+          input.triggerId
+        );
       }),
 
     updateTriggerTemplates: platformAdminOrSuperProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        triggerId: z.number(),
-        templateIds: z.array(z.number()),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          triggerId: z.number(),
+          templateIds: z.array(z.number()),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tenant não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Tenant não encontrado",
+          });
         }
         let tenantDb: any = null;
         const tenantConfig = await getTenantConfig(tenant.slug);
         if (tenantConfig) tenantDb = await getTenantDb(tenantConfig);
         if (!tenantDb) tenantDb = await db.getDb();
-        if (!tenantDb) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB do tenant indisponível' });
-        const { emailTriggerTemplates } = await import('../drizzle/schema');
-        const { eq } = await import('drizzle-orm');
-        await tenantDb.delete(emailTriggerTemplates).where(eq(emailTriggerTemplates.triggerId, input.triggerId));
+        if (!tenantDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "DB do tenant indisponível",
+          });
+        const { emailTriggerTemplates } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await tenantDb
+          .delete(emailTriggerTemplates)
+          .where(eq(emailTriggerTemplates.triggerId, input.triggerId));
         for (let i = 0; i < input.templateIds.length; i++) {
           await db.addTemplateToTriggerToDb(tenantDb, {
             triggerId: input.triggerId,
@@ -3712,21 +4755,46 @@ export const appRouter = router({
   // ===========================================
   audit: router({
     getLogs: tenantAdminProcedure
-      .input(z.object({
-        startDate: z.string().optional(),
-        endDate: z.string().optional(),
-        userId: z.number().optional(),
-        action: z.enum(['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'DOWNLOAD', 'UPLOAD', 'EXPORT']).optional(),
-        entity: z.enum(['CLIENT', 'DOCUMENT', 'USER', 'WORKFLOW', 'SETTINGS', 'AUTH']).optional(),
-        limit: z.number().min(1).max(100).default(50),
-        offset: z.number().min(0).default(0),
-      }))
+      .input(
+        z.object({
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+          userId: z.number().optional(),
+          action: z
+            .enum([
+              "CREATE",
+              "UPDATE",
+              "DELETE",
+              "LOGIN",
+              "LOGOUT",
+              "DOWNLOAD",
+              "UPLOAD",
+              "EXPORT",
+            ])
+            .optional(),
+          entity: z
+            .enum([
+              "CLIENT",
+              "DOCUMENT",
+              "USER",
+              "WORKFLOW",
+              "SETTINGS",
+              "AUTH",
+            ])
+            .optional(),
+          limit: z.number().min(1).max(100).default(50),
+          offset: z.number().min(0).default(0),
+        })
+      )
       .query(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         try {
           const tenantDb = await getTenantDbOrNull(ctx);
           const tenantId = ctx.tenant?.id || ctx.user?.tenantId;
           if (!tenantId) {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Tenant não identificado",
+            });
           }
 
           const params: db.GetAuditLogsParams = {
@@ -3760,10 +4828,15 @@ export const appRouter = router({
             ? await db.getAllUsersFromDb(tenantDb, tenantId)
             : await db.getAllUsers();
 
-          const userMap = new Map(allUsers.map((u: any) => [u.id, u.name || u.email]));
+          const userMap = new Map(
+            allUsers.map((u: any) => [u.id, u.name || u.email])
+          );
 
-          const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br,admin@acedigital.com.br')
-            .split(',')
+          const superAdminEmails = (
+            process.env.SUPER_ADMIN_EMAILS ||
+            "admin@acrdigital.com.br,admin@acedigital.com.br"
+          )
+            .split(",")
             .map(e => e.trim().toLowerCase())
             .filter(Boolean);
 
@@ -3774,12 +4847,15 @@ export const appRouter = router({
             }
 
             const detailsRaw = log.details;
-            if (typeof detailsRaw === 'string' && detailsRaw.trim()) {
+            if (typeof detailsRaw === "string" && detailsRaw.trim()) {
               try {
                 const parsed = JSON.parse(detailsRaw);
-                const email = (parsed?.email || parsed?.userEmail || '').toString().trim().toLowerCase();
+                const email = (parsed?.email || parsed?.userEmail || "")
+                  .toString()
+                  .trim()
+                  .toLowerCase();
                 if (email) {
-                  if (superAdminEmails.includes(email)) return 'Super Admin';
+                  if (superAdminEmails.includes(email)) return "Super Admin";
                   return email;
                 }
               } catch {
@@ -3787,7 +4863,7 @@ export const appRouter = router({
               }
             }
 
-            return log.userId ? 'Admin da plataforma' : 'Sistema';
+            return log.userId ? "Admin da plataforma" : "Sistema";
           };
 
           const enrichedLogs = result.logs.map(log => ({
@@ -3802,9 +4878,9 @@ export const appRouter = router({
             offset: input.offset,
           };
         } catch (error: any) {
-          console.error('[Audit] Error fetching logs:', error);
+          console.error("[Audit] Error fetching logs:", error);
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
+            code: "INTERNAL_SERVER_ERROR",
             message: `Erro ao buscar logs de auditoria: ${error.message || String(error)}`,
             cause: error,
           });
@@ -3812,18 +4888,43 @@ export const appRouter = router({
       }),
 
     exportCsv: tenantAdminProcedure
-      .input(z.object({
-        startDate: z.string().optional(),
-        endDate: z.string().optional(),
-        userId: z.number().optional(),
-        action: z.enum(['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'DOWNLOAD', 'UPLOAD', 'EXPORT']).optional(),
-        entity: z.enum(['CLIENT', 'DOCUMENT', 'USER', 'WORKFLOW', 'SETTINGS', 'AUTH']).optional(),
-      }))
+      .input(
+        z.object({
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+          userId: z.number().optional(),
+          action: z
+            .enum([
+              "CREATE",
+              "UPDATE",
+              "DELETE",
+              "LOGIN",
+              "LOGOUT",
+              "DOWNLOAD",
+              "UPLOAD",
+              "EXPORT",
+            ])
+            .optional(),
+          entity: z
+            .enum([
+              "CLIENT",
+              "DOCUMENT",
+              "USER",
+              "WORKFLOW",
+              "SETTINGS",
+              "AUTH",
+            ])
+            .optional(),
+        })
+      )
       .mutation(async ({ input, ctx }: { input: any; ctx: TrpcContext }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id || ctx.user?.tenantId;
-          if (!tenantId) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tenant não identificado' });
+        if (!tenantId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Tenant não identificado",
+          });
         }
 
         const params: db.GetAuditLogsParams = {
@@ -3842,15 +4943,24 @@ export const appRouter = router({
           ? await db.getAuditLogsFromDb(tenantDb, params)
           : await db.getAuditLogs(params);
 
-        const userIds = [...new Set(result.logs.map(l => l.userId).filter(Boolean) as number[])];
+        const userIds = [
+          ...new Set(
+            result.logs.map(l => l.userId).filter(Boolean) as number[]
+          ),
+        ];
         const usersFound = tenantDb
           ? await db.getUsersByIdsFromDb(tenantDb, userIds)
           : await db.getUsersByIds(userIds);
 
-        const userMap = new Map(usersFound.map((u: any) => [u.id, u.name || u.email]));
+        const userMap = new Map(
+          usersFound.map((u: any) => [u.id, u.name || u.email])
+        );
 
-        const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || 'admin@acrdigital.com.br,admin@acedigital.com.br')
-          .split(',')
+        const superAdminEmails = (
+          process.env.SUPER_ADMIN_EMAILS ||
+          "admin@acrdigital.com.br,admin@acedigital.com.br"
+        )
+          .split(",")
           .map(e => e.trim().toLowerCase())
           .filter(Boolean);
 
@@ -3861,12 +4971,15 @@ export const appRouter = router({
           }
 
           const detailsRaw = log.details;
-          if (typeof detailsRaw === 'string' && detailsRaw.trim()) {
+          if (typeof detailsRaw === "string" && detailsRaw.trim()) {
             try {
               const parsed = JSON.parse(detailsRaw);
-              const email = (parsed?.email || parsed?.userEmail || '').toString().trim().toLowerCase();
+              const email = (parsed?.email || parsed?.userEmail || "")
+                .toString()
+                .trim()
+                .toLowerCase();
               if (email) {
-                if (superAdminEmails.includes(email)) return 'Super Admin';
+                if (superAdminEmails.includes(email)) return "Super Admin";
                 return email;
               }
             } catch {
@@ -3874,20 +4987,23 @@ export const appRouter = router({
             }
           }
 
-          return log.userId ? 'Admin da plataforma' : 'Sistema';
+          return log.userId ? "Admin da plataforma" : "Sistema";
         };
 
-        const csvHeader = 'Data/Hora,Usuário,Ação,Entidade,ID Entidade,Detalhes,IP\n';
-        const csvRows = result.logs.map(log => {
-          const userName = getUserNameForLog(log);
-          const date = new Date(log.createdAt).toLocaleString('pt-BR');
-          const details = (log.details || '').replace(/"/g, '""');
-          return `"${date}","${userName}","${log.action}","${log.entity}","${log.entityId || ''}","${details}","${log.ipAddress || ''}"`;
-        }).join('\n');
+        const csvHeader =
+          "Data/Hora,Usuário,Ação,Entidade,ID Entidade,Detalhes,IP\n";
+        const csvRows = result.logs
+          .map(log => {
+            const userName = getUserNameForLog(log);
+            const date = new Date(log.createdAt).toLocaleString("pt-BR");
+            const details = (log.details || "").replace(/"/g, '""');
+            return `"${date}","${userName}","${log.action}","${log.entity}","${log.entityId || ""}","${details}","${log.ipAddress || ""}"`;
+          })
+          .join("\n");
 
         return {
           csv: csvHeader + csvRows,
-          filename: `audit-log-${new Date().toISOString().split('T')[0]}.csv`,
+          filename: `audit-log-${new Date().toISOString().split("T")[0]}.csv`,
         };
       }),
   }),
@@ -3901,7 +5017,7 @@ export const appRouter = router({
         const triggers = tenantDb
           ? await db.getEmailTriggersFromDb(tenantDb, tenantId)
           : await db.getEmailTriggers(tenantId);
-        
+
         // Load templates for each trigger
         const triggersWithTemplates = await Promise.all(
           triggers.map(async (trigger: any) => {
@@ -3911,10 +5027,10 @@ export const appRouter = router({
             return { ...trigger, templates };
           })
         );
-        
+
         return triggersWithTemplates;
       } catch (error: any) {
-        console.error('[emailTriggers.list] Error:', error);
+        console.error("[emailTriggers.list] Error:", error);
         if (error instanceof TRPCError) throw error;
         return [];
       }
@@ -3927,52 +5043,65 @@ export const appRouter = router({
         const trigger = tenantDb
           ? await db.getEmailTriggerByIdFromDb(tenantDb, input.id)
           : await db.getEmailTriggerById(input.id);
-        
+
         if (!trigger) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Trigger não encontrado' });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Trigger não encontrado",
+          });
         }
-        
+
         const templates = tenantDb
           ? await db.getTemplatesByTriggerIdFromDb(tenantDb, input.id)
           : await db.getTemplatesByTriggerId(input.id);
-        
+
         return { ...trigger, templates };
       }),
 
     create: tenantAdminProcedure
-      .input(z.object({
-        name: z.string().min(1),
-        triggerEvent: z.string().min(1),
-        recipientType: z.enum(['client', 'users', 'both', 'operator']).default('client'),
-        recipientUserIds: z.array(z.number()).optional(),
-        sendImmediate: z.boolean().default(true),
-        sendBeforeHours: z.number().optional(),
-        isActive: z.boolean().default(true),
-        templateIds: z.array(z.object({
-          templateId: z.number(),
-          sendOrder: z.number().default(1),
-          isForReminder: z.boolean().default(false),
-        })).optional(),
-      }))
+      .input(
+        z.object({
+          name: z.string().min(1),
+          triggerEvent: z.string().min(1),
+          recipientType: z
+            .enum(["client", "users", "both", "operator"])
+            .default("client"),
+          recipientUserIds: z.array(z.number()).optional(),
+          sendImmediate: z.boolean().default(true),
+          sendBeforeHours: z.number().optional(),
+          isActive: z.boolean().default(true),
+          templateIds: z
+            .array(
+              z.object({
+                templateId: z.number(),
+                sendOrder: z.number().default(1),
+                isForReminder: z.boolean().default(false),
+              })
+            )
+            .optional(),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const tenantId = ctx.tenant?.id;
-        
+
         const triggerData = {
           tenantId,
           name: input.name,
           triggerEvent: input.triggerEvent,
           recipientType: input.recipientType,
-          recipientUserIds: input.recipientUserIds ? JSON.stringify(input.recipientUserIds) : null,
+          recipientUserIds: input.recipientUserIds
+            ? JSON.stringify(input.recipientUserIds)
+            : null,
           sendImmediate: input.sendImmediate,
           sendBeforeHours: input.sendBeforeHours,
           isActive: input.isActive,
         };
-        
+
         const trigger = tenantDb
           ? await db.createEmailTriggerToDb(tenantDb, triggerData)
           : await db.createEmailTrigger(triggerData);
-        
+
         // Add templates
         if (input.templateIds && input.templateIds.length > 0) {
           for (const t of input.templateIds) {
@@ -3987,34 +5116,40 @@ export const appRouter = router({
               : await db.addTemplateToTrigger(templateLink);
           }
         }
-        
+
         return trigger;
       }),
 
     update: tenantAdminProcedure
-      .input(z.object({
-        id: z.number(),
-        name: z.string().min(1).optional(),
-        triggerEvent: z.string().min(1).optional(),
-        recipientType: z.enum(['client', 'users', 'both', 'operator']).optional(),
-        recipientUserIds: z.array(z.number()).optional(),
-        sendImmediate: z.boolean().optional(),
-        sendBeforeHours: z.number().nullable().optional(),
-        isActive: z.boolean().optional(),
-      }))
+      .input(
+        z.object({
+          id: z.number(),
+          name: z.string().min(1).optional(),
+          triggerEvent: z.string().min(1).optional(),
+          recipientType: z
+            .enum(["client", "users", "both", "operator"])
+            .optional(),
+          recipientUserIds: z.array(z.number()).optional(),
+          sendImmediate: z.boolean().optional(),
+          sendBeforeHours: z.number().nullable().optional(),
+          isActive: z.boolean().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const { id, ...data } = input;
-        
+
         const updateData: any = { ...data };
         if (data.recipientUserIds !== undefined) {
-          updateData.recipientUserIds = data.recipientUserIds ? JSON.stringify(data.recipientUserIds) : null;
+          updateData.recipientUserIds = data.recipientUserIds
+            ? JSON.stringify(data.recipientUserIds)
+            : null;
         }
-        
+
         tenantDb
           ? await db.updateEmailTriggerToDb(tenantDb, id, updateData)
           : await db.updateEmailTrigger(id, updateData);
-        
+
         return { success: true };
       }),
 
@@ -4030,12 +5165,14 @@ export const appRouter = router({
 
     // Template management
     addTemplate: tenantAdminProcedure
-      .input(z.object({
-        triggerId: z.number(),
-        templateId: z.number(),
-        sendOrder: z.number().default(1),
-        isForReminder: z.boolean().default(false),
-      }))
+      .input(
+        z.object({
+          triggerId: z.number(),
+          templateId: z.number(),
+          sendOrder: z.number().default(1),
+          isForReminder: z.boolean().default(false),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
         const result = tenantDb
@@ -4057,22 +5194,82 @@ export const appRouter = router({
     // Get available trigger events
     getAvailableEvents: tenantAdminProcedure.query(() => {
       return [
-        { value: 'CLIENT_CREATED', label: 'Cliente cadastrado', hasSchedule: false },
-        { value: 'STEP_COMPLETED:1', label: 'Etapa 1 - Cadastro concluído', hasSchedule: false },
-        { value: 'STEP_COMPLETED:2', label: 'Etapa 2 - Avaliação Psicológica concluída', hasSchedule: false },
-        { value: 'STEP_COMPLETED:3', label: 'Etapa 3 - Laudo de Capacidade Técnica concluído', hasSchedule: false },
-        { value: 'STEP_COMPLETED:4', label: 'Etapa 4 - Juntada de Documentos concluída', hasSchedule: false },
-        { value: 'STEP_COMPLETED:5', label: 'Etapa 5 - Submissão ao SINARM-CAC concluída', hasSchedule: false },
-        { value: 'SCHEDULE_PSYCH_CREATED', label: 'Agendamento de Avaliação Psicológica', hasSchedule: true },
-        { value: 'SCHEDULE_TECH_CONFIRMATION', label: 'Confirmação de Agendamento de Laudo Técnico', hasSchedule: true },
+        {
+          value: "CLIENT_CREATED",
+          label: "Cliente cadastrado",
+          hasSchedule: false,
+        },
+        {
+          value: "STEP_COMPLETED:1",
+          label: "Etapa 1 - Cadastro concluído",
+          hasSchedule: false,
+        },
+        {
+          value: "STEP_COMPLETED:2",
+          label: "Etapa 2 - Avaliação Psicológica concluída",
+          hasSchedule: false,
+        },
+        {
+          value: "STEP_COMPLETED:3",
+          label: "Etapa 3 - Laudo de Capacidade Técnica concluído",
+          hasSchedule: false,
+        },
+        {
+          value: "STEP_COMPLETED:4",
+          label: "Etapa 4 - Juntada de Documentos concluída",
+          hasSchedule: false,
+        },
+        {
+          value: "STEP_COMPLETED:5",
+          label: "Etapa 5 - Submissão ao SINARM-CAC concluída",
+          hasSchedule: false,
+        },
+        {
+          value: "SCHEDULE_PSYCH_CREATED",
+          label: "Agendamento de Avaliação Psicológica",
+          hasSchedule: true,
+        },
+        {
+          value: "SCHEDULE_TECH_CONFIRMATION",
+          label: "Confirmação de Agendamento de Laudo Técnico",
+          hasSchedule: true,
+        },
         // SCHEDULE_TECH_REMINDER e WORKFLOW_COMPLETE removidos: eventos não disparados no backend
-        { value: 'SINARM_STATUS:Iniciado', label: 'Sinarm - Iniciado', hasSchedule: false },
-        { value: 'SINARM_STATUS:Solicitado', label: 'Sinarm - Solicitado', hasSchedule: false },
-        { value: 'SINARM_STATUS:Aguardando Baixa GRU', label: 'Sinarm - Aguardando Baixa GRU', hasSchedule: false },
-        { value: 'SINARM_STATUS:Em Análise', label: 'Sinarm - Em Análise', hasSchedule: false },
-        { value: 'SINARM_STATUS:Correção Solicitada', label: 'Sinarm - Correção Solicitada', hasSchedule: false },
-        { value: 'SINARM_STATUS:Deferido', label: 'Sinarm - Deferido', hasSchedule: false },
-        { value: 'SINARM_STATUS:Indeferido', label: 'Sinarm - Indeferido', hasSchedule: false },
+        {
+          value: "SINARM_STATUS:Iniciado",
+          label: "Sinarm - Iniciado",
+          hasSchedule: false,
+        },
+        {
+          value: "SINARM_STATUS:Solicitado",
+          label: "Sinarm - Solicitado",
+          hasSchedule: false,
+        },
+        {
+          value: "SINARM_STATUS:Aguardando Baixa GRU",
+          label: "Sinarm - Aguardando Baixa GRU",
+          hasSchedule: false,
+        },
+        {
+          value: "SINARM_STATUS:Em Análise",
+          label: "Sinarm - Em Análise",
+          hasSchedule: false,
+        },
+        {
+          value: "SINARM_STATUS:Correção Solicitada",
+          label: "Sinarm - Correção Solicitada",
+          hasSchedule: false,
+        },
+        {
+          value: "SINARM_STATUS:Deferido",
+          label: "Sinarm - Deferido",
+          hasSchedule: false,
+        },
+        {
+          value: "SINARM_STATUS:Indeferido",
+          label: "Sinarm - Indeferido",
+          hasSchedule: false,
+        },
       ];
     }),
 
@@ -4108,36 +5305,49 @@ export const appRouter = router({
 
     // Cria novo platform admin — apenas superadmin
     create: platformSuperAdminProcedure
-      .input(z.object({
-        email: z.string().email(),
-        password: z.string().min(8),
-        name: z.string().min(2),
-        role: z.enum(['superadmin', 'admin', 'support']).default('admin'),
-      }))
+      .input(
+        z.object({
+          email: z.string().email(),
+          password: z.string().min(8),
+          name: z.string().min(2),
+          role: z.enum(["superadmin", "admin", "support"]).default("admin"),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         const existing = await db.getPlatformAdminByEmail(input.email);
         if (existing) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Já existe um administrador com esse e-mail.' });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Já existe um administrador com esse e-mail.",
+          });
         }
         return db.createPlatformAdmin(input);
       }),
 
     // Edita perfil — superadmin edita qualquer um; outros só editam o próprio
     update: platformAdminProcedure
-      .input(z.object({
-        id: z.number(),
-        email: z.string().email().optional(),
-        name: z.string().min(2).optional(),
-      }))
+      .input(
+        z.object({
+          id: z.number(),
+          email: z.string().email().optional(),
+          name: z.string().min(2).optional(),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const isSelf = ctx.platformAdmin!.id === input.id;
-        if (!isSelf && ctx.platformAdmin!.role !== 'superadmin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para editar outro administrador.' });
+        if (!isSelf && ctx.platformAdmin!.role !== "superadmin") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Sem permissão para editar outro administrador.",
+          });
         }
         if (input.email) {
           const existing = await db.getPlatformAdminByEmail(input.email);
           if (existing && existing.id !== input.id) {
-            throw new TRPCError({ code: 'CONFLICT', message: 'E-mail já em uso por outro administrador.' });
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "E-mail já em uso por outro administrador.",
+            });
           }
         }
         const { id, ...data } = input;
@@ -4146,26 +5356,46 @@ export const appRouter = router({
 
     // Troca senha — superadmin troca de qualquer um sem senha atual; outros só a própria (com senha atual)
     changePassword: platformAdminProcedure
-      .input(z.object({
-        id: z.number(),
-        currentPassword: z.string().optional(),
-        newPassword: z.string().min(8),
-      }))
+      .input(
+        z.object({
+          id: z.number(),
+          currentPassword: z.string().optional(),
+          newPassword: z.string().min(8),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const isSelf = ctx.platformAdmin!.id === input.id;
-        const isSuperAdmin = ctx.platformAdmin!.role === 'superadmin';
+        const isSuperAdmin = ctx.platformAdmin!.role === "superadmin";
 
         if (!isSelf && !isSuperAdmin) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Sem permissão para alterar a senha de outro administrador.' });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Sem permissão para alterar a senha de outro administrador.",
+          });
         }
         if (isSelf) {
           if (!input.currentPassword) {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Informe a senha atual.' });
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Informe a senha atual.",
+            });
           }
           const admin = await db.getPlatformAdminById(input.id);
-          if (!admin) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador não encontrado.' });
-          const match = await comparePassword(input.currentPassword, admin.hashedPassword);
-          if (!match) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Senha atual incorreta.' });
+          if (!admin)
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Administrador não encontrado.",
+            });
+          const match = await comparePassword(
+            input.currentPassword,
+            admin.hashedPassword
+          );
+          if (!match)
+            throw new TRPCError({
+              code: "UNAUTHORIZED",
+              message: "Senha atual incorreta.",
+            });
         }
         await db.updatePlatformAdminPassword(input.id, input.newPassword);
         return { success: true };
@@ -4177,10 +5407,13 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         if (!input.isActive) {
           const target = await db.getPlatformAdminById(input.id);
-          if (target?.role === 'superadmin') {
+          if (target?.role === "superadmin") {
             const count = await db.countActivePlatformAdmins();
             if (count <= 1) {
-              throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível desativar o único superadmin ativo.' });
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: "Não é possível desativar o único superadmin ativo.",
+              });
             }
           }
         }
@@ -4190,17 +5423,28 @@ export const appRouter = router({
 
     // Altera role — apenas superadmin; bloqueia rebaixamento do último superadmin
     setRole: platformSuperAdminProcedure
-      .input(z.object({ id: z.number(), role: z.enum(['superadmin', 'admin', 'support']) }))
+      .input(
+        z.object({
+          id: z.number(),
+          role: z.enum(["superadmin", "admin", "support"]),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         if (ctx.platformAdmin!.id === input.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode alterar o próprio role.' });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Você não pode alterar o próprio role.",
+          });
         }
-        if (input.role !== 'superadmin') {
+        if (input.role !== "superadmin") {
           const target = await db.getPlatformAdminById(input.id);
-          if (target?.role === 'superadmin') {
+          if (target?.role === "superadmin") {
             const count = await db.countActivePlatformAdmins();
             if (count <= 1) {
-              throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível rebaixar o único superadmin ativo.' });
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: "Não é possível rebaixar o único superadmin ativo.",
+              });
             }
           }
         }
@@ -4213,14 +5457,24 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         if (ctx.platformAdmin!.id === input.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode deletar a própria conta.' });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Você não pode deletar a própria conta.",
+          });
         }
         const target = await db.getPlatformAdminById(input.id);
-        if (!target) throw new TRPCError({ code: 'NOT_FOUND', message: 'Administrador não encontrado.' });
-        if (target.role === 'superadmin') {
+        if (!target)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Administrador não encontrado.",
+          });
+        if (target.role === "superadmin") {
           const count = await db.countActivePlatformAdmins();
           if (count <= 1) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'Não é possível deletar o único superadmin ativo.' });
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Não é possível deletar o único superadmin ativo.",
+            });
           }
         }
         await db.deletePlatformAdmin(input.id);
@@ -4242,56 +5496,72 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(async ({ input }: { input: any }) => {
         const plan = await db.getPlanDefinitionById(input.id);
-        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano não encontrado' });
+        if (!plan)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Plano não encontrado",
+          });
         return plan;
       }),
     create: platformAdminProcedure
-      .input(z.object({
-        slug: z.string().min(2).max(30).regex(/^[a-z0-9-]+$/),
-        name: z.string().min(2).max(100),
-        description: z.string().optional(),
-        maxUsers: z.number().int().min(1).default(5),
-        maxClients: z.number().int().min(1).default(100),
-        maxStorageGB: z.number().min(0.1).default(10),
-        featureWorkflowCR: z.boolean().default(true),
-        featureApostilamento: z.boolean().default(false),
-        featureRenovacao: z.boolean().default(false),
-        featureInsumos: z.boolean().default(false),
-        featureIAT: z.boolean().default(false),
-        priceMonthlyBRL: z.number().int().min(0).default(0),
-        priceYearlyBRL: z.number().int().min(0).default(0),
-        setupFeeBRL: z.number().int().min(0).default(0),
-        trialDays: z.number().int().min(0).default(14),
-        displayOrder: z.number().int().default(0),
-        isPublic: z.boolean().default(true),
-        highlightLabel: z.string().max(50).optional(),
-      }))
+      .input(
+        z.object({
+          slug: z
+            .string()
+            .min(2)
+            .max(30)
+            .regex(/^[a-z0-9-]+$/),
+          name: z.string().min(2).max(100),
+          description: z.string().optional(),
+          maxUsers: z.number().int().min(1).default(5),
+          maxClients: z.number().int().min(1).default(100),
+          maxStorageGB: z.number().min(0.1).default(10),
+          featureWorkflowCR: z.boolean().default(true),
+          featureApostilamento: z.boolean().default(false),
+          featureRenovacao: z.boolean().default(false),
+          featureInsumos: z.boolean().default(false),
+          featureIAT: z.boolean().default(false),
+          priceMonthlyBRL: z.number().int().min(0).default(0),
+          priceYearlyBRL: z.number().int().min(0).default(0),
+          setupFeeBRL: z.number().int().min(0).default(0),
+          trialDays: z.number().int().min(0).default(14),
+          displayOrder: z.number().int().default(0),
+          isPublic: z.boolean().default(true),
+          highlightLabel: z.string().max(50).optional(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         const existing = await db.getPlanDefinitionBySlug(input.slug);
-        if (existing) throw new TRPCError({ code: 'CONFLICT', message: 'Já existe um plano com este slug' });
+        if (existing)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Já existe um plano com este slug",
+          });
         return await db.createPlanDefinition(input);
       }),
     update: platformAdminProcedure
-      .input(z.object({
-        id: z.number(),
-        name: z.string().min(2).max(100).optional(),
-        description: z.string().optional(),
-        maxUsers: z.number().int().min(1).optional(),
-        maxClients: z.number().int().min(1).optional(),
-        maxStorageGB: z.number().min(0.1).optional(),
-        featureWorkflowCR: z.boolean().optional(),
-        featureApostilamento: z.boolean().optional(),
-        featureRenovacao: z.boolean().optional(),
-        featureInsumos: z.boolean().optional(),
-        featureIAT: z.boolean().optional(),
-        priceMonthlyBRL: z.number().int().min(0).optional(),
-        priceYearlyBRL: z.number().int().min(0).optional(),
-        setupFeeBRL: z.number().int().min(0).optional(),
-        trialDays: z.number().int().min(0).optional(),
-        displayOrder: z.number().int().optional(),
-        isPublic: z.boolean().optional(),
-        highlightLabel: z.string().max(50).nullable().optional(),
-      }))
+      .input(
+        z.object({
+          id: z.number(),
+          name: z.string().min(2).max(100).optional(),
+          description: z.string().optional(),
+          maxUsers: z.number().int().min(1).optional(),
+          maxClients: z.number().int().min(1).optional(),
+          maxStorageGB: z.number().min(0.1).optional(),
+          featureWorkflowCR: z.boolean().optional(),
+          featureApostilamento: z.boolean().optional(),
+          featureRenovacao: z.boolean().optional(),
+          featureInsumos: z.boolean().optional(),
+          featureIAT: z.boolean().optional(),
+          priceMonthlyBRL: z.number().int().min(0).optional(),
+          priceYearlyBRL: z.number().int().min(0).optional(),
+          setupFeeBRL: z.number().int().min(0).optional(),
+          trialDays: z.number().int().min(0).optional(),
+          displayOrder: z.number().int().optional(),
+          isPublic: z.boolean().optional(),
+          highlightLabel: z.string().max(50).nullable().optional(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         const { id, ...updates } = input;
         await db.updatePlanDefinition(id, updates);
@@ -4320,30 +5590,46 @@ export const appRouter = router({
         return await db.getActiveSubscription(input.tenantId);
       }),
     create: platformAdminProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        planId: z.number(),
-        billingCycle: z.enum(["monthly", "yearly", "lifetime"]).default("monthly"),
-        priceBRL: z.number().int().min(0),
-        discountBRL: z.number().int().min(0).default(0),
-        status: z.enum(["active", "trialing"]).default("active"),
-        overrideMaxUsers: z.number().int().min(1).optional(),
-        overrideMaxClients: z.number().int().min(1).optional(),
-        overrideMaxStorageGB: z.number().int().min(1).optional(),
-        paymentGateway: z.string().max(30).optional(),
-        endDate: z.string().datetime().optional(),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          planId: z.number(),
+          billingCycle: z
+            .enum(["monthly", "yearly", "lifetime"])
+            .default("monthly"),
+          priceBRL: z.number().int().min(0),
+          discountBRL: z.number().int().min(0).default(0),
+          status: z.enum(["active", "trialing"]).default("active"),
+          overrideMaxUsers: z.number().int().min(1).optional(),
+          overrideMaxClients: z.number().int().min(1).optional(),
+          overrideMaxStorageGB: z.number().int().min(1).optional(),
+          paymentGateway: z.string().max(30).optional(),
+          endDate: z.string().datetime().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const plan = await db.getPlanDefinitionById(input.planId);
-        if (!plan) throw new TRPCError({ code: 'NOT_FOUND', message: 'Plano não encontrado' });
+        if (!plan)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Plano não encontrado",
+          });
         const activeSub = await db.getActiveSubscription(input.tenantId);
         if (activeSub) {
-          await db.updateSubscription(activeSub.id, { status: "cancelled", cancelledAt: new Date(), cancelReason: "Substituída por nova assinatura" });
+          await db.updateSubscription(activeSub.id, {
+            status: "cancelled",
+            cancelledAt: new Date(),
+            cancelReason: "Substituída por nova assinatura",
+          });
         }
         const sub = await db.createSubscription({
-          tenantId: input.tenantId, planId: input.planId, startDate: new Date(),
+          tenantId: input.tenantId,
+          planId: input.planId,
+          startDate: new Date(),
           endDate: input.endDate ? new Date(input.endDate) : null,
-          billingCycle: input.billingCycle, priceBRL: input.priceBRL, discountBRL: input.discountBRL,
+          billingCycle: input.billingCycle,
+          priceBRL: input.priceBRL,
+          discountBRL: input.discountBRL,
           status: input.status,
           overrideMaxUsers: input.overrideMaxUsers ?? null,
           overrideMaxClients: input.overrideMaxClients ?? null,
@@ -4355,9 +5641,19 @@ export const appRouter = router({
         return sub;
       }),
     cancel: platformAdminProcedure
-      .input(z.object({ id: z.number(), tenantId: z.number(), reason: z.string().optional() }))
+      .input(
+        z.object({
+          id: z.number(),
+          tenantId: z.number(),
+          reason: z.string().optional(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
-        await db.updateSubscription(input.id, { status: "cancelled", cancelledAt: new Date(), cancelReason: input.reason ?? "Cancelada pelo administrador" });
+        await db.updateSubscription(input.id, {
+          status: "cancelled",
+          cancelledAt: new Date(),
+          cancelReason: input.reason ?? "Cancelada pelo administrador",
+        });
         await db.syncTenantFromSubscription(input.tenantId);
         return { success: true };
       }),
@@ -4378,37 +5674,66 @@ export const appRouter = router({
         return await db.getAllInvoices(input?.status);
       }),
     createInvoice: platformAdminProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        subscriptionId: z.number().optional(),
-        periodStart: z.string().datetime(),
-        periodEnd: z.string().datetime(),
-        subtotalBRL: z.number().int().min(0),
-        discountBRL: z.number().int().min(0).default(0),
-        totalBRL: z.number().int().min(0),
-        dueDate: z.string().datetime(),
-        notes: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          subscriptionId: z.number().optional(),
+          periodStart: z.string().datetime(),
+          periodEnd: z.string().datetime(),
+          subtotalBRL: z.number().int().min(0),
+          discountBRL: z.number().int().min(0).default(0),
+          totalBRL: z.number().int().min(0),
+          dueDate: z.string().datetime(),
+          notes: z.string().optional(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         return await db.createInvoice({
-          tenantId: input.tenantId, subscriptionId: input.subscriptionId ?? null,
-          periodStart: new Date(input.periodStart), periodEnd: new Date(input.periodEnd),
-          subtotalBRL: input.subtotalBRL, discountBRL: input.discountBRL, totalBRL: input.totalBRL,
-          dueDate: new Date(input.dueDate), notes: input.notes ?? null,
+          tenantId: input.tenantId,
+          subscriptionId: input.subscriptionId ?? null,
+          periodStart: new Date(input.periodStart),
+          periodEnd: new Date(input.periodEnd),
+          subtotalBRL: input.subtotalBRL,
+          discountBRL: input.discountBRL,
+          totalBRL: input.totalBRL,
+          dueDate: new Date(input.dueDate),
+          notes: input.notes ?? null,
         });
       }),
     markPaid: platformAdminProcedure
-      .input(z.object({ invoiceId: z.number(), paymentMethod: z.string().max(30), paymentReference: z.string().max(255).optional() }))
+      .input(
+        z.object({
+          invoiceId: z.number(),
+          paymentMethod: z.string().max(30),
+          paymentReference: z.string().max(255).optional(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
-        await db.markInvoicePaid(input.invoiceId, input.paymentMethod, input.paymentReference);
+        await db.markInvoicePaid(
+          input.invoiceId,
+          input.paymentMethod,
+          input.paymentReference
+        );
         return { success: true };
       }),
     metrics: platformAdminProcedure.query(async () => {
-      const [mrr, tenantsByPlan] = await Promise.all([db.calculateMRR(), db.getTenantCountByPlan()]);
-      return { mrrBRL: mrr, mrrFormatted: `R$ ${(mrr / 100).toFixed(2).replace('.', ',')}`, tenantsByPlan };
+      const [mrr, tenantsByPlan] = await Promise.all([
+        db.calculateMRR(),
+        db.getTenantCountByPlan(),
+      ]);
+      return {
+        mrrBRL: mrr,
+        mrrFormatted: `R$ ${(mrr / 100).toFixed(2).replace(".", ",")}`,
+        tenantsByPlan,
+      };
     }),
     usageHistory: platformAdminProcedure
-      .input(z.object({ tenantId: z.number(), limit: z.number().int().min(1).max(365).default(30) }))
+      .input(
+        z.object({
+          tenantId: z.number(),
+          limit: z.number().int().min(1).max(365).default(30),
+        })
+      )
       .query(async ({ input }: { input: any }) => {
         return await db.getUsageSnapshotsByTenant(input.tenantId, input.limit);
       }),
@@ -4435,7 +5760,7 @@ export const appRouter = router({
         WHERE t."isActive" = true
         ORDER BY t."createdAt" DESC
       `);
-      return (Array.isArray(rows) ? rows : (rows as any).rows ?? []) as any[];
+      return (Array.isArray(rows) ? rows : ((rows as any).rows ?? [])) as any[];
     }),
 
     /** Detalhamento financeiro completo de um tenant */
@@ -4463,11 +5788,13 @@ export const appRouter = router({
           };
         });
         const totalPaidBRL = invs
-          .filter((i: any) => i.status === 'paid')
+          .filter((i: any) => i.status === "paid")
           .reduce((s: number, i: any) => s + (i.totalBRL ?? 0), 0);
-        const hasOverdue = invs.some((i: any) => i.status === 'overdue');
+        const hasOverdue = invs.some((i: any) => i.status === "overdue");
         const clientSinceDays = tenant?.createdAt
-          ? Math.round((now - new Date(tenant.createdAt).getTime()) / 86_400_000)
+          ? Math.round(
+              (now - new Date(tenant.createdAt).getTime()) / 86_400_000
+            )
           : null;
         return {
           tenant: tenant ?? null,
@@ -4486,19 +5813,21 @@ export const appRouter = router({
     }),
 
     createPlan: platformAdminProcedure
-      .input(z.object({
-        slug: z.string().min(1).max(50),
-        name: z.string().min(1).max(100),
-        description: z.string().optional(),
-        priceMonthlyBRL: z.number().int().min(0).default(0),
-        priceYearlyBRL: z.number().int().min(0).default(0),
-        maxUsers: z.number().int().min(1).default(5),
-        maxClients: z.number().int().min(1).default(100),
-        maxStorageGB: z.number().min(0.1).default(10),
-        trialDays: z.number().int().min(0).default(14),
-        isPublic: z.boolean().default(true),
-        displayOrder: z.number().int().default(0),
-      }))
+      .input(
+        z.object({
+          slug: z.string().min(1).max(50),
+          name: z.string().min(1).max(100),
+          description: z.string().optional(),
+          priceMonthlyBRL: z.number().int().min(0).default(0),
+          priceYearlyBRL: z.number().int().min(0).default(0),
+          maxUsers: z.number().int().min(1).default(5),
+          maxClients: z.number().int().min(1).default(100),
+          maxStorageGB: z.number().min(0.1).default(10),
+          trialDays: z.number().int().min(0).default(14),
+          isPublic: z.boolean().default(true),
+          displayOrder: z.number().int().default(0),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         return await db.createPlanDefinition({
           slug: input.slug,
@@ -4517,19 +5846,21 @@ export const appRouter = router({
       }),
 
     updatePlan: platformAdminProcedure
-      .input(z.object({
-        id: z.number().int(),
-        name: z.string().min(1).max(100).optional(),
-        description: z.string().optional(),
-        priceMonthlyBRL: z.number().int().min(0).optional(),
-        priceYearlyBRL: z.number().int().min(0).optional(),
-        maxUsers: z.number().int().min(1).optional(),
-        maxClients: z.number().int().min(1).optional(),
-        maxStorageGB: z.number().min(0.1).optional(),
-        trialDays: z.number().int().min(0).optional(),
-        isPublic: z.boolean().optional(),
-        displayOrder: z.number().int().optional(),
-      }))
+      .input(
+        z.object({
+          id: z.number().int(),
+          name: z.string().min(1).max(100).optional(),
+          description: z.string().optional(),
+          priceMonthlyBRL: z.number().int().min(0).optional(),
+          priceYearlyBRL: z.number().int().min(0).optional(),
+          maxUsers: z.number().int().min(1).optional(),
+          maxClients: z.number().int().min(1).optional(),
+          maxStorageGB: z.number().min(0.1).optional(),
+          trialDays: z.number().int().min(0).optional(),
+          isPublic: z.boolean().optional(),
+          displayOrder: z.number().int().optional(),
+        })
+      )
       .mutation(async ({ input }: { input: any }) => {
         const { id, ...updates } = input;
         await db.updatePlanDefinition(id, updates);
@@ -4552,8 +5883,12 @@ export const appRouter = router({
       .query(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         // ctx.db não existe no TrpcContext — usar getTenantDbOrNull com fallback à platform DB
         const tenantDb = await getTenantDbOrNull(ctx);
-        const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+        const activeDb = tenantDb || (await db.getDb());
+        if (!activeDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Banco indisponível.",
+          });
         return await db.getPendingDocumentsForTriage(
           activeDb,
           input.clientId ?? null,
@@ -4563,25 +5898,45 @@ export const appRouter = router({
 
     /** Aprova e vincula documento à juntada oficial — notifica cliente por email. */
     approve: protectedProcedure
-      .input(z.object({
-        docId:       z.number().int(),
-        subTaskId:   z.number().int(),
-        fileName:    z.string().optional(),
-        newFileName: z.string().optional(),
-        issueDate:   z.string().optional(), // ISO date string "YYYY-MM-DD"
-      }))
+      .input(
+        z.object({
+          docId: z.number().int(),
+          subTaskId: z.number().int(),
+          fileName: z.string().optional(),
+          newFileName: z.string().optional(),
+          issueDate: z.string().optional(), // ISO date string "YYYY-MM-DD"
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
-        const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+        const activeDb = tenantDb || (await db.getDb());
+        if (!activeDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Banco indisponível.",
+          });
 
         // Buscar dados do documento para obter fileUrl, mimeType etc.
-        const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
+        const docRows = await db.getPendingDocumentsForTriage(
+          activeDb,
+          undefined,
+          undefined
+        );
         const doc = docRows.find((d: any) => d.id === input.docId);
-        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+        if (!doc)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Documento não encontrado.",
+          });
 
-        const finalFileName = (input.newFileName?.trim() || input.fileName || doc.fileName).trim();
-        const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
+        const finalFileName = (
+          input.newFileName?.trim() ||
+          input.fileName ||
+          doc.fileName
+        ).trim();
+        const fileKey =
+          String(doc.fileUrl ?? "").replace(/^\/files\//, "") ||
+          String(doc.fileUrl ?? "");
         const uploadedBy = ctx.user?.id ?? 0;
         const issueDate = input.issueDate ?? null;
 
@@ -4599,47 +5954,83 @@ export const appRouter = router({
           issueDate,
         });
 
-        notifyClientOfDocumentDecision(ctx, input.docId, "approved").catch(() => {});
+        notifyClientOfDocumentDecision(ctx, input.docId, "approved").catch(
+          () => {}
+        );
         return { success: true };
       }),
 
     /** Rejeita documento com motivo opcional — notifica cliente */
     reject: protectedProcedure
-      .input(z.object({ docId: z.number().int(), reason: z.string().optional() }))
+      .input(
+        z.object({ docId: z.number().int(), reason: z.string().optional() })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
-        const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
-        await db.updatePendingDocumentStatus(activeDb, input.docId, "rejected", {
-          rejectionReason: input.reason,
-        });
-        notifyClientOfDocumentDecision(ctx, input.docId, "rejected", input.reason).catch(() => {});
+        const activeDb = tenantDb || (await db.getDb());
+        if (!activeDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Banco indisponível.",
+          });
+        await db.updatePendingDocumentStatus(
+          activeDb,
+          input.docId,
+          "rejected",
+          {
+            rejectionReason: input.reason,
+          }
+        );
+        notifyClientOfDocumentDecision(
+          ctx,
+          input.docId,
+          "rejected",
+          input.reason
+        ).catch(() => {});
         return { success: true };
       }),
 
     /** Vincula documento a uma subTarefa existente (insere na juntada oficial) */
     linkToSubTask: protectedProcedure
-      .input(z.object({
-        docId: z.number().int(),
-        subTaskId: z.number().int(),
-        fileName: z.string(),
-        newFileName: z.string().optional(), // nome final do arquivo (renomeado pelo operador)
-      }))
+      .input(
+        z.object({
+          docId: z.number().int(),
+          subTaskId: z.number().int(),
+          fileName: z.string(),
+          newFileName: z.string().optional(), // nome final do arquivo (renomeado pelo operador)
+        })
+      )
       .mutation(async ({ ctx, input }: { ctx: TrpcContext; input: any }) => {
         const tenantDb = await getTenantDbOrNull(ctx);
-        const activeDb = tenantDb || await db.getDb();
-        if (!activeDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+        const activeDb = tenantDb || (await db.getDb());
+        if (!activeDb)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Banco indisponível.",
+          });
 
         // Buscar dados do documento pendente (sem filtro de tenantId para encontrar por id)
-        const docRows = await db.getPendingDocumentsForTriage(activeDb, undefined, undefined);
+        const docRows = await db.getPendingDocumentsForTriage(
+          activeDb,
+          undefined,
+          undefined
+        );
         const doc = docRows.find((d: any) => d.id === input.docId);
-        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+        if (!doc)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Documento não encontrado.",
+          });
 
         // Nome final: renomeado pelo operador ou nome original
-        const finalFileName = (input.newFileName?.trim() || input.fileName).trim();
+        const finalFileName = (
+          input.newFileName?.trim() || input.fileName
+        ).trim();
 
         // fileKey: derivar do fileUrl removendo o prefixo /files/
-        const fileKey = String(doc.fileUrl ?? "").replace(/^\/files\//, "") || String(doc.fileUrl ?? "");
+        const fileKey =
+          String(doc.fileUrl ?? "").replace(/^\/files\//, "") ||
+          String(doc.fileUrl ?? "");
 
         // uploadedBy: operador logado
         const uploadedBy = ctx.user?.id ?? 0;
@@ -4676,11 +6067,14 @@ export const appRouter = router({
     runCron: platformAdminProcedure
       .input(z.object({ job: z.enum(["daily", "suspension"]) }))
       .mutation(async ({ input }: { input: any }) => {
-        const { startCronJobs: _unused, ...cronModule } = await import("./cron");
+        const { startCronJobs: _unused, ...cronModule } = await import(
+          "./cron"
+        );
         if (input.job === "daily") {
-          await (cronModule as any).runDailyJobNow?.() ?? Promise.resolve();
+          (await (cronModule as any).runDailyJobNow?.()) ?? Promise.resolve();
         } else {
-          await (cronModule as any).runSuspensionJobNow?.() ?? Promise.resolve();
+          (await (cronModule as any).runSuspensionJobNow?.()) ??
+            Promise.resolve();
         }
         return { success: true, message: `Job '${input.job}' executado.` };
       }),
@@ -4699,7 +6093,7 @@ async function notifyClientOfDocumentDecision(
 ): Promise<void> {
   try {
     const tenantDb = await getTenantDbOrNull(ctx);
-    const activeDb = tenantDb || await db.getDb();
+    const activeDb = tenantDb || (await db.getDb());
     if (!activeDb) return;
     const docRows = await activeDb.execute(sql`
       SELECT pd.*, c.name AS "clientName", c.email AS "clientEmail", pd."fileName"
@@ -4707,13 +6101,17 @@ async function notifyClientOfDocumentDecision(
       INNER JOIN "clients" c ON c.id = pd."clientId"
       WHERE pd.id = ${docId} LIMIT 1
     `);
-    const arr = Array.isArray(docRows) ? docRows : (docRows as any).rows ?? [];
+    const arr = Array.isArray(docRows)
+      ? docRows
+      : ((docRows as any).rows ?? []);
     if (!arr[0]?.clientEmail) return;
     const { clientName, clientEmail, fileName } = arr[0];
     const isApproved = decision === "approved";
     await sendEmail({
       to: clientEmail,
-      subject: isApproved ? `[CAC 360] Documento aprovado!` : `[CAC 360] Documento não aprovado`,
+      subject: isApproved
+        ? `[CAC 360] Documento aprovado!`
+        : `[CAC 360] Documento não aprovado`,
       html: isApproved
         ? `<div style="font-family:sans-serif;max-width:600px">
             <h3 style="color:#16a34a">Documento aprovado! âœ“</h3>
@@ -4729,13 +6127,12 @@ async function notifyClientOfDocumentDecision(
             <p>Acesse o portal e envie o documento corrigido.</p>
             <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
           </div>`,
-    } as any).catch((e: any) => console.error("[PendingDocs] Email cliente:", e));
+    } as any).catch((e: any) =>
+      console.error("[PendingDocs] Email cliente:", e)
+    );
   } catch (e) {
     console.error("[PendingDocs] notifyClientOfDocumentDecision:", e);
   }
 }
 
 export type AppRouter = typeof appRouter;
-
-
-

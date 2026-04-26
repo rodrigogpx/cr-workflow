@@ -11,21 +11,25 @@ Este repositório contém a migração completa do **CAC 360** de Docker Swarm p
 ## 📋 Conteúdo
 
 ### Arquivos Principais
+
 - **`Dockerfile`** - Multi-stage build otimizado (frontend + backend)
 - **`docker-compose.yml`** - Orquestração com 4 serviços
 - **`nginx/nginx.conf`** - Reverse proxy + SSL + Security headers
 - **`.env.gcp.example`** - Template de variáveis de ambiente
 
 ### Scripts
+
 - **`scripts/deploy-gcp.sh`** - Deploy automatizado no GCP
 - **`scripts/backup-db.sh`** - Backup automático do PostgreSQL
 - **`scripts/setup-gcp-instance.sh`** - Setup inicial da instância GCP
 
 ### Documentação
+
 - **`GCP-DOCKER-DEPLOY.md`** - Guia completo de deployment
 - **`DOCKER-PURE-README.md`** - Este arquivo
 
 ### GitHub Actions
+
 - **`.github/workflows/deploy-docker-pure.yml`** - CI/CD automático
 
 ---
@@ -73,24 +77,28 @@ curl https://cac360.com.br/api/health
 ## 📦 Serviços Docker
 
 ### 1. PostgreSQL 16
+
 - **Container:** `cac360-postgres`
 - **Port:** 5432 (interno)
 - **Volume:** `postgres_data:/var/lib/postgresql/data`
 - **Health Check:** `pg_isready`
 
 ### 2. Node.js App
+
 - **Container:** `cac360-app`
 - **Port:** 3000 (interno)
 - **Build:** Multi-stage (frontend + backend)
 - **Health Check:** `GET /api/health`
 
 ### 3. Nginx
+
 - **Container:** `cac360-nginx`
 - **Ports:** 80 (HTTP), 443 (HTTPS)
 - **Features:** Reverse proxy, SSL/TLS, Rate limiting, Security headers
 - **Health Check:** `wget /health`
 
 ### 4. Certbot
+
 - **Container:** `cac360-certbot`
 - **Feature:** Let's Encrypt automático
 - **Renovação:** A cada 12 horas
@@ -233,22 +241,26 @@ docker-compose down -v  # Remove volumes também
 ## 🔐 Segurança
 
 ### SSL/TLS
+
 - ✅ Let's Encrypt automático
 - ✅ Renovação automática a cada 12 horas
 - ✅ HTTP → HTTPS redirect
 
 ### Headers de Segurança
+
 - ✅ HSTS (Strict-Transport-Security)
 - ✅ X-Content-Type-Options: nosniff
 - ✅ X-Frame-Options: DENY
 - ✅ X-XSS-Protection: 1; mode=block
 
 ### Rate Limiting
+
 - ✅ Geral: 10 req/s
 - ✅ API: 100 req/min
 - ✅ Login: 5 req/min
 
 ### Database
+
 - ✅ Senha forte (32+ chars)
 - ✅ Isolamento por tenant
 - ✅ Backups automáticos (30 dias)
@@ -333,6 +345,7 @@ git push origin main
 ## 📚 Documentação Completa
 
 Para mais detalhes, consulte:
+
 - **`GCP-DOCKER-DEPLOY.md`** - Guia completo de deployment no GCP
 - **`README.md`** - Documentação do projeto CAC 360
 - **`.github/workflows/deploy-docker-pure.yml`** - Workflow de CI/CD
@@ -384,6 +397,7 @@ docker-compose logs app
 ## 📝 Changelog
 
 ### v1.0 (13 de Janeiro de 2026)
+
 - ✅ Migração de Docker Swarm para Docker Puro
 - ✅ Nginx como reverse proxy + SSL
 - ✅ PostgreSQL em container

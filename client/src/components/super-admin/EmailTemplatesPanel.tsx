@@ -5,7 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Download, XCircle, Save, Eye, Code, ChevronRight } from "lucide-react";
+import {
+  Loader2,
+  Download,
+  XCircle,
+  Save,
+  Eye,
+  Code,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface EmailTemplatesPanelProps {
@@ -14,14 +22,17 @@ interface EmailTemplatesPanelProps {
 
 export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
   const utils = trpc.useUtils();
-  const { data: templates = [], isLoading } = trpc.tenants.getEmailTemplates.useQuery({ tenantId });
+  const { data: templates = [], isLoading } =
+    trpc.tenants.getEmailTemplates.useQuery({ tenantId });
 
   const seedMutation = trpc.tenants.seedEmailTemplates.useMutation({
     onSuccess: (result: any) => {
       if (result.skipped) {
-        toast.info('Templates já existem para este tenant');
+        toast.info("Templates já existem para este tenant");
       } else {
-        toast.success(`Seed concluído: ${result.templates} templates e ${result.triggers} triggers criados`);
+        toast.success(
+          `Seed concluído: ${result.templates} templates e ${result.triggers} triggers criados`
+        );
       }
       utils.tenants.getEmailTemplates.invalidate({ tenantId });
       utils.tenants.getEmailTriggers.invalidate({ tenantId });
@@ -33,7 +44,7 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
 
   const saveMutation = trpc.tenants.saveEmailTemplate.useMutation({
     onSuccess: () => {
-      toast.success('Template salvo com sucesso');
+      toast.success("Template salvo com sucesso");
       utils.tenants.getEmailTemplates.invalidate({ tenantId });
     },
     onError: (error: any) => {
@@ -127,8 +138,12 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{template.templateTitle || template.templateKey}</p>
-                      <p className="text-sm text-muted-foreground truncate">{template.subject}</p>
+                      <p className="font-medium truncate">
+                        {template.templateTitle || template.templateKey}
+                      </p>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {template.subject}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2 ml-3">
                       <Badge variant="secondary">{template.module}</Badge>
@@ -142,7 +157,10 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <p>Nenhum template configurado</p>
-            <p className="text-xs mt-2">Clique em "Carregar Templates Padrão" para inicializar os templates do workflow</p>
+            <p className="text-xs mt-2">
+              Clique em "Carregar Templates Padrão" para inicializar os
+              templates do workflow
+            </p>
           </div>
         )}
       </div>
@@ -152,21 +170,26 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
         <div className="fixed inset-0 z-[60]">
           {/* Backdrop */}
           <div
-            className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${detailMounted ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${detailMounted ? "opacity-100" : "opacity-0"}`}
             onClick={closeDetail}
           />
 
           {/* Detail Panel */}
           <div
             className={`absolute top-0 right-0 h-full w-[60vw] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
-              detailMounted ? 'translate-x-0' : 'translate-x-full'
+              detailMounted ? "translate-x-0" : "translate-x-full"
             }`}
           >
             {/* Header */}
             <div className="bg-indigo-700 px-6 py-4 flex items-center justify-between shrink-0">
               <div className="min-w-0 flex-1">
-                <h2 className="text-white font-semibold text-lg truncate">{editTitle}</h2>
-                <p className="text-white/60 text-sm truncate">{selectedTemplate.templateKey} &middot; {selectedTemplate.module}</p>
+                <h2 className="text-white font-semibold text-lg truncate">
+                  {editTitle}
+                </h2>
+                <p className="text-white/60 text-sm truncate">
+                  {selectedTemplate.templateKey} &middot;{" "}
+                  {selectedTemplate.module}
+                </p>
               </div>
               <div className="flex items-center gap-2 ml-4">
                 <Button
@@ -201,14 +224,18 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
                     <Label>Título</Label>
                     <Input
                       value={editTitle}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditTitle(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setEditTitle(e.target.value)
+                      }
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Assunto</Label>
                     <Input
                       value={editSubject}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditSubject(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setEditSubject(e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -217,7 +244,9 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
                 <div className="flex items-center gap-2 border-b pb-2">
                   <button
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === "preview" ? "bg-indigo-100 text-indigo-700" : "text-gray-500 hover:text-gray-700"
+                      viewMode === "preview"
+                        ? "bg-indigo-100 text-indigo-700"
+                        : "text-gray-500 hover:text-gray-700"
                     }`}
                     onClick={() => setViewMode("preview")}
                   >
@@ -226,7 +255,9 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
                   </button>
                   <button
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === "code" ? "bg-indigo-100 text-indigo-700" : "text-gray-500 hover:text-gray-700"
+                      viewMode === "code"
+                        ? "bg-indigo-100 text-indigo-700"
+                        : "text-gray-500 hover:text-gray-700"
                     }`}
                     onClick={() => setViewMode("code")}
                   >
@@ -243,9 +274,13 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
                     </div>
                     <div className="p-1 bg-white">
                       <iframe
-                        srcDoc={editContent.includes('<meta charset') ? editContent : `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${editContent}</body></html>`}
+                        srcDoc={
+                          editContent.includes("<meta charset")
+                            ? editContent
+                            : `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${editContent}</body></html>`
+                        }
                         className="w-full border-0"
-                        style={{ minHeight: '500px' }}
+                        style={{ minHeight: "500px" }}
                         title="Email Preview"
                         sandbox="allow-same-origin"
                       />
@@ -257,7 +292,7 @@ export function EmailTemplatesPanel({ tenantId }: EmailTemplatesPanelProps) {
                     <textarea
                       className="w-full h-[500px] p-4 font-mono text-sm border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                       value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
+                      onChange={e => setEditContent(e.target.value)}
                       spellCheck={false}
                     />
                   </div>

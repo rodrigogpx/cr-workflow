@@ -38,17 +38,17 @@ Para cada arquivo deletado (ou suíte deletada em `email.test.ts`), criar uma is
 - **Título:** `[tests-rewrite] Reescrever cobertura de <funcionalidade> sem grep em source`
 - **Descrição:** copiar o substituto recomendado do ADR-004 §6 + lista dos cenários originais que precisam virar teste de comportamento.
 - **Label:** `tests-rewrite`, `tech-debt`.
-- **Assignee:** —  (fica em backlog).
+- **Assignee:** — (fica em backlog).
 
 ## 3. Arquivos esperados no diff
 
-| Arquivo                                          | Tipo de mudança         |
-| ------------------------------------------------ | ----------------------- |
-| `server/agendamento-laudo.test.ts`               | Deletado                |
-| `server/delete-user.test.ts`                     | Deletado                |
-| `server/email.test.ts`                           | Editado (ou deletado, conforme classificação) |
-| `server/formulario-agendamento-laudo.test.ts`    | Deletado                |
-| `vitest.config.ts` ou `package.json`             | Editado **somente se** tinha referência explícita |
+| Arquivo                                       | Tipo de mudança                                   |
+| --------------------------------------------- | ------------------------------------------------- |
+| `server/agendamento-laudo.test.ts`            | Deletado                                          |
+| `server/delete-user.test.ts`                  | Deletado                                          |
+| `server/email.test.ts`                        | Editado (ou deletado, conforme classificação)     |
+| `server/formulario-agendamento-laudo.test.ts` | Deletado                                          |
+| `vitest.config.ts` ou `package.json`          | Editado **somente se** tinha referência explícita |
 
 ## 4. Critérios de aceite
 

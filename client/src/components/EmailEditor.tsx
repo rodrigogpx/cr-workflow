@@ -29,11 +29,12 @@ export function EmailEditor({
   const [isSending, setIsSending] = useState(false);
 
   // Check if email was already sent
-  const { data: emailLog, refetch: refetchEmailSent } = trpc.emails.getEmailLog.useQuery({
-    clientId,
-    templateKey,
-  });
-  
+  const { data: emailLog, refetch: refetchEmailSent } =
+    trpc.emails.getEmailLog.useQuery({
+      clientId,
+      templateKey,
+    });
+
   const emailSent = !!emailLog;
 
   // Load saved template if exists
@@ -54,7 +55,7 @@ export function EmailEditor({
     onSuccess: () => {
       toast.success("Template salvo com sucesso!");
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Erro ao salvar template: ${error.message}`);
     },
   });
@@ -66,7 +67,7 @@ export function EmailEditor({
       refetchEmailSent();
       setIsSending(false);
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Erro ao enviar email: ${error.message}`);
       setIsSending(false);
     },
@@ -152,7 +153,7 @@ export function EmailEditor({
           </label>
           <Input
             value={subject}
-            onChange={(e) => setSubject(e.target.value)}
+            onChange={e => setSubject(e.target.value)}
             placeholder="Digite o assunto do email"
             disabled={emailSent}
           />
@@ -164,7 +165,7 @@ export function EmailEditor({
           </label>
           <Textarea
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={e => setContent(e.target.value)}
             placeholder="Digite o conteúdo do email"
             rows={10}
             className="font-mono text-sm"

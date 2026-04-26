@@ -1,4 +1,9 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, PLATFORM_COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import {
+  AXIOS_TIMEOUT_MS,
+  COOKIE_NAME,
+  PLATFORM_COOKIE_NAME,
+  ONE_YEAR_MS,
+} from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
@@ -167,7 +172,12 @@ class SDKServer {
    */
   async createSessionToken(
     userId: string,
-    options: { expiresInMs?: number; name?: string; tenantSlug?: string | null; isPlatformAdmin?: boolean } = {}
+    options: {
+      expiresInMs?: number;
+      name?: string;
+      tenantSlug?: string | null;
+      isPlatformAdmin?: boolean;
+    } = {}
   ): Promise<string> {
     return this.signSession(
       {
@@ -200,9 +210,12 @@ class SDKServer {
       .sign(secretKey);
   }
 
-  async verifySession(
-    cookieValue: string | undefined | null
-  ): Promise<{ userId: string; name: string; tenantSlug: string | null; isPlatformAdmin?: boolean } | null> {
+  async verifySession(cookieValue: string | undefined | null): Promise<{
+    userId: string;
+    name: string;
+    tenantSlug: string | null;
+    isPlatformAdmin?: boolean;
+  } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -213,9 +226,12 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { userId, name, tenantSlug, isPlatformAdmin } = payload as Record<string, unknown>;
+      const { userId, name, tenantSlug, isPlatformAdmin } = payload as Record<
+        string,
+        unknown
+      >;
 
-      if (!isNonEmptyString(userId) || typeof name !== 'string') {
+      if (!isNonEmptyString(userId) || typeof name !== "string") {
         console.warn("[Auth] Session payload missing required fields");
         return null;
       }
@@ -236,7 +252,9 @@ class SDKServer {
     }
   }
 
-  async authenticatePlatformAdminRequest(req: Request): Promise<{ platformAdmin: any; tenantSlug: string | null }> {
+  async authenticatePlatformAdminRequest(
+    req: Request
+  ): Promise<{ platformAdmin: any; tenantSlug: string | null }> {
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(PLATFORM_COOKIE_NAME);
     const session = await this.verifySession(sessionCookie);
@@ -258,7 +276,9 @@ class SDKServer {
     return { platformAdmin, tenantSlug: session.tenantSlug };
   }
 
-  async authenticateRequestWithTenant(req: Request): Promise<{ user: User; tenantSlug: string | null }> {
+  async authenticateRequestWithTenant(
+    req: Request
+  ): Promise<{ user: User; tenantSlug: string | null }> {
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
     const session = await this.verifySession(sessionCookie);

@@ -108,17 +108,17 @@ Nunca compartilhe o arquivo `.env` ou faça commit dele no repositório Git, poi
 
 ### Entendendo as Variáveis
 
-| Variável | Descrição | Exemplo |
-|----------|-----------|---------|
-| `DB_NAME` | Nome do banco de dados PostgreSQL | `cac360_platform` |
-| `DB_USER` | Usuário do PostgreSQL | `cac360` |
-| `DB_PASSWORD` | Senha do usuário PostgreSQL | `senha_forte_123` |
-| `DB_PORT` | Porta do PostgreSQL | `5432` |
-| `JWT_SECRET` | Chave para assinatura de tokens JWT | `resultado_do_openssl_rand` |
-| `SECRET_KEY` | Chave para criptografia de dados | `resultado_do_openssl_rand` |
-| `INSTALL_TOKEN` | Token para acesso ao Install Wizard | `cac360rodrigoparreira` |
-| `SMTP_HOST` | Servidor SMTP para envio de emails | `smtp.sendgrid.net` |
-| `AWS_BUCKET_NAME` | Bucket S3 para armazenamento de arquivos | `firing-range-documentos` |
+| Variável          | Descrição                                | Exemplo                     |
+| ----------------- | ---------------------------------------- | --------------------------- |
+| `DB_NAME`         | Nome do banco de dados PostgreSQL        | `cac360_platform`           |
+| `DB_USER`         | Usuário do PostgreSQL                    | `cac360`                    |
+| `DB_PASSWORD`     | Senha do usuário PostgreSQL              | `senha_forte_123`           |
+| `DB_PORT`         | Porta do PostgreSQL                      | `5432`                      |
+| `JWT_SECRET`      | Chave para assinatura de tokens JWT      | `resultado_do_openssl_rand` |
+| `SECRET_KEY`      | Chave para criptografia de dados         | `resultado_do_openssl_rand` |
+| `INSTALL_TOKEN`   | Token para acesso ao Install Wizard      | `cac360rodrigoparreira`     |
+| `SMTP_HOST`       | Servidor SMTP para envio de emails       | `smtp.sendgrid.net`         |
+| `AWS_BUCKET_NAME` | Bucket S3 para armazenamento de arquivos | `firing-range-documentos`   |
 
 ---
 
@@ -135,6 +135,7 @@ docker-compose up --build
 ```
 
 Este comando irá:
+
 1. Construir a imagem Docker da aplicação (multi-stage)
 2. Baixar a imagem PostgreSQL 16
 3. Baixar a imagem Nginx
@@ -311,12 +312,14 @@ Define todos os serviços (app, postgres, nginx, certbot), volumes, networks e v
 ### Dockerfile
 
 Implementa build multi-stage:
+
 - **Stage 1:** Build do frontend (React + Vite)
 - **Stage 2:** Imagem final com backend + frontend compilado
 
 ### nginx/nginx.conf
 
 Configuração do Nginx como reverse proxy com:
+
 - SSL/TLS (Let's Encrypt)
 - Rate limiting
 - Security headers

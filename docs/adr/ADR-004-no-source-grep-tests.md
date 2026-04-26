@@ -68,12 +68,12 @@ Esses testes provavelmente foram criados como scaffolding (tipo "garantir que o 
 
 ## 6. Lista dos arquivos afetados (estado em 2026-04-25)
 
-| Arquivo                                          | Falhas | Substituto recomendado                                                              |
-| ------------------------------------------------ | ------ | ----------------------------------------------------------------------------------- |
-| `server/agendamento-laudo.test.ts`               | 3      | `tests/frontend/ClientWorkflow.spec.tsx` com `render` + assertions de comportamento |
-| `server/delete-user.test.ts`                     | 5      | Teste de tRPC procedure `users.delete` + teste E2E de rota                          |
-| `server/email.test.ts` (parte SMTP)              | 1      | Teste de configuração: importar `smtpConfig`, validar shape com Zod                 |
-| `server/formulario-agendamento-laudo.test.ts`    | 2      | `tests/frontend/FormularioAgendamentoLaudo.spec.tsx` com `render`                   |
+| Arquivo                                       | Falhas | Substituto recomendado                                                              |
+| --------------------------------------------- | ------ | ----------------------------------------------------------------------------------- |
+| `server/agendamento-laudo.test.ts`            | 3      | `tests/frontend/ClientWorkflow.spec.tsx` com `render` + assertions de comportamento |
+| `server/delete-user.test.ts`                  | 5      | Teste de tRPC procedure `users.delete` + teste E2E de rota                          |
+| `server/email.test.ts` (parte SMTP)           | 1      | Teste de configuração: importar `smtpConfig`, validar shape com Zod                 |
+| `server/formulario-agendamento-laudo.test.ts` | 2      | `tests/frontend/FormularioAgendamentoLaudo.spec.tsx` com `render`                   |
 
 ## 7. Revisão
 

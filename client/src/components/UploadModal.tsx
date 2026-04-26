@@ -23,12 +23,12 @@ interface UploadModalProps {
 }
 
 const ALLOWED_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -56,12 +56,12 @@ export function UploadModal({
       setSelectedFile(null);
       onOpenChange(false);
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Erro ao enviar documento: ${error.message}`);
     },
     onSettled: () => {
       setUploading(false);
-    }
+    },
   });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,7 +70,9 @@ export function UploadModal({
 
     // Validar tipo de arquivo
     if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("Tipo de arquivo não permitido. Use PDF, JPG, PNG, DOC ou DOCX.");
+      toast.error(
+        "Tipo de arquivo não permitido. Use PDF, JPG, PNG, DOC ou DOCX."
+      );
       return;
     }
 
@@ -93,7 +95,7 @@ export function UploadModal({
       const reader = new FileReader();
       reader.onload = async () => {
         const base64 = reader.result as string;
-        const base64Data = base64.split(',')[1]; // Remover prefixo data:...
+        const base64Data = base64.split(",")[1]; // Remover prefixo data:...
 
         await uploadMutation.mutateAsync({
           clientId,
@@ -118,14 +120,14 @@ export function UploadModal({
   const handleRemoveFile = () => {
     setSelectedFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
   return (
@@ -133,9 +135,7 @@ export function UploadModal({
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Upload de Documento</DialogTitle>
-          <DialogDescription>
-            {subTaskLabel}
-          </DialogDescription>
+          <DialogDescription>{subTaskLabel}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -146,7 +146,9 @@ export function UploadModal({
                 <div className="flex items-start justify-center gap-3">
                   <FileText className="h-8 w-8 text-primary flex-shrink-0 mt-0.5" />
                   <div className="flex-1 text-left min-w-0">
-                    <p className="font-medium text-sm break-all">{selectedFile.name}</p>
+                    <p className="font-medium text-sm break-all">
+                      {selectedFile.name}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {formatFileSize(selectedFile.size)}
                     </p>
@@ -165,7 +167,9 @@ export function UploadModal({
               <div className="space-y-3">
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium">Clique para selecionar um arquivo</p>
+                  <p className="text-sm font-medium">
+                    Clique para selecionar um arquivo
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     PDF, JPG, PNG, DOC ou DOCX (máx. 10MB)
                   </p>
@@ -198,10 +202,7 @@ export function UploadModal({
           >
             Cancelar
           </Button>
-          <Button
-            onClick={handleUpload}
-            disabled={!selectedFile || uploading}
-          >
+          <Button onClick={handleUpload} disabled={!selectedFile || uploading}>
             {uploading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

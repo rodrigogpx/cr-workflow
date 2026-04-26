@@ -10,7 +10,7 @@
 
 ## Prompt (copiar tudo dentro dos `═══`)
 
-```
+````
 ═══════════════════════════════════════════════════════════════
 Você é o Agente A2 — Backend/DB do Firerange Workflow (CAC 360).
 
@@ -106,17 +106,18 @@ export function requireDb(): Database {
   }
   return db;
 }
-```
+````
 
 (O tipo exato `Database` depende de como server/db.ts exporta. Use
 o tipo correto que você descobriu na seção 2.)
 
 Em server/routers/iat.ts:
-  - Adicione `import { requireDb } from '../_core/getDb';` no topo.
-  - Substitua todas as ocorrências de `db.` por `requireDb().` —
-    use find-replace cuidadoso, NÃO regex global cego.
-  - Se houver alguma ocorrência onde `db` é passado como argumento
-    (não chamado direto), envolva: `someFunc(requireDb())`.
+
+- Adicione `import { requireDb } from '../_core/getDb';` no topo.
+- Substitua todas as ocorrências de `db.` por `requireDb().` —
+  use find-replace cuidadoso, NÃO regex global cego.
+- Se houver alguma ocorrência onde `db` é passado como argumento
+  (não chamado direto), envolva: `someFunc(requireDb())`.
 
 Cole o diff completo de iat.ts (ou um resumo de quantas linhas
 mudaram).
@@ -127,7 +128,10 @@ Em cada procedure de iat.ts, adicione no início do handler:
 
 ```ts
 if (!db) {
-  throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB not initialized' });
+  throw new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: "DB not initialized",
+  });
 }
 ```
 
@@ -135,21 +139,21 @@ if (!db) {
 
 ### 4) Validar fix de iat.ts
 
-  pnpm tsc --noEmit server/routers/iat.ts 2>&1 | head -10
+pnpm tsc --noEmit server/routers/iat.ts 2>&1 | head -10
 
 Esperado: zero erros (ou apenas erros de outros arquivos
 importados — não em iat.ts mesmo).
 
-  pnpm test -- iat 2>&1 | tail -20
+pnpm test -- iat 2>&1 | tail -20
 
 Esperado: testes que tocam iat router continuam passando.
 
 ### 5) Commit 1 — fix iat
 
-  git add server/_core/getDb.ts server/routers/iat.ts
-  git commit -m "refactor(iat): adicionar guard de db null em router IAT
+git add server/\_core/getDb.ts server/routers/iat.ts
+git commit -m "refactor(iat): adicionar guard de db null em router IAT
 
-Cria helper requireDb() em server/_core/getDb.ts que joga erro
+Cria helper requireDb() em server/\_core/getDb.ts que joga erro
 explícito se db === null. Substitui acessos diretos a db em
 server/routers/iat.ts pelo helper, eliminando ~40 erros TS18047.
 
@@ -163,41 +167,41 @@ Co-Authored-By: Cascade"
 
 ### 6) Migrar Zod v4 em validations.ts
 
-  sed -n '260,285p' shared/validations.ts
+sed -n '260,285p' shared/validations.ts
 
 Mostre as ~25 linhas em volta do erro. Identifique o uso de
 errorMap. Geralmente é algo como:
 
 ```ts
-z.enum(['a','b','c'], {
-  errorMap: () => ({ message: 'mensagem custom' })
-})
+z.enum(["a", "b", "c"], {
+  errorMap: () => ({ message: "mensagem custom" }),
+});
 ```
 
 Migre para Zod v4:
 
 ```ts
-z.enum(['a','b','c'], {
-  error: () => 'mensagem custom'
-})
+z.enum(["a", "b", "c"], {
+  error: () => "mensagem custom",
+});
 ```
 
 Cole o diff antes/depois.
 
 ### 7) Validar fix de validations.ts
 
-  pnpm tsc --noEmit shared/validations.ts 2>&1 | head -10
+pnpm tsc --noEmit shared/validations.ts 2>&1 | head -10
 
 Esperado: zero erros.
 
-  pnpm test -- validations 2>&1 | tail -10
+pnpm test -- validations 2>&1 | tail -10
 
 Esperado: verde (parser continua funcional).
 
 ### 8) Commit 2 — fix validations
 
-  git add shared/validations.ts
-  git commit -m "fix(validations): migrar z.enum para API Zod v4
+git add shared/validations.ts
+git commit -m "fix(validations): migrar z.enum para API Zod v4
 
 Substitui errorMap (deprecated em Zod v4) por error callback.
 Mantém a mesma mensagem de validação.
@@ -208,28 +212,29 @@ Co-Authored-By: Cascade"
 
 ### 9) Verificação consolidada
 
-  pnpm tsc --noEmit 2>&1 | grep -E "iat\.ts|validations\.ts" | wc -l
-  pnpm tsc --noEmit 2>&1 | grep "error TS" | wc -l
+pnpm tsc --noEmit 2>&1 | grep -E "iat\.ts|validations\.ts" | wc -l
+pnpm tsc --noEmit 2>&1 | grep "error TS" | wc -l
 
 Esperado:
-  - Primeira linha: 0 (zero erros nos 2 arquivos da sua frente).
-  - Segunda linha: ~8 (apenas erros restantes em SuperAdminTenants.tsx,
-    que é frente A3).
 
-  pnpm test 2>&1 | tail -10
-  pnpm prettier --check .
+- Primeira linha: 0 (zero erros nos 2 arquivos da sua frente).
+- Segunda linha: ~8 (apenas erros restantes em SuperAdminTenants.tsx,
+  que é frente A3).
+
+pnpm test 2>&1 | tail -10
+pnpm prettier --check .
 
 Esperado: testes verdes, prettier verde.
 
 ### 10) Push e PR
 
-  git push -u origin agent-a2/WP-S0-C-server-types
+git push -u origin agent-a2/WP-S0-C-server-types
 
-  gh pr create \
-    --base hml \
-    --head agent-a2/WP-S0-C-server-types \
-    --title "A2/WP-S0-C — saúde de tipos no server" \
-    --body-file <(cat <<'BODY'
+gh pr create \
+ --base hml \
+ --head agent-a2/WP-S0-C-server-types \
+ --title "A2/WP-S0-C — saúde de tipos no server" \
+ --body-file <(cat <<'BODY'
 WP: WP-S0-C frente A2 — Saúde de tipos (server)
 Spec: docs/wp/WP-S0-C.md §2.1
 Agente autor: A2
@@ -261,27 +266,30 @@ Cole o URL.
 
 ### 11) Verificação final
 
-  gh pr view <URL> --json mergeable
-  gh pr checks <URL>
+gh pr view <URL> --json mergeable
+gh pr checks <URL>
 
 ## Condição de parada
 
 Pare e me notifique em:
-  - Erro de tipo aparecer em arquivo fora da sua allowlist depois
-    do fix.
-  - Algum teste quebrar.
-  - requireDb() exigir mudança em mais arquivos do que o esperado
-    (sinal de que outros routers também usam db direto — não
-    expanda escopo, abra follow-up).
+
+- Erro de tipo aparecer em arquivo fora da sua allowlist depois
+  do fix.
+- Algum teste quebrar.
+- requireDb() exigir mudança em mais arquivos do que o esperado
+  (sinal de que outros routers também usam db direto — não
+  expanda escopo, abra follow-up).
 
 ## Primeira resposta esperada
 
 Cole APENAS:
-  1. Output da seção 0 (git log, pnpm prettier --check).
-  2. Pergunta: "Ambiente pronto. Prossigo para diagnóstico de
-     typecheck?"
+
+1. Output da seção 0 (git log, pnpm prettier --check).
+2. Pergunta: "Ambiente pronto. Prossigo para diagnóstico de
+   typecheck?"
 
 ═══════════════════════════════════════════════════════════════
+
 ```
 
 ---
@@ -307,3 +315,4 @@ Cole APENAS:
 2. Disparar workflow `.github/workflows/baseline-freeze.yml` no GitHub Actions (workflow_dispatch).
 3. Merge do PR `sprint-0/baseline-freeze` que o workflow vai abrir automaticamente.
 4. **Marco 2 concluído.**
+```

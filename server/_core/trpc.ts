@@ -1,4 +1,4 @@
-import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
+import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
@@ -20,9 +20,9 @@ const requireUser = t.middleware(async opts => {
 
   // Bloquear usuários sem perfil (aguardando aprovação)
   if (!ctx.user.role) {
-    throw new TRPCError({ 
-      code: "FORBIDDEN", 
-      message: "Aguardando aprova\u00e7\u00e3o do administrador" 
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Aguardando aprova\u00e7\u00e3o do administrador",
     });
   }
 
@@ -46,12 +46,17 @@ const requireTenantIfPresent = t.middleware(async opts => {
   // Se slug existe mas tenant não foi encontrado, apenas logar e continuar
   // As procedures individuais decidem se tenant é obrigatório
   if (!ctx.tenant) {
-    console.warn(`[TenantMiddleware] Tenant slug "${ctx.tenantSlug}" provided but tenant not found`);
+    console.warn(
+      `[TenantMiddleware] Tenant slug "${ctx.tenantSlug}" provided but tenant not found`
+    );
     return next({ ctx });
   }
 
   if (!isTenantActive(ctx.tenant)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Tenant suspenso ou expirado" });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Tenant suspenso ou expirado",
+    });
   }
 
   return next({
@@ -70,7 +75,7 @@ const requireAdmin = t.middleware(async opts => {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
 
-  if (ctx.user.role !== 'admin') {
+  if (ctx.user.role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
   }
 
@@ -86,7 +91,10 @@ const requirePlatformAdmin = t.middleware(async opts => {
   const { ctx, next } = opts;
 
   if (!ctx.platformAdmin) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Acesso restrito à administração da plataforma" });
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Acesso restrito à administração da plataforma",
+    });
   }
 
   return next({
@@ -102,11 +110,17 @@ const requireSuperAdmin = t.middleware(async opts => {
   const { ctx, next } = opts;
 
   if (!ctx.platformAdmin) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Acesso restrito à administração da plataforma" });
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Acesso restrito à administração da plataforma",
+    });
   }
 
-  if (ctx.platformAdmin.role !== 'superadmin') {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Esta operação requer role superadmin" });
+  if (ctx.platformAdmin.role !== "superadmin") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Esta operação requer role superadmin",
+    });
   }
 
   return next({
@@ -122,11 +136,20 @@ const requireAdminOrSuper = t.middleware(async opts => {
   const { ctx, next } = opts;
 
   if (!ctx.platformAdmin) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Acesso restrito à administração da plataforma" });
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Acesso restrito à administração da plataforma",
+    });
   }
 
-  if (ctx.platformAdmin.role !== 'superadmin' && ctx.platformAdmin.role !== 'admin') {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Esta operação requer role admin ou superadmin" });
+  if (
+    ctx.platformAdmin.role !== "superadmin" &&
+    ctx.platformAdmin.role !== "admin"
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Esta operação requer role admin ou superadmin",
+    });
   }
 
   return next({
@@ -142,23 +165,24 @@ const requireTenant = t.middleware(async opts => {
   const { ctx, next } = opts;
 
   if (!ctx.tenantSlug) {
-    throw new TRPCError({ 
-      code: "FORBIDDEN", 
-      message: "Tenant não identificado. Acesse através do domínio correto." 
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Tenant não identificado. Acesse através do domínio correto.",
     });
   }
 
   if (!ctx.tenant) {
-    throw new TRPCError({ 
-      code: "NOT_FOUND", 
-      message: `Tenant "${ctx.tenantSlug}" não encontrado ou inativo.` 
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: `Tenant "${ctx.tenantSlug}" não encontrado ou inativo.`,
     });
   }
 
   if (!isTenantActive(ctx.tenant)) {
-    throw new TRPCError({ 
-      code: "FORBIDDEN", 
-      message: "Tenant suspenso ou com assinatura expirada. Entre em contato com o suporte." 
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Tenant suspenso ou com assinatura expirada. Entre em contato com o suporte.",
     });
   }
 
@@ -176,27 +200,27 @@ const requireStrictTenant = t.middleware(async opts => {
   const { ctx, next } = opts;
 
   if (!ctx.tenant?.id) {
-    throw new TRPCError({ 
-      code: "FORBIDDEN", 
-      message: "Operação requer contexto de tenant válido" 
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Operação requer contexto de tenant válido",
     });
   }
 
   if (!isTenantActive(ctx.tenant)) {
-    throw new TRPCError({ 
-      code: "FORBIDDEN", 
-      message: "Tenant suspenso ou com assinatura expirada" 
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Tenant suspenso ou com assinatura expirada",
     });
   }
 
   // Importar getTenantDb dinamicamente para evitar dependência circular
   const { getTenantDb } = await import("../config/tenant.config");
   const tenantDb = await getTenantDb(ctx.tenant);
-  
+
   if (!tenantDb) {
-    throw new TRPCError({ 
-      code: "INTERNAL_SERVER_ERROR", 
-      message: "Banco de dados do tenant indisponível" 
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Banco de dados do tenant indisponível",
     });
   }
 
@@ -220,9 +244,7 @@ export const adminProcedure = t.procedure
   .use(requireAdmin);
 
 // Procedure que EXIGE tenant válido e ativo (para operações sensíveis)
-export const tenantProcedure = t.procedure
-  .use(requireUser)
-  .use(requireTenant);
+export const tenantProcedure = t.procedure.use(requireUser).use(requireTenant);
 
 // Procedure admin que EXIGE tenant válido
 export const tenantAdminProcedure = t.procedure
@@ -231,16 +253,14 @@ export const tenantAdminProcedure = t.procedure
   .use(requireAdmin);
 
 // Qualquer platform admin autenticado (superadmin, admin, support) — leitura e stats
-export const platformAdminProcedure = t.procedure
-  .use(requirePlatformAdmin);
+export const platformAdminProcedure = t.procedure.use(requirePlatformAdmin);
 
 // Apenas superadmin — CRUD de platform admins, delete/hardDelete de tenants
-export const platformSuperAdminProcedure = t.procedure
-  .use(requireSuperAdmin);
+export const platformSuperAdminProcedure = t.procedure.use(requireSuperAdmin);
 
 // superadmin ou admin — criação/edição de tenants, impersonar, configs de email
-export const platformAdminOrSuperProcedure = t.procedure
-  .use(requireAdminOrSuper);
+export const platformAdminOrSuperProcedure =
+  t.procedure.use(requireAdminOrSuper);
 
 // Procedure RIGOROSO que exige tenant válido E injeta tenantDb
 export const strictTenantProcedure = t.procedure
@@ -256,7 +276,12 @@ export const strictTenantAdminProcedure = t.procedure
 // ============================================
 // Feature-gated procedures
 // ============================================
-type TenantFeatureKey = "featureWorkflowCR" | "featureApostilamento" | "featureRenovacao" | "featureInsumos" | "featureIAT";
+type TenantFeatureKey =
+  | "featureWorkflowCR"
+  | "featureApostilamento"
+  | "featureRenovacao"
+  | "featureInsumos"
+  | "featureIAT";
 
 const FEATURE_LABELS: Record<TenantFeatureKey, string> = {
   featureWorkflowCR: "Workflow CR",
@@ -269,7 +294,10 @@ const FEATURE_LABELS: Record<TenantFeatureKey, string> = {
 function requireFeature(featureName: TenantFeatureKey) {
   return t.middleware(async ({ ctx, next }) => {
     if (!ctx.tenant) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Operação requer contexto de tenant válido" });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Operação requer contexto de tenant válido",
+      });
     }
     if (!ctx.tenant[featureName]) {
       const label = FEATURE_LABELS[featureName] || featureName;

@@ -3,11 +3,13 @@
 ## 1️⃣ Padrão: Adicionar Campo Simples ao Tenant
 
 ### Cenário
+
 Você quer adicionar um novo campo de configuração que é simples (texto, número, booleano).
 
 ### Exemplo: Adicionar "Phone" do Responsável
 
 #### Passo 1: Schema
+
 ```typescript
 // drizzle/schema.ts (linha ~407)
 
@@ -15,7 +17,9 @@ export const tenants = pgTable("tenants", {
   // ... campos existentes ...
 
   // ✅ Adicionar AQUI
-  signatureResponsiblePhone: varchar("signatureResponsiblePhone", { length: 20 }),
+  signatureResponsiblePhone: varchar("signatureResponsiblePhone", {
+    length: 20,
+  }),
 
   // ... resto ...
 });
@@ -26,6 +30,7 @@ export type InsertTenant = typeof tenants.$inferInsert;
 ```
 
 #### Passo 2: Config Type
+
 ```typescript
 // server/config/tenant.config.ts (linha ~54)
 
@@ -40,6 +45,7 @@ export interface TenantConfig {
 ```
 
 #### Passo 3: Migração
+
 ```sql
 -- drizzle/migrations/YYYYMMDDHHMM_add_signature_responsible_phone.sql
 
@@ -47,6 +53,7 @@ ALTER TABLE tenants ADD COLUMN signature_responsible_phone VARCHAR(20);
 ```
 
 #### Passo 4: Rotas
+
 ```typescript
 // server/routers.ts (linha 2988 - create)
 
@@ -75,6 +82,7 @@ await db.updateTenant(id, updates); // updates inclui signatureResponsiblePhone
 ```
 
 #### Passo 5: Usar no Código
+
 ```typescript
 // Em qualquer rota que tenha ctx.tenant:
 
@@ -86,6 +94,7 @@ if (phone) {
 ```
 
 #### Checklist
+
 - [ ] Adicionado ao schema (drizzle/schema.ts)
 - [ ] Adicionado ao TenantConfig (tenant.config.ts)
 - [ ] Arquivo de migração criado
@@ -100,11 +109,13 @@ if (phone) {
 ## 2️⃣ Padrão: Adicionar Campo Secret (Encriptado)
 
 ### Cenário
+
 Campo sensível como API key, senha, token.
 
 ### Exemplo: API Key para Integração
 
 #### Passo 1-3: Schema + Tipo + Migração
+
 (Mesmo que padrão anterior, mas usar `text` em vez de `varchar`)
 
 ```typescript
@@ -113,10 +124,11 @@ integrationApiKey: text("integrationApiKey"), // use text para valores longos
 ```
 
 #### Passo 4: Rotas (DIFERENTE!)
+
 ```typescript
 // server/routers.ts - create
 
-import { encryptSecret } from '../config/crypto.util';
+import { encryptSecret } from "../config/crypto.util";
 
 const tenantId = await db.createTenant({
   // ...
@@ -138,6 +150,7 @@ await db.updateTenant(id, updates);
 ```
 
 #### Passo 5: Usar no Código
+
 ```typescript
 // server/config/tenant.config.ts - já descriptografa automaticamente!
 
@@ -147,12 +160,13 @@ if (tenant.integrationApiKey) {
 
 // Em rotas:
 const apiKey = ctx.tenant?.integrationApiKey; // já descriptografado
-await fetch('https://api.external.com', {
-  headers: { Authorization: `Bearer ${apiKey}` }
+await fetch("https://api.external.com", {
+  headers: { Authorization: `Bearer ${apiKey}` },
 });
 ```
 
 #### Checklist
+
 - [ ] Usar `text` em vez de `varchar` no schema
 - [ ] Encriptar ao SALVAR: `encryptSecret()`
 - [ ] Descriptografar ao CARREGAR: já automático em `getTenantConfig()`
@@ -164,11 +178,13 @@ await fetch('https://api.external.com', {
 ## 3️⃣ Padrão: Adicionar Toggle de Feature
 
 ### Cenário
+
 Habilitar/desabilitar um feature por tenant (ex: nova funcionalidade, módulo, integração).
 
 ### Exemplo: Feature de Agenda de Psicólogo
 
 #### Passo 1: Schema
+
 ```typescript
 // drizzle/schema.ts
 
@@ -178,6 +194,7 @@ featurePsychologistScheduling: boolean("featurePsychologistScheduling")
 ```
 
 #### Passo 2-3: Config + Migração
+
 ```typescript
 // tenant.config.ts
 export interface TenantConfig {
@@ -191,6 +208,7 @@ ADD COLUMN feature_psychologist_scheduling BOOLEAN DEFAULT false NOT NULL;
 ```
 
 #### Passo 4: Rotas
+
 ```typescript
 // create input
 featurePsychologistScheduling: z.boolean().default(false),
@@ -203,6 +221,7 @@ featurePsychologistScheduling: z.boolean().optional(),
 ```
 
 #### Passo 5: Usar no Código
+
 ```typescript
 // Em qualquer rota:
 
@@ -215,12 +234,13 @@ if (ctx.tenant?.featurePsychologistScheduling) {
 
 // Ou no frontend:
 const features = getTenantFeatures(ctx.tenant);
-if (features.includes('psychologist-scheduling')) {
+if (features.includes("psychologist-scheduling")) {
   // renderizar menu item
 }
 ```
 
 #### Checklist
+
 - [ ] Adicionar ao schema com `.default(false)`
 - [ ] Adicionar ao TenantConfig
 - [ ] Criar migração
@@ -234,11 +254,13 @@ if (features.includes('psychologist-scheduling')) {
 ## 4️⃣ Padrão: Adicionar Configuração de Integração
 
 ### Cenário
+
 Variáveis para integração com serviço externo (ex: Webhook URL, credenciais).
 
 ### Exemplo: Webhook da PF (Polícia Federal)
 
 #### Estrutura Recomendada
+
 ```typescript
 // Agrupar configurações relacionadas em objeto JSON
 
@@ -249,6 +271,7 @@ pfLastSync: timestamp("pfLastSync"),                               // Metadata
 ```
 
 #### Schema
+
 ```typescript
 // drizzle/schema.ts
 
@@ -260,6 +283,7 @@ pfLastSyncAt: timestamp("pfLastSyncAt"),
 ```
 
 #### Tipos
+
 ```typescript
 export interface TenantConfig {
   // ...
@@ -271,6 +295,7 @@ export interface TenantConfig {
 ```
 
 #### Rotas
+
 ```typescript
 // Input
 .input(z.object({
@@ -292,11 +317,12 @@ await db.createTenant(updates);
 ```
 
 #### Uso
+
 ```typescript
 // Em função webhook handler:
 
 if (!ctx.tenant?.pfIntegrationEnabled) {
-  throw new Error('PF integration not enabled');
+  throw new Error("PF integration not enabled");
 }
 
 const secret = ctx.tenant.pfWebhookSecret; // já descriptografado
@@ -304,13 +330,14 @@ const url = ctx.tenant.pfWebhookUrl;
 
 // Validar assinatura
 if (signature !== hmac(body, secret)) {
-  throw new Error('Invalid signature');
+  throw new Error("Invalid signature");
 }
 
 // Processar webhook...
 ```
 
 #### Checklist
+
 - [ ] Todas as URLs/configurações documentadas
 - [ ] Secrets marcadas para criptografia
 - [ ] Toggle para habilitar/desabilitar
@@ -323,11 +350,13 @@ if (signature !== hmac(body, secret)) {
 ## 5️⃣ Padrão: Adicionar Configuração com Valores Pré-Definidos
 
 ### Cenário
+
 Enum/select com valores específicos (ex: plano, tipo de integração).
 
 ### Exemplo: Tipo de Pagamento Aceito
 
 #### Schema
+
 ```typescript
 export const tenants = pgTable("tenants", {
   // ...
@@ -338,6 +367,7 @@ export const tenants = pgTable("tenants", {
 ```
 
 #### Tipo
+
 ```typescript
 export interface TenantConfig {
   // ...
@@ -346,6 +376,7 @@ export interface TenantConfig {
 ```
 
 #### Rotas
+
 ```typescript
 .input(z.object({
   paymentMethod: z.enum(['pix', 'creditcard', 'boleto', 'all']).optional(),
@@ -353,24 +384,26 @@ export interface TenantConfig {
 ```
 
 #### Uso
+
 ```typescript
 switch (ctx.tenant?.paymentMethod) {
-  case 'pix':
+  case "pix":
     // mostrar apenas PIX
     break;
-  case 'creditcard':
+  case "creditcard":
     // mostrar apenas cartão
     break;
-  case 'boleto':
+  case "boleto":
     // mostrar apenas boleto
     break;
-  case 'all':
+  case "all":
     // mostrar todos os métodos
     break;
 }
 ```
 
 #### Checklist
+
 - [ ] Enum bem definido (não valores mágicos)
 - [ ] Type safety com Zod enum
 - [ ] Default sensato
@@ -426,6 +459,7 @@ switch (ctx.tenant?.paymentMethod) {
 ## 📚 Referência de Tipos
 
 ### Simple Types
+
 ```typescript
 name: varchar(255),              // Texto curto
 description: text(),             // Texto longo
@@ -435,6 +469,7 @@ url: varchar(500),               // URLs/URIs
 ```
 
 ### Secret Types
+
 ```typescript
 password: text(),                // ENCRIPTAR!
 apiKey: text(),                  // ENCRIPTAR!
@@ -443,6 +478,7 @@ secret: text(),                  // ENCRIPTAR!
 ```
 
 ### Number Types
+
 ```typescript
 port: integer(),                 // 1-65535
 maxUsers: integer().default(10),
@@ -450,12 +486,14 @@ maxStorageGB: numeric(10, 2),   // decimal com 2 casas
 ```
 
 ### Boolean Types
+
 ```typescript
 isActive: boolean().default(true),
 featureX: boolean().default(false),
 ```
 
 ### Date Types
+
 ```typescript
 createdAt: timestamp().defaultNow(),
 expiresAt: timestamp(),
@@ -467,12 +505,14 @@ lastSyncAt: timestamp(),
 ## ❌ Erros Comuns
 
 ### ❌ Erro 1: Esquecer Migração
+
 ```
 Código compila, mas falha em produção
 ⚠️ Solução: SEMPRE criar arquivo de migração
 ```
 
 ### ❌ Erro 2: Encriptar valor que já está encriptado
+
 ```typescript
 // ❌ ERRADO
 if (input.apiKey) {
@@ -486,6 +526,7 @@ if (input.apiKey) {
 ```
 
 ### ❌ Erro 3: Não validar enum
+
 ```typescript
 // ❌ ERRADO - aceita qualquer string
 paymentMethod: z.string().optional(),
@@ -495,24 +536,28 @@ paymentMethod: z.enum(['pix', 'creditcard', 'boleto']).optional(),
 ```
 
 ### ❌ Erro 4: Expor secret no log
+
 ```typescript
 // ❌ ERRADO
-console.log('API Key:', ctx.tenant.apiKey);
+console.log("API Key:", ctx.tenant.apiKey);
 
 // ✅ CORRETO
-console.log('API Key configured:', !!ctx.tenant.apiKey);
+console.log("API Key configured:", !!ctx.tenant.apiKey);
 ```
 
 ### ❌ Erro 5: Não passar tenantId ao emailService
+
 ```typescript
 // ❌ ERRADO - usa SMTP padrão
 await sendEmail({ to, subject, html });
 
 // ✅ CORRETO - usa SMTP do tenant
 await sendEmail({
-  to, subject, html,
-  tenantId: ctx.tenant?.id,    // ← importante
-  tenantDb: tenantDb           // ← importante
+  to,
+  subject,
+  html,
+  tenantId: ctx.tenant?.id, // ← importante
+  tenantDb: tenantDb, // ← importante
 });
 ```
 
@@ -525,12 +570,14 @@ await sendEmail({
    - Considerar: `smtpConfig: { host, port, user, password }`
 
 2. **Sempre ter padrão sensato**
+
    ```typescript
    primaryColor: varchar(7).default("#1a5c00"),
    isActive: boolean().default(true),
    ```
 
 3. **Documentar no commit**
+
    ```
    feat: adiciona configuração de webhook PF
 
@@ -541,6 +588,7 @@ await sendEmail({
    ```
 
 4. **Testar em dev antes de produção**
+
    ```bash
    # Local
    npm run dev

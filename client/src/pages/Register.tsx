@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { APP_LOGO, APP_TITLE } from "@/const";
@@ -14,15 +20,21 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
-const registerSchema = z.object({
-  name: z.string().min(2, { message: "Nome deve ter pelo menos 2 caracteres" }),
-  email: z.string().email({ message: "Email inválido" }),
-  password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres" }),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "As senhas não conferem",
-  path: ["confirmPassword"],
-});
+const registerSchema = z
+  .object({
+    name: z
+      .string()
+      .min(2, { message: "Nome deve ter pelo menos 2 caracteres" }),
+    email: z.string().email({ message: "Email inválido" }),
+    password: z
+      .string()
+      .min(6, { message: "Senha deve ter pelo menos 6 caracteres" }),
+    confirmPassword: z.string(),
+  })
+  .refine(data => data.password === data.confirmPassword, {
+    message: "As senhas não conferem",
+    path: ["confirmPassword"],
+  });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
@@ -52,19 +64,22 @@ export default function Register() {
   }, [user, loading, setLocation]);
 
   const onSubmit = async (data: RegisterFormValues) => {
-    registerMutation.mutate({
-      name: data.name,
-      email: data.email,
-      password: data.password,
-    }, {
-      onSuccess: (result) => {
-        toast.success(result.message);
-        setLocation(buildTenantPath(tenantSlug, "/login"));
+    registerMutation.mutate(
+      {
+        name: data.name,
+        email: data.email,
+        password: data.password,
       },
-      onError: (error) => {
-        setError("root", { message: error.message });
-      },
-    });
+      {
+        onSuccess: result => {
+          toast.success(result.message);
+          setLocation(buildTenantPath(tenantSlug, "/login"));
+        },
+        onError: error => {
+          setError("root", { message: error.message });
+        },
+      }
+    );
   };
 
   if (loading) {
@@ -72,7 +87,9 @@ export default function Register() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground uppercase text-sm tracking-wide">Carregando...</p>
+          <p className="text-muted-foreground uppercase text-sm tracking-wide">
+            Carregando...
+          </p>
         </div>
       </div>
     );
@@ -96,9 +113,9 @@ export default function Register() {
         <CardHeader className="space-y-4 text-center pb-6">
           <div className="flex justify-center">
             <div className="relative">
-              <img 
+              <img
                 src={APP_LOGO}
-                alt="CAC 360 – Gestão de Ciclo Completo" 
+                alt="CAC 360 – Gestão de Ciclo Completo"
                 className="h-16 w-auto"
               />
               <div className="absolute -inset-2 border-2 border-dashed border-primary/30 rounded-lg -z-10"></div>
@@ -117,25 +134,61 @@ export default function Register() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nome Completo</Label>
-              <Input id="name" type="text" placeholder="Seu nome completo" {...register("name")} />
-              {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+              <Input
+                id="name"
+                type="text"
+                placeholder="Seu nome completo"
+                {...register("name")}
+              />
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="seu@email.com" {...register("email")} />
-              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" placeholder="Mínimo 6 caracteres" {...register("password")} />
-              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+              <Input
+                id="password"
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                {...register("password")}
+              />
+              {errors.password && (
+                <p className="text-sm text-red-500">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-              <Input id="confirmPassword" type="password" placeholder="Repita a senha" {...register("confirmPassword")} />
-              {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Repita a senha"
+                {...register("confirmPassword")}
+              />
+              {errors.confirmPassword && (
+                <p className="text-sm text-red-500">
+                  {errors.confirmPassword.message}
+                </p>
+              )}
             </div>
-            {errors.root && <p className="text-sm text-red-500 text-center">{errors.root.message}</p>}
+            {errors.root && (
+              <p className="text-sm text-red-500 text-center">
+                {errors.root.message}
+              </p>
+            )}
             <Button
               type="submit"
               disabled={registerMutation.isPending}
@@ -152,9 +205,7 @@ export default function Register() {
 
           <div className="pt-4 border-t-2 border-dashed border-white/10">
             <div className="text-center space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Já tem uma conta?
-              </p>
+              <p className="text-sm text-muted-foreground">Já tem uma conta?</p>
               <Link href="/login">
                 <Button
                   variant="outline"

@@ -8,7 +8,7 @@
 - **Base branch:** `hml`
 - **Depends on:** WP-S0-B (mergeado em `hml`)
 - **Bloqueia:** Marco 2 (baseline freeze), todos os WPs subsequentes (WP-01, WP-02, WP-03, WP-R1)
-- **ADRs de referência:** —  (sem ADR específico; é higiene técnica baseada em `tsc --noEmit`)
+- **ADRs de referência:** — (sem ADR específico; é higiene técnica baseada em `tsc --noEmit`)
 - **Estimativa:** 4-6h total (≈3h A2, ≈3h A3, em paralelo)
 - **Risco:** médio (mexe em código de produção)
 
@@ -51,13 +51,13 @@ A2 deve preferir Opção 1 (mais reutilizável). Documentar a escolha no commit.
 **Solução:** migrar para a API atual. Em Zod v4, mensagens customizadas em `z.enum` usam:
 
 ```ts
-z.enum(['a', 'b'], { error: () => 'mensagem' })
+z.enum(["a", "b"], { error: () => "mensagem" });
 ```
 
 …em vez de:
 
 ```ts
-z.enum(['a', 'b'], { errorMap: () => ({ message: '...' }) })
+z.enum(["a", "b"], { errorMap: () => ({ message: "..." }) });
 ```
 
 A2 deve abrir o arquivo, ver o uso real, e migrar mantendo a mesma mensagem.
@@ -76,13 +76,13 @@ A2 deve abrir o arquivo, ver o uso real, e migrar mantendo a mesma mensagem.
 
 **Problemas a resolver:**
 
-| Linha aprox. | Erro                                          | Solução                                                                          |
-| ------------ | --------------------------------------------- | -------------------------------------------------------------------------------- |
-| 243:53       | `TS2769`: `{}` not assignable to `Date`       | Narrowing: validar que o valor é `Date \| string \| number` antes do uso         |
-| 624:34       | `TS2322`: `string \| null` to `BackgroundColor` | Fallback `?? 'neutral'` ou narrowing                                             |
-| 631:43       | `TS2345`: `string \| null` to `string`        | Fallback `?? ''` ou guard                                                        |
-| 680:106      | `TS2345`: `primaryColor: string \| null`      | Fallback `?? '#000000'` ou tornar prop nullable no consumidor                    |
-| 688:45       | `TS2339`: `isLoading` does not exist          | Trocar `isLoading` por `isPending` (padrão TRPC/TanStack Query v5)               |
+| Linha aprox. | Erro                                            | Solução                                                                  |
+| ------------ | ----------------------------------------------- | ------------------------------------------------------------------------ |
+| 243:53       | `TS2769`: `{}` not assignable to `Date`         | Narrowing: validar que o valor é `Date \| string \| number` antes do uso |
+| 624:34       | `TS2322`: `string \| null` to `BackgroundColor` | Fallback `?? 'neutral'` ou narrowing                                     |
+| 631:43       | `TS2345`: `string \| null` to `string`          | Fallback `?? ''` ou guard                                                |
+| 680:106      | `TS2345`: `primaryColor: string \| null`        | Fallback `?? '#000000'` ou tornar prop nullable no consumidor            |
+| 688:45       | `TS2339`: `isLoading` does not exist            | Trocar `isLoading` por `isPending` (padrão TRPC/TanStack Query v5)       |
 
 A3 deve abrir o arquivo, mapear cada erro real (linhas podem ter deslocado após o `prettier --write` do WP-S0-A), e aplicar a correção mais conservadora possível — sem refatorar componente.
 

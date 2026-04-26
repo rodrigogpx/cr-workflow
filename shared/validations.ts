@@ -9,12 +9,12 @@ import { z } from "zod";
  */
 export function isValidCPF(cpf: string): boolean {
   const digits = cpf.replace(/\D/g, "");
-  
+
   if (digits.length !== 11) return false;
-  
+
   // Verifica se todos os dígitos são iguais (ex: 111.111.111-11)
   if (/^(\d)\1{10}$/.test(digits)) return false;
-  
+
   // Validação do primeiro dígito verificador
   let sum = 0;
   for (let i = 0; i < 9; i++) {
@@ -23,7 +23,7 @@ export function isValidCPF(cpf: string): boolean {
   let remainder = (sum * 10) % 11;
   if (remainder === 10) remainder = 0;
   if (remainder !== parseInt(digits[9])) return false;
-  
+
   // Validação do segundo dígito verificador
   sum = 0;
   for (let i = 0; i < 10; i++) {
@@ -32,7 +32,7 @@ export function isValidCPF(cpf: string): boolean {
   remainder = (sum * 10) % 11;
   if (remainder === 10) remainder = 0;
   if (remainder !== parseInt(digits[10])) return false;
-  
+
   return true;
 }
 
@@ -44,7 +44,8 @@ export const formatCPF = (value: string): string => {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   if (digits.length <= 3) return digits;
   if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
-  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  if (digits.length <= 9)
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
 };
 
@@ -52,7 +53,8 @@ export const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   if (digits.length <= 2) return digits;
   if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  if (digits.length <= 10)
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
 };
 
@@ -79,7 +81,10 @@ export const cpfOptionalSchema = z
   .string()
   .optional()
   .transform((val: string | undefined) => val?.replace(/\D/g, "") || undefined)
-  .refine((val: string | undefined) => !val || val.length === 11, "CPF deve ter 11 dígitos")
+  .refine(
+    (val: string | undefined) => !val || val.length === 11,
+    "CPF deve ter 11 dígitos"
+  )
   .refine((val: string | undefined) => !val || isValidCPF(val), "CPF inválido");
 
 // Email
@@ -94,20 +99,28 @@ export const emailOptionalSchema = z
   .email("Email inválido")
   .optional()
   .or(z.literal(""))
-  .transform((val: string | undefined | null) => val ? val.toLowerCase() : val);
+  .transform((val: string | undefined | null) =>
+    val ? val.toLowerCase() : val
+  );
 
 // Telefone brasileiro (10 ou 11 dígitos)
 export const phoneSchema = z
   .string()
   .min(10, "Telefone deve ter pelo menos 10 dígitos")
   .transform((val: string) => val.replace(/\D/g, ""))
-  .refine((val: string) => val.length >= 10 && val.length <= 11, "Telefone inválido");
+  .refine(
+    (val: string) => val.length >= 10 && val.length <= 11,
+    "Telefone inválido"
+  );
 
 export const phoneOptionalSchema = z
   .string()
   .optional()
   .transform((val: string | undefined) => val?.replace(/\D/g, "") || undefined)
-  .refine((val: string | undefined) => !val || (val.length >= 10 && val.length <= 11), "Telefone inválido");
+  .refine(
+    (val: string | undefined) => !val || (val.length >= 10 && val.length <= 11),
+    "Telefone inválido"
+  );
 
 // CEP brasileiro (8 dígitos)
 export const cepSchema = z
@@ -119,7 +132,10 @@ export const cepOptionalSchema = z
   .string()
   .optional()
   .transform((val: string | undefined) => val?.replace(/\D/g, "") || undefined)
-  .refine((val: string | undefined) => !val || val.length === 8, "CEP deve ter 8 dígitos");
+  .refine(
+    (val: string | undefined) => !val || val.length === 8,
+    "CEP deve ter 8 dígitos"
+  );
 
 // Data no formato YYYY-MM-DD
 export const dateSchema = z
@@ -151,7 +167,10 @@ export const nameSchema = z
 export const nameOptionalSchema = z
   .string()
   .optional()
-  .refine((val: string | undefined) => !val || val.length >= 2, "Nome deve ter pelo menos 2 caracteres")
+  .refine(
+    (val: string | undefined) => !val || val.length >= 2,
+    "Nome deve ter pelo menos 2 caracteres"
+  )
   .transform((val: string | undefined) => val?.toUpperCase());
 
 // Senha (mínimo 6 caracteres)
@@ -168,7 +187,10 @@ export const ufSchema = z
 export const ufOptionalSchema = z
   .string()
   .optional()
-  .refine((val: string | undefined) => !val || val.length === 2, "UF deve ter 2 caracteres")
+  .refine(
+    (val: string | undefined) => !val || val.length === 2,
+    "UF deve ter 2 caracteres"
+  )
   .transform((val: string | undefined) => val?.toUpperCase());
 
 // ============================================
@@ -182,15 +204,21 @@ export const loginSchema = z.object({
 });
 
 // Schema de Registro
-export const registerSchema = z.object({
-  name: nameSchema,
-  email: emailSchema,
-  password: passwordSchema,
-  confirmPassword: z.string(),
-}).refine((data: { password: string; confirmPassword: string }) => data.password === data.confirmPassword, {
-  message: "As senhas não conferem",
-  path: ["confirmPassword"],
-});
+export const registerSchema = z
+  .object({
+    name: nameSchema,
+    email: emailSchema,
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine(
+    (data: { password: string; confirmPassword: string }) =>
+      data.password === data.confirmPassword,
+    {
+      message: "As senhas não conferem",
+      path: ["confirmPassword"],
+    }
+  );
 
 // Schema de Criação de Cliente
 export const createClientSchema = z.object({
@@ -199,7 +227,8 @@ export const createClientSchema = z.object({
   phone: phoneSchema,
   email: emailSchema,
   operatorId: z.number().optional(),
-  apostilamentoActivities: z.array(z.enum(["atirador", "cacador", "colecionador"]))
+  apostilamentoActivities: z
+    .array(z.enum(["atirador", "cacador", "colecionador"]))
     .optional(),
   hasSecondCollectionAddress: z.boolean().optional(),
 });
@@ -226,7 +255,8 @@ export const updateClientSchema = z.object({
   otherProfession: z.string().optional(),
   registrationNumber: z.string().optional(),
   currentActivities: z.string().optional(),
-  apostilamentoActivities: z.array(z.enum(["atirador", "cacador", "colecionador"]))
+  apostilamentoActivities: z
+    .array(z.enum(["atirador", "cacador", "colecionador"]))
     .optional(),
   hasSecondCollectionAddress: z.boolean().optional(),
   phone2: phoneOptionalSchema,
@@ -276,7 +306,11 @@ export const updateUserSchema = z.object({
   userId: z.number(),
   name: nameOptionalSchema,
   email: emailOptionalSchema,
-  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional().or(z.literal("")),
+  password: z
+    .string()
+    .min(6, "Senha deve ter pelo menos 6 caracteres")
+    .optional()
+    .or(z.literal("")),
   role: z.enum(["operator", "admin", "despachante"]).optional(),
 });
 

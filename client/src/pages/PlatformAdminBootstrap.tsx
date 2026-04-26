@@ -5,13 +5,24 @@ import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Shield, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function PlatformAdminBootstrap() {
   const [, setLocation] = useLocation();
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
   const [done, setDone] = useState(false);
 
   const bootstrapMutation = trpc.auth.bootstrapSuperAdmin.useMutation({
@@ -21,7 +32,9 @@ export default function PlatformAdminBootstrap() {
     },
     onError: (err: any) => {
       if (err?.data?.code === "FORBIDDEN") {
-        toast.error("Bootstrap não permitido: já existem administradores cadastrados.");
+        toast.error(
+          "Bootstrap não permitido: já existem administradores cadastrados."
+        );
         setTimeout(() => setLocation("/platform-admin/login"), 1500);
       } else {
         toast.error(err?.message ?? "Erro ao criar superadmin.");
@@ -35,7 +48,11 @@ export default function PlatformAdminBootstrap() {
       toast.error("As senhas não coincidem.");
       return;
     }
-    bootstrapMutation.mutate({ name: form.name, email: form.email, password: form.password });
+    bootstrapMutation.mutate({
+      name: form.name,
+      email: form.email,
+      password: form.password,
+    });
   }
 
   if (done) {
@@ -44,7 +61,9 @@ export default function PlatformAdminBootstrap() {
         <div className="flex flex-col items-center gap-4 text-center">
           <CheckCircle2 className="h-14 w-14 text-emerald-500" />
           <h2 className="text-xl font-bold">Superadmin criado com sucesso!</h2>
-          <p className="text-sm text-muted-foreground">Redirecionando para o painel…</p>
+          <p className="text-sm text-muted-foreground">
+            Redirecionando para o painel…
+          </p>
         </div>
       </div>
     );
@@ -66,7 +85,8 @@ export default function PlatformAdminBootstrap() {
             </div>
             <CardTitle className="text-2xl">Configuração Inicial</CardTitle>
             <CardDescription>
-              Crie o primeiro superadministrador da plataforma. Este processo só pode ser realizado uma vez.
+              Crie o primeiro superadministrador da plataforma. Este processo só
+              pode ser realizado uma vez.
             </CardDescription>
           </CardHeader>
 
@@ -91,7 +111,9 @@ export default function PlatformAdminBootstrap() {
                   type="email"
                   placeholder="admin@empresa.com"
                   value={form.email}
-                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  onChange={e =>
+                    setForm(f => ({ ...f, email: e.target.value }))
+                  }
                   required
                 />
               </div>
@@ -103,7 +125,9 @@ export default function PlatformAdminBootstrap() {
                   type="password"
                   placeholder="••••••••"
                   value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  onChange={e =>
+                    setForm(f => ({ ...f, password: e.target.value }))
+                  }
                   required
                   minLength={8}
                 />
@@ -116,7 +140,9 @@ export default function PlatformAdminBootstrap() {
                   type="password"
                   placeholder="••••••••"
                   value={form.confirmPassword}
-                  onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                  onChange={e =>
+                    setForm(f => ({ ...f, confirmPassword: e.target.value }))
+                  }
                   required
                   minLength={8}
                 />

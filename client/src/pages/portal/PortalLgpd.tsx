@@ -47,7 +47,10 @@ export default function PortalLgpd() {
         credentials: "include",
         body: JSON.stringify({ version: "1.0" }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro ao registrar consentimento.");
+      if (!res.ok)
+        throw new Error(
+          (await res.json()).error || "Erro ao registrar consentimento."
+        );
       // Após aceitar LGPD: se cadastro já concluído, ir ao dashboard; senão, preencher dados
       navigate(cadastroCompleto ? "/portal" : "/portal/meus-dados");
     } catch (err: any) {
@@ -63,7 +66,9 @@ export default function PortalLgpd() {
         {/* Header do termo */}
         <div className="bg-purple-700 text-white px-6 py-4 flex items-center gap-3">
           <ScrollText className="h-5 w-5 flex-shrink-0" />
-          <p className="text-sm font-medium flex-1">Role até o final para habilitar o aceite</p>
+          <p className="text-sm font-medium flex-1">
+            Role até o final para habilitar o aceite
+          </p>
           <a
             href="/api/portal/lgpd/documento"
             target="_blank"
@@ -85,74 +90,96 @@ export default function PortalLgpd() {
             Termo de Consentimento para Tratamento de Dados Pessoais — LGPD
           </h3>
           <p>
-            <strong>Lei nº 13.709/2018 — Lei Geral de Proteção de Dados Pessoais</strong>
+            <strong>
+              Lei nº 13.709/2018 — Lei Geral de Proteção de Dados Pessoais
+            </strong>
           </p>
 
           <p>
-            Ao utilizar este portal, você concorda com o tratamento dos seus dados pessoais pela
-            entidade responsável (doravante denominada "Clube" ou "Controlador"), nos termos
-            descritos abaixo.
+            Ao utilizar este portal, você concorda com o tratamento dos seus
+            dados pessoais pela entidade responsável (doravante denominada
+            "Clube" ou "Controlador"), nos termos descritos abaixo.
           </p>
 
           <h4 className="font-semibold text-gray-900">1. Dados Coletados</h4>
           <p>
-            Nome completo, CPF, RG, data de nascimento, endereço residencial, telefone, email,
-            profissão, e documentos relacionados ao processo de obtenção do Certificado de Registro
-            (CR) junto ao Exército Brasileiro.
+            Nome completo, CPF, RG, data de nascimento, endereço residencial,
+            telefone, email, profissão, e documentos relacionados ao processo de
+            obtenção do Certificado de Registro (CR) junto ao Exército
+            Brasileiro.
           </p>
 
-          <h4 className="font-semibold text-gray-900">2. Finalidade do Tratamento</h4>
+          <h4 className="font-semibold text-gray-900">
+            2. Finalidade do Tratamento
+          </h4>
           <p>Os dados coletados serão utilizados exclusivamente para:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              Gestão do processo de obtenção do CR CAC (Certificado de Registro para Caçadores,
-              Atiradores e Colecionadores);
+              Gestão do processo de obtenção do CR CAC (Certificado de Registro
+              para Caçadores, Atiradores e Colecionadores);
             </li>
             <li>Comunicação sobre o andamento do processo;</li>
             <li>
-              Cumprimento de obrigações legais perante o Exército Brasileiro e demais órgãos;
+              Cumprimento de obrigações legais perante o Exército Brasileiro e
+              demais órgãos;
             </li>
             <li>Emissão de documentos e certidões relacionadas ao processo.</li>
           </ul>
 
           <h4 className="font-semibold text-gray-900">3. Base Legal</h4>
           <p>
-            O tratamento dos dados se fundamenta no art. 7º, incisos II (execução de contrato) e V
-            (execução de políticas públicas), da Lei nº 13.709/2018 (LGPD).
+            O tratamento dos dados se fundamenta no art. 7º, incisos II
+            (execução de contrato) e V (execução de políticas públicas), da Lei
+            nº 13.709/2018 (LGPD).
           </p>
 
-          <h4 className="font-semibold text-gray-900">4. Compartilhamento de Dados</h4>
+          <h4 className="font-semibold text-gray-900">
+            4. Compartilhamento de Dados
+          </h4>
           <p>Seus dados poderão ser compartilhados com:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>Exército Brasileiro (para fins de registro e controle);</li>
             <li>Polícia Federal (verificação de antecedentes);</li>
-            <li>Órgãos estaduais e federais competentes, conforme exigência legal.</li>
+            <li>
+              Órgãos estaduais e federais competentes, conforme exigência legal.
+            </li>
           </ul>
-          <p>Não compartilhamos seus dados com terceiros para fins comerciais.</p>
+          <p>
+            Não compartilhamos seus dados com terceiros para fins comerciais.
+          </p>
 
           <h4 className="font-semibold text-gray-900">5. Prazo de Retenção</h4>
           <p>
-            Seus dados serão mantidos pelo período necessário ao cumprimento das finalidades acima e
-            das obrigações legais, podendo ser retidos por até 5 (cinco) anos após o encerramento do
-            processo, conforme determinação legal.
+            Seus dados serão mantidos pelo período necessário ao cumprimento das
+            finalidades acima e das obrigações legais, podendo ser retidos por
+            até 5 (cinco) anos após o encerramento do processo, conforme
+            determinação legal.
           </p>
 
-          <h4 className="font-semibold text-gray-900">6. Seus Direitos (Art. 18 da LGPD)</h4>
+          <h4 className="font-semibold text-gray-900">
+            6. Seus Direitos (Art. 18 da LGPD)
+          </h4>
           <p>Você tem direito a:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>Confirmar a existência de tratamento;</li>
             <li>Acessar seus dados;</li>
             <li>Corrigir dados incompletos, inexatos ou desatualizados;</li>
-            <li>Solicitar a anonimização, bloqueio ou eliminação de dados desnecessários;</li>
             <li>
-              Revogar este consentimento a qualquer momento, mediante solicitação ao clube.
+              Solicitar a anonimização, bloqueio ou eliminação de dados
+              desnecessários;
+            </li>
+            <li>
+              Revogar este consentimento a qualquer momento, mediante
+              solicitação ao clube.
             </li>
           </ul>
 
-          <h4 className="font-semibold text-gray-900">7. Contato do Controlador</h4>
+          <h4 className="font-semibold text-gray-900">
+            7. Contato do Controlador
+          </h4>
           <p>
-            Para exercer seus direitos ou esclarecer dúvidas sobre o tratamento de dados, entre em
-            contato diretamente com a secretaria do clube.
+            Para exercer seus direitos ou esclarecer dúvidas sobre o tratamento
+            de dados, entre em contato diretamente com a secretaria do clube.
           </p>
 
           <p className="text-xs text-gray-500 mt-4 pt-4 border-t">
@@ -172,7 +199,7 @@ export default function PortalLgpd() {
             <Checkbox
               id="accept"
               checked={checked}
-              onCheckedChange={(val) => setChecked(!!val)}
+              onCheckedChange={val => setChecked(!!val)}
               disabled={!scrolled}
               className="mt-0.5"
             />
@@ -182,8 +209,9 @@ export default function PortalLgpd() {
                 !scrolled ? "text-gray-400" : "text-gray-700"
               }`}
             >
-              Li e compreendi o Termo de Consentimento acima e concordo com o tratamento dos meus
-              dados pessoais conforme descrito, nos termos da LGPD.
+              Li e compreendi o Termo de Consentimento acima e concordo com o
+              tratamento dos meus dados pessoais conforme descrito, nos termos
+              da LGPD.
             </label>
           </div>
 
@@ -209,7 +237,8 @@ export default function PortalLgpd() {
             >
               {submitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Registrando...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                  Registrando...
                 </>
               ) : (
                 "Aceitar e Continuar →"

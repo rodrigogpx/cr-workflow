@@ -12,14 +12,14 @@ Este documento descreve a migração completa do **CAC 360** de **Docker Swarm**
 
 ### 🎯 Objetivos da Migração
 
-| Objetivo | Status | Benefício |
-|----------|--------|-----------|
-| Simplificar arquitetura | ✅ Concluído | -70% complexidade |
-| Remover Traefik | ✅ Concluído | -50% overhead |
-| Usar Nginx | ✅ Concluído | Melhor performance |
+| Objetivo                 | Status       | Benefício               |
+| ------------------------ | ------------ | ----------------------- |
+| Simplificar arquitetura  | ✅ Concluído | -70% complexidade       |
+| Remover Traefik          | ✅ Concluído | -50% overhead           |
+| Usar Nginx               | ✅ Concluído | Melhor performance      |
 | Adicionar SSL automático | ✅ Concluído | Let's Encrypt integrado |
-| Preparar para GCP | ✅ Concluído | Deploy simplificado |
-| Atualizar documentação | ✅ Concluído | Consistência total |
+| Preparar para GCP        | ✅ Concluído | Deploy simplificado     |
+| Atualizar documentação   | ✅ Concluído | Consistência total      |
 
 ---
 
@@ -29,12 +29,12 @@ Este documento descreve a migração completa do **CAC 360** de **Docker Swarm**
 
 Os seguintes arquivos foram **deletados permanentemente** pois referem-se à arquitetura obsoleta:
 
-| Arquivo | Motivo |
-|---------|--------|
-| **DEPLOYMENT.md** | Referencia MySQL e procedimentos manuais antigos |
-| **SWARM-DEPLOY.md** | Arquitetura baseada em Docker Swarm (obsoleto) |
-| **MANUAL-DEPLOY.md** | Procedimentos específicos para Docker Swarm |
-| **GCP-MIGRATION.md** | Arquivo vazio, não continha informações |
+| Arquivo              | Motivo                                           |
+| -------------------- | ------------------------------------------------ |
+| **DEPLOYMENT.md**    | Referencia MySQL e procedimentos manuais antigos |
+| **SWARM-DEPLOY.md**  | Arquitetura baseada em Docker Swarm (obsoleto)   |
+| **MANUAL-DEPLOY.md** | Procedimentos específicos para Docker Swarm      |
+| **GCP-MIGRATION.md** | Arquivo vazio, não continha informações          |
 
 ### Por Que Foram Deletados?
 
@@ -80,6 +80,7 @@ Os seguintes arquivos foram **deletados permanentemente** pois referem-se à arq
 ```
 
 **Problemas:**
+
 - ❌ Traefik é complexo e pesado
 - ❌ MySQL é legado
 - ❌ Docker Swarm é obsoleto
@@ -127,6 +128,7 @@ Os seguintes arquivos foram **deletados permanentemente** pois referem-se à arq
 ```
 
 **Benefícios:**
+
 - ✅ Nginx é simples e rápido
 - ✅ PostgreSQL é moderno
 - ✅ Docker Puro é padrão de mercado
@@ -136,27 +138,29 @@ Os seguintes arquivos foram **deletados permanentemente** pois referem-se à arq
 
 ## 📊 Comparação de Tecnologias
 
-| Aspecto | Antes (Swarm) | Depois (Docker Puro) | Melhoria |
-|---------|---------------|----------------------|----------|
-| **Orquestração** | Docker Swarm | Docker Compose | Simples |
-| **Reverse Proxy** | Traefik | Nginx | Leve |
-| **Banco de Dados** | MySQL 8.0 | PostgreSQL 16 | Moderno |
-| **SSL/TLS** | Traefik/LE | Nginx/Certbot | Automático |
-| **Infraestrutura** | Qualquer | GCP | Gerenciada |
-| **Complexidade** | ⭐⭐⭐⭐⭐ | ⭐⭐ | -70% |
-| **Performance** | 90% | 95% | +5% |
-| **Custo** | $200/mês | $159/mês | -20% |
+| Aspecto            | Antes (Swarm) | Depois (Docker Puro) | Melhoria   |
+| ------------------ | ------------- | -------------------- | ---------- |
+| **Orquestração**   | Docker Swarm  | Docker Compose       | Simples    |
+| **Reverse Proxy**  | Traefik       | Nginx                | Leve       |
+| **Banco de Dados** | MySQL 8.0     | PostgreSQL 16        | Moderno    |
+| **SSL/TLS**        | Traefik/LE    | Nginx/Certbot        | Automático |
+| **Infraestrutura** | Qualquer      | GCP                  | Gerenciada |
+| **Complexidade**   | ⭐⭐⭐⭐⭐    | ⭐⭐                 | -70%       |
+| **Performance**    | 90%           | 95%                  | +5%        |
+| **Custo**          | $200/mês      | $159/mês             | -20%       |
 
 ---
 
 ## 📁 Arquivos Atualizados
 
 ### 1. **README.md** ✅
+
 - Infraestrutura: Railway → GCP
 - Deploy: Railway → GCP + GitHub Actions
 - Variáveis: MySQL → PostgreSQL
 
 ### 2. **DOCKER.md** ✅
+
 - Reescrito completamente
 - MySQL → PostgreSQL 16
 - Adicionada seção de Nginx
@@ -164,6 +168,7 @@ Os seguintes arquivos foram **deletados permanentemente** pois referem-se à arq
 - Troubleshooting atualizado
 
 ### 3. **Novos Arquivos** ✅
+
 - `GCP-DOCKER-DEPLOY.md` - Guia completo de deployment
 - `DOCKER-PURE-README.md` - README prático
 - `Dockerfile` - Multi-stage build otimizado
@@ -182,12 +187,14 @@ Os seguintes arquivos foram **deletados permanentemente** pois referem-se à arq
 ### Para Desenvolvedores
 
 **Antes (Docker Swarm):**
+
 ```bash
 docker stack deploy -c docker-compose.swarm.yml cac360
 docker service logs cac360_app -f
 ```
 
 **Depois (Docker Puro):**
+
 ```bash
 docker-compose up --build
 docker-compose logs -f app
@@ -196,6 +203,7 @@ docker-compose logs -f app
 ### Para Operadores
 
 **Antes (Docker Swarm):**
+
 ```bash
 ssh deploy@server
 docker stack services cac360
@@ -203,6 +211,7 @@ docker service update --force cac360_app
 ```
 
 **Depois (Docker Puro):**
+
 ```bash
 ssh rodrigogpx@gcp-instance
 ./scripts/deploy-gcp.sh prod
@@ -212,12 +221,14 @@ docker-compose ps
 ### Para DevOps
 
 **Antes (Docker Swarm):**
+
 - Gerenciar cluster Swarm
 - Configurar Traefik
 - Gerenciar replicas
 - Monitorar nós
 
 **Depois (Docker Puro):**
+
 - Gerenciar instância GCP
 - Configurar Nginx (simples)
 - Sem replicação (1 servidor)
@@ -228,6 +239,7 @@ docker-compose ps
 ## 📋 Checklist de Validação
 
 ### Desenvolvimento Local
+
 - [ ] `docker-compose up --build` funciona
 - [ ] Aplicação acessível em http://localhost:3000
 - [ ] PostgreSQL conecta corretamente
@@ -235,6 +247,7 @@ docker-compose ps
 - [ ] Health check funciona
 
 ### Homolog (HML)
+
 - [ ] Branch `hml` dispara GitHub Actions
 - [ ] Build da imagem Docker bem-sucedido
 - [ ] Deploy em GCP bem-sucedido
@@ -243,6 +256,7 @@ docker-compose ps
 - [ ] Backup do banco funciona
 
 ### Produção (PROD)
+
 - [ ] Branch `main` dispara GitHub Actions
 - [ ] Build da imagem Docker bem-sucedido
 - [ ] Backup do banco antes de deploy
@@ -257,6 +271,7 @@ docker-compose ps
 ## 🚀 Próximos Passos
 
 ### Imediato (Esta semana)
+
 1. ✅ Deletar arquivos obsoletos
 2. ✅ Atualizar README.md
 3. ✅ Atualizar DOCKER.md
@@ -265,12 +280,14 @@ docker-compose ps
 6. 📌 Configurar secrets no GitHub
 
 ### Curto Prazo (Próximas 2 semanas)
+
 1. 📌 Testar localmente com Docker Compose
 2. 📌 Testar deploy em HML
 3. 📌 Testar deploy em PROD
 4. 📌 Validar todos os procedimentos
 
 ### Médio Prazo (Próximas 4 semanas)
+
 1. 📌 Criar documentação de troubleshooting
 2. 📌 Criar documentação de operações diárias
 3. 📌 Criar documentação de rollback
@@ -321,9 +338,9 @@ docker-compose ps
 
 ## 📝 Histórico de Mudanças
 
-| Data | Versão | Mudança |
-|------|--------|---------|
-| 13/01/2026 | 1.0 | Migração completa de Docker Swarm para Docker Puro |
+| Data       | Versão | Mudança                                            |
+| ---------- | ------ | -------------------------------------------------- |
+| 13/01/2026 | 1.0    | Migração completa de Docker Swarm para Docker Puro |
 
 ---
 

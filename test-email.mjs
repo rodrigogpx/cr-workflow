@@ -1,17 +1,17 @@
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 // Configurações SMTP
 const SMTP_CONFIG = {
-  host: 'smtp.gmail.com',
+  host: "smtp.gmail.com",
   port: 587,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: 'rodrigogpx@gmail.com',
-    pass: 'qhou kvus uvre ivnv'
-  }
+    user: "rodrigogpx@gmail.com",
+    pass: "qhou kvus uvre ivnv",
+  },
 };
 
-console.log('🚀 Iniciando teste de envio de email...\n');
+console.log("🚀 Iniciando teste de envio de email...\n");
 
 // Criar transporter
 const transporter = nodemailer.createTransport(SMTP_CONFIG);
@@ -22,24 +22,24 @@ const htmlContent = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-
 // Configurar email
 const mailOptions = {
   from: '"CAC 360" <rodrigogpx@gmail.com>',
-  to: 'rodrigogpx@gmail.com',
-  subject: 'Teste - Bem-vindo(a) à CAC 360 - Rodrigo',
-  html: htmlContent
+  to: "rodrigogpx@gmail.com",
+  subject: "Teste - Bem-vindo(a) à CAC 360 - Rodrigo",
+  html: htmlContent,
 };
 
 // Enviar email
 try {
-  console.log('📧 Enviando email de teste para rodrigogpx@gmail.com...');
+  console.log("📧 Enviando email de teste para rodrigogpx@gmail.com...");
   const info = await transporter.sendMail(mailOptions);
-  console.log('\n✅ Email enviado com sucesso!');
-  console.log('📬 Message ID:', info.messageId);
-  console.log('📨 Response:', info.response);
-  console.log('\n🎉 Verifique sua caixa de entrada em rodrigogpx@gmail.com');
+  console.log("\n✅ Email enviado com sucesso!");
+  console.log("📬 Message ID:", info.messageId);
+  console.log("📨 Response:", info.response);
+  console.log("\n🎉 Verifique sua caixa de entrada em rodrigogpx@gmail.com");
 } catch (error) {
-  console.error('\n❌ Erro ao enviar email:');
+  console.error("\n❌ Erro ao enviar email:");
   console.error(error.message);
   if (error.code) {
-    console.error('Código do erro:', error.code);
+    console.error("Código do erro:", error.code);
   }
   process.exit(1);
 }

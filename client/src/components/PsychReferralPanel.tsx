@@ -5,7 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  FileText, Upload, Send, CheckCircle2, Loader2, X, Brain
+  FileText,
+  Upload,
+  Send,
+  CheckCircle2,
+  Loader2,
+  X,
+  Brain,
 } from "lucide-react";
 
 interface PsychReferralPanelProps {
@@ -56,7 +62,7 @@ export function PsychReferralPanel({
       return;
     }
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = e => {
       const dataUri = e.target?.result as string;
       sendMutation.mutate({
         clientId,
@@ -78,23 +84,27 @@ export function PsychReferralPanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-
         {/* Already sent badge */}
         {referralSentAt && (
           <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
             <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
             <div className="text-xs text-green-800">
               <span className="font-semibold">Encaminhamento enviado</span>
-              {referralType === "standard" && " (Padrão CAC360)"}{referralType === "custom" && " (Personalizado)"}
+              {referralType === "standard" && " (Padrão CAC360)"}
+              {referralType === "custom" && " (Personalizado)"}
               {referralSentAt && (
-                <span className="text-green-600"> em {new Date(referralSentAt).toLocaleDateString("pt-BR")}</span>
+                <span className="text-green-600">
+                  {" "}
+                  em {new Date(referralSentAt).toLocaleDateString("pt-BR")}
+                </span>
               )}
             </div>
           </div>
         )}
 
         <p className="text-xs text-gray-500">
-          Selecione o tipo de encaminhamento a ser enviado por e-mail ao cliente.
+          Selecione o tipo de encaminhamento a ser enviado por e-mail ao
+          cliente.
         </p>
 
         {/* Option cards */}
@@ -111,13 +121,18 @@ export function PsychReferralPanel({
           >
             <div className="flex items-center gap-2 mb-1">
               <FileText className="h-4 w-4 text-[#123A63]" />
-              <span className="font-semibold text-sm text-gray-800">Padrão CAC360</span>
+              <span className="font-semibold text-sm text-gray-800">
+                Padrão CAC360
+              </span>
               {mode === "standard" && (
-                <Badge className="ml-auto bg-[#123A63] text-white text-[10px] py-0 px-1.5">Selecionado</Badge>
+                <Badge className="ml-auto bg-[#123A63] text-white text-[10px] py-0 px-1.5">
+                  Selecionado
+                </Badge>
               )}
             </div>
             <p className="text-xs text-gray-500">
-              Gera automaticamente um PDF de encaminhamento com os dados do cliente e envia por e-mail.
+              Gera automaticamente um PDF de encaminhamento com os dados do
+              cliente e envia por e-mail.
             </p>
           </button>
 
@@ -133,13 +148,18 @@ export function PsychReferralPanel({
           >
             <div className="flex items-center gap-2 mb-1">
               <Upload className="h-4 w-4 text-amber-600" />
-              <span className="font-semibold text-sm text-gray-800">Personalizado</span>
+              <span className="font-semibold text-sm text-gray-800">
+                Personalizado
+              </span>
               {mode === "custom" && (
-                <Badge className="ml-auto bg-amber-500 text-white text-[10px] py-0 px-1.5">Selecionado</Badge>
+                <Badge className="ml-auto bg-amber-500 text-white text-[10px] py-0 px-1.5">
+                  Selecionado
+                </Badge>
               )}
             </div>
             <p className="text-xs text-gray-500">
-              Envie um encaminhamento próprio. O sistema também anexa a ficha cadastral do cliente no e-mail.
+              Envie um encaminhamento próprio. O sistema também anexa a ficha
+              cadastral do cliente no e-mail.
             </p>
           </button>
         </div>
@@ -149,7 +169,8 @@ export function PsychReferralPanel({
           <div className="flex items-center gap-3 bg-white border border-[#123A63]/20 rounded-lg px-4 py-3">
             <FileText className="h-5 w-5 text-[#123A63] flex-shrink-0" />
             <p className="text-xs text-gray-600 flex-1">
-              O PDF de encaminhamento será gerado com os dados cadastrais e enviado ao e-mail do cliente.
+              O PDF de encaminhamento será gerado com os dados cadastrais e
+              enviado ao e-mail do cliente.
             </p>
             <Button
               size="sm"
@@ -157,7 +178,11 @@ export function PsychReferralPanel({
               onClick={handleSendStandard}
               disabled={isPending}
             >
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Send className="h-4 w-4 mr-1" />
+              )}
               Enviar
             </Button>
           </div>
@@ -177,10 +202,15 @@ export function PsychReferralPanel({
             {selectedFile ? (
               <div className="flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2">
                 <FileText className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                <span className="text-xs font-medium text-gray-700 flex-1 truncate">{selectedFile.name}</span>
+                <span className="text-xs font-medium text-gray-700 flex-1 truncate">
+                  {selectedFile.name}
+                </span>
                 <button
                   type="button"
-                  onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  onClick={() => {
+                    setSelectedFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -194,7 +224,9 @@ export function PsychReferralPanel({
               >
                 <Upload className="h-5 w-5" />
                 <span className="text-xs font-medium">Selecionar arquivo</span>
-                <span className="text-[10px] text-gray-400">PDF, DOC, DOCX, JPG, PNG</span>
+                <span className="text-[10px] text-gray-400">
+                  PDF, DOC, DOCX, JPG, PNG
+                </span>
               </button>
             )}
 
@@ -205,13 +237,16 @@ export function PsychReferralPanel({
                 onClick={handleSendCustom}
                 disabled={isPending || !selectedFile}
               >
-                {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <Send className="h-4 w-4 mr-1" />
+                )}
                 Enviar encaminhamento
               </Button>
             </div>
           </div>
         )}
-
       </CardContent>
     </Card>
   );

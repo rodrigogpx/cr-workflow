@@ -1,12 +1,25 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Target, Loader2, UserPlus, Sparkles, ShieldCheck, LineChart } from "lucide-react";
+import {
+  Target,
+  Loader2,
+  UserPlus,
+  Sparkles,
+  ShieldCheck,
+  LineChart,
+} from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation } from "wouter";
@@ -47,7 +60,7 @@ export default function Login() {
         await refresh(); // Recarrega os dados do usuário
         // O redirecionamento será feito pelo useEffect que observa a mudança no 'user'
       },
-      onError: (error) => {
+      onError: error => {
         setError("root", { message: error.message });
       },
     });
@@ -58,7 +71,9 @@ export default function Login() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground uppercase text-sm tracking-wide">Carregando...</p>
+          <p className="text-muted-foreground uppercase text-sm tracking-wide">
+            Carregando...
+          </p>
         </div>
       </div>
     );
@@ -67,12 +82,12 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Image */}
-      <div 
+      <div
         className="absolute inset-0 z-0"
         style={{
           backgroundImage: 'url("/background-01.webp")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
       />
       {/* Overlay for readability */}
@@ -90,80 +105,102 @@ export default function Login() {
               Automatize todo o ciclo CAC em um único painel inteligente.
             </h1>
             <p className="text-base text-white/80 max-w-2xl">
-              Modulos rapidos: Cadastro e dados do associado, Laudos/Agendamentos, Juntada de Documentos,
-              Acompanhamento Sinarm, Automacao de E-mails e Auditoria completa - tudo no mesmo painel multi-tenant.
+              Modulos rapidos: Cadastro e dados do associado,
+              Laudos/Agendamentos, Juntada de Documentos, Acompanhamento Sinarm,
+              Automacao de E-mails e Auditoria completa - tudo no mesmo painel
+              multi-tenant.
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
               <ShieldCheck className="h-6 w-6 text-emerald-300" />
-              <p className="text-sm text-white/70 mt-3">Auditoria completa de cada ação e isolamento por tenant.</p>
+              <p className="text-sm text-white/70 mt-3">
+                Auditoria completa de cada ação e isolamento por tenant.
+              </p>
             </div>
             <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
               <LineChart className="h-6 w-6 text-sky-300" />
-              <p className="text-sm text-white/70 mt-3">Workflow em 6 etapas com insights de progresso em tempo real.</p>
+              <p className="text-sm text-white/70 mt-3">
+                Workflow em 6 etapas com insights de progresso em tempo real.
+              </p>
             </div>
             <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
               <Target className="h-6 w-6 text-rose-300" />
-              <p className="text-sm text-white/70 mt-3">Triggers inteligentes de e-mail e controle de documentos enxuto.</p>
+              <p className="text-sm text-white/70 mt-3">
+                Triggers inteligentes de e-mail e controle de documentos enxuto.
+              </p>
             </div>
           </div>
         </section>
 
         {/* Card de login */}
         <Card className="w-full max-w-md border border-primary/30 bg-card/95 backdrop-blur-sm shadow-xl">
-        <CardHeader className="space-y-4 text-center pb-4">
-          <div className="flex justify-center">
-            <div className="relative">
-              <img 
-                src={APP_LOGO}
-                alt=""
-                className="h-28 w-auto"
-              />
+          <CardHeader className="space-y-4 text-center pb-4">
+            <div className="flex justify-center">
+              <div className="relative">
+                <img src={APP_LOGO} alt="" className="h-28 w-auto" />
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-0">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="seu@email.com" {...register("email")} />
-              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" {...register("password")} />
-              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
-            </div>
-            {errors.root && <p className="text-sm text-red-500 text-center">{errors.root.message}</p>}
-            <Button
-              type="submit"
-              disabled={loginMutation.isPending}
-              className="w-full h-10 bg-primary hover:bg-primary/90 font-semibold uppercase tracking-wide text-sm transition-all duration-300 hover:shadow-md hover:shadow-primary/20"
-            >
-              {loginMutation.isPending ? (
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              ) : (
-                <Target className="w-5 h-5 mr-2" />
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  {...register("email")}
+                />
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  {...register("password")}
+                />
+                {errors.password && (
+                  <p className="text-sm text-red-500">
+                    {errors.password.message}
+                  </p>
+                )}
+              </div>
+              {errors.root && (
+                <p className="text-sm text-red-500 text-center">
+                  {errors.root.message}
+                </p>
               )}
-              Entrar no Sistema
-            </Button>
-          </form>
+              <Button
+                type="submit"
+                disabled={loginMutation.isPending}
+                className="w-full h-10 bg-primary hover:bg-primary/90 font-semibold uppercase tracking-wide text-sm transition-all duration-300 hover:shadow-md hover:shadow-primary/20"
+              >
+                {loginMutation.isPending ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <Target className="w-5 h-5 mr-2" />
+                )}
+                Entrar no Sistema
+              </Button>
+            </form>
 
-          
-          <div className="text-center pt-3 border-t border-border">
-            <p className="text-xs text-muted-foreground">
-              Acesso restrito à equipe CAC 360
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              © {new Date().getFullYear()} CAC 360. Todos os direitos reservados.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="text-center pt-3 border-t border-border">
+              <p className="text-xs text-muted-foreground">
+                Acesso restrito à equipe CAC 360
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                © {new Date().getFullYear()} CAC 360. Todos os direitos
+                reservados.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  </div>
   );
 }
-

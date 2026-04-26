@@ -4,10 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -42,7 +51,13 @@ export function AdminForm({ open, onClose, editTarget }: AdminFormProps) {
         confirmPassword: "",
       }));
     } else {
-      setForm({ name: "", email: "", password: "", confirmPassword: "", role: "admin" });
+      setForm({
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        role: "admin",
+      });
     }
   }, [editTarget, open]);
 
@@ -52,7 +67,8 @@ export function AdminForm({ open, onClose, editTarget }: AdminFormProps) {
       toast.success("Administrador criado com sucesso.");
       onClose();
     },
-    onError: (err: any) => toast.error(err?.message ?? "Erro ao criar administrador."),
+    onError: (err: any) =>
+      toast.error(err?.message ?? "Erro ao criar administrador."),
   });
 
   const updateMutation = trpc.platformAdmins.update.useMutation({
@@ -61,7 +77,8 @@ export function AdminForm({ open, onClose, editTarget }: AdminFormProps) {
       toast.success("Perfil atualizado.");
       onClose();
     },
-    onError: (err: any) => toast.error(err?.message ?? "Erro ao atualizar perfil."),
+    onError: (err: any) =>
+      toast.error(err?.message ?? "Erro ao atualizar perfil."),
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -71,9 +88,18 @@ export function AdminForm({ open, onClose, editTarget }: AdminFormProps) {
       return;
     }
     if (isEdit) {
-      updateMutation.mutate({ id: editTarget.id, name: form.name, email: form.email });
+      updateMutation.mutate({
+        id: editTarget.id,
+        name: form.name,
+        email: form.email,
+      });
     } else {
-      createMutation.mutate({ name: form.name, email: form.email, password: form.password, role: form.role });
+      createMutation.mutate({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+      });
     }
   }
 
@@ -83,7 +109,9 @@ export function AdminForm({ open, onClose, editTarget }: AdminFormProps) {
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar Administrador" : "Novo Administrador"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Editar Administrador" : "Novo Administrador"}
+          </DialogTitle>
           <DialogDescription>
             {isEdit
               ? "Atualize o nome ou e-mail do administrador."
@@ -120,7 +148,10 @@ export function AdminForm({ open, onClose, editTarget }: AdminFormProps) {
             <>
               <div className="space-y-1.5">
                 <Label htmlFor="adm-role">Role</Label>
-                <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v as any }))}>
+                <Select
+                  value={form.role}
+                  onValueChange={v => setForm(f => ({ ...f, role: v as any }))}
+                >
                   <SelectTrigger id="adm-role">
                     <SelectValue />
                   </SelectTrigger>
@@ -139,7 +170,9 @@ export function AdminForm({ open, onClose, editTarget }: AdminFormProps) {
                   type="password"
                   placeholder="••••••••"
                   value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  onChange={e =>
+                    setForm(f => ({ ...f, password: e.target.value }))
+                  }
                   required
                   minLength={8}
                 />
@@ -152,7 +185,9 @@ export function AdminForm({ open, onClose, editTarget }: AdminFormProps) {
                   type="password"
                   placeholder="••••••••"
                   value={form.confirmPassword}
-                  onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                  onChange={e =>
+                    setForm(f => ({ ...f, confirmPassword: e.target.value }))
+                  }
                   required
                   minLength={8}
                 />
@@ -161,7 +196,12 @@ export function AdminForm({ open, onClose, editTarget }: AdminFormProps) {
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isPending}
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={isPending}>

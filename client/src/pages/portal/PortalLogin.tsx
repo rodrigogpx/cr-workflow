@@ -32,7 +32,10 @@ export default function PortalLogin() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: email.trim(), cpf: cpf.replace(/\D/g, "") }),
+        body: JSON.stringify({
+          email: email.trim(),
+          cpf: cpf.replace(/\D/g, ""),
+        }),
       });
 
       const data = await res.json();
@@ -68,7 +71,10 @@ export default function PortalLogin() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="email" className="flex items-center gap-2 text-gray-700">
+            <Label
+              htmlFor="email"
+              className="flex items-center gap-2 text-gray-700"
+            >
               <Mail className="h-4 w-4" /> Email
             </Label>
             <Input
@@ -76,14 +82,17 @@ export default function PortalLogin() {
               type="email"
               placeholder="seu@email.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               required
               disabled={loading}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cpf" className="flex items-center gap-2 text-gray-700">
+            <Label
+              htmlFor="cpf"
+              className="flex items-center gap-2 text-gray-700"
+            >
               <CreditCard className="h-4 w-4" /> CPF
             </Label>
             <Input
@@ -91,7 +100,7 @@ export default function PortalLogin() {
               type="text"
               placeholder="000.000.000-00"
               value={cpf}
-              onChange={(e) => setCpf(formatCpf(e.target.value))}
+              onChange={e => setCpf(formatCpf(e.target.value))}
               required
               disabled={loading}
               maxLength={14}

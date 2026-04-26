@@ -57,7 +57,7 @@ export function usePortalAuth() {
   });
 
   const fetchMe = useCallback(async () => {
-    setState((s) => ({ ...s, loading: true, error: null }));
+    setState(s => ({ ...s, loading: true, error: null }));
     try {
       const res = await fetch("/api/portal/me", { credentials: "include" });
       if (res.status === 401) {
@@ -79,12 +79,13 @@ export function usePortalAuth() {
         lgpdAccepted: data.lgpdAccepted,
         lgpdAcceptedAt: data.lgpdAcceptedAt,
         cadastroCompleto: data.cadastroCompleto ?? false,
-        canEditApostilamentoInPortal: data.canEditApostilamentoInPortal ?? false,
+        canEditApostilamentoInPortal:
+          data.canEditApostilamentoInPortal ?? false,
         loading: false,
         error: null,
       });
     } catch (err: any) {
-      setState((s) => ({ ...s, loading: false, error: err.message }));
+      setState(s => ({ ...s, loading: false, error: err.message }));
     }
   }, []);
 
@@ -93,7 +94,10 @@ export function usePortalAuth() {
   }, [fetchMe]);
 
   const logout = useCallback(async () => {
-    await fetch("/api/portal/logout", { method: "POST", credentials: "include" });
+    await fetch("/api/portal/logout", {
+      method: "POST",
+      credentials: "include",
+    });
     setState({
       client: null,
       lgpdAccepted: false,

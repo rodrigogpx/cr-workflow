@@ -1,15 +1,30 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import {
-  FileText, CheckCircle2, XCircle, Eye,
-  ChevronDown, ChevronUp, Loader2, Pencil, CalendarDays,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  Eye,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Pencil,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -31,30 +46,52 @@ function formatBytes(b: number) {
 export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
   const utils = trpc.useUtils();
 
-  const { data: docs = [], isLoading, isError, error } = (trpc as any).pendingDocuments.list.useQuery(
+  const {
+    data: docs = [],
+    isLoading,
+    isError,
+    error,
+  } = (trpc as any).pendingDocuments.list.useQuery(
     { clientId },
     { refetchInterval: 30_000 }
   );
 
   if (isError) {
-    console.error("[PendingDocumentsQueue] Erro ao carregar documentos:", error);
+    console.error(
+      "[PendingDocumentsQueue] Erro ao carregar documentos:",
+      error
+    );
   }
 
   const approveMut = (trpc as any).pendingDocuments.approve.useMutation({
-    onSuccess: () => { utils.invalidate(); setApproveDialog(null); resetApproveState(); },
+    onSuccess: () => {
+      utils.invalidate();
+      setApproveDialog(null);
+      resetApproveState();
+    },
   });
   const rejectMut = (trpc as any).pendingDocuments.reject.useMutation({
-    onSuccess: () => { utils.invalidate(); setRejectDialog(null); setRejectReason(""); },
+    onSuccess: () => {
+      utils.invalidate();
+      setRejectDialog(null);
+      setRejectReason("");
+    },
   });
 
   const [expanded, setExpanded] = useState(true);
 
   // ── Rejeitar ───────────────────────────────────────────────────────────────
-  const [rejectDialog, setRejectDialog] = useState<{ docId: number; fileName: string } | null>(null);
+  const [rejectDialog, setRejectDialog] = useState<{
+    docId: number;
+    fileName: string;
+  } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
   // ── Aprovar (com vínculo obrigatório) ────────────────────────────────────
-  const [approveDialog, setApproveDialog] = useState<{ docId: number; fileName: string } | null>(null);
+  const [approveDialog, setApproveDialog] = useState<{
+    docId: number;
+    fileName: string;
+  } | null>(null);
   const [linkSubTask, setLinkSubTask] = useState("");
   const [linkError, setLinkError] = useState(false);
   const [renameFile, setRenameFile] = useState(false);
@@ -106,18 +143,24 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
       docId: approveDialog.docId,
       subTaskId: Number(linkSubTask),
       fileName: approveDialog.fileName,
-      newFileName: renameFile && newFileName.trim() ? newFileName.trim() : undefined,
+      newFileName:
+        renameFile && newFileName.trim() ? newFileName.trim() : undefined,
       issueDate: issueDate || undefined,
     });
   }
 
   if (isLoading) return null;
-  if (isError) return (
-    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6 text-sm text-red-700 flex items-center gap-2">
-      <span className="font-medium">Erro ao carregar fila de documentos.</span>
-      <span className="text-red-500 text-xs">{(error as any)?.message ?? "Tente recarregar a página."}</span>
-    </div>
-  );
+  if (isError)
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6 text-sm text-red-700 flex items-center gap-2">
+        <span className="font-medium">
+          Erro ao carregar fila de documentos.
+        </span>
+        <span className="text-red-500 text-xs">
+          {(error as any)?.message ?? "Tente recarregar a página."}
+        </span>
+      </div>
+    );
   if (!docs.length) return null;
 
   return (
@@ -134,21 +177,28 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
               Documentos aguardando triagem ({docs.length})
             </span>
           </div>
-          {expanded
-            ? <ChevronUp className="w-4 h-4 text-amber-600" />
-            : <ChevronDown className="w-4 h-4 text-amber-600" />}
+          {expanded ? (
+            <ChevronUp className="w-4 h-4 text-amber-600" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-amber-600" />
+          )}
         </button>
 
         {/* Lista de documentos */}
         {expanded && (
           <div className="divide-y divide-amber-100">
             {docs.map((doc: any) => (
-              <div key={doc.id} className="flex items-center justify-between p-4 bg-white gap-3">
+              <div
+                key={doc.id}
+                className="flex items-center justify-between p-4 bg-white gap-3"
+              >
                 {/* Info do arquivo */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <FileText className="w-5 h-5 text-gray-400 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{doc.fileName}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {doc.fileName}
+                    </p>
                     <p className="text-xs text-gray-400">
                       {formatBytes(doc.fileSize)}
                       {doc.fileSize ? " · " : ""}
@@ -166,7 +216,11 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
                     className="text-gray-600 border-gray-300 hover:bg-gray-50 h-7 text-xs"
                     asChild
                   >
-                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={doc.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <Eye className="w-3 h-3 mr-1" />
                       Visualizar
                     </a>
@@ -179,7 +233,10 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
                     className="text-green-700 border-green-300 hover:bg-green-50 h-7 text-xs"
                     onClick={() => {
                       resetApproveState();
-                      setApproveDialog({ docId: doc.id, fileName: doc.fileName });
+                      setApproveDialog({
+                        docId: doc.id,
+                        fileName: doc.fileName,
+                      });
                     }}
                   >
                     <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -193,7 +250,10 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
                     className="text-red-700 border-red-300 hover:bg-red-50 h-7 text-xs"
                     onClick={() => {
                       setRejectReason("");
-                      setRejectDialog({ docId: doc.id, fileName: doc.fileName });
+                      setRejectDialog({
+                        docId: doc.id,
+                        fileName: doc.fileName,
+                      });
                     }}
                   >
                     <XCircle className="w-3 h-3 mr-1" />
@@ -207,9 +267,15 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
       </div>
 
       {/* Dialog — Aprovar e vincular */}
-      <Dialog open={!!approveDialog} onOpenChange={(open: boolean) => {
-        if (!open) { setApproveDialog(null); resetApproveState(); }
-      }}>
+      <Dialog
+        open={!!approveDialog}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setApproveDialog(null);
+            resetApproveState();
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -220,17 +286,24 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
 
           {/* Nome do arquivo */}
           <div className="text-sm bg-gray-50 rounded-lg px-3 py-2 border border-gray-100 truncate">
-            <span className="font-medium text-gray-700">{approveDialog?.fileName}</span>
+            <span className="font-medium text-gray-700">
+              {approveDialog?.fileName}
+            </span>
           </div>
 
           <div className="space-y-4">
             {/* Vínculo obrigatório à juntada */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-gray-700">
-                Tipo de documento na juntada <span className="text-red-500">*</span>
+                Tipo de documento na juntada{" "}
+                <span className="text-red-500">*</span>
               </Label>
               <Select value={linkSubTask} onValueChange={handleSubTaskChange}>
-                <SelectTrigger className={linkError ? "border-red-400 focus:ring-red-300" : ""}>
+                <SelectTrigger
+                  className={
+                    linkError ? "border-red-400 focus:ring-red-300" : ""
+                  }
+                >
                   <SelectValue placeholder="Selecionar tipo de documento" />
                 </SelectTrigger>
                 <SelectContent>
@@ -252,7 +325,8 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
                 <CalendarDays className="h-3.5 w-3.5 text-gray-400" />
-                Data de emissão <span className="text-gray-400 font-normal">(opcional)</span>
+                Data de emissão{" "}
+                <span className="text-gray-400 font-normal">(opcional)</span>
               </Label>
               <Input
                 type="date"
@@ -284,14 +358,18 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
                 </div>
                 {renameFile && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-gray-500">Nome final do arquivo</Label>
+                    <Label className="text-xs text-gray-500">
+                      Nome final do arquivo
+                    </Label>
                     <Input
                       value={newFileName}
                       onChange={(e: any) => setNewFileName(e.target.value)}
                       placeholder="Ex: Certidão de Antecedentes.pdf"
                       className="text-sm h-8"
                     />
-                    <p className="text-[0.65rem] text-gray-400">A extensão original será preservada se não alterada.</p>
+                    <p className="text-[0.65rem] text-gray-400">
+                      A extensão original será preservada se não alterada.
+                    </p>
                   </div>
                 )}
               </div>
@@ -299,7 +377,13 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setApproveDialog(null); resetApproveState(); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setApproveDialog(null);
+                resetApproveState();
+              }}
+            >
               Cancelar
             </Button>
             <Button
@@ -307,21 +391,31 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
               onClick={handleApprove}
               disabled={approveMut.isPending}
             >
-              {approveMut.isPending
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <><CheckCircle2 className="w-4 h-4 mr-1.5" />Aprovar e vincular</>}
+              {approveMut.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                  Aprovar e vincular
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Dialog — Rejeitar */}
-      <Dialog open={!!rejectDialog} onOpenChange={open => !open && setRejectDialog(null)}>
+      <Dialog
+        open={!!rejectDialog}
+        onOpenChange={open => !open && setRejectDialog(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Rejeitar documento</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600 truncate">{rejectDialog?.fileName}</p>
+          <p className="text-sm text-gray-600 truncate">
+            {rejectDialog?.fileName}
+          </p>
           <Textarea
             placeholder="Motivo da rejeição (opcional — será enviado ao cliente)"
             value={rejectReason}
@@ -329,17 +423,24 @@ export function PendingDocumentsQueue({ clientId, subTasks = [] }: Props) {
             rows={3}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialog(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setRejectDialog(null)}>
+              Cancelar
+            </Button>
             <Button
               variant="destructive"
               onClick={() =>
-                rejectMut.mutate({ docId: rejectDialog!.docId, reason: rejectReason || undefined })
+                rejectMut.mutate({
+                  docId: rejectDialog!.docId,
+                  reason: rejectReason || undefined,
+                })
               }
               disabled={rejectMut.isPending}
             >
-              {rejectMut.isPending
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : "Confirmar rejeição"}
+              {rejectMut.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Confirmar rejeição"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

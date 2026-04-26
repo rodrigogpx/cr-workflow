@@ -1,17 +1,43 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
-  Calendar, Clock, MapPin, Plus, Pencil, Trash2, Users,
-  CheckCircle2, Circle, XCircle, ClipboardList,
+  Calendar,
+  Clock,
+  MapPin,
+  Plus,
+  Pencil,
+  Trash2,
+  Users,
+  CheckCircle2,
+  Circle,
+  XCircle,
+  ClipboardList,
 } from "lucide-react";
 import IATAttendanceSheet from "./IATAttendanceSheet";
 
@@ -44,10 +70,25 @@ type SessionFormData = {
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<string, { label: string; icon: React.ReactNode; variant: string }> = {
-  agendada:  { label: "Agendada",  icon: <Circle className="h-3 w-3" />,        variant: "outline" },
-  realizada: { label: "Realizada", icon: <CheckCircle2 className="h-3 w-3" />,  variant: "default" },
-  cancelada: { label: "Cancelada", icon: <XCircle className="h-3 w-3" />,       variant: "destructive" },
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; icon: React.ReactNode; variant: string }
+> = {
+  agendada: {
+    label: "Agendada",
+    icon: <Circle className="h-3 w-3" />,
+    variant: "outline",
+  },
+  realizada: {
+    label: "Realizada",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+    variant: "default",
+  },
+  cancelada: {
+    label: "Cancelada",
+    icon: <XCircle className="h-3 w-3" />,
+    variant: "destructive",
+  },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -108,7 +149,7 @@ function SessionFormDialog({
       toast.success("Sessão criada com sucesso");
       onClose();
     },
-    onError: (e) => toast.error(e.message),
+    onError: e => toast.error(e.message),
   });
 
   const updateMutation = trpc.iat.sessions.update.useMutation({
@@ -117,7 +158,7 @@ function SessionFormDialog({
       toast.success("Sessão atualizada");
       onClose();
     },
-    onError: (e) => toast.error(e.message),
+    onError: e => toast.error(e.message),
   });
 
   const handleSave = () => {
@@ -147,10 +188,10 @@ function SessionFormDialog({
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const set = (field: keyof SessionFormData) => (val: string | number) =>
-    setForm((prev) => ({ ...prev, [field]: val }));
+    setForm(prev => ({ ...prev, [field]: val }));
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={o => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar Sessão" : "Nova Sessão"}</DialogTitle>
@@ -164,13 +205,15 @@ function SessionFormDialog({
                 type="number"
                 min={1}
                 value={form.sessionNumber}
-                onChange={(e) => set("sessionNumber")(Number(e.target.value))}
+                onChange={e => set("sessionNumber")(Number(e.target.value))}
               />
             </div>
             <div className="space-y-1">
               <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => set("status")(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={form.status} onValueChange={v => set("status")(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="agendada">Agendada</SelectItem>
                   <SelectItem value="realizada">Realizada</SelectItem>
@@ -185,7 +228,7 @@ function SessionFormDialog({
             <Input
               placeholder="Ex: Teoria e Segurança"
               value={form.title}
-              onChange={(e) => set("title")(e.target.value)}
+              onChange={e => set("title")(e.target.value)}
             />
           </div>
 
@@ -195,7 +238,7 @@ function SessionFormDialog({
               <Input
                 type="date"
                 value={form.scheduledDate}
-                onChange={(e) => set("scheduledDate")(e.target.value)}
+                onChange={e => set("scheduledDate")(e.target.value)}
               />
             </div>
             <div className="space-y-1">
@@ -203,7 +246,7 @@ function SessionFormDialog({
               <Input
                 type="time"
                 value={form.scheduledTime}
-                onChange={(e) => set("scheduledTime")(e.target.value)}
+                onChange={e => set("scheduledTime")(e.target.value)}
               />
             </div>
           </div>
@@ -216,7 +259,7 @@ function SessionFormDialog({
                 min={30}
                 step={30}
                 value={form.durationMinutes}
-                onChange={(e) => set("durationMinutes")(Number(e.target.value))}
+                onChange={e => set("durationMinutes")(Number(e.target.value))}
               />
             </div>
             <div className="space-y-1">
@@ -224,7 +267,7 @@ function SessionFormDialog({
               <Input
                 placeholder="Ex: Estande A"
                 value={form.location}
-                onChange={(e) => set("location")(e.target.value)}
+                onChange={e => set("location")(e.target.value)}
               />
             </div>
           </div>
@@ -235,7 +278,7 @@ function SessionFormDialog({
               rows={2}
               placeholder="Notas sobre a sessão..."
               value={form.notes}
-              onChange={(e) => set("notes")(e.target.value)}
+              onChange={e => set("notes")(e.target.value)}
             />
           </div>
         </div>
@@ -277,7 +320,7 @@ function SessionCard({
       utils.iat.sessions.list.invalidate({ classId });
       toast.success("Sessão removida");
     },
-    onError: (e) => toast.error(e.message),
+    onError: e => toast.error(e.message),
   });
 
   const isDone = session.status === "realizada";
@@ -296,8 +339,8 @@ function SessionCard({
           isDone
             ? "bg-emerald-600 text-white"
             : isCancelled
-            ? "bg-slate-500 text-white"
-            : "bg-primary text-primary-foreground"
+              ? "bg-slate-500 text-white"
+              : "bg-primary text-primary-foreground"
         }`}
       >
         {session.sessionNumber}
@@ -305,7 +348,11 @@ function SessionCard({
 
       <div
         className={`mb-4 rounded-xl border p-4 ${
-          isDone ? "border-emerald-500/30 bg-emerald-50/5" : isCancelled ? "opacity-60" : "border-border"
+          isDone
+            ? "border-emerald-500/30 bg-emerald-50/5"
+            : isCancelled
+              ? "opacity-60"
+              : "border-border"
         }`}
       >
         {/* Header row */}
@@ -347,7 +394,11 @@ function SessionCard({
               className="h-7 w-7 text-destructive hover:text-destructive"
               disabled={deleteMutation.isPending}
               onClick={() => {
-                if (confirm("Remover esta sessão e todos os registros de frequência?")) {
+                if (
+                  confirm(
+                    "Remover esta sessão e todos os registros de frequência?"
+                  )
+                ) {
                   deleteMutation.mutate({ id: session.id });
                 }
               }}
@@ -362,14 +413,18 @@ function SessionCard({
           {session.scheduledDate && (
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {new Date(session.scheduledDate + "T00:00:00").toLocaleDateString("pt-BR")}
+              {new Date(session.scheduledDate + "T00:00:00").toLocaleDateString(
+                "pt-BR"
+              )}
             </span>
           )}
           {session.scheduledTime && (
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {session.scheduledTime}
-              {session.durationMinutes ? ` · ${session.durationMinutes}min` : ""}
+              {session.durationMinutes
+                ? ` · ${session.durationMinutes}min`
+                : ""}
             </span>
           )}
           {session.location && (
@@ -381,7 +436,9 @@ function SessionCard({
         </div>
 
         {session.notes && (
-          <p className="mt-2 text-xs text-muted-foreground italic">{session.notes}</p>
+          <p className="mt-2 text-xs text-muted-foreground italic">
+            {session.notes}
+          </p>
         )}
       </div>
     </div>
@@ -403,7 +460,9 @@ export default function IATSessionsPanel({
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editSession, setEditSession] = useState<Session | null>(null);
-  const [attendanceSession, setAttendanceSession] = useState<Session | null>(null);
+  const [attendanceSession, setAttendanceSession] = useState<Session | null>(
+    null
+  );
 
   const sessionsQuery = trpc.iat.sessions.list.useQuery(
     { classId },
@@ -428,19 +487,26 @@ export default function IATSessionsPanel({
   };
 
   // Derived stats
-  const doneCount = sessions.filter((s) => s.status === "realizada").length;
-  const attendanceRecordedCount = sessions.filter((s) => s.attendanceRecorded).length;
+  const doneCount = sessions.filter(s => s.status === "realizada").length;
+  const attendanceRecordedCount = sessions.filter(
+    s => s.attendanceRecorded
+  ).length;
 
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg overflow-y-auto"
+        >
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-primary" />
               Sessões da Turma
               {classTitle && (
-                <span className="text-muted-foreground font-normal text-sm">— {classTitle}</span>
+                <span className="text-muted-foreground font-normal text-sm">
+                  — {classTitle}
+                </span>
               )}
             </SheetTitle>
           </SheetHeader>
@@ -449,15 +515,21 @@ export default function IATSessionsPanel({
           {sessions.length > 0 && (
             <div className="grid grid-cols-3 gap-2 mb-4">
               <div className="rounded-lg border p-3 text-center">
-                <div className="text-xl font-black text-primary">{sessions.length}</div>
+                <div className="text-xl font-black text-primary">
+                  {sessions.length}
+                </div>
                 <div className="text-xs text-muted-foreground">Total</div>
               </div>
               <div className="rounded-lg border p-3 text-center">
-                <div className="text-xl font-black text-emerald-500">{doneCount}</div>
+                <div className="text-xl font-black text-emerald-500">
+                  {doneCount}
+                </div>
                 <div className="text-xs text-muted-foreground">Realizadas</div>
               </div>
               <div className="rounded-lg border p-3 text-center">
-                <div className="text-xl font-black text-blue-500">{attendanceRecordedCount}</div>
+                <div className="text-xl font-black text-blue-500">
+                  {attendanceRecordedCount}
+                </div>
                 <div className="text-xs text-muted-foreground">Freq. reg.</div>
               </div>
             </div>
@@ -468,12 +540,16 @@ export default function IATSessionsPanel({
             <div className="mb-4">
               <div className="flex justify-between text-xs text-muted-foreground mb-1">
                 <span>Progresso</span>
-                <span>{doneCount} / {sessions.length} sessões</span>
+                <span>
+                  {doneCount} / {sessions.length} sessões
+                </span>
               </div>
               <div className="w-full bg-secondary rounded-full h-1.5">
                 <div
                   className="bg-primary h-1.5 rounded-full transition-all"
-                  style={{ width: `${sessions.length ? (doneCount / sessions.length) * 100 : 0}%` }}
+                  style={{
+                    width: `${sessions.length ? (doneCount / sessions.length) * 100 : 0}%`,
+                  }}
                 />
               </div>
             </div>
@@ -492,15 +568,20 @@ export default function IATSessionsPanel({
           {/* Sessions list */}
           {sessionsQuery.isLoading ? (
             <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />
+              {[1, 2, 3].map(i => (
+                <div
+                  key={i}
+                  className="h-20 rounded-xl bg-muted animate-pulse"
+                />
               ))}
             </div>
           ) : sessions.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm">Nenhuma sessão cadastrada.</p>
-              <p className="text-xs mt-1">Clique em "Nova Sessão" para começar.</p>
+              <p className="text-xs mt-1">
+                Clique em "Nova Sessão" para começar.
+              </p>
             </div>
           ) : (
             <div>
@@ -512,7 +593,7 @@ export default function IATSessionsPanel({
                   total={sessions.length}
                   classId={classId}
                   onEdit={handleEdit}
-                  onShowAttendance={(s) => setAttendanceSession(s)}
+                  onShowAttendance={s => setAttendanceSession(s)}
                 />
               ))}
             </div>
@@ -536,7 +617,9 @@ export default function IATSessionsPanel({
           classId={classId}
           session={attendanceSession}
           open={Boolean(attendanceSession)}
-          onOpenChange={(o) => { if (!o) setAttendanceSession(null); }}
+          onOpenChange={o => {
+            if (!o) setAttendanceSession(null);
+          }}
         />
       )}
     </>

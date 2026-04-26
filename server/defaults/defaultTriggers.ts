@@ -1,4 +1,4 @@
-import { InsertEmailTrigger } from '../../drizzle/schema';
+import { InsertEmailTrigger } from "../../drizzle/schema";
 
 // Workflow steps → stepIdToNumber mapping (routers.ts):
 //   1 = cadastro
@@ -14,118 +14,118 @@ import { InsertEmailTrigger } from '../../drizzle/schema';
 // Schedule events (routers.ts):
 //   SCHEDULE_PSYCH_CREATED, SCHEDULE_TECH_CONFIRMATION
 
-export const defaultEmailTriggers: Omit<InsertEmailTrigger, 'tenantId'>[] = [
+export const defaultEmailTriggers: Omit<InsertEmailTrigger, "tenantId">[] = [
   {
-    name: 'Boas Vindas',
-    triggerEvent: 'CLIENT_CREATED',
-    recipientType: 'client',
+    name: "Boas Vindas",
+    triggerEvent: "CLIENT_CREATED",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Cadastro Concluído',
-    triggerEvent: 'STEP_COMPLETED:1',
-    recipientType: 'client',
+    name: "Cadastro Concluído",
+    triggerEvent: "STEP_COMPLETED:1",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Encaminhamento Psicotécnico',
-    triggerEvent: 'STEP_COMPLETED:2',
-    recipientType: 'client',
+    name: "Encaminhamento Psicotécnico",
+    triggerEvent: "STEP_COMPLETED:2",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Laudo de Capacidade Técnica Concluído',
-    triggerEvent: 'STEP_COMPLETED:3',
-    recipientType: 'client',
+    name: "Laudo de Capacidade Técnica Concluído",
+    triggerEvent: "STEP_COMPLETED:3",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Conclusão Juntada de Documentos',
-    triggerEvent: 'STEP_COMPLETED:4',
-    recipientType: 'client',
+    name: "Conclusão Juntada de Documentos",
+    triggerEvent: "STEP_COMPLETED:4",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Agendamento Laudo Técnico',
-    triggerEvent: 'SCHEDULE_TECH_CONFIRMATION',
-    recipientType: 'client',
+    name: "Agendamento Laudo Técnico",
+    triggerEvent: "SCHEDULE_TECH_CONFIRMATION",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Lembrete Agendamento Laudo Técnico',
-    triggerEvent: 'SCHEDULE_TECH_CONFIRMATION',
-    recipientType: 'client',
+    name: "Lembrete Agendamento Laudo Técnico",
+    triggerEvent: "SCHEDULE_TECH_CONFIRMATION",
+    recipientType: "client",
     sendImmediate: false,
     sendBeforeHours: 24,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Processo Enviado ao SINARM',
-    triggerEvent: 'STEP_COMPLETED:5',
-    recipientType: 'client',
+    name: "Processo Enviado ao SINARM",
+    triggerEvent: "STEP_COMPLETED:5",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Processo Iniciado no Sinarm',
-    triggerEvent: 'SINARM_STATUS:Iniciado',
-    recipientType: 'client',
+    name: "Processo Iniciado no Sinarm",
+    triggerEvent: "SINARM_STATUS:Iniciado",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Processo Solicitado no Sinarm',
-    triggerEvent: 'SINARM_STATUS:Solicitado',
-    recipientType: 'client',
+    name: "Processo Solicitado no Sinarm",
+    triggerEvent: "SINARM_STATUS:Solicitado",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Processo Deferido',
-    triggerEvent: 'SINARM_STATUS:Deferido',
-    recipientType: 'client',
+    name: "Processo Deferido",
+    triggerEvent: "SINARM_STATUS:Deferido",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Aguardando Baixa GRU',
-    triggerEvent: 'SINARM_STATUS:Aguardando Baixa GRU',
-    recipientType: 'client',
+    name: "Aguardando Baixa GRU",
+    triggerEvent: "SINARM_STATUS:Aguardando Baixa GRU",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Processo em Análise',
-    triggerEvent: 'SINARM_STATUS:Em Análise',
-    recipientType: 'client',
+    name: "Processo em Análise",
+    triggerEvent: "SINARM_STATUS:Em Análise",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Processo Restituído',
-    triggerEvent: 'SINARM_STATUS:Correção Solicitada',
-    recipientType: 'client',
+    name: "Processo Restituído",
+    triggerEvent: "SINARM_STATUS:Correção Solicitada",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Processo Indeferido',
-    triggerEvent: 'SINARM_STATUS:Indeferido',
-    recipientType: 'client',
+    name: "Processo Indeferido",
+    triggerEvent: "SINARM_STATUS:Indeferido",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
+    isActive: true,
   },
   {
-    name: 'Agendamento Avaliação Psicológica',
-    triggerEvent: 'SCHEDULE_PSYCH_CREATED',
-    recipientType: 'client',
+    name: "Agendamento Avaliação Psicológica",
+    triggerEvent: "SCHEDULE_PSYCH_CREATED",
+    recipientType: "client",
     sendImmediate: true,
-    isActive: true
-  }
+    isActive: true,
+  },
 ];

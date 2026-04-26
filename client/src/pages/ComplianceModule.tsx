@@ -6,20 +6,31 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
-import { format, addDays, isBefore, isAfter, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, getDay, subDays } from "date-fns";
+import {
+  format,
+  addDays,
+  isBefore,
+  isAfter,
+  isWithinInterval,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  getDay,
+  subDays,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { 
-  FileText, 
-  Calendar as CalendarIcon, 
-  AlertTriangle, 
-  CheckCircle2, 
+import {
+  FileText,
+  Calendar as CalendarIcon,
+  AlertTriangle,
+  CheckCircle2,
   Clock,
   Upload,
   Plus,
   Filter,
   Search,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +75,9 @@ const statusConfig = {
 export function ComplianceModule() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState("calendar");
-  const [selectedDocumentType, setSelectedDocumentType] = useState<string | null>(null);
+  const [selectedDocumentType, setSelectedDocumentType] = useState<
+    string | null
+  >(null);
 
   const { data: stats } = useQuery({
     queryKey: ["compliance", "stats"],
@@ -77,7 +90,9 @@ export function ComplianceModule() {
   const { data: expiringSoon } = useQuery({
     queryKey: ["compliance", "expiring", 30],
     queryFn: async () => {
-      const result = await trpc.compliance.getExpiringSoon.query({ daysThreshold: 30 });
+      const result = await trpc.compliance.getExpiringSoon.query({
+        daysThreshold: 30,
+      });
       return result as ComplianceDocument[];
     },
   });
@@ -95,7 +110,7 @@ export function ComplianceModule() {
   // Calendar data - documents expiring on each day
   const getDocumentsForDate = (date: Date): ComplianceDocument[] => {
     if (!expiringSoon) return [];
-    return expiringSoon.filter((doc) => {
+    return expiringSoon.filter(doc => {
       const expiryDate = new Date(doc.expiryDate);
       return (
         expiryDate.getDate() === date.getDate() &&
@@ -118,7 +133,9 @@ export function ComplianceModule() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Compliance & Vencimentos</h1>
+          <h1 className="text-3xl font-bold text-slate-900">
+            Compliance & Vencimentos
+          </h1>
           <p className="text-slate-600 mt-1">
             Gerenciamento de documentos e acompanhamento de validades
           </p>
@@ -188,7 +205,11 @@ export function ComplianceModule() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
           <TabsTrigger value="calendar" className="flex items-center gap-2">
             <CalendarIcon className="w-4 h-4" />
@@ -234,20 +255,26 @@ export function ComplianceModule() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-7 gap-1 mb-2">
-                  {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
-                    <div
-                      key={day}
-                      className="text-center text-sm font-medium text-slate-500 py-2"
-                    >
-                      {day}
-                    </div>
-                  ))}
+                  {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(
+                    day => (
+                      <div
+                        key={day}
+                        className="text-center text-sm font-medium text-slate-500 py-2"
+                      >
+                        {day}
+                      </div>
+                    )
+                  )}
                 </div>
                 <div className="grid grid-cols-7 gap-1">
                   {daysInMonth.map((date, index) => {
                     const dayDocs = getDocumentsForDate(date);
-                    const hasExpiring = dayDocs.some((d) => d.status === "expiring");
-                    const hasExpired = dayDocs.some((d) => d.status === "expired");
+                    const hasExpiring = dayDocs.some(
+                      d => d.status === "expiring"
+                    );
+                    const hasExpired = dayDocs.some(
+                      d => d.status === "expired"
+                    );
                     const isSelected =
                       selectedDate.getDate() === date.getDate() &&
                       selectedDate.getMonth() === date.getMonth();
@@ -261,8 +288,13 @@ export function ComplianceModule() {
                           isSelected
                             ? "bg-blue-500 text-white border-blue-500"
                             : "bg-white hover:bg-slate-50 border-slate-200",
-                          hasExpired && !isSelected && "border-red-300 bg-red-50",
-                          hasExpiring && !isSelected && !hasExpired && "border-yellow-300 bg-yellow-50"
+                          hasExpired &&
+                            !isSelected &&
+                            "border-red-300 bg-red-50",
+                          hasExpiring &&
+                            !isSelected &&
+                            !hasExpired &&
+                            "border-yellow-300 bg-yellow-50"
                         )}
                       >
                         {format(date, "d")}
@@ -289,7 +321,9 @@ export function ComplianceModule() {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                    <span className="text-sm text-slate-600">Vencendo em 30 dias</span>
+                    <span className="text-sm text-slate-600">
+                      Vencendo em 30 dias
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-green-500" />
@@ -312,7 +346,7 @@ export function ComplianceModule() {
                     Nenhum documento com vencimento nesta data
                   </p>
                 ) : (
-                  selectedDateDocuments.map((doc) => {
+                  selectedDateDocuments.map(doc => {
                     const StatusIcon = statusConfig[doc.status].icon;
                     return (
                       <div
@@ -327,24 +361,30 @@ export function ComplianceModule() {
                                 doc.status === "expired"
                                   ? "text-red-500"
                                   : doc.status === "expiring"
-                                  ? "text-yellow-500"
-                                  : "text-green-500"
+                                    ? "text-yellow-500"
+                                    : "text-green-500"
                               )}
                             />
                             <div>
                               <p className="font-medium text-sm">
-                                {documentTypeLabels[doc.documentType] || doc.documentType}
+                                {documentTypeLabels[doc.documentType] ||
+                                  doc.documentType}
                               </p>
-                              <p className="text-xs text-slate-500">{doc.clientName}</p>
+                              <p className="text-xs text-slate-500">
+                                {doc.clientName}
+                              </p>
                             </div>
                           </div>
                           <Badge
                             variant="outline"
                             className={cn(
                               "text-xs",
-                              doc.status === "expired" && "border-red-300 text-red-600",
-                              doc.status === "expiring" && "border-yellow-300 text-yellow-600",
-                              doc.status === "active" && "border-green-300 text-green-600"
+                              doc.status === "expired" &&
+                                "border-red-300 text-red-600",
+                              doc.status === "expiring" &&
+                                "border-yellow-300 text-yellow-600",
+                              doc.status === "active" &&
+                                "border-green-300 text-green-600"
                             )}
                           >
                             {statusConfig[doc.status].label}
@@ -387,7 +427,7 @@ export function ComplianceModule() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {documents?.map((doc) => {
+                {documents?.map(doc => {
                   const StatusIcon = statusConfig[doc.status].icon;
                   return (
                     <div
@@ -416,7 +456,8 @@ export function ComplianceModule() {
                         </div>
                         <div>
                           <p className="font-medium">
-                            {documentTypeLabels[doc.documentType] || doc.documentType}
+                            {documentTypeLabels[doc.documentType] ||
+                              doc.documentType}
                           </p>
                           <div className="flex items-center gap-2 text-sm text-slate-500">
                             <span>{doc.clientName}</span>
@@ -432,7 +473,8 @@ export function ComplianceModule() {
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <p className="text-sm font-medium">
-                            Vencimento: {format(new Date(doc.expiryDate), "dd/MM/yyyy")}
+                            Vencimento:{" "}
+                            {format(new Date(doc.expiryDate), "dd/MM/yyyy")}
                           </p>
                           <p
                             className={cn(
@@ -440,23 +482,27 @@ export function ComplianceModule() {
                               doc.daysUntilExpiry < 0
                                 ? "text-red-600"
                                 : doc.daysUntilExpiry <= 30
-                                ? "text-yellow-600"
-                                : "text-slate-500"
+                                  ? "text-yellow-600"
+                                  : "text-slate-500"
                             )}
                           >
                             {doc.daysUntilExpiry < 0
                               ? `Vencido há ${Math.abs(doc.daysUntilExpiry)} dias`
                               : doc.daysUntilExpiry === 0
-                              ? "Vence hoje"
-                              : `Vence em ${doc.daysUntilExpiry} dias`}
+                                ? "Vence hoje"
+                                : `Vence em ${doc.daysUntilExpiry} dias`}
                           </p>
                         </div>
                         <Badge
                           className={cn(
-                            doc.status === "expired" && "bg-red-100 text-red-700 hover:bg-red-100",
-                            doc.status === "expiring" && "bg-yellow-100 text-yellow-700 hover:bg-yellow-100",
-                            doc.status === "active" && "bg-green-100 text-green-700 hover:bg-green-100",
-                            doc.status === "renewed" && "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                            doc.status === "expired" &&
+                              "bg-red-100 text-red-700 hover:bg-red-100",
+                            doc.status === "expiring" &&
+                              "bg-yellow-100 text-yellow-700 hover:bg-yellow-100",
+                            doc.status === "active" &&
+                              "bg-green-100 text-green-700 hover:bg-green-100",
+                            doc.status === "renewed" &&
+                              "bg-blue-100 text-blue-700 hover:bg-blue-100"
                           )}
                         >
                           <StatusIcon className="w-3 h-3 mr-1" />
