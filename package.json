@@ -4,11 +4,11 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build:client": "NODE_OPTIONS='--max-old-space-size=3072' vite build",
+    "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
+    "build:client": "cross-env NODE_OPTIONS=--max-old-space-size=3072 vite build",
     "build:server": "esbuild server/_core/index.ts --platform=node --bundle --format=cjs --outfile=dist/index.cjs --packages=bundle --external:better-sqlite3 --external:mysql2 --external:postgres --external:bcryptjs --external:vite --external:lightningcss --external:@tailwindcss/oxide --external:@babel/core --external:esbuild --external:pdfkit && cp -r server/fonts dist/fonts",
     "build": "pnpm build:client && pnpm build:server",
-    "start": "NODE_ENV=production node dist/index.cjs",
+    "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
@@ -127,7 +127,8 @@
 
     "vitest": "^2.1.9",
     "@types/bcryptjs": "^2.4.6",
-    "@types/archiver": "^7.0.0"
+    "@types/archiver": "^7.0.0",
+    "cross-env": "^7.0.3"
   },
   "packageManager": "pnpm@10.15.1",
   "pnpm": {
