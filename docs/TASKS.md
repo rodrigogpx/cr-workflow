@@ -85,12 +85,24 @@
   - spec: `docs/wp/WP-S0-C.md`
   - prompts: `docs/prompts/ACTIVATE-A2-WP-S0-C-server.md`, `docs/prompts/ACTIVATE-A3-WP-S0-C-client.md`
 
+- [~] WP-S0-D — Alinhar versão pnpm em workflows com `packageManager`
+  - owner: A1
+  - branch: agent-a1/WP-S0-D-pnpm-version-alignment
+  - claimed_at: 2026-04-25
+  - scope: `.github/workflows/integrity.yml`, `.github/workflows/baseline-freeze.yml`
+  - depends_on: nenhum (paralelo a S0-A; deve mergear ANTES de S0-A para destravar CI)
+  - deliverable: remover input `version: 9` dos dois workflows; `pnpm/action-setup@v4` passa a ler `packageManager` do `package.json`. 1 commit, 4 linhas removidas.
+  - integrity_required: static (YAML), CI smoke (re-run de `integrity.yml` no próprio PR)
+  - estimate: 30min
+  - spec: `docs/wp/WP-S0-D.md`
+  - prompt: `docs/prompts/ACTIVATE-A1-WP-S0-D.md`
+
 - [ ] WP-S0-Z — Marco 2: congelar baseline em Linux/CI
   - owner: humano (workflow_dispatch)
   - branch: gerada pelo workflow (`sprint-0/baseline-freeze-<timestamp>`)
   - claimed_at: —
   - scope: `docs/integrity-baseline.md`, `docs/integrity-baseline.json`
-  - depends_on: WP-S0-A, WP-S0-B, WP-S0-C (todos mergeados)
+  - depends_on: WP-S0-A, WP-S0-B, WP-S0-C, WP-S0-D (todos mergeados)
   - deliverable: baseline congelado em Ubuntu via `.github/workflows/baseline-freeze.yml` (workflow_dispatch). PR aberto automaticamente.
   - integrity_required: pré-condição validada pelo próprio workflow (prettier, typecheck, test, build verdes).
   - estimate: 15min de relógio (workflow + review)
@@ -169,4 +181,5 @@ _nenhum_
   - claimed_at: —
   - scope: <caminhos específicos>
   - depends_on: <WP-YY | —>
-  
+
+```
