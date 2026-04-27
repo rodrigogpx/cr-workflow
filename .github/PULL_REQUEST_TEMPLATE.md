@@ -9,7 +9,8 @@
 ## WP associado
 
 <!-- ex.: WP-02 — Migration do estado grace_period -->
-WP-__ — __
+
+WP-** — **
 
 **Agente autor:** <!-- A1 / A2 / A3 / humano -->
 

@@ -7,7 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Save, Pencil, Mail, Plus, Zap, Trash2, XCircle } from "lucide-react";
+import {
+  Loader2,
+  Save,
+  Pencil,
+  Mail,
+  Plus,
+  Zap,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface EmailTriggersPanelProps {
@@ -16,8 +25,11 @@ interface EmailTriggersPanelProps {
 
 export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   const utils = trpc.useUtils();
-  const { data: triggers = [], isLoading } = trpc.tenants.getEmailTriggers.useQuery({ tenantId });
-  const { data: allTemplates = [] } = trpc.tenants.getEmailTemplates.useQuery({ tenantId });
+  const { data: triggers = [], isLoading } =
+    trpc.tenants.getEmailTriggers.useQuery({ tenantId });
+  const { data: allTemplates = [] } = trpc.tenants.getEmailTemplates.useQuery({
+    tenantId,
+  });
 
   const [selectedTrigger, setSelectedTrigger] = useState<any>(null);
   const [panelMounted, setPanelMounted] = useState(false);
@@ -26,7 +38,9 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   const [editActive, setEditActive] = useState(true);
   const [editRecipientType, setEditRecipientType] = useState("client");
   const [editSendImmediate, setEditSendImmediate] = useState(true);
-  const [editSendBeforeHours, setEditSendBeforeHours] = useState<number | null>(null);
+  const [editSendBeforeHours, setEditSendBeforeHours] = useState<number | null>(
+    null
+  );
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<number[]>([]);
   const [loadingTriggerTemplates, setLoadingTriggerTemplates] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -65,11 +79,12 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
     },
   });
 
-  const updateTemplatesMutation = trpc.tenants.updateTriggerTemplates.useMutation({
-    onError: (error: any) => {
-      toast.error(`Erro ao atualizar templates: ${error.message}`);
-    },
-  });
+  const updateTemplatesMutation =
+    trpc.tenants.updateTriggerTemplates.useMutation({
+      onError: (error: any) => {
+        toast.error(`Erro ao atualizar templates: ${error.message}`);
+      },
+    });
 
   const deleteMutation = trpc.tenants.deleteEmailTrigger.useMutation({
     onSuccess: () => {
@@ -84,9 +99,11 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   const seedMutation = trpc.tenants.seedEmailTemplates.useMutation({
     onSuccess: (result: any) => {
       if (result.skipped) {
-        toast.info('Templates e triggers já existem para este tenant');
+        toast.info("Templates e triggers já existem para este tenant");
       } else {
-        toast.success(`Seed concluído: ${result.templates} templates e ${result.triggers} triggers criados`);
+        toast.success(
+          `Seed concluído: ${result.templates} templates e ${result.triggers} triggers criados`
+        );
       }
       utils.tenants.getEmailTemplates.invalidate({ tenantId });
       utils.tenants.getEmailTriggers.invalidate({ tenantId });
@@ -108,7 +125,10 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
     setLoadingTriggerTemplates(true);
 
     try {
-      const linked = await utils.tenants.getTriggerTemplates.fetch({ tenantId, triggerId: trigger.id });
+      const linked = await utils.tenants.getTriggerTemplates.fetch({
+        tenantId,
+        triggerId: trigger.id,
+      });
       setSelectedTemplateIds(linked.map((tt: any) => tt.templateId));
     } catch {
       setSelectedTemplateIds([]);
@@ -118,9 +138,9 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
   };
 
   const toggleTemplate = (templateId: number) => {
-    setSelectedTemplateIds((prev) =>
+    setSelectedTemplateIds(prev =>
       prev.includes(templateId)
-        ? prev.filter((id) => id !== templateId)
+        ? prev.filter(id => id !== templateId)
         : [...prev, templateId]
     );
   };
@@ -177,14 +197,18 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
 
       toast.success("Trigger atualizado com sucesso");
       utils.tenants.getEmailTriggers.invalidate({ tenantId });
-      utils.tenants.getTriggerTemplates.invalidate({ tenantId, triggerId: selectedTrigger.id });
+      utils.tenants.getTriggerTemplates.invalidate({
+        tenantId,
+        triggerId: selectedTrigger.id,
+      });
       closePanel();
     } catch {
       // errors handled by individual mutation onError
     }
   };
 
-  const isSaving = updateMutation.isPending || updateTemplatesMutation.isPending;
+  const isSaving =
+    updateMutation.isPending || updateTemplatesMutation.isPending;
 
   if (isLoading) {
     return (
@@ -200,22 +224,30 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
         <h4 className="font-medium">Automações de Email</h4>
         <div className="flex items-center gap-2">
           <Badge variant="outline">{triggers.length} triggers</Badge>
-          <Button 
-            size="sm" 
-            variant="outline" 
+          <Button
+            size="sm"
+            variant="outline"
             className="h-8"
             onClick={() => {
-              if (confirm("Deseja carregar as automações padrão para este tenant? Isso não apagará as atuais, mas pode duplicar se os nomes forem iguais.")) {
+              if (
+                confirm(
+                  "Deseja carregar as automações padrão para este tenant? Isso não apagará as atuais, mas pode duplicar se os nomes forem iguais."
+                )
+              ) {
                 seedMutation.mutate({ tenantId });
               }
             }}
             disabled={seedMutation.isPending}
           >
-            {seedMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Zap className="h-3 w-3 mr-1" />}
+            {seedMutation.isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <Zap className="h-3 w-3 mr-1" />
+            )}
             Semear Padrão
           </Button>
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             className="h-8"
             onClick={() => {
               setIsCreating(true);
@@ -226,7 +258,7 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
               setEditSendImmediate(true);
               setEditSendBeforeHours(null);
               setSelectedTemplateIds([]);
-              setSelectedTrigger({ id: 'new' });
+              setSelectedTrigger({ id: "new" });
             }}
           >
             <Plus className="h-3 w-3 mr-1" />
@@ -237,7 +269,7 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
 
       {triggers.length > 0 ? (
         <div className="space-y-2">
-          {triggers.map((trigger) => (
+          {triggers.map(trigger => (
             <Card
               key={trigger.id}
               className="cursor-pointer hover:border-primary/50 transition-colors group"
@@ -253,9 +285,15 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                     {trigger.templates?.length > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {trigger.templates.map((triggerTemplate: any) => (
-                          <Badge key={triggerTemplate.id} variant="secondary" className="max-w-full">
+                          <Badge
+                            key={triggerTemplate.id}
+                            variant="secondary"
+                            className="max-w-full"
+                          >
                             <span className="truncate">
-                              {triggerTemplate.template?.templateTitle || triggerTemplate.template?.templateKey || `Template ${triggerTemplate.templateId}`}
+                              {triggerTemplate.template?.templateTitle ||
+                                triggerTemplate.template?.templateKey ||
+                                `Template ${triggerTemplate.templateId}`}
                             </span>
                           </Badge>
                         ))}
@@ -271,10 +309,15 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                       size="sm"
                       variant="ghost"
                       className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
+                      onClick={e => {
                         e.stopPropagation();
-                        if (confirm(`Deseja excluir o trigger "${trigger.name}"?`)) {
-                          deleteMutation.mutate({ tenantId, triggerId: trigger.id });
+                        if (
+                          confirm(`Deseja excluir o trigger "${trigger.name}"?`)
+                        ) {
+                          deleteMutation.mutate({
+                            tenantId,
+                            triggerId: trigger.id,
+                          });
                         }
                       }}
                       disabled={deleteMutation.isPending}
@@ -304,14 +347,14 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
         <div className="fixed inset-0 z-[70]">
           {/* Backdrop */}
           <div
-            className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${panelMounted ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${panelMounted ? "opacity-100" : "opacity-0"}`}
             onClick={closePanel}
           />
 
           {/* Painel deslizante */}
           <div
             className={`absolute top-0 right-0 h-full w-[60vw] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
-              panelMounted ? 'translate-x-0' : 'translate-x-full'
+              panelMounted ? "translate-x-0" : "translate-x-full"
             }`}
           >
             {/* Header */}
@@ -321,7 +364,9 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                   {isCreating ? "Novo Trigger" : "Editar Trigger"}
                 </h2>
                 <p className="text-white/60 text-sm">
-                  {isCreating ? "Configure um novo gatilho de automação" : editName || "Automação de email"}
+                  {isCreating
+                    ? "Configure um novo gatilho de automação"
+                    : editName || "Automação de email"}
                 </p>
               </div>
               <button
@@ -339,7 +384,7 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                   <Label>Nome</Label>
                   <Input
                     value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
+                    onChange={e => setEditName(e.target.value)}
                     placeholder="Nome do trigger"
                     className="bg-white"
                   />
@@ -349,7 +394,7 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                   <Label>Evento</Label>
                   <Input
                     value={editEvent}
-                    onChange={(e) => setEditEvent(e.target.value)}
+                    onChange={e => setEditEvent(e.target.value)}
                     placeholder="Ex: SINARM_STATUS:Solicitado"
                     className="bg-white"
                   />
@@ -363,7 +408,7 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                   <select
                     className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     value={editRecipientType}
-                    onChange={(e) => setEditRecipientType(e.target.value)}
+                    onChange={e => setEditRecipientType(e.target.value)}
                   >
                     <option value="client">Cliente</option>
                     <option value="operator">Operador</option>
@@ -375,17 +420,27 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                 <div className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3">
                   <div>
                     <Label>Ativo</Label>
-                    <p className="text-xs text-muted-foreground">Ativar ou desativar este trigger</p>
+                    <p className="text-xs text-muted-foreground">
+                      Ativar ou desativar este trigger
+                    </p>
                   </div>
-                  <Switch checked={editActive} onCheckedChange={setEditActive} />
+                  <Switch
+                    checked={editActive}
+                    onCheckedChange={setEditActive}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3">
                   <div>
                     <Label>Envio imediato</Label>
-                    <p className="text-xs text-muted-foreground">Enviar assim que o evento ocorrer</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enviar assim que o evento ocorrer
+                    </p>
                   </div>
-                  <Switch checked={editSendImmediate} onCheckedChange={setEditSendImmediate} />
+                  <Switch
+                    checked={editSendImmediate}
+                    onCheckedChange={setEditSendImmediate}
+                  />
                 </div>
 
                 {!editSendImmediate && (
@@ -395,7 +450,11 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                       type="number"
                       min={1}
                       value={editSendBeforeHours ?? ""}
-                      onChange={(e) => setEditSendBeforeHours(e.target.value ? parseInt(e.target.value) : null)}
+                      onChange={e =>
+                        setEditSendBeforeHours(
+                          e.target.value ? parseInt(e.target.value) : null
+                        )
+                      }
                       placeholder="Ex: 24"
                       className="bg-white"
                     />
@@ -412,7 +471,8 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                     Templates de Email
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Selecione os templates que serão enviados quando este trigger for disparado.
+                    Selecione os templates que serão enviados quando este
+                    trigger for disparado.
                   </p>
 
                   {loadingTriggerTemplates ? (
@@ -444,7 +504,8 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground italic py-2">
-                      Nenhum template disponível. Carregue os templates padrão na aba Templates.
+                      Nenhum template disponível. Carregue os templates padrão
+                      na aba Templates.
                     </p>
                   )}
 
@@ -459,7 +520,11 @@ export function EmailTriggersPanel({ tenantId }: EmailTriggersPanelProps) {
 
             {/* Footer fixo */}
             <div className="p-4 border-t border-gray-200 bg-white shrink-0">
-              <Button className="w-full" onClick={handleSave} disabled={isSaving || createMutation.isPending}>
+              <Button
+                className="w-full"
+                onClick={handleSave}
+                disabled={isSaving || createMutation.isPending}
+              >
                 {isSaving || createMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (

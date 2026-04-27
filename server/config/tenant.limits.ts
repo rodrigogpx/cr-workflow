@@ -37,12 +37,7 @@ export async function checkUserLimit(
   const result = await tenantDb
     .select({ id: users.id })
     .from(users)
-    .where(
-      and(
-        eq(users.tenantId, tenantId),
-        isNotNull(users.role)
-      )
-    );
+    .where(and(eq(users.tenantId, tenantId), isNotNull(users.role)));
 
   const current = result.length;
   const percentUsed = maxUsers > 0 ? Math.round((current / maxUsers) * 100) : 0;
@@ -69,7 +64,8 @@ export async function checkClientLimit(
     .where(eq(clients.tenantId, tenantId));
 
   const current = result.length;
-  const percentUsed = maxClients > 0 ? Math.round((current / maxClients) * 100) : 0;
+  const percentUsed =
+    maxClients > 0 ? Math.round((current / maxClients) * 100) : 0;
 
   return {
     allowed: current < maxClients,
@@ -102,10 +98,13 @@ export async function checkStorageLimit(
       const dbMB = Number(row?.dbSizeMB ?? 0);
       dbSizeGB = dbMB / 1024;
     }
-  } catch { /* ignora erro */ }
+  } catch {
+    /* ignora erro */
+  }
 
   const currentGB = fileGB + dbSizeGB;
-  const percentUsed = maxStorageGB > 0 ? Math.round((currentGB / maxStorageGB) * 100) : 0;
+  const percentUsed =
+    maxStorageGB > 0 ? Math.round((currentGB / maxStorageGB) * 100) : 0;
 
   return {
     allowed: currentGB < maxStorageGB,
@@ -141,6 +140,9 @@ export type TenantFeatureFlag =
   | "featureInsumos"
   | "featureIAT";
 
-export function isFeatureEnabled(tenant: TenantConfig, feature: TenantFeatureFlag): boolean {
+export function isFeatureEnabled(
+  tenant: TenantConfig,
+  feature: TenantFeatureFlag
+): boolean {
   return !!tenant[feature];
 }

@@ -5,7 +5,7 @@ const cookieSecret = process.env.COOKIE_SECRET ?? process.env.JWT_SECRET ?? "";
 if (isProduction && !cookieSecret) {
   throw new Error(
     "[SECURITY] COOKIE_SECRET (or JWT_SECRET) is not configured. " +
-    "The server cannot start in production without a session signing secret."
+      "The server cannot start in production without a session signing secret."
   );
 }
 

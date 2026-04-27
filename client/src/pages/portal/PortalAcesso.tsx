@@ -20,7 +20,9 @@ export default function PortalAcesso() {
 
   useEffect(() => {
     if (!token) {
-      setError("Link de convite inválido. Verifique se copiou o link completo do email.");
+      setError(
+        "Link de convite inválido. Verifique se copiou o link completo do email."
+      );
     }
   }, [token]);
 
@@ -74,8 +76,8 @@ export default function PortalAcesso() {
             <Shield className="h-8 w-8 text-purple-600" />
           </div>
           <p className="text-gray-600 text-center max-w-sm">
-            Para ativar seu acesso, confirme seus dados cadastrais. Eles devem ser os mesmos
-            informados ao clube.
+            Para ativar seu acesso, confirme seus dados cadastrais. Eles devem
+            ser os mesmos informados ao clube.
           </p>
         </div>
 
@@ -87,7 +89,10 @@ export default function PortalAcesso() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="email" className="flex items-center gap-2 text-gray-700">
+            <Label
+              htmlFor="email"
+              className="flex items-center gap-2 text-gray-700"
+            >
               <Mail className="h-4 w-4" /> Email cadastrado
             </Label>
             <Input
@@ -95,7 +100,7 @@ export default function PortalAcesso() {
               type="email"
               placeholder="seu@email.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               required
               disabled={!token || loading}
               className="border-gray-200 focus:border-purple-400 focus:ring-purple-300"
@@ -103,7 +108,10 @@ export default function PortalAcesso() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cpf" className="flex items-center gap-2 text-gray-700">
+            <Label
+              htmlFor="cpf"
+              className="flex items-center gap-2 text-gray-700"
+            >
               <CreditCard className="h-4 w-4" /> CPF
             </Label>
             <Input
@@ -111,7 +119,7 @@ export default function PortalAcesso() {
               type="text"
               placeholder="000.000.000-00"
               value={cpf}
-              onChange={(e) => setCpf(formatCpf(e.target.value))}
+              onChange={e => setCpf(formatCpf(e.target.value))}
               required
               disabled={!token || loading}
               maxLength={14}

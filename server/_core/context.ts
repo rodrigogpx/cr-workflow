@@ -102,7 +102,9 @@ export async function createContext(
 
     // Em desenvolvimento, se o tenant não existir, usar configuração default como fallback.
     if (!tenant && !ENV.isProduction) {
-      console.warn(`[TenantContext] Tenant "${tenantSlug}" not found, using default config`);
+      console.warn(
+        `[TenantContext] Tenant "${tenantSlug}" not found, using default config`
+      );
       tenant = {
         ...(defaultTenantConfig as TenantConfig),
         slug: tenantSlug,

@@ -40,17 +40,17 @@ Os dois bloqueiam o baseline mas não são bug de código. Este WP é a higiene 
 
 ## 3. Arquivos esperados no diff
 
-| Arquivo                       | Tipo de mudança                                     |
-| ----------------------------- | --------------------------------------------------- |
-| `package.json`                | Adiciona `cross-env`, reescreve 3 scripts           |
-| `pnpm-lock.yaml`              | Atualizado para incluir `cross-env`                 |
-| `client/**/*.{ts,tsx,css}`    | Formatação                                          |
-| `server/**/*.ts`              | Formatação                                          |
-| `shared/**/*.ts`              | Formatação                                          |
-| `scripts/**/*.{sh,mjs,js}`    | Formatação (se prettier souber a linguagem)         |
-| `.github/**/*.{yml,md}`       | Formatação                                          |
-| `.windsurf/**/*.md`           | Formatação                                          |
-| Raiz: `*.md`, `*.json`, etc.  | Formatação                                          |
+| Arquivo                      | Tipo de mudança                             |
+| ---------------------------- | ------------------------------------------- |
+| `package.json`               | Adiciona `cross-env`, reescreve 3 scripts   |
+| `pnpm-lock.yaml`             | Atualizado para incluir `cross-env`         |
+| `client/**/*.{ts,tsx,css}`   | Formatação                                  |
+| `server/**/*.ts`             | Formatação                                  |
+| `shared/**/*.ts`             | Formatação                                  |
+| `scripts/**/*.{sh,mjs,js}`   | Formatação (se prettier souber a linguagem) |
+| `.github/**/*.{yml,md}`      | Formatação                                  |
+| `.windsurf/**/*.md`          | Formatação                                  |
+| Raiz: `*.md`, `*.json`, etc. | Formatação                                  |
 
 > **Importante:** o WP-S0-A toca arquivos fora da allowlist normal de A2 (especificamente `client/**` e `.windsurf/**`). Isto é **autorizado por exceção** porque o conteúdo da mudança é gerado por ferramenta determinística (prettier), não escrita por humano/agente. O CODEOWNERS deve dispensar review por path neste PR (responsabilidade do owner do repo).
 

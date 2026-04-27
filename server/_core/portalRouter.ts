@@ -33,18 +33,21 @@ function parseCookies(req: Request): Record<string, string> {
   return cookies;
 }
 
-function parsePortalActivities(value: unknown): Array<'atirador' | 'cacador' | 'colecionador'> {
+function parsePortalActivities(
+  value: unknown
+): Array<"atirador" | "cacador" | "colecionador"> {
   if (Array.isArray(value)) {
-    return value.filter((v): v is 'atirador' | 'cacador' | 'colecionador' =>
-      ['atirador', 'cacador', 'colecionador'].includes(String(v))
+    return value.filter((v): v is "atirador" | "cacador" | "colecionador" =>
+      ["atirador", "cacador", "colecionador"].includes(String(v))
     );
   }
-  if (typeof value === 'string' && value.trim()) {
+  if (typeof value === "string" && value.trim()) {
     try {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) {
-        return parsed.filter((v): v is 'atirador' | 'cacador' | 'colecionador' =>
-          ['atirador', 'cacador', 'colecionador'].includes(String(v))
+        return parsed.filter(
+          (v): v is "atirador" | "cacador" | "colecionador" =>
+            ["atirador", "cacador", "colecionador"].includes(String(v))
         );
       }
     } catch {
@@ -54,71 +57,89 @@ function parsePortalActivities(value: unknown): Array<'atirador' | 'cacador' | '
   return [];
 }
 
-const DISPENSADO_PREFIX = '[DISPENSADO] ';
+const DISPENSADO_PREFIX = "[DISPENSADO] ";
 
 function buildPortalRequiredDocuments(
-  activities: Array<'atirador' | 'cacador' | 'colecionador'>,
-  hasSecondCollectionAddress: boolean,
+  activities: Array<"atirador" | "cacador" | "colecionador">,
+  hasSecondCollectionAddress: boolean
 ): string[] {
   const docs = new Set<string>([
-    'Comprovante de Capacidade Técnica para o manuseio de arma de fogo',
-    'Certidão de Antecedente Criminal Justiça Federal',
-    'Declaração de não estar respondendo a inquérito policial ou a processo criminal',
-    'Documento de Identificação Pessoal',
-    'Laudo de Aptidão Psicológica para o manuseio de arma de fogo',
-    'Comprovante de Residência Fixa',
-    'Comprovante de Ocupação Lícita',
-    'Certidão de Antecedente Criminal Justiça Estadual',
-    'Declaração de Segurança do Acervo',
-    'Certidão de Antecedente Criminal Justiça Militar',
-    'Certidão de Antecedente Criminal Justiça Eleitoral',
+    "Comprovante de Capacidade Técnica para o manuseio de arma de fogo",
+    "Certidão de Antecedente Criminal Justiça Federal",
+    "Declaração de não estar respondendo a inquérito policial ou a processo criminal",
+    "Documento de Identificação Pessoal",
+    "Laudo de Aptidão Psicológica para o manuseio de arma de fogo",
+    "Comprovante de Residência Fixa",
+    "Comprovante de Ocupação Lícita",
+    "Certidão de Antecedente Criminal Justiça Estadual",
+    "Declaração de Segurança do Acervo",
+    "Certidão de Antecedente Criminal Justiça Militar",
+    "Certidão de Antecedente Criminal Justiça Eleitoral",
   ]);
 
-  if (activities.includes('atirador')) {
-    docs.add('Declaração com compromisso de comprovar a habitualidade na forma da norma vigente');
-    docs.add('Comprovante de filiação a entidade de tiro desportivo');
+  if (activities.includes("atirador")) {
+    docs.add(
+      "Declaração com compromisso de comprovar a habitualidade na forma da norma vigente"
+    );
+    docs.add("Comprovante de filiação a entidade de tiro desportivo");
   }
-  if (activities.includes('cacador')) {
-    docs.add('Comprovante de filiação a entidade de caça');
-    docs.add('Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama');
+  if (activities.includes("cacador")) {
+    docs.add("Comprovante de filiação a entidade de caça");
+    docs.add(
+      "Comprovante da necessidade de abate de fauna invasora expedido pelo Ibama"
+    );
   }
   if (hasSecondCollectionAddress) {
-    docs.add('Comprovante de Segundo Endereço');
+    docs.add("Comprovante de Segundo Endereço");
   }
 
   return Array.from(docs);
 }
 
 function stripDispensadoPrefix(label: string): string {
-  return label.startsWith(DISPENSADO_PREFIX) ? label.slice(DISPENSADO_PREFIX.length) : label;
+  return label.startsWith(DISPENSADO_PREFIX)
+    ? label.slice(DISPENSADO_PREFIX.length)
+    : label;
 }
 
-async function syncPortalJuntadaSubTasks(activeDb: any, clientId: number, requiredDocuments: string[]) {
-  const { sql } = await import('drizzle-orm');
+async function syncPortalJuntadaSubTasks(
+  activeDb: any,
+  clientId: number,
+  requiredDocuments: string[]
+) {
+  const { sql } = await import("drizzle-orm");
   const stepRows = await activeDb.execute(
     sql`SELECT id FROM "workflowSteps" WHERE "clientId" = ${clientId} AND "stepId" = 'juntada-documento' LIMIT 1`
   );
-  const steps = Array.isArray(stepRows) ? stepRows : (stepRows as any).rows || [];
+  const steps = Array.isArray(stepRows)
+    ? stepRows
+    : (stepRows as any).rows || [];
   if (steps.length === 0) return;
 
   const workflowStepId = steps[0].id;
   const subTaskRows = await activeDb.execute(
     sql`SELECT id, label FROM "subTasks" WHERE "workflowStepId" = ${workflowStepId} ORDER BY id ASC`
   );
-  const subTasks = Array.isArray(subTaskRows) ? subTaskRows : (subTaskRows as any).rows || [];
+  const subTasks = Array.isArray(subTaskRows)
+    ? subTaskRows
+    : (subTaskRows as any).rows || [];
   const requiredSet = new Set(requiredDocuments);
 
   const existing = new Set<string>();
   for (const st of subTasks) {
-    const baseLabel = stripDispensadoPrefix(String(st.label ?? ''));
+    const baseLabel = stripDispensadoPrefix(String(st.label ?? ""));
     existing.add(baseLabel);
     const shouldBeRequired = requiredSet.has(baseLabel);
-    const isDispensed = String(st.label ?? '').startsWith(DISPENSADO_PREFIX);
+    const isDispensed = String(st.label ?? "").startsWith(DISPENSADO_PREFIX);
 
     if (shouldBeRequired && isDispensed) {
-      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${baseLabel} WHERE id = ${st.id}`);
+      await activeDb.execute(
+        sql`UPDATE "subTasks" SET label = ${baseLabel} WHERE id = ${st.id}`
+      );
     } else if (!shouldBeRequired && !isDispensed) {
-      await activeDb.execute(sql`UPDATE "subTasks" SET label = ${DISPENSADO_PREFIX + baseLabel} WHERE id = ${st.id}`);
+      await activeDb.execute(
+        sql`UPDATE "subTasks" SET label = ${DISPENSADO_PREFIX + baseLabel} WHERE id = ${st.id}`
+      );
     }
   }
 
@@ -127,7 +148,7 @@ async function syncPortalJuntadaSubTasks(activeDb: any, clientId: number, requir
     if (existing.has(doc)) continue;
     await db.upsertSubTaskToDb(activeDb, {
       workflowStepId,
-      subTaskId: `doc-${String(idx).padStart(2, '0')}`,
+      subTaskId: `doc-${String(idx).padStart(2, "0")}`,
       label: doc,
       completed: false,
     });
@@ -137,7 +158,9 @@ async function syncPortalJuntadaSubTasks(activeDb: any, clientId: number, requir
 
 function getPortalCookie(req: Request): string | undefined {
   // Support both cookie-parser (req.cookies) and manual parsing
-  return (req as any).cookies?.[PORTAL_COOKIE] ?? parseCookies(req)[PORTAL_COOKIE];
+  return (
+    (req as any).cookies?.[PORTAL_COOKIE] ?? parseCookies(req)[PORTAL_COOKIE]
+  );
 }
 
 function getClientIp(req: Request): string {
@@ -189,23 +212,32 @@ async function resolveTenantDb(req: Request): Promise<{
 
 /** Middleware: exige sessão de portal válida */
 async function requirePortalSession(
-  req: Request & { portalClient?: any; portalTenantId?: number | null; portalDb?: ReturnType<typeof drizzle> | null },
+  req: Request & {
+    portalClient?: any;
+    portalTenantId?: number | null;
+    portalDb?: ReturnType<typeof drizzle> | null;
+  },
   res: Response,
   next: NextFunction
 ) {
   const sessionToken = getPortalCookie(req);
   if (!sessionToken) {
-    return res.status(401).json({ error: "Sessão não encontrada. Faça login no portal." });
+    return res
+      .status(401)
+      .json({ error: "Sessão não encontrada. Faça login no portal." });
   }
 
   const { tenantDb, tenantId } = await resolveTenantDb(req);
-  const activeDb = tenantDb || await db.getDb();
-  if (!activeDb) return res.status(503).json({ error: "Banco de dados indisponível." });
+  const activeDb = tenantDb || (await db.getDb());
+  if (!activeDb)
+    return res.status(503).json({ error: "Banco de dados indisponível." });
 
   const session = await db.getPortalSession(activeDb, sessionToken);
   if (!session) {
     res.clearCookie(PORTAL_COOKIE);
-    return res.status(401).json({ error: "Sessão expirada. Faça login novamente." });
+    return res
+      .status(401)
+      .json({ error: "Sessão expirada. Faça login novamente." });
   }
 
   // Buscar dados do cliente
@@ -213,7 +245,9 @@ async function requirePortalSession(
   const clientRows = await activeDb.execute(
     sql`SELECT * FROM "clients" WHERE "id" = ${session.clientId} LIMIT 1`
   );
-  const clientData = Array.isArray(clientRows) ? clientRows[0] : (clientRows as any).rows?.[0];
+  const clientData = Array.isArray(clientRows)
+    ? clientRows[0]
+    : (clientRows as any).rows?.[0];
   if (!clientData) {
     return res.status(401).json({ error: "Cliente não encontrado." });
   }
@@ -226,7 +260,10 @@ async function requirePortalSession(
 
 export function registerPortalRoutes(app: Express) {
   // Rate limiter específico para o portal (5 tentativas por 15 min)
-  const portalRateLimitStore = new Map<string, { count: number; resetAt: number }>();
+  const portalRateLimitStore = new Map<
+    string,
+    { count: number; resetAt: number }
+  >();
 
   function portalRateLimit(req: Request, res: Response, next: NextFunction) {
     const ip = getClientIp(req);
@@ -240,139 +277,192 @@ export function registerPortalRoutes(app: Express) {
     if (entry.count > 5) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       res.setHeader("Retry-After", retryAfter.toString());
-      return res.status(429).json({ error: "Muitas tentativas. Aguarde 15 minutos." });
+      return res
+        .status(429)
+        .json({ error: "Muitas tentativas. Aguarde 15 minutos." });
     }
     return next();
   }
 
   // Cleanup periódico
-  setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of portalRateLimitStore) {
-      if (v.resetAt <= now) portalRateLimitStore.delete(k);
-    }
-  }, 30 * 60 * 1000).unref();
+  setInterval(
+    () => {
+      const now = Date.now();
+      for (const [k, v] of portalRateLimitStore) {
+        if (v.resetAt <= now) portalRateLimitStore.delete(k);
+      }
+    },
+    30 * 60 * 1000
+  ).unref();
 
   /**
    * POST /api/portal/ativar
    * Primeiro acesso: valida token de convite + email + CPF → cria sessão
    */
-  app.post("/api/portal/ativar", portalRateLimit, async (req: Request, res: Response) => {
-    try {
-      const { token, email, cpf } = req.body ?? {};
-      if (!token || !email || !cpf) {
-        return res.status(400).json({ error: "Token, email e CPF são obrigatórios." });
+  app.post(
+    "/api/portal/ativar",
+    portalRateLimit,
+    async (req: Request, res: Response) => {
+      try {
+        const { token, email, cpf } = req.body ?? {};
+        if (!token || !email || !cpf) {
+          return res
+            .status(400)
+            .json({ error: "Token, email e CPF são obrigatórios." });
+        }
+
+        const { tenantDb, tenantId } = await resolveTenantDb(req);
+        const activeDb = tenantDb || (await db.getDb());
+        if (!activeDb)
+          return res
+            .status(503)
+            .json({ error: "Banco de dados indisponível." });
+
+        // Verificar token de convite
+        const inviteToken = await db.getClientInviteToken(activeDb, token);
+        if (!inviteToken) {
+          return res.status(400).json({ error: "Link de convite inválido." });
+        }
+        if (new Date(inviteToken.expiresAt) < new Date()) {
+          return res.status(400).json({
+            error: "Link de convite expirado. Solicite um novo link ao clube.",
+          });
+        }
+
+        // Verificar email + CPF
+        const client = await db.getClientByEmailAndCpf(
+          activeDb,
+          email,
+          cpf,
+          tenantId
+        );
+        if (!client || client.id !== inviteToken.clientId) {
+          return res
+            .status(401)
+            .json({ error: "Email ou CPF incorretos. Verifique seus dados." });
+        }
+
+        // Marcar token como ativado
+        await db.activateInviteToken(activeDb, token);
+
+        // Criar sessão
+        const sessionToken = await db.createPortalSession(
+          activeDb,
+          client.id,
+          tenantId,
+          getClientIp(req),
+          req.headers["user-agent"]
+        );
+
+        // Registrar atividade
+        await db.logPortalActivity(
+          activeDb,
+          client.id,
+          tenantId,
+          "ACTIVATE_INVITE",
+          {},
+          getClientIp(req)
+        );
+
+        res.cookie(PORTAL_COOKIE, sessionToken, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: req.protocol === "https",
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+          path: "/",
+        });
+
+        return res.json({
+          success: true,
+          client: {
+            id: client.id,
+            name: client.name,
+            email: client.email,
+            cpf: client.cpf,
+          },
+        });
+      } catch (err) {
+        console.error("[Portal] Erro ao ativar convite:", err);
+        return res
+          .status(500)
+          .json({ error: "Erro interno ao ativar convite." });
       }
-
-      const { tenantDb, tenantId } = await resolveTenantDb(req);
-      const activeDb = tenantDb || await db.getDb();
-      if (!activeDb) return res.status(503).json({ error: "Banco de dados indisponível." });
-
-      // Verificar token de convite
-      const inviteToken = await db.getClientInviteToken(activeDb, token);
-      if (!inviteToken) {
-        return res.status(400).json({ error: "Link de convite inválido." });
-      }
-      if (new Date(inviteToken.expiresAt) < new Date()) {
-        return res.status(400).json({ error: "Link de convite expirado. Solicite um novo link ao clube." });
-      }
-
-      // Verificar email + CPF
-      const client = await db.getClientByEmailAndCpf(activeDb, email, cpf, tenantId);
-      if (!client || client.id !== inviteToken.clientId) {
-        return res.status(401).json({ error: "Email ou CPF incorretos. Verifique seus dados." });
-      }
-
-      // Marcar token como ativado
-      await db.activateInviteToken(activeDb, token);
-
-      // Criar sessão
-      const sessionToken = await db.createPortalSession(
-        activeDb,
-        client.id,
-        tenantId,
-        getClientIp(req),
-        req.headers["user-agent"]
-      );
-
-      // Registrar atividade
-      await db.logPortalActivity(activeDb, client.id, tenantId, "ACTIVATE_INVITE", {}, getClientIp(req));
-
-      res.cookie(PORTAL_COOKIE, sessionToken, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: req.protocol === "https",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-        path: "/",
-      });
-
-      return res.json({
-        success: true,
-        client: {
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          cpf: client.cpf,
-        },
-      });
-    } catch (err) {
-      console.error("[Portal] Erro ao ativar convite:", err);
-      return res.status(500).json({ error: "Erro interno ao ativar convite." });
     }
-  });
+  );
 
   /**
    * POST /api/portal/login
    * Login recorrente: email + CPF → cria nova sessão
    */
-  app.post("/api/portal/login", portalRateLimit, async (req: Request, res: Response) => {
-    try {
-      const { email, cpf } = req.body ?? {};
-      if (!email || !cpf) {
-        return res.status(400).json({ error: "Email e CPF são obrigatórios." });
+  app.post(
+    "/api/portal/login",
+    portalRateLimit,
+    async (req: Request, res: Response) => {
+      try {
+        const { email, cpf } = req.body ?? {};
+        if (!email || !cpf) {
+          return res
+            .status(400)
+            .json({ error: "Email e CPF são obrigatórios." });
+        }
+
+        const { tenantDb, tenantId } = await resolveTenantDb(req);
+        const activeDb = tenantDb || (await db.getDb());
+        if (!activeDb)
+          return res
+            .status(503)
+            .json({ error: "Banco de dados indisponível." });
+
+        const client = await db.getClientByEmailAndCpf(
+          activeDb,
+          email,
+          cpf,
+          tenantId
+        );
+        if (!client) {
+          return res.status(401).json({ error: "Email ou CPF incorretos." });
+        }
+
+        const sessionToken = await db.createPortalSession(
+          activeDb,
+          client.id,
+          tenantId,
+          getClientIp(req),
+          req.headers["user-agent"]
+        );
+
+        await db.logPortalActivity(
+          activeDb,
+          client.id,
+          tenantId,
+          "LOGIN",
+          {},
+          getClientIp(req)
+        );
+
+        res.cookie(PORTAL_COOKIE, sessionToken, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: req.protocol === "https",
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+          path: "/",
+        });
+
+        return res.json({
+          success: true,
+          client: {
+            id: client.id,
+            name: client.name,
+            email: client.email,
+            cpf: client.cpf,
+          },
+        });
+      } catch (err) {
+        console.error("[Portal] Erro no login:", err);
+        return res.status(500).json({ error: "Erro interno no login." });
       }
-
-      const { tenantDb, tenantId } = await resolveTenantDb(req);
-      const activeDb = tenantDb || await db.getDb();
-      if (!activeDb) return res.status(503).json({ error: "Banco de dados indisponível." });
-
-      const client = await db.getClientByEmailAndCpf(activeDb, email, cpf, tenantId);
-      if (!client) {
-        return res.status(401).json({ error: "Email ou CPF incorretos." });
-      }
-
-      const sessionToken = await db.createPortalSession(
-        activeDb,
-        client.id,
-        tenantId,
-        getClientIp(req),
-        req.headers["user-agent"]
-      );
-
-      await db.logPortalActivity(activeDb, client.id, tenantId, "LOGIN", {}, getClientIp(req));
-
-      res.cookie(PORTAL_COOKIE, sessionToken, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: req.protocol === "https",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-        path: "/",
-      });
-
-      return res.json({
-        success: true,
-        client: {
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          cpf: client.cpf,
-        },
-      });
-    } catch (err) {
-      console.error("[Portal] Erro no login:", err);
-      return res.status(500).json({ error: "Erro interno no login." });
     }
-  });
+  );
 
   /**
    * POST /api/portal/logout
@@ -382,7 +472,7 @@ export function registerPortalRoutes(app: Express) {
     const sessionToken = getPortalCookie(req);
     if (sessionToken) {
       const { tenantDb } = await resolveTenantDb(req);
-      const activeDb = tenantDb || await db.getDb();
+      const activeDb = tenantDb || (await db.getDb());
       if (activeDb) await db.deletePortalSession(activeDb, sessionToken);
     }
     res.clearCookie(PORTAL_COOKIE, { path: "/" });
@@ -393,159 +483,213 @@ export function registerPortalRoutes(app: Express) {
    * GET /api/portal/me
    * Dados completos do cliente autenticado
    */
-  app.get("/api/portal/me", requirePortalSession as any, async (req: any, res: Response) => {
-    try {
-      const client = req.portalClient;
-      const activeDb = req.portalDb;
+  app.get(
+    "/api/portal/me",
+    requirePortalSession as any,
+    async (req: any, res: Response) => {
+      try {
+        const client = req.portalClient;
+        const activeDb = req.portalDb;
 
-      const lgpdConsent = await db.getLgpdConsent(activeDb, client.id);
+        const lgpdConsent = await db.getLgpdConsent(activeDb, client.id);
 
-      // Verificar se a etapa "cadastro" está marcada como concluída
-      const { sql } = await import("drizzle-orm");
-      const cadastroRows = await activeDb.execute(
-        sql`SELECT completed FROM "workflowSteps" WHERE "clientId" = ${client.id} AND "stepId" = 'cadastro' LIMIT 1`
-      );
-      const cadastroArr = Array.isArray(cadastroRows) ? cadastroRows : (cadastroRows as any).rows || [];
-      const cadastroCompleto = cadastroArr.length > 0 && !!cadastroArr[0].completed;
+        // Verificar se a etapa "cadastro" está marcada como concluída
+        const { sql } = await import("drizzle-orm");
+        const cadastroRows = await activeDb.execute(
+          sql`SELECT completed FROM "workflowSteps" WHERE "clientId" = ${client.id} AND "stepId" = 'cadastro' LIMIT 1`
+        );
+        const cadastroArr = Array.isArray(cadastroRows)
+          ? cadastroRows
+          : (cadastroRows as any).rows || [];
+        const cadastroCompleto =
+          cadastroArr.length > 0 && !!cadastroArr[0].completed;
 
-      return res.json({
-        client: {
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          cpf: client.cpf,
-          phone: client.phone,
-          phone2: client.phone2,
-          identityNumber: client.identityNumber,
-          identityIssueDate: client.identityIssueDate,
-          identityIssuer: client.identityIssuer,
-          identityUf: client.identityUf,
-          birthDate: client.birthDate,
-          gender: client.gender,
-          motherName: client.motherName,
-          fatherName: client.fatherName,
-          maritalStatus: client.maritalStatus,
-          profession: client.profession,
-          cep: client.cep,
-          address: client.address,
-          addressNumber: client.addressNumber,
-          complement: client.complement,
-          neighborhood: client.neighborhood,
-          city: client.city,
-          residenceUf: client.residenceUf,
-          apostilamentoActivities: parsePortalActivities(client.apostilamentoActivities),
-          hasSecondCollectionAddress: !!client.hasSecondCollectionAddress,
-          acervoCep: client.acervoCep,
-          acervoAddress: client.acervoAddress,
-          acervoAddressNumber: client.acervoAddressNumber,
-          acervoNeighborhood: client.acervoNeighborhood,
-          acervoCity: client.acervoCity,
-          acervoUf: client.acervoUf,
-          acervoComplement: client.acervoComplement,
-        },
-        lgpdAccepted: !!lgpdConsent,
-        lgpdAcceptedAt: lgpdConsent?.acceptedAt ?? null,
-        cadastroCompleto,
-        canEditApostilamentoInPortal: !cadastroCompleto,
-      });
-    } catch (err) {
-      console.error("[Portal] Erro ao buscar dados:", err);
-      return res.status(500).json({ error: "Erro ao buscar dados." });
+        return res.json({
+          client: {
+            id: client.id,
+            name: client.name,
+            email: client.email,
+            cpf: client.cpf,
+            phone: client.phone,
+            phone2: client.phone2,
+            identityNumber: client.identityNumber,
+            identityIssueDate: client.identityIssueDate,
+            identityIssuer: client.identityIssuer,
+            identityUf: client.identityUf,
+            birthDate: client.birthDate,
+            gender: client.gender,
+            motherName: client.motherName,
+            fatherName: client.fatherName,
+            maritalStatus: client.maritalStatus,
+            profession: client.profession,
+            cep: client.cep,
+            address: client.address,
+            addressNumber: client.addressNumber,
+            complement: client.complement,
+            neighborhood: client.neighborhood,
+            city: client.city,
+            residenceUf: client.residenceUf,
+            apostilamentoActivities: parsePortalActivities(
+              client.apostilamentoActivities
+            ),
+            hasSecondCollectionAddress: !!client.hasSecondCollectionAddress,
+            acervoCep: client.acervoCep,
+            acervoAddress: client.acervoAddress,
+            acervoAddressNumber: client.acervoAddressNumber,
+            acervoNeighborhood: client.acervoNeighborhood,
+            acervoCity: client.acervoCity,
+            acervoUf: client.acervoUf,
+            acervoComplement: client.acervoComplement,
+          },
+          lgpdAccepted: !!lgpdConsent,
+          lgpdAcceptedAt: lgpdConsent?.acceptedAt ?? null,
+          cadastroCompleto,
+          canEditApostilamentoInPortal: !cadastroCompleto,
+        });
+      } catch (err) {
+        console.error("[Portal] Erro ao buscar dados:", err);
+        return res.status(500).json({ error: "Erro ao buscar dados." });
+      }
     }
-  });
+  );
 
   /**
    * PUT /api/portal/meus-dados
    * Atualiza dados cadastrais do cliente
    */
-  app.put("/api/portal/meus-dados", requirePortalSession as any, async (req: any, res: Response) => {
-    try {
-      const client = req.portalClient;
-      const activeDb = req.portalDb;
-      const tenantId = req.portalTenantId;
+  app.put(
+    "/api/portal/meus-dados",
+    requirePortalSession as any,
+    async (req: any, res: Response) => {
+      try {
+        const client = req.portalClient;
+        const activeDb = req.portalDb;
+        const tenantId = req.portalTenantId;
 
-      // Verificar LGPD aceito
-      const lgpdConsent = await db.getLgpdConsent(activeDb, client.id);
-      if (!lgpdConsent) {
-        return res.status(403).json({ error: "É necessário aceitar o termo LGPD antes de atualizar os dados." });
-      }
+        // Verificar LGPD aceito
+        const lgpdConsent = await db.getLgpdConsent(activeDb, client.id);
+        if (!lgpdConsent) {
+          return res.status(403).json({
+            error:
+              "É necessário aceitar o termo LGPD antes de atualizar os dados.",
+          });
+        }
 
-      const allowed = [
-        "name", "phone", "phone2", "identityNumber", "identityIssueDate",
-        "identityIssuer", "identityUf", "birthDate", "gender",
-        "motherName", "fatherName", "maritalStatus", "profession",
-        "cep", "address", "addressNumber", "complement",
-        "neighborhood", "city", "residenceUf",
-      ];
+        const allowed = [
+          "name",
+          "phone",
+          "phone2",
+          "identityNumber",
+          "identityIssueDate",
+          "identityIssuer",
+          "identityUf",
+          "birthDate",
+          "gender",
+          "motherName",
+          "fatherName",
+          "maritalStatus",
+          "profession",
+          "cep",
+          "address",
+          "addressNumber",
+          "complement",
+          "neighborhood",
+          "city",
+          "residenceUf",
+        ];
 
-      // Restringir edição das opções de apostilamento após conclusão do primeiro cadastro.
-      const { sql } = await import("drizzle-orm");
-      const cadastroRows = await activeDb.execute(
-        sql`SELECT completed FROM "workflowSteps" WHERE "clientId" = ${client.id} AND "stepId" = 'cadastro' LIMIT 1`
-      );
-      const cadastroArr = Array.isArray(cadastroRows) ? cadastroRows : (cadastroRows as any).rows || [];
-      const cadastroCompleto = cadastroArr.length > 0 && !!cadastroArr[0].completed;
-
-      if (!cadastroCompleto) {
-        allowed.push(
-          "apostilamentoActivities",
-          "hasSecondCollectionAddress",
-          "acervoCep",
-          "acervoAddress",
-          "acervoAddressNumber",
-          "acervoNeighborhood",
-          "acervoCity",
-          "acervoUf",
-          "acervoComplement",
+        // Restringir edição das opções de apostilamento após conclusão do primeiro cadastro.
+        const { sql } = await import("drizzle-orm");
+        const cadastroRows = await activeDb.execute(
+          sql`SELECT completed FROM "workflowSteps" WHERE "clientId" = ${client.id} AND "stepId" = 'cadastro' LIMIT 1`
         );
-      }
+        const cadastroArr = Array.isArray(cadastroRows)
+          ? cadastroRows
+          : (cadastroRows as any).rows || [];
+        const cadastroCompleto =
+          cadastroArr.length > 0 && !!cadastroArr[0].completed;
 
-      const data: Record<string, any> = {};
-      for (const key of allowed) {
-        if (req.body[key] !== undefined) {
-          if (key === "apostilamentoActivities") {
-            data[key] = JSON.stringify(parsePortalActivities(req.body[key]));
-          } else if (key === "hasSecondCollectionAddress") {
-            data[key] = Boolean(req.body[key]);
-          } else {
-            data[key] = req.body[key];
+        if (!cadastroCompleto) {
+          allowed.push(
+            "apostilamentoActivities",
+            "hasSecondCollectionAddress",
+            "acervoCep",
+            "acervoAddress",
+            "acervoAddressNumber",
+            "acervoNeighborhood",
+            "acervoCity",
+            "acervoUf",
+            "acervoComplement"
+          );
+        }
+
+        const data: Record<string, any> = {};
+        for (const key of allowed) {
+          if (req.body[key] !== undefined) {
+            if (key === "apostilamentoActivities") {
+              data[key] = JSON.stringify(parsePortalActivities(req.body[key]));
+            } else if (key === "hasSecondCollectionAddress") {
+              data[key] = Boolean(req.body[key]);
+            } else {
+              data[key] = req.body[key];
+            }
           }
         }
-      }
 
-      await db.updateClientFromPortal(activeDb, client.id, tenantId, data);
+        await db.updateClientFromPortal(activeDb, client.id, tenantId, data);
 
-      if (data.apostilamentoActivities !== undefined || data.hasSecondCollectionAddress !== undefined) {
-        const activities = data.apostilamentoActivities !== undefined
-          ? parsePortalActivities(data.apostilamentoActivities)
-          : parsePortalActivities((client as any).apostilamentoActivities);
-        const hasSecondCollectionAddress = data.hasSecondCollectionAddress !== undefined
-          ? Boolean(data.hasSecondCollectionAddress)
-          : Boolean((client as any).hasSecondCollectionAddress);
-        const requiredDocuments = buildPortalRequiredDocuments(activities, hasSecondCollectionAddress);
-        await syncPortalJuntadaSubTasks(activeDb, client.id, requiredDocuments);
-      }
+        if (
+          data.apostilamentoActivities !== undefined ||
+          data.hasSecondCollectionAddress !== undefined
+        ) {
+          const activities =
+            data.apostilamentoActivities !== undefined
+              ? parsePortalActivities(data.apostilamentoActivities)
+              : parsePortalActivities((client as any).apostilamentoActivities);
+          const hasSecondCollectionAddress =
+            data.hasSecondCollectionAddress !== undefined
+              ? Boolean(data.hasSecondCollectionAddress)
+              : Boolean((client as any).hasSecondCollectionAddress);
+          const requiredDocuments = buildPortalRequiredDocuments(
+            activities,
+            hasSecondCollectionAddress
+          );
+          await syncPortalJuntadaSubTasks(
+            activeDb,
+            client.id,
+            requiredDocuments
+          );
+        }
 
-      await db.logPortalActivity(activeDb, client.id, tenantId, "UPDATE_DATA", { fields: Object.keys(data) }, getClientIp(req));
+        await db.logPortalActivity(
+          activeDb,
+          client.id,
+          tenantId,
+          "UPDATE_DATA",
+          { fields: Object.keys(data) },
+          getClientIp(req)
+        );
 
-      // Notificar operador que cliente preencheu dados
-      try {
-        // Buscar email do operador responsável pelo cliente
-        const opRows = await activeDb.execute(
-          (await import("drizzle-orm")).sql`
+        // Notificar operador que cliente preencheu dados
+        try {
+          // Buscar email do operador responsável pelo cliente
+          const opRows = await activeDb.execute(
+            (await import("drizzle-orm")).sql`
             SELECT u.email, u.name FROM "users" u
             INNER JOIN "clients" c ON c."operatorId" = u.id
             WHERE c."id" = ${client.id}
             LIMIT 1
           `
-        );
-        const opArr = Array.isArray(opRows) ? opRows : (opRows as any).rows || [];
-        if (opArr.length > 0 && opArr[0].email) {
-          const { sendEmail } = await import("../emailService");
-          await sendEmail({
-            to: opArr[0].email,
-            subject: `[Portal] ${client.name} preencheu os dados cadastrais`,
-            html: `
+          );
+          const opArr = Array.isArray(opRows)
+            ? opRows
+            : (opRows as any).rows || [];
+          if (opArr.length > 0 && opArr[0].email) {
+            const { sendEmail } = await import("../emailService");
+            await sendEmail({
+              to: opArr[0].email,
+              subject: `[Portal] ${client.name} preencheu os dados cadastrais`,
+              html: `
               <div style="font-family:sans-serif;max-width:600px">
                 <h3 style="color:#7c3aed">Novo preenchimento no Portal</h3>
                 <p>O cliente <strong>${client.name}</strong> (${client.email}) acabou de preencher seus dados cadastrais no Portal do Associado.</p>
@@ -557,72 +701,95 @@ export function registerPortalRoutes(app: Express) {
                 <p style="color:#888;font-size:12px">Esta é uma notificação automática do CAC 360.</p>
               </div>
             `,
-            tenantDb: activeDb,
-            tenantId: tenantId ?? undefined,
-          });
+              tenantDb: activeDb,
+              tenantId: tenantId ?? undefined,
+            });
+          }
+        } catch (notifErr) {
+          console.warn("[Portal] Falha ao notificar operador:", notifErr);
         }
-      } catch (notifErr) {
-        console.warn("[Portal] Falha ao notificar operador:", notifErr);
-      }
 
-      return res.json({ success: true, message: "Dados atualizados com sucesso." });
-    } catch (err) {
-      console.error("[Portal] Erro ao atualizar dados:", err);
-      return res.status(500).json({ error: "Erro ao atualizar dados." });
+        return res.json({
+          success: true,
+          message: "Dados atualizados com sucesso.",
+        });
+      } catch (err) {
+        console.error("[Portal] Erro ao atualizar dados:", err);
+        return res.status(500).json({ error: "Erro ao atualizar dados." });
+      }
     }
-  });
+  );
 
   /**
    * POST /api/portal/lgpd
    * Registra aceite do termo LGPD
    */
-  app.post("/api/portal/lgpd", requirePortalSession as any, async (req: any, res: Response) => {
-    try {
-      const client = req.portalClient;
-      const activeDb = req.portalDb;
-      const tenantId = req.portalTenantId;
+  app.post(
+    "/api/portal/lgpd",
+    requirePortalSession as any,
+    async (req: any, res: Response) => {
+      try {
+        const client = req.portalClient;
+        const activeDb = req.portalDb;
+        const tenantId = req.portalTenantId;
 
-      const existing = await db.getLgpdConsent(activeDb, client.id);
-      if (existing) {
-        return res.json({ success: true, alreadyAccepted: true });
+        const existing = await db.getLgpdConsent(activeDb, client.id);
+        if (existing) {
+          return res.json({ success: true, alreadyAccepted: true });
+        }
+
+        await db.recordLgpdConsent(
+          activeDb,
+          client.id,
+          tenantId,
+          getClientIp(req),
+          req.headers["user-agent"],
+          req.body?.version ?? "1.0"
+        );
+
+        await db.logPortalActivity(
+          activeDb,
+          client.id,
+          tenantId,
+          "ACCEPT_LGPD",
+          { version: req.body?.version ?? "1.0" },
+          getClientIp(req)
+        );
+
+        return res.json({ success: true });
+      } catch (err) {
+        console.error("[Portal] Erro ao registrar LGPD:", err);
+        return res
+          .status(500)
+          .json({ error: "Erro ao registrar consentimento." });
       }
-
-      await db.recordLgpdConsent(
-        activeDb,
-        client.id,
-        tenantId,
-        getClientIp(req),
-        req.headers["user-agent"],
-        req.body?.version ?? "1.0"
-      );
-
-      await db.logPortalActivity(activeDb, client.id, tenantId, "ACCEPT_LGPD", { version: req.body?.version ?? "1.0" }, getClientIp(req));
-
-      return res.json({ success: true });
-    } catch (err) {
-      console.error("[Portal] Erro ao registrar LGPD:", err);
-      return res.status(500).json({ error: "Erro ao registrar consentimento." });
     }
-  });
+  );
 
   /**
    * GET /api/portal/lgpd
    * Verifica status do consentimento LGPD
    */
-  app.get("/api/portal/lgpd", requirePortalSession as any, async (req: any, res: Response) => {
-    try {
-      const client = req.portalClient;
-      const activeDb = req.portalDb;
-      const consent = await db.getLgpdConsent(activeDb, client.id);
-      return res.json({
-        accepted: !!consent,
-        acceptedAt: consent?.acceptedAt ?? null,
-        version: consent?.version ?? null,
-      });
-    } catch (err) {
-      return res.status(500).json({ error: "Erro ao verificar consentimento." });
+  app.get(
+    "/api/portal/lgpd",
+    requirePortalSession as any,
+    async (req: any, res: Response) => {
+      try {
+        const client = req.portalClient;
+        const activeDb = req.portalDb;
+        const consent = await db.getLgpdConsent(activeDb, client.id);
+        return res.json({
+          accepted: !!consent,
+          acceptedAt: consent?.acceptedAt ?? null,
+          version: consent?.version ?? null,
+        });
+      } catch (err) {
+        return res
+          .status(500)
+          .json({ error: "Erro ao verificar consentimento." });
+      }
     }
-  });
+  );
 
   /**
    * GET /api/portal/lgpd/documento
@@ -723,14 +890,17 @@ export function registerPortalRoutes(app: Express) {
    * GET /api/portal/meu-processo
    * Retorna os workflow steps do cliente com sub-tarefas
    */
-  app.get("/api/portal/meu-processo", requirePortalSession as any, async (req: any, res: Response) => {
-    try {
-      const client = req.portalClient;
-      const activeDb = req.portalDb;
+  app.get(
+    "/api/portal/meu-processo",
+    requirePortalSession as any,
+    async (req: any, res: Response) => {
+      try {
+        const client = req.portalClient;
+        const activeDb = req.portalDb;
 
-      // Buscar workflow steps do cliente
-      const steps = await activeDb.execute(
-        (await import("drizzle-orm")).sql`
+        // Buscar workflow steps do cliente
+        const steps = await activeDb.execute(
+          (await import("drizzle-orm")).sql`
           SELECT ws.*,
             COALESCE(
               json_agg(
@@ -752,29 +922,38 @@ export function registerPortalRoutes(app: Express) {
           GROUP BY ws.id
           ORDER BY ws.id
         `
-      );
+        );
 
-      const stepsArr = Array.isArray(steps) ? steps : (steps as any).rows || [];
+        const stepsArr = Array.isArray(steps)
+          ? steps
+          : (steps as any).rows || [];
 
-      return res.json({ steps: stepsArr });
-    } catch (err) {
-      console.error("[Portal] Erro ao buscar processo:", err);
-      return res.status(500).json({ error: "Erro ao buscar processo." });
+        return res.json({ steps: stepsArr });
+      } catch (err) {
+        console.error("[Portal] Erro ao buscar processo:", err);
+        return res.status(500).json({ error: "Erro ao buscar processo." });
+      }
     }
-  });
+  );
 
   /**
    * GET /api/portal/mensagens
    * Feed unificado de mensagens do cliente (rejeições documentais + comentários SINARM)
    */
-  app.get("/api/portal/mensagens", requirePortalSession as any, async (req: any, res: Response) => {
-    try {
-      const client = req.portalClient;
-      const activeDb = req.portalDb;
-      const tenantId: number | null = (req.portalTenantId as number | null) ?? (client.tenantId as number | null) ?? null;
-      const { sql } = await import("drizzle-orm");
+  app.get(
+    "/api/portal/mensagens",
+    requirePortalSession as any,
+    async (req: any, res: Response) => {
+      try {
+        const client = req.portalClient;
+        const activeDb = req.portalDb;
+        const tenantId: number | null =
+          (req.portalTenantId as number | null) ??
+          (client.tenantId as number | null) ??
+          null;
+        const { sql } = await import("drizzle-orm");
 
-      const rejectedRowsRaw = await activeDb.execute(sql`
+        const rejectedRowsRaw = await activeDb.execute(sql`
         SELECT
           pd.id,
           pd."fileName",
@@ -788,9 +967,11 @@ export function registerPortalRoutes(app: Express) {
         ORDER BY COALESCE(pd."reviewedAt", pd."uploadedAt", pd."createdAt") DESC
         LIMIT 100
       `);
-      const rejectedRows = Array.isArray(rejectedRowsRaw) ? rejectedRowsRaw : (rejectedRowsRaw as any).rows || [];
+        const rejectedRows = Array.isArray(rejectedRowsRaw)
+          ? rejectedRowsRaw
+          : (rejectedRowsRaw as any).rows || [];
 
-      const sinarmStepRaw = await activeDb.execute(sql`
+        const sinarmStepRaw = await activeDb.execute(sql`
         SELECT ws.id
         FROM "workflowSteps" ws
         WHERE ws."clientId" = ${client.id}
@@ -802,74 +983,88 @@ export function registerPortalRoutes(app: Express) {
         ORDER BY ws.id DESC
         LIMIT 1
       `);
-      const sinarmStepArr = Array.isArray(sinarmStepRaw) ? sinarmStepRaw : (sinarmStepRaw as any).rows || [];
-      const sinarmStepId: number | null = sinarmStepArr[0]?.id ?? null;
+        const sinarmStepArr = Array.isArray(sinarmStepRaw)
+          ? sinarmStepRaw
+          : (sinarmStepRaw as any).rows || [];
+        const sinarmStepId: number | null = sinarmStepArr[0]?.id ?? null;
 
-      const sinarmComments = sinarmStepId
-        ? await db.getSinarmCommentsByWorkflowStepIdFromDb(activeDb, sinarmStepId, tenantId ?? undefined)
-        : [];
+        const sinarmComments = sinarmStepId
+          ? await db.getSinarmCommentsByWorkflowStepIdFromDb(
+              activeDb,
+              sinarmStepId,
+              tenantId ?? undefined
+            )
+          : [];
 
-      const rejectedMessages = rejectedRows.map((row: any) => ({
-        id: `doc-${row.id}`,
-        type: 'document_rejection' as const,
-        title: 'Documento rejeitado na triagem',
-        body: String(row.rejectionReason || ''),
-        createdAt: row.createdAt,
-        meta: {
-          fileName: row.fileName,
-        },
-      }));
+        const rejectedMessages = rejectedRows.map((row: any) => ({
+          id: `doc-${row.id}`,
+          type: "document_rejection" as const,
+          title: "Documento rejeitado na triagem",
+          body: String(row.rejectionReason || ""),
+          createdAt: row.createdAt,
+          meta: {
+            fileName: row.fileName,
+          },
+        }));
 
-      const sinarmMessages = (sinarmComments || []).map((row: any) => ({
-        id: `sinarm-${row.id}`,
-        type: 'sinarm_comment' as const,
-        title: 'Atualização do acompanhamento SINARM-CAC',
-        body: String(row.comment || ''),
-        createdAt: row.createdAt,
-        meta: {
-          sinarmStatus: row.newStatus,
-          authorName: row.createdByName,
-        },
-      }));
+        const sinarmMessages = (sinarmComments || []).map((row: any) => ({
+          id: `sinarm-${row.id}`,
+          type: "sinarm_comment" as const,
+          title: "Atualização do acompanhamento SINARM-CAC",
+          body: String(row.comment || ""),
+          createdAt: row.createdAt,
+          meta: {
+            sinarmStatus: row.newStatus,
+            authorName: row.createdByName,
+          },
+        }));
 
-      const messages = [...rejectedMessages, ...sinarmMessages]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const messages = [...rejectedMessages, ...sinarmMessages].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
 
-      return res.json({ messages });
-    } catch (err) {
-      console.error("[Portal] Erro ao buscar mensagens:", err);
-      return res.status(500).json({ error: "Erro ao buscar mensagens." });
+        return res.json({ messages });
+      } catch (err) {
+        console.error("[Portal] Erro ao buscar mensagens:", err);
+        return res.status(500).json({ error: "Erro ao buscar mensagens." });
+      }
     }
-  });
+  );
 
   /**
    * GET /api/portal/documentos
    * Retorna a lista de subtarefas de juntada de documentos com status dos docs enviados
    */
-  app.get("/api/portal/documentos", requirePortalSession as any, async (req: any, res: Response) => {
-    try {
-      const client = req.portalClient;
-      const activeDb = req.portalDb;
+  app.get(
+    "/api/portal/documentos",
+    requirePortalSession as any,
+    async (req: any, res: Response) => {
+      try {
+        const client = req.portalClient;
+        const activeDb = req.portalDb;
 
-      // Buscar a etapa "juntada-documento" do cliente
-      const juntadaRows = await activeDb.execute(
-        (await import("drizzle-orm")).sql`
+        // Buscar a etapa "juntada-documento" do cliente
+        const juntadaRows = await activeDb.execute(
+          (await import("drizzle-orm")).sql`
           SELECT id FROM "workflowSteps"
           WHERE "clientId" = ${client.id} AND "stepId" = 'juntada-documento'
           LIMIT 1
         `
-      );
-      const juntadaArr = Array.isArray(juntadaRows) ? juntadaRows : (juntadaRows as any).rows || [];
+        );
+        const juntadaArr = Array.isArray(juntadaRows)
+          ? juntadaRows
+          : (juntadaRows as any).rows || [];
 
-      if (juntadaArr.length === 0) {
-        return res.json({ documents: [] });
-      }
+        if (juntadaArr.length === 0) {
+          return res.json({ documents: [] });
+        }
 
-      const juntadaStepId = juntadaArr[0].id;
+        const juntadaStepId = juntadaArr[0].id;
 
-      // Buscar subtarefas com documentos associados
-      const docs = await activeDb.execute(
-        (await import("drizzle-orm")).sql`
+        // Buscar subtarefas com documentos associados
+        const docs = await activeDb.execute(
+          (await import("drizzle-orm")).sql`
           SELECT
             st.id,
             st."subTaskId",
@@ -886,115 +1081,158 @@ export function registerPortalRoutes(app: Express) {
           WHERE st."workflowStepId" = ${juntadaStepId}
           ORDER BY st.id, d."createdAt" DESC
         `
-      );
+        );
 
-      const docsArr = Array.isArray(docs) ? docs : (docs as any).rows || [];
+        const docsArr = Array.isArray(docs) ? docs : (docs as any).rows || [];
 
-      // Agrupar por subtarefa
-      const grouped: Record<number, any> = {};
-      for (const row of docsArr) {
-        if (!grouped[row.id]) {
-          grouped[row.id] = {
-            id: row.id,
-            subTaskId: row.subTaskId,
-            label: row.label,
-            completed: row.completed,
-            documents: [],
-          };
+        // Agrupar por subtarefa
+        const grouped: Record<number, any> = {};
+        for (const row of docsArr) {
+          if (!grouped[row.id]) {
+            grouped[row.id] = {
+              id: row.id,
+              subTaskId: row.subTaskId,
+              label: row.label,
+              completed: row.completed,
+              documents: [],
+            };
+          }
+          if (row.docId) {
+            grouped[row.id].documents.push({
+              id: row.docId,
+              fileName: row.fileName,
+              fileUrl: row.fileUrl,
+              mimeType: row.mimeType,
+              fileSize: row.fileSize,
+              uploadedAt: row.uploadedAt,
+            });
+          }
         }
-        if (row.docId) {
-          grouped[row.id].documents.push({
-            id: row.docId,
-            fileName: row.fileName,
-            fileUrl: row.fileUrl,
-            mimeType: row.mimeType,
-            fileSize: row.fileSize,
-            uploadedAt: row.uploadedAt,
-          });
-        }
+
+        return res.json({ documents: Object.values(grouped) });
+      } catch (err) {
+        console.error("[Portal] Erro ao buscar documentos:", err);
+        return res.status(500).json({ error: "Erro ao buscar documentos." });
       }
-
-      return res.json({ documents: Object.values(grouped) });
-    } catch (err) {
-      console.error("[Portal] Erro ao buscar documentos:", err);
-      return res.status(500).json({ error: "Erro ao buscar documentos." });
     }
-  });
+  );
 
   // ─── Upload de documento pelo cliente ───────────────────────────────────────
   // POST /api/portal/documentos/upload
-  app.post("/api/portal/documentos/upload", requirePortalSession as any, async (req: any, res: Response) => {
-    const client   = req.portalClient;
-    const activeDb = req.portalDb;
-    // Usar tenantId do hostname quando disponível; caso contrário usar o tenantId do próprio cliente
-    // (necessário quando o portal é acessado pelo domínio principal, ex: hml.cac360.com.br,
-    //  onde o subdomain 'hml' é excluído da resolução de tenant)
-    const tenantId: number | null = (req.portalTenantId as number | null) ?? (client.tenantId as number | null) ?? null;
-    try {
-      const { fileName, fileData, mimeType, fileSize } = req.body ?? {};
-      if (!fileName || !fileData) {
-        return res.status(400).json({ error: "fileName e fileData são obrigatórios." });
+  app.post(
+    "/api/portal/documentos/upload",
+    requirePortalSession as any,
+    async (req: any, res: Response) => {
+      const client = req.portalClient;
+      const activeDb = req.portalDb;
+      // Usar tenantId do hostname quando disponível; caso contrário usar o tenantId do próprio cliente
+      // (necessário quando o portal é acessado pelo domínio principal, ex: hml.cac360.com.br,
+      //  onde o subdomain 'hml' é excluído da resolução de tenant)
+      const tenantId: number | null =
+        (req.portalTenantId as number | null) ??
+        (client.tenantId as number | null) ??
+        null;
+      try {
+        const { fileName, fileData, mimeType, fileSize } = req.body ?? {};
+        if (!fileName || !fileData) {
+          return res
+            .status(400)
+            .json({ error: "fileName e fileData são obrigatórios." });
+        }
+
+        const ALLOWED_MIMES = [
+          "application/pdf",
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ];
+        if (mimeType && !ALLOWED_MIMES.includes(mimeType)) {
+          return res
+            .status(400)
+            .json({ error: "Tipo de arquivo não permitido." });
+        }
+        if (fileSize && fileSize > 10 * 1024 * 1024) {
+          return res
+            .status(400)
+            .json({ error: "Arquivo muito grande. Máximo: 10 MB." });
+        }
+
+        // Decodificar base64 (aceita data URL ou base64 puro)
+        const base64 = String(fileData).includes(",")
+          ? String(fileData).split(",")[1]
+          : String(fileData);
+        const buffer = Buffer.from(base64, "base64");
+
+        // Reutiliza saveClientDocumentFile com validação de path traversal
+        const { saveClientDocumentFile } = await import("../fileStorage");
+        const stored = await saveClientDocumentFile({
+          clientId: client.id,
+          tenantId: tenantId ?? undefined,
+          fileName,
+          buffer,
+        });
+
+        const pendingDocId = await db.createPendingDocument(activeDb, {
+          clientId: client.id,
+          tenantId: tenantId ?? null,
+          fileName: stored.key.split("/").pop() ?? fileName,
+          fileUrl: stored.publicPath,
+          mimeType: mimeType ?? null,
+          fileSize: stored.size,
+        });
+
+        await db.logPortalActivity(
+          activeDb,
+          client.id,
+          tenantId,
+          "document_upload",
+          { fileName },
+          getClientIp(req)
+        );
+
+        // Notificar operador (fire-and-forget)
+        notifyOperatorOfUpload(
+          activeDb,
+          client.id,
+          tenantId ?? null,
+          fileName
+        ).catch(() => {});
+
+        return res.json({
+          success: true,
+          pendingDocId,
+          fileUrl: stored.publicPath,
+        });
+      } catch (err) {
+        console.error("[Portal] Erro no upload:", err);
+        return res.status(500).json({ error: "Erro ao salvar documento." });
       }
-
-      const ALLOWED_MIMES = [
-        "application/pdf", "image/jpeg", "image/png", "image/webp",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ];
-      if (mimeType && !ALLOWED_MIMES.includes(mimeType)) {
-        return res.status(400).json({ error: "Tipo de arquivo não permitido." });
-      }
-      if (fileSize && fileSize > 10 * 1024 * 1024) {
-        return res.status(400).json({ error: "Arquivo muito grande. Máximo: 10 MB." });
-      }
-
-      // Decodificar base64 (aceita data URL ou base64 puro)
-      const base64 = String(fileData).includes(",") ? String(fileData).split(",")[1] : String(fileData);
-      const buffer = Buffer.from(base64, "base64");
-
-      // Reutiliza saveClientDocumentFile com validação de path traversal
-      const { saveClientDocumentFile } = await import("../fileStorage");
-      const stored = await saveClientDocumentFile({
-        clientId: client.id,
-        tenantId: tenantId ?? undefined,
-        fileName,
-        buffer,
-      });
-
-      const pendingDocId = await db.createPendingDocument(activeDb, {
-        clientId: client.id,
-        tenantId: tenantId ?? null,
-        fileName: stored.key.split("/").pop() ?? fileName,
-        fileUrl: stored.publicPath,
-        mimeType: mimeType ?? null,
-        fileSize: stored.size,
-      });
-
-      await db.logPortalActivity(activeDb, client.id, tenantId, "document_upload", { fileName }, getClientIp(req));
-
-      // Notificar operador (fire-and-forget)
-      notifyOperatorOfUpload(activeDb, client.id, tenantId ?? null, fileName).catch(() => {});
-
-      return res.json({ success: true, pendingDocId, fileUrl: stored.publicPath });
-    } catch (err) {
-      console.error("[Portal] Erro no upload:", err);
-      return res.status(500).json({ error: "Erro ao salvar documento." });
     }
-  });
+  );
 
   // GET /api/portal/documentos/fila — documentos enviados pelo cliente com status de triagem
-  app.get("/api/portal/documentos/fila", requirePortalSession as any, async (req: any, res: Response) => {
-    const client   = req.portalClient;
-    const activeDb = req.portalDb;
-    const tenantId = req.portalTenantId as number | null;
-    try {
-      const docs = await db.getPendingDocumentsByClient(activeDb, client.id, tenantId);
-      return res.json({ documents: docs });
-    } catch (err) {
-      console.error("[Portal] Erro ao listar fila:", err);
-      return res.status(500).json({ error: "Erro ao buscar documentos." });
+  app.get(
+    "/api/portal/documentos/fila",
+    requirePortalSession as any,
+    async (req: any, res: Response) => {
+      const client = req.portalClient;
+      const activeDb = req.portalDb;
+      const tenantId = req.portalTenantId as number | null;
+      try {
+        const docs = await db.getPendingDocumentsByClient(
+          activeDb,
+          client.id,
+          tenantId
+        );
+        return res.json({ documents: docs });
+      } catch (err) {
+        console.error("[Portal] Erro ao listar fila:", err);
+        return res.status(500).json({ error: "Erro ao buscar documentos." });
+      }
     }
-  });
+  );
 }
 
 // ─── Notificação ao operador quando cliente envia documento ──────────────────
@@ -1013,7 +1251,7 @@ async function notifyOperatorOfUpload(
       WHERE c.id = ${clientId}
       LIMIT 1
     `);
-    const arr = Array.isArray(opRows) ? opRows : (opRows as any).rows ?? [];
+    const arr = Array.isArray(opRows) ? opRows : ((opRows as any).rows ?? []);
     if (!arr[0]?.email) return;
     const { email, operatorName, clientName } = arr[0];
     const { sendEmail } = await import("../emailService");

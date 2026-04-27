@@ -1,13 +1,25 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  CheckCircle2, XCircle, AlertCircle, MinusCircle,
-  Save, Loader2, Users, Calendar, Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  MinusCircle,
+  Save,
+  Loader2,
+  Users,
+  Calendar,
+  Clock,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -36,15 +48,23 @@ type AttendanceRecord = {
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
-const STATUS_CYCLE: AttendanceStatus[] = ["pendente", "presente", "ausente", "justificado"];
+const STATUS_CYCLE: AttendanceStatus[] = [
+  "pendente",
+  "presente",
+  "ausente",
+  "justificado",
+];
 
-const STATUS_CONFIG: Record<AttendanceStatus, {
-  label: string;
-  shortLabel: string;
-  icon: React.ReactNode;
-  className: string;
-  badgeVariant: "outline" | "default" | "destructive" | "secondary";
-}> = {
+const STATUS_CONFIG: Record<
+  AttendanceStatus,
+  {
+    label: string;
+    shortLabel: string;
+    icon: React.ReactNode;
+    className: string;
+    badgeVariant: "outline" | "default" | "destructive" | "secondary";
+  }
+> = {
   pendente: {
     label: "Pendente",
     shortLabel: "—",
@@ -56,7 +76,8 @@ const STATUS_CONFIG: Record<AttendanceStatus, {
     label: "Presente",
     shortLabel: "P",
     icon: <CheckCircle2 className="h-4 w-4" />,
-    className: "text-emerald-600 bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
+    className:
+      "text-emerald-600 bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
     badgeVariant: "default",
   },
   ausente: {
@@ -130,7 +151,9 @@ function StudentRow({
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">{clientName}</p>
         {clientCpf && (
-          <p className="text-xs text-muted-foreground">{formatCpf(clientCpf)}</p>
+          <p className="text-xs text-muted-foreground">
+            {formatCpf(clientCpf)}
+          </p>
         )}
       </div>
 
@@ -175,7 +198,10 @@ function formatDate(date: string | null): string {
   return `${d}/${m}/${y}`;
 }
 
-function calcPercent(records: AttendanceRecord[], enrollmentId: number): number | null {
+function calcPercent(
+  records: AttendanceRecord[],
+  enrollmentId: number
+): number | null {
   // We only have this session's data here; percent requires all sessions.
   // We'll receive it via prop if available, otherwise return null.
   return null;
@@ -225,7 +251,7 @@ export default function IATAttendanceSheet({
       allAttendanceQuery.refetch();
       setDirtyIds(new Set());
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(`Erro ao salvar: ${err.message}`);
     },
   });
@@ -234,7 +260,9 @@ export default function IATAttendanceSheet({
 
   // ── Local state ───────────────────────────────────────────────────────────────
   // Map: enrollmentId → current status (local/optimistic)
-  const [localStatus, setLocalStatus] = useState<Map<number, AttendanceStatus>>(new Map());
+  const [localStatus, setLocalStatus] = useState<Map<number, AttendanceStatus>>(
+    new Map()
+  );
   const [dirtyIds, setDirtyIds] = useState<Set<number>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -266,12 +294,20 @@ export default function IATAttendanceSheet({
     const map = new Map<number, number>();
     if (!allAttendanceQuery.data || totalSessions === 0) return map;
 
-    const countsByEnrollment = new Map<number, { counted: number; total: number }>();
+    const countsByEnrollment = new Map<
+      number,
+      { counted: number; total: number }
+    >();
 
     for (const rec of allAttendanceQuery.data) {
-      const prev = countsByEnrollment.get(rec.enrollmentId) ?? { counted: 0, total: 0 };
+      const prev = countsByEnrollment.get(rec.enrollmentId) ?? {
+        counted: 0,
+        total: 0,
+      };
       countsByEnrollment.set(rec.enrollmentId, {
-        counted: prev.counted + (rec.status === "presente" || rec.status === "justificado" ? 1 : 0),
+        counted:
+          prev.counted +
+          (rec.status === "presente" || rec.status === "justificado" ? 1 : 0),
         total: prev.total + 1,
       });
     }
@@ -287,7 +323,10 @@ export default function IATAttendanceSheet({
 
   // Summary stats for this session
   const sessionStats = (() => {
-    let present = 0, absent = 0, justified = 0, pending = 0;
+    let present = 0,
+      absent = 0,
+      justified = 0,
+      pending = 0;
     for (const [, status] of localStatus) {
       if (status === "presente") present++;
       else if (status === "ausente") absent++;
@@ -299,14 +338,14 @@ export default function IATAttendanceSheet({
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
   const handleToggle = useCallback((enrollmentId: number) => {
-    setLocalStatus((prev) => {
+    setLocalStatus(prev => {
       const current = prev.get(enrollmentId) ?? "pendente";
       const nextIdx = (STATUS_CYCLE.indexOf(current) + 1) % STATUS_CYCLE.length;
       const next = STATUS_CYCLE[nextIdx];
       return new Map(prev).set(enrollmentId, next);
     });
 
-    setDirtyIds((prev) => new Set(prev).add(enrollmentId));
+    setDirtyIds(prev => new Set(prev).add(enrollmentId));
 
     // Auto-save debounced (2s)
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -321,9 +360,9 @@ export default function IATAttendanceSheet({
       debounceRef.current = null;
     }
 
-    setLocalStatus((currentMap) => {
-      setDirtyIds((currentDirty) => {
-        const records = Array.from(currentDirty).map((enrollmentId) => ({
+    setLocalStatus(currentMap => {
+      setDirtyIds(currentDirty => {
+        const records = Array.from(currentDirty).map(enrollmentId => ({
           sessionId: session.id,
           enrollmentId,
           status: currentMap.get(enrollmentId) ?? "pendente",
@@ -340,11 +379,13 @@ export default function IATAttendanceSheet({
   }, [session.id, recordMutation]);
 
   const handleSaveAll = useCallback(() => {
-    const records = Array.from(localStatus.entries()).map(([enrollmentId, status]) => ({
-      sessionId: session.id,
-      enrollmentId,
-      status,
-    }));
+    const records = Array.from(localStatus.entries()).map(
+      ([enrollmentId, status]) => ({
+        sessionId: session.id,
+        enrollmentId,
+        status,
+      })
+    );
 
     if (records.length === 0) {
       toast.info("Nenhum aluno matriculado nesta turma");
@@ -365,19 +406,26 @@ export default function IATAttendanceSheet({
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
-  const isLoading =
-    enrollmentsQuery.isLoading || attendanceQuery.isLoading;
+  const isLoading = enrollmentsQuery.isLoading || attendanceQuery.isLoading;
 
   const enrollments = enrollmentsQuery.data ?? [];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-xl flex flex-col p-0"
+      >
         {/* Header */}
         <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-1">
           <SheetTitle className="text-lg">
             Frequência — Sessão {session.sessionNumber}
-            {session.title && <span className="text-muted-foreground font-normal"> · {session.title}</span>}
+            {session.title && (
+              <span className="text-muted-foreground font-normal">
+                {" "}
+                · {session.title}
+              </span>
+            )}
           </SheetTitle>
 
           {/* Session meta */}
@@ -431,7 +479,9 @@ export default function IATAttendanceSheet({
         {/* Quick-mark controls */}
         {!isLoading && sessionStats.total > 0 && (
           <div className="flex items-center gap-2 px-6 py-3 border-b bg-muted/30">
-            <span className="text-xs text-muted-foreground mr-1">Marcar todos:</span>
+            <span className="text-xs text-muted-foreground mr-1">
+              Marcar todos:
+            </span>
             <Button
               variant="outline"
               size="sm"
@@ -465,7 +515,7 @@ export default function IATAttendanceSheet({
             </div>
           ) : (
             <div className="divide-y">
-              {enrollments.map((enr) => {
+              {enrollments.map(enr => {
                 const status = localStatus.get(enr.id) ?? "pendente";
                 const percent = attendancePercentMap.get(enr.id) ?? null;
                 const dirty = dirtyIds.has(enr.id);
@@ -492,8 +542,8 @@ export default function IATAttendanceSheet({
             {dirtyIds.size > 0
               ? `${dirtyIds.size} alteração${dirtyIds.size !== 1 ? "ões" : ""} não salva${dirtyIds.size !== 1 ? "s" : ""}`
               : session.attendanceRecorded
-              ? "Frequência registrada"
-              : "Frequência pendente"}
+                ? "Frequência registrada"
+                : "Frequência pendente"}
           </p>
           <div className="flex gap-2">
             <Button
@@ -525,9 +575,19 @@ export default function IATAttendanceSheet({
 
 // ── Stat chip ─────────────────────────────────────────────────────────────────
 
-function StatChip({ label, value, className }: { label: string; value: number; className: string }) {
+function StatChip({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: number;
+  className: string;
+}) {
   return (
-    <div className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${className}`}>
+    <div
+      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${className}`}
+    >
       <span className="font-bold tabular-nums">{value}</span>
       <span className="opacity-80">{label}</span>
     </div>

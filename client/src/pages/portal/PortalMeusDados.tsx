@@ -12,13 +12,43 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Save } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Save,
+} from "lucide-react";
 import { usePortalAuth } from "./usePortalAuth";
 
 const UF_LIST = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
-  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
-  "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ];
 
 const STEPS = ["Identificação", "Contato", "Endereço", "Confirmação"];
@@ -30,7 +60,13 @@ const APOSTILAMENTO_OPTIONS = [
 
 export default function PortalMeusDados() {
   const [, navigate] = useLocation();
-  const { client, lgpdAccepted, loading, refetch, canEditApostilamentoInPortal } = usePortalAuth();
+  const {
+    client,
+    lgpdAccepted,
+    loading,
+    refetch,
+    canEditApostilamentoInPortal,
+  } = usePortalAuth();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -114,13 +150,13 @@ export default function PortalMeusDados() {
   }, [loading, client, lgpdAccepted, navigate]);
 
   function setField(key: string, value: any) {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm(f => ({ ...f, [key]: value }));
   }
 
   function toggleActivity(value: string) {
-    setForm((f) => {
+    setForm(f => {
       const next = f.apostilamentoActivities.includes(value)
-        ? f.apostilamentoActivities.filter((v) => v !== value)
+        ? f.apostilamentoActivities.filter(v => v !== value)
         : [...f.apostilamentoActivities, value];
       return { ...f, apostilamentoActivities: next };
     });
@@ -134,7 +170,7 @@ export default function PortalMeusDados() {
       const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
       const data = await res.json();
       if (!data.erro) {
-        setForm((f) => ({
+        setForm(f => ({
           ...f,
           address: data.logradouro || f.address,
           neighborhood: data.bairro || f.neighborhood,
@@ -187,8 +223,8 @@ export default function PortalMeusDados() {
                     i < step
                       ? "bg-green-500 text-white"
                       : i === step
-                      ? "bg-purple-600 text-white"
-                      : "bg-gray-200 text-gray-500"
+                        ? "bg-purple-600 text-white"
+                        : "bg-gray-200 text-gray-500"
                   }`}
               >
                 {i < step ? "✓" : i + 1}
@@ -226,13 +262,15 @@ export default function PortalMeusDados() {
         {/* Step 0 — Identificação */}
         {step === 0 && (
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-800 mb-4">Dados de Identificação</h3>
+            <h3 className="font-semibold text-gray-800 mb-4">
+              Dados de Identificação
+            </h3>
 
             <div>
               <Label>Nome Completo *</Label>
               <Input
                 value={form.name}
-                onChange={(e) => setField("name", e.target.value)}
+                onChange={e => setField("name", e.target.value)}
                 required
               />
             </div>
@@ -243,12 +281,15 @@ export default function PortalMeusDados() {
                 <Input
                   type="date"
                   value={form.birthDate}
-                  onChange={(e) => setField("birthDate", e.target.value)}
+                  onChange={e => setField("birthDate", e.target.value)}
                 />
               </div>
               <div>
                 <Label>Gênero</Label>
-                <Select value={form.gender} onValueChange={(v) => setField("gender", v)}>
+                <Select
+                  value={form.gender}
+                  onValueChange={v => setField("gender", v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -265,7 +306,7 @@ export default function PortalMeusDados() {
                 <Label>Nº do Documento (RG/CNH)</Label>
                 <Input
                   value={form.identityNumber}
-                  onChange={(e) => setField("identityNumber", e.target.value)}
+                  onChange={e => setField("identityNumber", e.target.value)}
                 />
               </div>
               <div>
@@ -273,7 +314,7 @@ export default function PortalMeusDados() {
                 <Input
                   type="date"
                   value={form.identityIssueDate}
-                  onChange={(e) => setField("identityIssueDate", e.target.value)}
+                  onChange={e => setField("identityIssueDate", e.target.value)}
                 />
               </div>
             </div>
@@ -284,20 +325,20 @@ export default function PortalMeusDados() {
                 <Input
                   placeholder="SSP, DETRAN..."
                   value={form.identityIssuer}
-                  onChange={(e) => setField("identityIssuer", e.target.value)}
+                  onChange={e => setField("identityIssuer", e.target.value)}
                 />
               </div>
               <div>
                 <Label>UF Emissora</Label>
                 <Select
                   value={form.identityUf}
-                  onValueChange={(v) => setField("identityUf", v)}
+                  onValueChange={v => setField("identityUf", v)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="UF" />
                   </SelectTrigger>
                   <SelectContent>
-                    {UF_LIST.map((uf) => (
+                    {UF_LIST.map(uf => (
                       <SelectItem key={uf} value={uf}>
                         {uf}
                       </SelectItem>
@@ -312,14 +353,14 @@ export default function PortalMeusDados() {
                 <Label>Nome da Mãe</Label>
                 <Input
                   value={form.motherName}
-                  onChange={(e) => setField("motherName", e.target.value)}
+                  onChange={e => setField("motherName", e.target.value)}
                 />
               </div>
               <div>
                 <Label>Nome do Pai</Label>
                 <Input
                   value={form.fatherName}
-                  onChange={(e) => setField("fatherName", e.target.value)}
+                  onChange={e => setField("fatherName", e.target.value)}
                 />
               </div>
             </div>
@@ -329,7 +370,7 @@ export default function PortalMeusDados() {
                 <Label>Estado Civil</Label>
                 <Select
                   value={form.maritalStatus}
-                  onValueChange={(v) => setField("maritalStatus", v)}
+                  onValueChange={v => setField("maritalStatus", v)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
@@ -347,7 +388,7 @@ export default function PortalMeusDados() {
                 <Label>Profissão</Label>
                 <Input
                   value={form.profession}
-                  onChange={(e) => setField("profession", e.target.value)}
+                  onChange={e => setField("profession", e.target.value)}
                 />
               </div>
             </div>
@@ -357,16 +398,26 @@ export default function PortalMeusDados() {
         {/* Step 1 — Contato */}
         {step === 1 && (
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-800 mb-4">Informações de Contato</h3>
+            <h3 className="font-semibold text-gray-800 mb-4">
+              Informações de Contato
+            </h3>
 
             <div>
               <Label>Email (não editável)</Label>
-              <Input value={client?.email || ""} disabled className="bg-gray-50" />
+              <Input
+                value={client?.email || ""}
+                disabled
+                className="bg-gray-50"
+              />
             </div>
 
             <div>
               <Label>CPF (não editável)</Label>
-              <Input value={client?.cpf || ""} disabled className="bg-gray-50" />
+              <Input
+                value={client?.cpf || ""}
+                disabled
+                className="bg-gray-50"
+              />
             </div>
 
             <div>
@@ -374,7 +425,7 @@ export default function PortalMeusDados() {
               <Input
                 placeholder="(11) 99999-9999"
                 value={form.phone}
-                onChange={(e) => setField("phone", e.target.value)}
+                onChange={e => setField("phone", e.target.value)}
                 required
               />
             </div>
@@ -384,7 +435,7 @@ export default function PortalMeusDados() {
               <Input
                 placeholder="(11) 88888-8888"
                 value={form.phone2}
-                onChange={(e) => setField("phone2", e.target.value)}
+                onChange={e => setField("phone2", e.target.value)}
               />
             </div>
           </div>
@@ -393,16 +444,26 @@ export default function PortalMeusDados() {
         {/* Step 2 — Endereço */}
         {step === 2 && (
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-800 mb-4">Endereço Residencial</h3>
+            <h3 className="font-semibold text-gray-800 mb-4">
+              Endereço Residencial
+            </h3>
 
             <div className="p-4 rounded-lg border border-purple-200 bg-purple-50/40 space-y-3">
-              <div className="text-sm font-semibold text-purple-900">Atividades para apostilamento</div>
+              <div className="text-sm font-semibold text-purple-900">
+                Atividades para apostilamento
+              </div>
               {!canEditApostilamentoInPortal && (
-                <p className="text-xs text-amber-700">Após o primeiro cadastro, esta seção só pode ser alterada no módulo interno.</p>
+                <p className="text-xs text-amber-700">
+                  Após o primeiro cadastro, esta seção só pode ser alterada no
+                  módulo interno.
+                </p>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {APOSTILAMENTO_OPTIONS.map((opt) => (
-                  <label key={opt.value} className="flex items-center gap-2 text-sm text-gray-800">
+                {APOSTILAMENTO_OPTIONS.map(opt => (
+                  <label
+                    key={opt.value}
+                    className="flex items-center gap-2 text-sm text-gray-800"
+                  >
                     <input
                       type="checkbox"
                       checked={form.apostilamentoActivities.includes(opt.value)}
@@ -418,7 +479,9 @@ export default function PortalMeusDados() {
                 <input
                   type="checkbox"
                   checked={form.hasSecondCollectionAddress}
-                  onChange={(e) => setField("hasSecondCollectionAddress", e.target.checked)}
+                  onChange={e =>
+                    setField("hasSecondCollectionAddress", e.target.checked)
+                  }
                   disabled={!canEditApostilamentoInPortal}
                 />
                 Possui segundo endereço de acervo
@@ -431,14 +494,16 @@ export default function PortalMeusDados() {
                 <Input
                   placeholder="00000-000"
                   value={form.cep}
-                  onChange={(e) => {
+                  onChange={e => {
                     const v = formatCep(e.target.value);
                     setField("cep", v);
                     if (v.replace(/\D/g, "").length === 8) fetchCep(v);
                   }}
                   maxLength={9}
                 />
-                {cepLoading && <Loader2 className="h-5 w-5 animate-spin text-purple-500 flex-shrink-0" />}
+                {cepLoading && (
+                  <Loader2 className="h-5 w-5 animate-spin text-purple-500 flex-shrink-0" />
+                )}
               </div>
             </div>
 
@@ -447,14 +512,14 @@ export default function PortalMeusDados() {
                 <Label>Logradouro *</Label>
                 <Input
                   value={form.address}
-                  onChange={(e) => setField("address", e.target.value)}
+                  onChange={e => setField("address", e.target.value)}
                 />
               </div>
               <div>
                 <Label>Número *</Label>
                 <Input
                   value={form.addressNumber}
-                  onChange={(e) => setField("addressNumber", e.target.value)}
+                  onChange={e => setField("addressNumber", e.target.value)}
                 />
               </div>
             </div>
@@ -464,7 +529,7 @@ export default function PortalMeusDados() {
               <Input
                 placeholder="Apto, Bloco..."
                 value={form.complement}
-                onChange={(e) => setField("complement", e.target.value)}
+                onChange={e => setField("complement", e.target.value)}
               />
             </div>
 
@@ -473,14 +538,14 @@ export default function PortalMeusDados() {
                 <Label>Bairro *</Label>
                 <Input
                   value={form.neighborhood}
-                  onChange={(e) => setField("neighborhood", e.target.value)}
+                  onChange={e => setField("neighborhood", e.target.value)}
                 />
               </div>
               <div>
                 <Label>Cidade *</Label>
                 <Input
                   value={form.city}
-                  onChange={(e) => setField("city", e.target.value)}
+                  onChange={e => setField("city", e.target.value)}
                 />
               </div>
             </div>
@@ -489,13 +554,13 @@ export default function PortalMeusDados() {
               <Label>Estado (UF) *</Label>
               <Select
                 value={form.residenceUf}
-                onValueChange={(v) => setField("residenceUf", v)}
+                onValueChange={v => setField("residenceUf", v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  {UF_LIST.map((uf) => (
+                  {UF_LIST.map(uf => (
                     <SelectItem key={uf} value={uf}>
                       {uf}
                     </SelectItem>
@@ -506,13 +571,17 @@ export default function PortalMeusDados() {
 
             {form.hasSecondCollectionAddress && (
               <div className="space-y-4 p-4 rounded-lg border border-amber-200 bg-amber-50/40">
-                <div className="text-sm font-semibold text-amber-900">Segundo endereço de acervo</div>
+                <div className="text-sm font-semibold text-amber-900">
+                  Segundo endereço de acervo
+                </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label>CEP</Label>
                     <Input
                       value={form.acervoCep}
-                      onChange={(e) => setField("acervoCep", formatCep(e.target.value))}
+                      onChange={e =>
+                        setField("acervoCep", formatCep(e.target.value))
+                      }
                       disabled={!canEditApostilamentoInPortal}
                     />
                   </div>
@@ -520,7 +589,7 @@ export default function PortalMeusDados() {
                     <Label>Logradouro</Label>
                     <Input
                       value={form.acervoAddress}
-                      onChange={(e) => setField("acervoAddress", e.target.value)}
+                      onChange={e => setField("acervoAddress", e.target.value)}
                       disabled={!canEditApostilamentoInPortal}
                     />
                   </div>
@@ -530,7 +599,9 @@ export default function PortalMeusDados() {
                     <Label>Número</Label>
                     <Input
                       value={form.acervoAddressNumber}
-                      onChange={(e) => setField("acervoAddressNumber", e.target.value)}
+                      onChange={e =>
+                        setField("acervoAddressNumber", e.target.value)
+                      }
                       disabled={!canEditApostilamentoInPortal}
                     />
                   </div>
@@ -538,7 +609,9 @@ export default function PortalMeusDados() {
                     <Label>Bairro</Label>
                     <Input
                       value={form.acervoNeighborhood}
-                      onChange={(e) => setField("acervoNeighborhood", e.target.value)}
+                      onChange={e =>
+                        setField("acervoNeighborhood", e.target.value)
+                      }
                       disabled={!canEditApostilamentoInPortal}
                     />
                   </div>
@@ -546,7 +619,7 @@ export default function PortalMeusDados() {
                     <Label>Cidade</Label>
                     <Input
                       value={form.acervoCity}
-                      onChange={(e) => setField("acervoCity", e.target.value)}
+                      onChange={e => setField("acervoCity", e.target.value)}
                       disabled={!canEditApostilamentoInPortal}
                     />
                   </div>
@@ -554,13 +627,18 @@ export default function PortalMeusDados() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>UF</Label>
-                    <Select value={form.acervoUf} onValueChange={(v) => setField("acervoUf", v)}>
+                    <Select
+                      value={form.acervoUf}
+                      onValueChange={v => setField("acervoUf", v)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        {UF_LIST.map((uf) => (
-                          <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                        {UF_LIST.map(uf => (
+                          <SelectItem key={uf} value={uf}>
+                            {uf}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -569,7 +647,9 @@ export default function PortalMeusDados() {
                     <Label>Complemento</Label>
                     <Input
                       value={form.acervoComplement}
-                      onChange={(e) => setField("acervoComplement", e.target.value)}
+                      onChange={e =>
+                        setField("acervoComplement", e.target.value)
+                      }
                       disabled={!canEditApostilamentoInPortal}
                     />
                   </div>
@@ -585,10 +665,12 @@ export default function PortalMeusDados() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="h-10 w-10 text-green-600" />
             </div>
-            <h3 className="text-xl font-bold text-gray-800">Cadastro enviado com sucesso!</h3>
+            <h3 className="text-xl font-bold text-gray-800">
+              Cadastro enviado com sucesso!
+            </h3>
             <p className="text-gray-600 max-w-sm mx-auto">
-              Seus dados foram recebidos e serão analisados pela equipe do clube. Você será
-              notificado por email sobre os próximos passos.
+              Seus dados foram recebidos e serão analisados pela equipe do
+              clube. Você será notificado por email sobre os próximos passos.
             </p>
             <Button
               className="mt-4 bg-purple-600 hover:bg-purple-700 text-white"
@@ -605,7 +687,7 @@ export default function PortalMeusDados() {
             {step > 0 && (
               <Button
                 variant="outline"
-                onClick={() => setStep((s) => s - 1)}
+                onClick={() => setStep(s => s - 1)}
                 disabled={saving}
               >
                 <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
@@ -615,7 +697,7 @@ export default function PortalMeusDados() {
             {step < 2 ? (
               <Button
                 className="bg-purple-600 hover:bg-purple-700 text-white"
-                onClick={() => setStep((s) => s + 1)}
+                onClick={() => setStep(s => s + 1)}
               >
                 Próximo <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
@@ -627,7 +709,8 @@ export default function PortalMeusDados() {
               >
                 {saving ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                    Salvando...
                   </>
                 ) : (
                   <>

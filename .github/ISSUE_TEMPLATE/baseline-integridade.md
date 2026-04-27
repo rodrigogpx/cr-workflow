@@ -35,16 +35,16 @@ scripts/capture-baseline.sh
 
 ## Métricas congeladas
 
-| Métrica                              | Valor         |
-| ------------------------------------ | ------------- |
-| Duração `static`                     |               |
-| Duração `unit`                       |               |
-| Duração `build`                      |               |
-| Total de testes passando             |               |
-| Total de testes falhando             |               |
-| Bundle cliente                       |       KB      |
-| Artefato servidor                    |       KB      |
-| Warnings de typecheck                |               |
+| Métrica                  | Valor |
+| ------------------------ | ----- |
+| Duração `static`         |       |
+| Duração `unit`           |       |
+| Duração `build`          |       |
+| Total de testes passando |       |
+| Total de testes falhando |       |
+| Bundle cliente           | KB    |
+| Artefato servidor        | KB    |
+| Warnings de typecheck    |       |
 
 ## Thresholds de regressão (versionados em `docs/integrity-baseline.json`)
 

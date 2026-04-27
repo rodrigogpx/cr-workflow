@@ -18,21 +18,21 @@
  *   node --env-file=.env scripts/export-null-templates-as-seed.mjs
  */
 
-import postgres from 'postgres';
-import { writeFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import postgres from "postgres";
+import { writeFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, '..');
+const ROOT = join(__dirname, "..");
 
 const dbUrl = process.env.DATABASE_URL;
 if (!dbUrl) {
-  console.error('❌  Defina DATABASE_URL antes de rodar o script.');
+  console.error("❌  Defina DATABASE_URL antes de rodar o script.");
   process.exit(1);
 }
 
-const client = postgres(dbUrl, { ssl: 'require', max: 1 });
+const client = postgres(dbUrl, { ssl: "require", max: 1 });
 
 /**
  * KEY_MAP — renomeia as chaves do banco para o padrão do seed/triggers.
@@ -59,40 +59,76 @@ const client = postgres(dbUrl, { ssl: 'require', max: 1 });
  *  sinarm_cac_status-restituido| Proc. Restituído/Indeferido      | sinarm_restituido
  */
 const KEY_MAP = {
-  'boas_vindas_clube':            'welcome',
-  'juntada_documentos':           'juntada_documentos',
-  'encaminhamento_psicologico':   'psicotecnico',
-  'avaliacao_psicologica':        'psicotecnico_concluido',
-  'agendamento_laudo':            'laudo_tecnico',
-  'confirmacao_laudo':            'laudo_tecnico_concluido',
-  'cadastro-concluido':           'cadastro_concluido',
-  'sinarm_cac_status-solicitado': 'sinarm_solicitado',
-  'sinarm_cac_status-iniciado':   'sinarm_iniciado',
-  'sinarm_cac_status-analise':    'sinarm_em_analise',
-  'sinarm_cac_status-gru':        'sinarm_aguardando_gru',
-  'sinarm_cac_status-restituido': 'sinarm_restituido',
+  boas_vindas_clube: "welcome",
+  juntada_documentos: "juntada_documentos",
+  encaminhamento_psicologico: "psicotecnico",
+  avaliacao_psicologica: "psicotecnico_concluido",
+  agendamento_laudo: "laudo_tecnico",
+  confirmacao_laudo: "laudo_tecnico_concluido",
+  "cadastro-concluido": "cadastro_concluido",
+  "sinarm_cac_status-solicitado": "sinarm_solicitado",
+  "sinarm_cac_status-iniciado": "sinarm_iniciado",
+  "sinarm_cac_status-analise": "sinarm_em_analise",
+  "sinarm_cac_status-gru": "sinarm_aguardando_gru",
+  "sinarm_cac_status-restituido": "sinarm_restituido",
 };
 
 /**
  * META — subject e título para cada chave FINAL (pós-renomeação).
  */
 const META = {
-  'welcome':                { title: 'Boas Vindas',                      subject: 'Bem-vindo(a) à {{nome_clube}} - {{nome}}' },
-  'juntada_documentos':     { title: 'Juntada de Documentos',             subject: 'Conclusão da Juntada de Documentos - {{nome}}' },
-  'psicotecnico':           { title: 'Encaminhamento Psicotécnico',       subject: 'Encaminhamento para Avaliação Psicológica - {{nome}}' },
-  'psicotecnico_concluido': { title: 'Avaliação Psicológica Concluída',   subject: 'Sua Avaliação Psicológica foi recebida - {{nome}}' },
-  'laudo_tecnico':          { title: 'Agendamento Laudo Técnico',         subject: 'Agendamento de Laudo de Capacidade Técnica - {{nome}}' },
-  'laudo_tecnico_concluido':{ title: 'Laudo Técnico Concluído',           subject: 'Seu Laudo Técnico foi recebido - {{nome}}' },
-  'cadastro_concluido':     { title: 'Cadastro Concluído',                subject: 'Seu cadastro foi concluído - {{nome}}' },
-  'sinarm_solicitado':      { title: 'Status Sinarm: Processo Solicitado',subject: 'Seu Processo CAC foi Solicitado no Sinarm - {{nome}}' },
-  'sinarm_iniciado':        { title: 'Status Sinarm: Processo Iniciado',  subject: 'Montagem do Processo CAC Iniciada - {{nome}}' },
-  'sinarm_em_analise':      { title: 'Status Sinarm: Em Análise',         subject: 'Seu Processo CAC está em Análise - {{nome}}' },
-  'sinarm_aguardando_gru':  { title: 'Status Sinarm: Aguardando Baixa GRU', subject: 'Aguardando Baixa do Pagamento (GRU) - {{nome}}' },
-  'sinarm_restituido':      { title: 'Status Sinarm: Processo Restituído',subject: 'Ação Necessária: Processo CAC Restituído - {{nome}}' },
+  welcome: {
+    title: "Boas Vindas",
+    subject: "Bem-vindo(a) à {{nome_clube}} - {{nome}}",
+  },
+  juntada_documentos: {
+    title: "Juntada de Documentos",
+    subject: "Conclusão da Juntada de Documentos - {{nome}}",
+  },
+  psicotecnico: {
+    title: "Encaminhamento Psicotécnico",
+    subject: "Encaminhamento para Avaliação Psicológica - {{nome}}",
+  },
+  psicotecnico_concluido: {
+    title: "Avaliação Psicológica Concluída",
+    subject: "Sua Avaliação Psicológica foi recebida - {{nome}}",
+  },
+  laudo_tecnico: {
+    title: "Agendamento Laudo Técnico",
+    subject: "Agendamento de Laudo de Capacidade Técnica - {{nome}}",
+  },
+  laudo_tecnico_concluido: {
+    title: "Laudo Técnico Concluído",
+    subject: "Seu Laudo Técnico foi recebido - {{nome}}",
+  },
+  cadastro_concluido: {
+    title: "Cadastro Concluído",
+    subject: "Seu cadastro foi concluído - {{nome}}",
+  },
+  sinarm_solicitado: {
+    title: "Status Sinarm: Processo Solicitado",
+    subject: "Seu Processo CAC foi Solicitado no Sinarm - {{nome}}",
+  },
+  sinarm_iniciado: {
+    title: "Status Sinarm: Processo Iniciado",
+    subject: "Montagem do Processo CAC Iniciada - {{nome}}",
+  },
+  sinarm_em_analise: {
+    title: "Status Sinarm: Em Análise",
+    subject: "Seu Processo CAC está em Análise - {{nome}}",
+  },
+  sinarm_aguardando_gru: {
+    title: "Status Sinarm: Aguardando Baixa GRU",
+    subject: "Aguardando Baixa do Pagamento (GRU) - {{nome}}",
+  },
+  sinarm_restituido: {
+    title: "Status Sinarm: Processo Restituído",
+    subject: "Ação Necessária: Processo CAC Restituído - {{nome}}",
+  },
 };
 
 async function main() {
-  console.log('🔍  Buscando templates com tenantId = NULL...');
+  console.log("🔍  Buscando templates com tenantId = NULL...");
 
   const rows = await client`
     SELECT "templateKey", "subject", "content"
@@ -102,7 +138,7 @@ async function main() {
   `;
 
   if (rows.length === 0) {
-    console.warn('⚠️  Nenhum template com tenantId = NULL encontrado.');
+    console.warn("⚠️  Nenhum template com tenantId = NULL encontrado.");
     await client.end();
     process.exit(0);
   }
@@ -116,14 +152,15 @@ async function main() {
     if (newKey !== originalKey) {
       console.log(`  🔑  Renomeando: "${originalKey}" → "${newKey}"`);
     }
-    const meta = META[newKey] || { title: newKey, subject: '' };
-    const b64 = Buffer.from(row.content || '', 'utf8').toString('base64');
+    const meta = META[newKey] || { title: newKey, subject: "" };
+    const b64 = Buffer.from(row.content || "", "utf8").toString("base64");
     return { originalKey, newKey, meta, b64 };
   });
 
   // ── Gerar emailTemplatesData.ts ──────────────────────────────────────────
-  const dataLines = mapped.map(({ newKey, meta, b64 }) =>
-    `defaultEmailTemplates.push({ templateKey: ${JSON.stringify(newKey)}, title: ${JSON.stringify(meta.title)}, subject: ${JSON.stringify(meta.subject)}, contentB64: '${b64}' });`
+  const dataLines = mapped.map(
+    ({ newKey, meta, b64 }) =>
+      `defaultEmailTemplates.push({ templateKey: ${JSON.stringify(newKey)}, title: ${JSON.stringify(meta.title)}, subject: ${JSON.stringify(meta.subject)}, contentB64: '${b64}' });`
   );
 
   const dataFile = [
@@ -131,17 +168,20 @@ async function main() {
     `// Não edite manualmente — re-execute o script para atualizar.`,
     `export const defaultEmailTemplates: {templateKey: string, title: string, subject: string, contentB64: string}[] = [];`,
     ...dataLines,
-    '',
-  ].join('\n');
+    "",
+  ].join("\n");
 
-  const dataPath = join(ROOT, 'server/defaults/emailTemplatesData.ts');
-  writeFileSync(dataPath, dataFile, 'utf8');
+  const dataPath = join(ROOT, "server/defaults/emailTemplatesData.ts");
+  writeFileSync(dataPath, dataFile, "utf8");
   console.log(`📄  Gerado: server/defaults/emailTemplatesData.ts`);
 
   // ── Gerar defaultTemplates.ts ────────────────────────────────────────────
-  const switchCases = mapped.map(({ newKey, meta }) =>
-    `    case ${JSON.stringify(newKey)}: subject = ${JSON.stringify(meta.subject)}; title = ${JSON.stringify(meta.title)}; break;`
-  ).join('\n');
+  const switchCases = mapped
+    .map(
+      ({ newKey, meta }) =>
+        `    case ${JSON.stringify(newKey)}: subject = ${JSON.stringify(meta.subject)}; title = ${JSON.stringify(meta.title)}; break;`
+    )
+    .join("\n");
 
   const templateFile = `// AUTO-GERADO por scripts/export-null-templates-as-seed.mjs
 import { defaultEmailTemplates as rawTemplates } from './emailTemplatesData';
@@ -175,17 +215,17 @@ ${switchCases}
 });
 `;
 
-  const templatePath = join(ROOT, 'server/defaults/defaultTemplates.ts');
-  writeFileSync(templatePath, templateFile, 'utf8');
+  const templatePath = join(ROOT, "server/defaults/defaultTemplates.ts");
+  writeFileSync(templatePath, templateFile, "utf8");
   console.log(`📄  Gerado: server/defaults/defaultTemplates.ts`);
 
   await client.end();
-  console.log('\n✅  Concluído! Revise os arquivos gerados e faça commit.');
-  console.log('\n📋  Resumo das chaves geradas:');
+  console.log("\n✅  Concluído! Revise os arquivos gerados e faça commit.");
+  console.log("\n📋  Resumo das chaves geradas:");
   mapped.forEach(({ newKey }) => console.log(`     • ${newKey}`));
 }
 
 main().catch(err => {
-  console.error('❌  Erro:', err);
+  console.error("❌  Erro:", err);
   process.exit(1);
 });

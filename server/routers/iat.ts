@@ -3,14 +3,27 @@ import { router, adminProcedure, iatProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getTenantDb } from "../config/tenant.config";
 import { getDb } from "../db";
-import { iatInstructors, iatCourses, iatExams, iatSchedules, iatCourseClasses, iatClassEnrollments, iatClassSessions, iatAttendance, clients } from "../../drizzle/schema";
+import {
+  iatInstructors,
+  iatCourses,
+  iatExams,
+  iatSchedules,
+  iatCourseClasses,
+  iatClassEnrollments,
+  iatClassSessions,
+  iatAttendance,
+  clients,
+} from "../../drizzle/schema";
 import { eq, and, desc, sql, count, asc } from "drizzle-orm";
 
 async function getIatDb(ctx: any) {
   if (ctx?.tenantSlug && ctx?.tenant) {
     const tenantDb = await getTenantDb(ctx.tenant);
     if (!tenantDb) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Banco do tenant indisponível" });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Banco do tenant indisponível",
+      });
     }
     return tenantDb;
   }
@@ -42,8 +55,17 @@ const instructorRouter = router({
       const [row] = await db
         .select()
         .from(iatInstructors)
-        .where(and(eq(iatInstructors.id, input.id), eq(iatInstructors.tenantId, tenantId)));
-      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Instrutor não encontrado" });
+        .where(
+          and(
+            eq(iatInstructors.id, input.id),
+            eq(iatInstructors.tenantId, tenantId)
+          )
+        );
+      if (!row)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Instrutor não encontrado",
+        });
       return row;
     }),
 
@@ -103,9 +125,15 @@ const instructorRouter = router({
       const [updated] = await db
         .update(iatInstructors)
         .set({ ...rest, updatedAt: new Date() })
-        .where(and(eq(iatInstructors.id, id), eq(iatInstructors.tenantId, tenantId)))
+        .where(
+          and(eq(iatInstructors.id, id), eq(iatInstructors.tenantId, tenantId))
+        )
         .returning();
-      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Instrutor não encontrado" });
+      if (!updated)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Instrutor não encontrado",
+        });
       return updated;
     }),
 
@@ -116,7 +144,12 @@ const instructorRouter = router({
       const tenantId = getTenantId(ctx);
       await db
         .delete(iatInstructors)
-        .where(and(eq(iatInstructors.id, input.id), eq(iatInstructors.tenantId, tenantId)));
+        .where(
+          and(
+            eq(iatInstructors.id, input.id),
+            eq(iatInstructors.tenantId, tenantId)
+          )
+        );
       return { success: true };
     }),
 });
@@ -142,8 +175,14 @@ const courseRouter = router({
       const [row] = await db
         .select()
         .from(iatCourses)
-        .where(and(eq(iatCourses.id, input.id), eq(iatCourses.tenantId, tenantId)));
-      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Curso não encontrado" });
+        .where(
+          and(eq(iatCourses.id, input.id), eq(iatCourses.tenantId, tenantId))
+        );
+      if (!row)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Curso não encontrado",
+        });
       return row;
     }),
 
@@ -170,7 +209,9 @@ const courseRouter = router({
           workloadHours: input.workloadHours,
           courseType: input.courseType,
           institutionName: input.institutionName ?? null,
-          completionDate: input.completionDate ? new Date(input.completionDate) : null,
+          completionDate: input.completionDate
+            ? new Date(input.completionDate)
+            : null,
           isActive: true,
         })
         .returning();
@@ -198,12 +239,22 @@ const courseRouter = router({
         .update(iatCourses)
         .set({
           ...rest,
-          ...(completionDate !== undefined ? { completionDate: completionDate ? new Date(completionDate) : null } : {}),
+          ...(completionDate !== undefined
+            ? {
+                completionDate: completionDate
+                  ? new Date(completionDate)
+                  : null,
+              }
+            : {}),
           updatedAt: new Date(),
         })
         .where(and(eq(iatCourses.id, id), eq(iatCourses.tenantId, tenantId)))
         .returning();
-      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Curso não encontrado" });
+      if (!updated)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Curso não encontrado",
+        });
       return updated;
     }),
 
@@ -214,7 +265,9 @@ const courseRouter = router({
       const tenantId = getTenantId(ctx);
       await db
         .delete(iatCourses)
-        .where(and(eq(iatCourses.id, input.id), eq(iatCourses.tenantId, tenantId)));
+        .where(
+          and(eq(iatCourses.id, input.id), eq(iatCourses.tenantId, tenantId))
+        );
       return { success: true };
     }),
 });
@@ -228,7 +281,8 @@ const examRouter = router({
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
       const conditions = [eq(iatExams.tenantId, tenantId)];
-      if (input?.clientId) conditions.push(eq(iatExams.clientId, input.clientId));
+      if (input?.clientId)
+        conditions.push(eq(iatExams.clientId, input.clientId));
       return db
         .select()
         .from(iatExams)
@@ -245,7 +299,11 @@ const examRouter = router({
         .select()
         .from(iatExams)
         .where(and(eq(iatExams.id, input.id), eq(iatExams.tenantId, tenantId)));
-      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Exame não encontrado" });
+      if (!row)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Exame não encontrado",
+        });
       return row;
     }),
 
@@ -271,7 +329,9 @@ const examRouter = router({
           clientId: input.clientId,
           instructorId: input.instructorId,
           courseId: input.courseId ?? null,
-          scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
+          scheduledDate: input.scheduledDate
+            ? new Date(input.scheduledDate)
+            : null,
           examType: input.examType,
           status: "agendado",
           weaponType: input.weaponType ?? null,
@@ -289,7 +349,9 @@ const examRouter = router({
         courseId: z.number().optional(),
         scheduledDate: z.string().optional(),
         examType: z.string().optional(),
-        status: z.enum(["agendado", "realizado", "aprovado", "reprovado", "cancelado"]).optional(),
+        status: z
+          .enum(["agendado", "realizado", "aprovado", "reprovado", "cancelado"])
+          .optional(),
         weaponType: z.string().optional(),
         score: z.string().optional(),
         observations: z.string().optional(),
@@ -304,12 +366,18 @@ const examRouter = router({
         .update(iatExams)
         .set({
           ...rest,
-          ...(scheduledDate !== undefined ? { scheduledDate: new Date(scheduledDate) } : {}),
+          ...(scheduledDate !== undefined
+            ? { scheduledDate: new Date(scheduledDate) }
+            : {}),
           updatedAt: new Date(),
         })
         .where(and(eq(iatExams.id, id), eq(iatExams.tenantId, tenantId)))
         .returning();
-      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Exame não encontrado" });
+      if (!updated)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Exame não encontrado",
+        });
       return updated;
     }),
 
@@ -399,9 +467,15 @@ const scheduleRouter = router({
           ...(scheduledDate ? { scheduledDate: new Date(scheduledDate) } : {}),
           updatedAt: new Date(),
         })
-        .where(and(eq(iatSchedules.id, id), eq(iatSchedules.tenantId, tenantId)))
+        .where(
+          and(eq(iatSchedules.id, id), eq(iatSchedules.tenantId, tenantId))
+        )
         .returning();
-      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Agendamento não encontrado" });
+      if (!updated)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agendamento não encontrado",
+        });
       return updated;
     }),
 
@@ -412,7 +486,12 @@ const scheduleRouter = router({
       const tenantId = getTenantId(ctx);
       await db
         .delete(iatSchedules)
-        .where(and(eq(iatSchedules.id, input.id), eq(iatSchedules.tenantId, tenantId)));
+        .where(
+          and(
+            eq(iatSchedules.id, input.id),
+            eq(iatSchedules.tenantId, tenantId)
+          )
+        );
       return { success: true };
     }),
 });
@@ -426,7 +505,8 @@ const classRouter = router({
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
       const conditions = [eq(iatCourseClasses.tenantId, tenantId)];
-      if (input?.courseId) conditions.push(eq(iatCourseClasses.courseId, input.courseId));
+      if (input?.courseId)
+        conditions.push(eq(iatCourseClasses.courseId, input.courseId));
 
       const classes = await db
         .select()
@@ -440,10 +520,12 @@ const classRouter = router({
         const [enrollmentCount] = await db
           .select({ count: count() })
           .from(iatClassEnrollments)
-          .where(and(
-            eq(iatClassEnrollments.classId, cls.id),
-            eq(iatClassEnrollments.tenantId, tenantId)
-          ));
+          .where(
+            and(
+              eq(iatClassEnrollments.classId, cls.id),
+              eq(iatClassEnrollments.tenantId, tenantId)
+            )
+          );
         result.push({ ...cls, enrolledCount: enrollmentCount?.count ?? 0 });
       }
       return result;
@@ -457,23 +539,34 @@ const classRouter = router({
       const [row] = await db
         .select()
         .from(iatCourseClasses)
-        .where(and(eq(iatCourseClasses.id, input.id), eq(iatCourseClasses.tenantId, tenantId)));
-      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Turma não encontrada" });
+        .where(
+          and(
+            eq(iatCourseClasses.id, input.id),
+            eq(iatCourseClasses.tenantId, tenantId)
+          )
+        );
+      if (!row)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Turma não encontrada",
+        });
       return row;
     }),
 
   create: adminProcedure
-    .input(z.object({
-      courseId: z.number(),
-      instructorId: z.number().optional(),
-      classNumber: z.string().optional(),
-      title: z.string().optional(),
-      scheduledDate: z.string().optional(),
-      scheduledTime: z.string().optional(),
-      location: z.string().optional(),
-      maxStudents: z.number().int().min(1).optional(),
-      notes: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        courseId: z.number(),
+        instructorId: z.number().optional(),
+        classNumber: z.string().optional(),
+        title: z.string().optional(),
+        scheduledDate: z.string().optional(),
+        scheduledTime: z.string().optional(),
+        location: z.string().optional(),
+        maxStudents: z.number().int().min(1).optional(),
+        notes: z.string().optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
@@ -485,7 +578,9 @@ const classRouter = router({
           instructorId: input.instructorId ?? null,
           classNumber: input.classNumber ?? null,
           title: input.title ?? null,
-          scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
+          scheduledDate: input.scheduledDate
+            ? new Date(input.scheduledDate)
+            : null,
           scheduledTime: input.scheduledTime ?? null,
           location: input.location ?? null,
           maxStudents: input.maxStudents ?? null,
@@ -497,18 +592,22 @@ const classRouter = router({
     }),
 
   update: adminProcedure
-    .input(z.object({
-      id: z.number(),
-      instructorId: z.number().optional(),
-      classNumber: z.string().optional(),
-      title: z.string().optional(),
-      scheduledDate: z.string().optional(),
-      scheduledTime: z.string().optional(),
-      location: z.string().optional(),
-      maxStudents: z.number().int().min(1).optional(),
-      notes: z.string().optional(),
-      status: z.enum(["agendada", "em_andamento", "concluida", "cancelada"]).optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        instructorId: z.number().optional(),
+        classNumber: z.string().optional(),
+        title: z.string().optional(),
+        scheduledDate: z.string().optional(),
+        scheduledTime: z.string().optional(),
+        location: z.string().optional(),
+        maxStudents: z.number().int().min(1).optional(),
+        notes: z.string().optional(),
+        status: z
+          .enum(["agendada", "em_andamento", "concluida", "cancelada"])
+          .optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
@@ -517,12 +616,23 @@ const classRouter = router({
         .update(iatCourseClasses)
         .set({
           ...rest,
-          ...(scheduledDate !== undefined ? { scheduledDate: scheduledDate ? new Date(scheduledDate) : null } : {}),
+          ...(scheduledDate !== undefined
+            ? { scheduledDate: scheduledDate ? new Date(scheduledDate) : null }
+            : {}),
           updatedAt: new Date(),
         })
-        .where(and(eq(iatCourseClasses.id, id), eq(iatCourseClasses.tenantId, tenantId)))
+        .where(
+          and(
+            eq(iatCourseClasses.id, id),
+            eq(iatCourseClasses.tenantId, tenantId)
+          )
+        )
         .returning();
-      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Turma não encontrada" });
+      if (!updated)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Turma não encontrada",
+        });
       return updated;
     }),
 
@@ -532,10 +642,22 @@ const classRouter = router({
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
       // Delete enrollments first
-      await db.delete(iatClassEnrollments)
-        .where(and(eq(iatClassEnrollments.classId, input.id), eq(iatClassEnrollments.tenantId, tenantId)));
-      await db.delete(iatCourseClasses)
-        .where(and(eq(iatCourseClasses.id, input.id), eq(iatCourseClasses.tenantId, tenantId)));
+      await db
+        .delete(iatClassEnrollments)
+        .where(
+          and(
+            eq(iatClassEnrollments.classId, input.id),
+            eq(iatClassEnrollments.tenantId, tenantId)
+          )
+        );
+      await db
+        .delete(iatCourseClasses)
+        .where(
+          and(
+            eq(iatCourseClasses.id, input.id),
+            eq(iatCourseClasses.tenantId, tenantId)
+          )
+        );
       return { success: true };
     }),
 });
@@ -544,13 +666,22 @@ const classRouter = router({
 
 const enrollmentRouter = router({
   list: iatProcedure
-    .input(z.object({ classId: z.number().optional(), clientId: z.number().optional() }).optional())
+    .input(
+      z
+        .object({
+          classId: z.number().optional(),
+          clientId: z.number().optional(),
+        })
+        .optional()
+    )
     .query(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
       const conditions = [eq(iatClassEnrollments.tenantId, tenantId)];
-      if (input?.classId) conditions.push(eq(iatClassEnrollments.classId, input.classId));
-      if (input?.clientId) conditions.push(eq(iatClassEnrollments.clientId, input.clientId));
+      if (input?.classId)
+        conditions.push(eq(iatClassEnrollments.classId, input.classId));
+      if (input?.clientId)
+        conditions.push(eq(iatClassEnrollments.clientId, input.clientId));
 
       const enrollments = await db
         .select({
@@ -575,23 +706,43 @@ const enrollmentRouter = router({
     }),
 
   enroll: adminProcedure
-    .input(z.object({
-      classId: z.number(),
-      clientIds: z.array(z.number()).min(1),
-    }))
+    .input(
+      z.object({
+        classId: z.number(),
+        clientIds: z.array(z.number()).min(1),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
 
       // Check class exists
-      const [cls] = await db.select().from(iatCourseClasses)
-        .where(and(eq(iatCourseClasses.id, input.classId), eq(iatCourseClasses.tenantId, tenantId)));
-      if (!cls) throw new TRPCError({ code: "NOT_FOUND", message: "Turma não encontrada" });
+      const [cls] = await db
+        .select()
+        .from(iatCourseClasses)
+        .where(
+          and(
+            eq(iatCourseClasses.id, input.classId),
+            eq(iatCourseClasses.tenantId, tenantId)
+          )
+        );
+      if (!cls)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Turma não encontrada",
+        });
 
       // Check maxStudents
       if (cls.maxStudents) {
-        const [current] = await db.select({ count: count() }).from(iatClassEnrollments)
-          .where(and(eq(iatClassEnrollments.classId, input.classId), eq(iatClassEnrollments.tenantId, tenantId)));
+        const [current] = await db
+          .select({ count: count() })
+          .from(iatClassEnrollments)
+          .where(
+            and(
+              eq(iatClassEnrollments.classId, input.classId),
+              eq(iatClassEnrollments.tenantId, tenantId)
+            )
+          );
         const currentCount = current?.count ?? 0;
         if (currentCount + input.clientIds.length > cls.maxStudents) {
           throw new TRPCError({
@@ -605,40 +756,62 @@ const enrollmentRouter = router({
       const inserted = [];
       for (const clientId of input.clientIds) {
         // Check if already enrolled
-        const [existing] = await db.select({ id: iatClassEnrollments.id }).from(iatClassEnrollments)
-          .where(and(
-            eq(iatClassEnrollments.classId, input.classId),
-            eq(iatClassEnrollments.clientId, clientId),
-            eq(iatClassEnrollments.tenantId, tenantId),
-          ));
+        const [existing] = await db
+          .select({ id: iatClassEnrollments.id })
+          .from(iatClassEnrollments)
+          .where(
+            and(
+              eq(iatClassEnrollments.classId, input.classId),
+              eq(iatClassEnrollments.clientId, clientId),
+              eq(iatClassEnrollments.tenantId, tenantId)
+            )
+          );
         if (existing) continue;
 
-        const [row] = await db.insert(iatClassEnrollments).values({
-          tenantId,
-          classId: input.classId,
-          clientId,
-          status: "inscrito",
-        }).returning();
+        const [row] = await db
+          .insert(iatClassEnrollments)
+          .values({
+            tenantId,
+            classId: input.classId,
+            clientId,
+            status: "inscrito",
+          })
+          .returning();
         inserted.push(row);
       }
-      return { inserted: inserted.length, skipped: input.clientIds.length - inserted.length };
+      return {
+        inserted: inserted.length,
+        skipped: input.clientIds.length - inserted.length,
+      };
     }),
 
   updateStatus: adminProcedure
-    .input(z.object({
-      id: z.number(),
-      status: z.enum(["inscrito", "confirmado", "concluido", "cancelado"]),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        status: z.enum(["inscrito", "confirmado", "concluido", "cancelado"]),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
       const setData: any = { status: input.status, updatedAt: new Date() };
       if (input.status === "concluido") setData.completedAt = new Date();
-      const [updated] = await db.update(iatClassEnrollments)
+      const [updated] = await db
+        .update(iatClassEnrollments)
         .set(setData)
-        .where(and(eq(iatClassEnrollments.id, input.id), eq(iatClassEnrollments.tenantId, tenantId)))
+        .where(
+          and(
+            eq(iatClassEnrollments.id, input.id),
+            eq(iatClassEnrollments.tenantId, tenantId)
+          )
+        )
         .returning();
-      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Matrícula não encontrada" });
+      if (!updated)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Matrícula não encontrada",
+        });
       return updated;
     }),
 
@@ -647,8 +820,14 @@ const enrollmentRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
-      await db.delete(iatClassEnrollments)
-        .where(and(eq(iatClassEnrollments.id, input.id), eq(iatClassEnrollments.tenantId, tenantId)));
+      await db
+        .delete(iatClassEnrollments)
+        .where(
+          and(
+            eq(iatClassEnrollments.id, input.id),
+            eq(iatClassEnrollments.tenantId, tenantId)
+          )
+        );
       return { success: true };
     }),
 });
@@ -664,22 +843,29 @@ const sessionRouter = router({
       const sessions = await db
         .select()
         .from(iatClassSessions)
-        .where(and(eq(iatClassSessions.classId, input.classId), eq(iatClassSessions.tenantId, tenantId)))
+        .where(
+          and(
+            eq(iatClassSessions.classId, input.classId),
+            eq(iatClassSessions.tenantId, tenantId)
+          )
+        )
         .orderBy(asc(iatClassSessions.sessionNumber));
       return sessions;
     }),
 
   create: adminProcedure
-    .input(z.object({
-      classId: z.number(),
-      sessionNumber: z.number().min(1).default(1),
-      title: z.string().optional(),
-      scheduledDate: z.string().optional(),
-      scheduledTime: z.string().optional(),
-      durationMinutes: z.number().default(60),
-      location: z.string().optional(),
-      notes: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        classId: z.number(),
+        sessionNumber: z.number().min(1).default(1),
+        title: z.string().optional(),
+        scheduledDate: z.string().optional(),
+        scheduledTime: z.string().optional(),
+        durationMinutes: z.number().default(60),
+        location: z.string().optional(),
+        notes: z.string().optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
@@ -697,18 +883,20 @@ const sessionRouter = router({
     }),
 
   update: adminProcedure
-    .input(z.object({
-      id: z.number(),
-      sessionNumber: z.number().optional(),
-      title: z.string().optional(),
-      scheduledDate: z.string().optional().nullable(),
-      scheduledTime: z.string().optional().nullable(),
-      durationMinutes: z.number().optional(),
-      location: z.string().optional().nullable(),
-      status: z.enum(["agendada", "realizada", "cancelada"]).optional(),
-      notes: z.string().optional().nullable(),
-      attendanceRecorded: z.boolean().optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        sessionNumber: z.number().optional(),
+        title: z.string().optional(),
+        scheduledDate: z.string().optional().nullable(),
+        scheduledTime: z.string().optional().nullable(),
+        durationMinutes: z.number().optional(),
+        location: z.string().optional().nullable(),
+        status: z.enum(["agendada", "realizada", "cancelada"]).optional(),
+        notes: z.string().optional().nullable(),
+        attendanceRecorded: z.boolean().optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
@@ -720,9 +908,18 @@ const sessionRouter = router({
           ...(scheduledDate !== undefined ? { scheduledDate } : {}),
           updatedAt: new Date(),
         })
-        .where(and(eq(iatClassSessions.id, id), eq(iatClassSessions.tenantId, tenantId)))
+        .where(
+          and(
+            eq(iatClassSessions.id, id),
+            eq(iatClassSessions.tenantId, tenantId)
+          )
+        )
         .returning();
-      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Sessão não encontrada" });
+      if (!updated)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Sessão não encontrada",
+        });
       return updated;
     }),
 
@@ -732,10 +929,22 @@ const sessionRouter = router({
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
       // Cascade: delete attendance records first
-      await db.delete(iatAttendance)
-        .where(and(eq(iatAttendance.sessionId, input.id), eq(iatAttendance.tenantId, tenantId)));
-      await db.delete(iatClassSessions)
-        .where(and(eq(iatClassSessions.id, input.id), eq(iatClassSessions.tenantId, tenantId)));
+      await db
+        .delete(iatAttendance)
+        .where(
+          and(
+            eq(iatAttendance.sessionId, input.id),
+            eq(iatAttendance.tenantId, tenantId)
+          )
+        );
+      await db
+        .delete(iatClassSessions)
+        .where(
+          and(
+            eq(iatClassSessions.id, input.id),
+            eq(iatClassSessions.tenantId, tenantId)
+          )
+        );
       return { success: true };
     }),
 });
@@ -762,9 +971,17 @@ const attendanceRouter = router({
           clientCpf: clients.cpf,
         })
         .from(iatAttendance)
-        .innerJoin(iatClassEnrollments, eq(iatAttendance.enrollmentId, iatClassEnrollments.id))
+        .innerJoin(
+          iatClassEnrollments,
+          eq(iatAttendance.enrollmentId, iatClassEnrollments.id)
+        )
         .innerJoin(clients, eq(iatClassEnrollments.clientId, clients.id))
-        .where(and(eq(iatAttendance.sessionId, input.sessionId), eq(iatAttendance.tenantId, tenantId)));
+        .where(
+          and(
+            eq(iatAttendance.sessionId, input.sessionId),
+            eq(iatAttendance.tenantId, tenantId)
+          )
+        );
       return rows;
     }),
 
@@ -778,7 +995,12 @@ const attendanceRouter = router({
       const sessions = await db
         .select({ id: iatClassSessions.id })
         .from(iatClassSessions)
-        .where(and(eq(iatClassSessions.classId, input.classId), eq(iatClassSessions.tenantId, tenantId)));
+        .where(
+          and(
+            eq(iatClassSessions.classId, input.classId),
+            eq(iatClassSessions.tenantId, tenantId)
+          )
+        );
 
       if (sessions.length === 0) return [];
 
@@ -789,7 +1011,10 @@ const attendanceRouter = router({
         .where(
           and(
             eq(iatAttendance.tenantId, tenantId),
-            sql`${iatAttendance.sessionId} = ANY(ARRAY[${sql.join(sessionIds.map(id => sql`${id}`), sql`, `)}]::int[])`
+            sql`${iatAttendance.sessionId} = ANY(ARRAY[${sql.join(
+              sessionIds.map(id => sql`${id}`),
+              sql`, `
+            )}]::int[])`
           )
         );
       return rows;
@@ -797,14 +1022,18 @@ const attendanceRouter = router({
 
   /** Upsert attendance records in batch (optimistic update pattern) */
   record: adminProcedure
-    .input(z.object({
-      records: z.array(z.object({
-        sessionId: z.number(),
-        enrollmentId: z.number(),
-        status: z.enum(["pendente", "presente", "ausente", "justificado"]),
-        notes: z.string().optional().nullable(),
-      })),
-    }))
+    .input(
+      z.object({
+        records: z.array(
+          z.object({
+            sessionId: z.number(),
+            enrollmentId: z.number(),
+            status: z.enum(["pendente", "presente", "ausente", "justificado"]),
+            notes: z.string().optional().nullable(),
+          })
+        ),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const db = await getIatDb(ctx);
       const tenantId = getTenantId(ctx);
@@ -828,9 +1057,15 @@ const attendanceRouter = router({
         const sessionId = input.records[0].sessionId;
         const hasRealRecord = input.records.some(r => r.status !== "pendente");
         if (hasRealRecord) {
-          await db.update(iatClassSessions)
+          await db
+            .update(iatClassSessions)
             .set({ attendanceRecorded: true, updatedAt: new Date() })
-            .where(and(eq(iatClassSessions.id, sessionId), eq(iatClassSessions.tenantId, tenantId)));
+            .where(
+              and(
+                eq(iatClassSessions.id, sessionId),
+                eq(iatClassSessions.tenantId, tenantId)
+              )
+            );
         }
       }
 

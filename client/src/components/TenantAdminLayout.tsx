@@ -2,16 +2,39 @@ import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, UserCheck, FileText, X, ChevronRight, Mail, Zap, Settings } from "lucide-react";
+import {
+  Shield,
+  Users,
+  UserCheck,
+  FileText,
+  X,
+  ChevronRight,
+  Mail,
+  Zap,
+  Settings,
+} from "lucide-react";
 import { useLocation } from "wouter";
-import { useEffectiveTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
+import {
+  useEffectiveTenantSlug,
+  buildTenantPath,
+} from "@/_core/hooks/useTenantSlug";
 
 interface TenantAdminLayoutProps {
   children: ReactNode;
-  active: "dashboard" | "users" | "operators" | "emails" | "email-triggers" | "settings" | "audit";
+  active:
+    | "dashboard"
+    | "users"
+    | "operators"
+    | "emails"
+    | "email-triggers"
+    | "settings"
+    | "audit";
 }
 
-export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) {
+export function TenantAdminLayout({
+  children,
+  active,
+}: TenantAdminLayoutProps) {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const tenantSlug = useEffectiveTenantSlug();
@@ -111,14 +134,18 @@ export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) 
               <img src={APP_LOGO} alt="" className="h-7 w-auto" />
             </div>
             <div className="leading-tight">
-              <p className="uppercase tracking-[0.25em] text-[0.55rem] text-white/40">Administração</p>
+              <p className="uppercase tracking-[0.25em] text-[0.55rem] text-white/40">
+                Administração
+              </p>
               <p className="font-semibold text-white text-[0.8rem]">CAC 360</p>
             </div>
           </div>
           <div className="h-6 w-px bg-white/10 mx-2" />
           <div className="flex items-center gap-2 text-xs text-white/60">
             <Shield className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="uppercase tracking-wider text-[0.65rem]">{user?.name || user?.email}</span>
+            <span className="uppercase tracking-wider text-[0.65rem]">
+              {user?.name || user?.email}
+            </span>
           </div>
         </div>
         <Button
@@ -143,12 +170,14 @@ export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) 
                 Configurações do Clube
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {cardItems.map((item) => {
+                {cardItems.map(item => {
                   const Icon = item.icon;
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setLocation(buildTenantPath(tenantSlug, item.path))}
+                      onClick={() =>
+                        setLocation(buildTenantPath(tenantSlug, item.path))
+                      }
                       className="group relative bg-white rounded-xl border border-gray-200 p-5 text-left transition-all duration-200 hover:shadow-lg hover:border-gray-300 hover:-translate-y-0.5 active:scale-[0.98]"
                     >
                       <div className="flex items-start justify-between">
@@ -158,10 +187,16 @@ export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) 
                         <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors mt-1" />
                       </div>
                       <div className="mt-4">
-                        <h3 className="font-semibold text-gray-900 text-base">{item.label}</h3>
-                        <p className="text-sm text-gray-500 mt-1 leading-relaxed">{item.description}</p>
+                        <h3 className="font-semibold text-gray-900 text-base">
+                          {item.label}
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+                          {item.description}
+                        </p>
                       </div>
-                      <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${item.color} rounded-b-xl opacity-0 group-hover:opacity-100 transition-opacity`} />
+                      <div
+                        className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${item.color} rounded-b-xl opacity-0 group-hover:opacity-100 transition-opacity`}
+                      />
                     </button>
                   );
                 })}
@@ -193,12 +228,18 @@ export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) 
               <div className="flex items-center gap-3">
                 {activeItem && (
                   <div className={`${activeItem.iconBg} rounded-lg p-2`}>
-                    <activeItem.icon className={`h-5 w-5 ${activeItem.iconColor}`} />
+                    <activeItem.icon
+                      className={`h-5 w-5 ${activeItem.iconColor}`}
+                    />
                   </div>
                 )}
                 <div>
-                  <h2 className="text-white font-semibold text-base">{activeItem?.label || "Configuração"}</h2>
-                  <p className="text-white/50 text-xs">{activeItem?.description}</p>
+                  <h2 className="text-white font-semibold text-base">
+                    {activeItem?.label || "Configuração"}
+                  </h2>
+                  <p className="text-white/50 text-xs">
+                    {activeItem?.description}
+                  </p>
                 </div>
               </div>
               <button
@@ -211,9 +252,7 @@ export function TenantAdminLayout({ children, active }: TenantAdminLayoutProps) 
 
             {/* Panel Content */}
             <div className="flex-1 overflow-y-auto p-6 bg-[#f5f5f5]">
-              <div className="max-w-5xl mx-auto">
-                {children}
-              </div>
+              <div className="max-w-5xl mx-auto">{children}</div>
             </div>
           </div>
         </div>

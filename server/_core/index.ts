@@ -1,5 +1,9 @@
 import "dotenv/config";
-import express, { type Request, type Response, type NextFunction } from "express";
+import express, {
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import cors from "cors";
 import { createServer } from "http";
 import net from "net";
@@ -23,17 +27,21 @@ const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 min
 const RATE_LIMIT_MAX = 20; // 20 attempts per window
 
 // Cleanup stale entries every 30 minutes to prevent memory growth
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, val] of _rateLimitStore) {
-    if (val.resetAt <= now) _rateLimitStore.delete(key);
-  }
-}, 30 * 60 * 1000).unref();
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, val] of _rateLimitStore) {
+      if (val.resetAt <= now) _rateLimitStore.delete(key);
+    }
+  },
+  30 * 60 * 1000
+).unref();
 
 function authRateLimiter(req: Request, res: Response, next: NextFunction) {
-  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
-    ?? req.socket.remoteAddress
-    ?? "unknown";
+  const ip =
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ??
+    req.socket.remoteAddress ??
+    "unknown";
   const now = Date.now();
   const entry = _rateLimitStore.get(ip);
 
@@ -46,7 +54,9 @@ function authRateLimiter(req: Request, res: Response, next: NextFunction) {
   if (entry.count > RATE_LIMIT_MAX) {
     const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
     res.setHeader("Retry-After", retryAfter.toString());
-    return res.status(429).json({ error: "Muitas tentativas. Tente novamente mais tarde." });
+    return res
+      .status(429)
+      .json({ error: "Muitas tentativas. Tente novamente mais tarde." });
   }
   return next();
 }
@@ -84,21 +94,24 @@ async function startServer() {
   // ─── Health check PRIMEIRO — antes de qualquer inicialização que possa lançar ───
   // Isso garante que o Railway/Docker healthcheck responde mesmo se o DB estiver
   // indisponível ou se uma variável de ambiente estiver ausente.
-  app.get('/health', (_req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
-  app.get('/api/health', (_req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
   // Começar a escutar imediatamente para o healthcheck passar
-  await new Promise<void>((resolve) => server.listen(port, "0.0.0.0", resolve));
+  await new Promise<void>(resolve => server.listen(port, "0.0.0.0", resolve));
   console.log(`[Server] Listening on port ${port}`);
 
   // ─── Migrations ───────────────────────────────────────────────────────────────
   await ensureMissingTables();
-  await ensurePortalAndMarketingTables().catch((err) => {
-    console.error("[Migration] ensurePortalAndMarketingTables failed (non-fatal):", err);
+  await ensurePortalAndMarketingTables().catch(err => {
+    console.error(
+      "[Migration] ensurePortalAndMarketingTables failed (non-fatal):",
+      err
+    );
   });
 
   const installWizardEnabled =
@@ -106,22 +119,29 @@ async function startServer() {
 
   // SECURITY: Restrict CORS origin in production to configured domain(s)
   // Normalize DOMAIN — aceita com ou sem protocolo (ex: "cac360.com.br" ou "https://hml.cac360.com.br")
-  const rawDomain = process.env.DOMAIN?.replace(/^https?:\/\//, "").replace(/\/$/, "") ?? "";
+  const rawDomain =
+    process.env.DOMAIN?.replace(/^https?:\/\//, "").replace(/\/$/, "") ?? "";
   const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(",").map(o => o.trim().replace(/\/$/, ""))
-    : (rawDomain ? [`https://${rawDomain}`, `https://hml.${rawDomain}`] : []);
+    : rawDomain
+      ? [`https://${rawDomain}`, `https://hml.${rawDomain}`]
+      : [];
 
   if (isProduction && allowedOrigins.length === 0) {
     // Log erro mas NÃO lança — o servidor já está escutando (healthcheck passou).
     // O admin deve configurar DOMAIN ou CORS_ORIGINS no painel do Railway.
-    console.error("[SECURITY] CORS_ORIGINS ou DOMAIN não configurados. Requisições cross-origin serão bloqueadas. Configure a variável DOMAIN ou CORS_ORIGINS no Railway.");
+    console.error(
+      "[SECURITY] CORS_ORIGINS ou DOMAIN não configurados. Requisições cross-origin serão bloqueadas. Configure a variável DOMAIN ou CORS_ORIGINS no Railway."
+    );
   }
 
   app.use(
     cors({
       origin: !isProduction
-        ? (process.env.DEV_CORS_ORIGIN ?? 'http://localhost:5173')
-        : (allowedOrigins.length > 0 ? allowedOrigins : false),
+        ? (process.env.DEV_CORS_ORIGIN ?? "http://localhost:5173")
+        : allowedOrigins.length > 0
+          ? allowedOrigins
+          : false,
       credentials: true,
     })
   );
@@ -131,7 +151,10 @@ async function startServer() {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    res.setHeader(
+      "Permissions-Policy",
+      "camera=(), microphone=(), geolocation=()"
+    );
     // Content-Security-Policy: compatível com Vite SPA + analytics + Google Fonts + Typekit
     res.setHeader(
       "Content-Security-Policy",
@@ -148,7 +171,10 @@ async function startServer() {
       ].join("; ")
     );
     if (isProduction) {
-      res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+      res.setHeader(
+        "Strict-Transport-Security",
+        "max-age=31536000; includeSubDomains; preload"
+      );
     }
     next();
   });
@@ -189,14 +215,25 @@ async function startServer() {
     try {
       const { name, clubName, email, whatsapp, message } = req.body ?? {};
       if (!name || !email) {
-        return res.status(400).json({ error: "Nome e email são obrigatórios." });
+        return res
+          .status(400)
+          .json({ error: "Nome e email são obrigatórios." });
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
         return res.status(400).json({ error: "Email inválido." });
       }
-      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
-        ?? req.socket.remoteAddress ?? undefined;
-      const leadId = await createLead({ name, clubName, email, whatsapp, message, ipAddress: ip });
+      const ip =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ??
+        req.socket.remoteAddress ??
+        undefined;
+      const leadId = await createLead({
+        name,
+        clubName,
+        email,
+        whatsapp,
+        message,
+        ipAddress: ip,
+      });
 
       // Notificar admin por email (fire-and-forget)
       const adminEmail = process.env.ADMIN_EMAIL ?? process.env.SMTP_USER;
@@ -244,7 +281,7 @@ async function startServer() {
   startCronJobs();
 }
 
-startServer().catch((err) => {
+startServer().catch(err => {
   console.error("[FATAL] startServer failed:", err);
   process.exit(1);
 });

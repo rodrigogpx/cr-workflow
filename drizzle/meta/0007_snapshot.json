@@ -226,17 +226,13 @@
       "compositePrimaryKeys": {
         "clients_id": {
           "name": "clients_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "clients_cpf_unique": {
           "name": "clients_cpf_unique",
-          "columns": [
-            "cpf"
-          ]
+          "columns": ["cpf"]
         }
       },
       "checkConstraint": {}
@@ -321,9 +317,7 @@
       "compositePrimaryKeys": {
         "documents_id": {
           "name": "documents_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -395,9 +389,7 @@
       "compositePrimaryKeys": {
         "emailLogs_id": {
           "name": "emailLogs_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -457,17 +449,13 @@
       "compositePrimaryKeys": {
         "emailTemplates_id": {
           "name": "emailTemplates_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "emailTemplates_templateKey_unique": {
           "name": "emailTemplates_templateKey_unique",
-          "columns": [
-            "templateKey"
-          ]
+          "columns": ["templateKey"]
         }
       },
       "checkConstraint": {}
@@ -541,9 +529,7 @@
       "compositePrimaryKeys": {
         "subTasks_id": {
           "name": "subTasks_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -625,17 +611,13 @@
       "compositePrimaryKeys": {
         "users_id": {
           "name": "users_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "users_openId_unique": {
           "name": "users_openId_unique",
-          "columns": [
-            "openId"
-          ]
+          "columns": ["openId"]
         }
       },
       "checkConstraint": {}
@@ -737,9 +719,7 @@
       "compositePrimaryKeys": {
         "workflowSteps_id": {
           "name": "workflowSteps_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},

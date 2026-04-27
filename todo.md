@@ -1,4 +1,5 @@
 # CAC 360 — Estado Real do Projeto
+
 > Última atualização: 17/03/2026 — verificado por leitura direta de cada arquivo de código (3 rodadas de análise)
 
 ---
@@ -16,7 +17,6 @@
 - [x] Prettier configurado
 - [x] Vitest configurado (118 testes passando)
 
-
 ---
 
 ## 🔐 Autenticação e Controle de Acesso
@@ -32,7 +32,6 @@
 - [x] Admin vê e edita todos os cadastros
 - [x] Audit log: LOGIN, CREATE, UPDATE rastreados com timestamp
 
-
 ---
 
 ## 👥 Gestão de Clientes
@@ -47,7 +46,6 @@
 - [x] Agrupamento por fase do workflow (cadastro, agendamento, juntada, etc.)
 - [x] Filtragem por perfil: despachante vê apenas clientes com juntada-documento concluída
 - [ ] Importação em massa via CSV
-
 
 ---
 
@@ -69,7 +67,6 @@
 - [ ] Timeline visual de atividades por cliente
 - [ ] Alertas de prazos (documentos próximos do vencimento)
 
-
 ---
 
 ## 📄 Documentos e Enxoval
@@ -86,7 +83,6 @@
 - [ ] Migração para S3/cloud storage (hoje usa filesystem no Railway Volume — funcional, mas sem redundância)
 - [ ] Preview de documentos (imagens e PDFs) no navegador
 - [ ] Indicador visual de "tem documentos" em cada subtarefa do workflow
-
 
 ---
 
@@ -111,7 +107,6 @@
 - [ ] Email incluir nome do examinador no agendamento de laudo
 - [ ] Testes automatizados de envio real de email
 
-
 ---
 
 ## 📊 Dashboard e Admin
@@ -128,7 +123,6 @@
 - [ ] Badges de notificação para etapas pendentes
 - [ ] Gráficos / métricas visuais no dashboard (Recharts já instalado)
 - [ ] Filtro por período (data de criação / última atualização)
-
 
 ---
 
@@ -153,7 +147,6 @@
 - [ ] Glassmorphism e sombras modernas
 - [~] Dark/Light mode — ThemeContext e next-themes implementados, mas `switchable=false` por padrão e sem botão de alternância na UI
 
-
 ---
 
 ## 🧪 Qualidade e Testes
@@ -162,7 +155,6 @@
 - [x] Testes para: agendamento, emails, workflow, correções, autenticação
 - [ ] Testes de integração end-to-end
 - [ ] Testes de carga multi-tenant
-
 
 ---
 
@@ -194,7 +186,6 @@
   - [x] Validade do Laudo Técnico (techReportValidity) — Input na UI
   - [x] UF de residência (residenceUf) — Input na UI
   - [ ] Nacionalidade (nationality) — campo NÃO tem input na UI (só birthCountry existe)
-
 
 ---
 

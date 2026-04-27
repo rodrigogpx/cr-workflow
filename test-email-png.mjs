@@ -1,21 +1,23 @@
-import nodemailer from 'nodemailer';
-import fs from 'fs';
+import nodemailer from "nodemailer";
+import fs from "fs";
 
 // Ler logo PNG Base64
-const logoPngDataUri = fs.readFileSync('/tmp/logo_png_base64.txt', 'utf-8').trim();
+const logoPngDataUri = fs
+  .readFileSync("/tmp/logo_png_base64.txt", "utf-8")
+  .trim();
 
 // Configurações SMTP
 const SMTP_CONFIG = {
-  host: 'smtp.gmail.com',
+  host: "smtp.gmail.com",
   port: 587,
   secure: false,
   auth: {
-    user: 'rodrigogpx@gmail.com',
-    pass: 'qhou kvus uvre ivnv'
-  }
+    user: "rodrigogpx@gmail.com",
+    pass: "qhou kvus uvre ivnv",
+  },
 };
 
-console.log('🚀 Iniciando teste de envio de email com logo PNG...\n');
+console.log("🚀 Iniciando teste de envio de email com logo PNG...\n");
 
 // Criar transporter
 const transporter = nodemailer.createTransport(SMTP_CONFIG);
@@ -26,25 +28,27 @@ const htmlContent = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-
 // Configurar email
 const mailOptions = {
   from: '"CAC 360" <rodrigogpx@gmail.com>',
-  to: 'rodrigogpx@gmail.com',
-  subject: 'Teste FINAL - Bem-vindo(a) à CAC 360 - Logo PNG',
-  html: htmlContent
+  to: "rodrigogpx@gmail.com",
+  subject: "Teste FINAL - Bem-vindo(a) à CAC 360 - Logo PNG",
+  html: htmlContent,
 };
 
 // Enviar email
 try {
-  console.log('📧 Enviando email de teste com logo PNG para rodrigogpx@gmail.com...');
+  console.log(
+    "📧 Enviando email de teste com logo PNG para rodrigogpx@gmail.com..."
+  );
   const info = await transporter.sendMail(mailOptions);
-  console.log('\n✅ Email enviado com sucesso!');
-  console.log('📬 Message ID:', info.messageId);
-  console.log('📨 Response:', info.response);
-  console.log('\n🎉 Verifique sua caixa de entrada em rodrigogpx@gmail.com');
-  console.log('🖼️  A logo PNG deve aparecer corretamente agora!');
+  console.log("\n✅ Email enviado com sucesso!");
+  console.log("📬 Message ID:", info.messageId);
+  console.log("📨 Response:", info.response);
+  console.log("\n🎉 Verifique sua caixa de entrada em rodrigogpx@gmail.com");
+  console.log("🖼️  A logo PNG deve aparecer corretamente agora!");
 } catch (error) {
-  console.error('\n❌ Erro ao enviar email:');
+  console.error("\n❌ Erro ao enviar email:");
   console.error(error.message);
   if (error.code) {
-    console.error('Código do erro:', error.code);
+    console.error("Código do erro:", error.code);
   }
   process.exit(1);
 }

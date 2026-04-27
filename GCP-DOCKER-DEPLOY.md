@@ -23,6 +23,7 @@
 ## 🔧 Pré-requisitos
 
 ### Conta GCP
+
 - ✅ Projeto GCP criado
 - ✅ Billing habilitado
 - ✅ APIs ativadas:
@@ -31,12 +32,14 @@
   - Cloud Logging API
 
 ### Ferramentas Locais
+
 - ✅ Google Cloud SDK (`gcloud`)
 - ✅ Docker + Docker Compose
 - ✅ Git
 - ✅ SSH client
 
 ### Repositório
+
 - ✅ Fork de https://github.com/rodrigogpx/cr-workflow
 - ✅ Branch `main` (produção) e `hml` (homolog)
 - ✅ Secrets configurados no GitHub
@@ -357,6 +360,7 @@ curl -I https://cac360.com.br
 ### Problema: Containers não iniciam
 
 **Solução:**
+
 ```bash
 # Verificar logs
 docker-compose logs app
@@ -371,6 +375,7 @@ docker-compose config
 ### Problema: Erro de conexão com banco
 
 **Solução:**
+
 ```bash
 # Verificar PostgreSQL
 docker-compose exec postgres pg_isready -U cac360
@@ -382,6 +387,7 @@ docker-compose exec postgres psql -U cac360 -d cac360_platform -c "SELECT 1"
 ### Problema: SSL/TLS não funciona
 
 **Solução:**
+
 ```bash
 # Verificar certificados
 ls -la /opt/cac360/app/nginx_certs/live/
@@ -396,6 +402,7 @@ docker-compose logs nginx
 ### Problema: Aplicação lenta
 
 **Solução:**
+
 ```bash
 # Verificar recursos
 docker stats
@@ -443,16 +450,19 @@ git push origin main
 ## 📋 Checklist de Operações
 
 ### Diário
+
 - [ ] Verificar health checks
 - [ ] Monitorar logs de erro
 - [ ] Validar performance
 
 ### Semanal
+
 - [ ] Revisar backups
 - [ ] Verificar espaço em disco
 - [ ] Atualizar dependências
 
 ### Mensal
+
 - [ ] Rotacionar secrets
 - [ ] Revisar logs de auditoria
 - [ ] Testar disaster recovery

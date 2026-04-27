@@ -18,7 +18,7 @@ const RESERVED_PREFIXES = [
   "hml",
   "app",
   "dev",
-  "staging"
+  "staging",
 ];
 
 export function extractTenantSlugFromPath(pathname: string): string | null {
@@ -35,7 +35,10 @@ export function useTenantSlug(): string | null {
   return extractTenantSlugFromPath(location);
 }
 
-export function buildTenantPath(tenantSlug: string | null, subPath: string): string {
+export function buildTenantPath(
+  tenantSlug: string | null,
+  subPath: string
+): string {
   const normalized = subPath.startsWith("/") ? subPath : `/${subPath}`;
   if (!tenantSlug) return normalized;
   return `/${tenantSlug}${normalized}`;

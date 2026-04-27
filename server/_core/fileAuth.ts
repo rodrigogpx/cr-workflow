@@ -9,7 +9,7 @@ import { getTenantConfig } from "../config/tenant.config";
 
 /**
  * Middleware de autenticação para servir arquivos.
- * 
+ *
  * Valida:
  * 1. Sessão válida (cookie JWT)
  * 2. Platform admins têm acesso a todos os arquivos
@@ -40,7 +40,9 @@ export function authenticatedFileServing() {
     const userSession = await sdk.verifySession(userCookie);
 
     if (!userSession) {
-      return res.status(401).json({ error: "Autenticação necessária para acessar arquivos" });
+      return res
+        .status(401)
+        .json({ error: "Autenticação necessária para acessar arquivos" });
     }
 
     // Extract tenant ID from the requested file path
@@ -53,7 +55,9 @@ export function authenticatedFileServing() {
       const fileTenantId = parseInt(tenantMatch[1], 10);
 
       if (!userSession.tenantSlug) {
-        return res.status(403).json({ error: "Acesso negado: sessão sem contexto de tenant" });
+        return res
+          .status(403)
+          .json({ error: "Acesso negado: sessão sem contexto de tenant" });
       }
 
       // SECURITY: Resolve tenantSlug → tenantId and verify it matches the file path.
@@ -61,8 +65,12 @@ export function authenticatedFileServing() {
       try {
         const tenantConfig = await getTenantConfig(userSession.tenantSlug);
         if (!tenantConfig || tenantConfig.id !== fileTenantId) {
-          console.warn(`[FileAuth] Tenant mismatch: session=${tenantConfig?.id} file=${fileTenantId}`);
-          return res.status(403).json({ error: "Acesso negado: arquivo não pertence ao seu tenant" });
+          console.warn(
+            `[FileAuth] Tenant mismatch: session=${tenantConfig?.id} file=${fileTenantId}`
+          );
+          return res.status(403).json({
+            error: "Acesso negado: arquivo não pertence ao seu tenant",
+          });
         }
       } catch {
         return res.status(403).json({ error: "Acesso negado" });
@@ -86,7 +94,10 @@ function serveFileSecurely(req: Request, res: Response, baseDir: string) {
   const fullPath = path.resolve(baseDir, "." + requestedPath);
   const normalizedBase = path.resolve(baseDir);
 
-  if (!fullPath.startsWith(normalizedBase + path.sep) && fullPath !== normalizedBase) {
+  if (
+    !fullPath.startsWith(normalizedBase + path.sep) &&
+    fullPath !== normalizedBase
+  ) {
     console.warn(`[FileAuth] Path traversal attempt blocked: ${requestedPath}`);
     return res.status(403).json({ error: "Acesso negado" });
   }

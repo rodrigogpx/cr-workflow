@@ -8,7 +8,11 @@ interface PortalLayoutProps {
   loading?: boolean;
 }
 
-export default function PortalLayout({ children, title, loading }: PortalLayoutProps) {
+export default function PortalLayout({
+  children,
+  title,
+  loading,
+}: PortalLayoutProps) {
   return (
     <div
       className="min-h-screen flex flex-col relative"
@@ -29,10 +33,12 @@ export default function PortalLayout({ children, title, loading }: PortalLayoutP
             src="/logo.png"
             alt="Logo"
             className="h-8 w-auto"
-            onError={(e) => (e.currentTarget.style.display = "none")}
+            onError={e => (e.currentTarget.style.display = "none")}
           />
           <div className="flex-1">
-            <h1 className="font-bold text-white text-lg leading-none">Portal do Associado</h1>
+            <h1 className="font-bold text-white text-lg leading-none">
+              Portal do Associado
+            </h1>
             <p className="text-xs text-purple-200">Área exclusiva do cliente</p>
           </div>
           <Link href="/portal">
@@ -48,7 +54,9 @@ export default function PortalLayout({ children, title, loading }: PortalLayoutP
       <main className="relative z-10 flex-1 flex items-start justify-center py-8 px-4">
         <div className="w-full max-w-2xl">
           {title && (
-            <h2 className="text-2xl font-bold text-white mb-6 drop-shadow">{title}</h2>
+            <h2 className="text-2xl font-bold text-white mb-6 drop-shadow">
+              {title}
+            </h2>
           )}
           {loading ? (
             <div className="flex justify-center py-12">

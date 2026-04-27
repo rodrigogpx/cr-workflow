@@ -2,11 +2,26 @@ import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Mail, Upload, X, FileText, Loader2, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  Mail,
+  Upload,
+  X,
+  FileText,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO } from "@/const";
@@ -14,7 +29,7 @@ import Footer from "@/components/Footer";
 import { Switch } from "@/components/ui/switch";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
-const MODULE_ID = 'workflow-cr';
+const MODULE_ID = "workflow-cr";
 
 interface Attachment {
   fileName: string;
@@ -33,7 +48,7 @@ export default function WorkflowAdminEmails() {
   const [, setLocation] = useLocation();
   const tenantSlug = useTenantSlug();
   const [templates, setTemplates] = useState<Record<string, TemplateState>>({});
-  const [activeTab, setActiveTab] = useState('');
+  const [activeTab, setActiveTab] = useState("");
   const [useRichEditor, setUseRichEditor] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("cac360-email-editor-mode") === "rich";
@@ -56,14 +71,14 @@ export default function WorkflowAdminEmails() {
         };
       });
       setTemplates(initialTemplates);
-      
+
       // Set active tab to first template if exists and no active tab selected
       // or if the current active tab is no longer in the list (was deleted)
       const keys = Object.keys(initialTemplates);
       if (keys.length > 0 && (!activeTab || !initialTemplates[activeTab])) {
         setActiveTab(keys[0]);
       } else if (keys.length === 0) {
-        setActiveTab('');
+        setActiveTab("");
       }
     }
   }, [fetchedTemplates, activeTab]);
@@ -90,29 +105,34 @@ export default function WorkflowAdminEmails() {
     onSuccess: () => {
       toast.success("Template excluído com sucesso!");
       utils.emails.getAllTemplates.invalidate();
-      setActiveTab(''); // Clear active tab to trigger useEffect re-selection
+      setActiveTab(""); // Clear active tab to trigger useEffect re-selection
     },
     onError: (error: any) => {
       toast.error(`Erro ao excluir template: ${error.message}`);
     },
   });
 
-  const uploadAttachmentMutation = trpc.emails.uploadTemplateAttachment.useMutation({
-    onSuccess: (data: any) => {
-      const current = templates[activeTab] || { subject: "", content: "", attachments: [] };
-      setTemplates((prev: Record<string, TemplateState>) => ({
-        ...prev,
-        [activeTab]: {
-          ...current,
-          attachments: [...current.attachments, data],
-        },
-      }));
-      toast.success("Anexo adicionado com sucesso!");
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao fazer upload: ${error.message}`);
-    },
-  });
+  const uploadAttachmentMutation =
+    trpc.emails.uploadTemplateAttachment.useMutation({
+      onSuccess: (data: any) => {
+        const current = templates[activeTab] || {
+          subject: "",
+          content: "",
+          attachments: [],
+        };
+        setTemplates((prev: Record<string, TemplateState>) => ({
+          ...prev,
+          [activeTab]: {
+            ...current,
+            attachments: [...current.attachments, data],
+          },
+        }));
+        toast.success("Anexo adicionado com sucesso!");
+      },
+      onError: (error: any) => {
+        toast.error(`Erro ao fazer upload: ${error.message}`);
+      },
+    });
 
   const handleSaveTemplate = () => {
     const template = templates[activeTab];
@@ -191,18 +211,31 @@ export default function WorkflowAdminEmails() {
   }
 
   const roleLabel = user.role === "admin" ? "Administrador" : "Operador";
-  const defaultTemplateKeys = ["welcome", "workflow_cr", "psicotecnico", "laudo_tecnico", "juntada_documentos", "acompanhamento_sinarm"];
-  const allTemplateKeys = [...new Set([...defaultTemplateKeys, ...Object.keys(templates)])];
-  
+  const defaultTemplateKeys = [
+    "welcome",
+    "workflow_cr",
+    "psicotecnico",
+    "laudo_tecnico",
+    "juntada_documentos",
+    "acompanhamento_sinarm",
+  ];
+  const allTemplateKeys = [
+    ...new Set([...defaultTemplateKeys, ...Object.keys(templates)]),
+  ];
+
   // Get current template - use saved template or default
   const getCurrentTemplateValue = (key: string) => {
     if (templates[key]) {
       return templates[key];
     }
     const defaultTpl = getDefaultTemplate(key);
-    return { subject: defaultTpl.subject, content: defaultTpl.content, attachments: [] };
+    return {
+      subject: defaultTpl.subject,
+      content: defaultTpl.content,
+      attachments: [],
+    };
   };
-  
+
   const currentTemplate = getCurrentTemplateValue(activeTab);
 
   return (
@@ -214,7 +247,9 @@ export default function WorkflowAdminEmails() {
             <div className="flex items-center gap-3">
               <img src={APP_LOGO} alt="CAC 360" className="h-12 w-auto" />
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight uppercase">CAC 360 – Templates de Email</h1>
+                <h1 className="text-2xl font-bold text-white tracking-tight uppercase">
+                  CAC 360 – Templates de Email
+                </h1>
                 <p className="text-sm text-white/70">
                   Workflow CR · {roleLabel} · {user.name || user.email}
                 </p>
@@ -223,7 +258,9 @@ export default function WorkflowAdminEmails() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))}
+              onClick={() =>
+                setLocation(buildTenantPath(tenantSlug, "/cr-workflow"))
+              }
               className="gap-2 text-white border-white/50 hover:bg-white/10 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -252,156 +289,230 @@ export default function WorkflowAdminEmails() {
               </div>
             ) : (
               <>
-              <div className="flex items-center justify-end gap-2 mb-4">
-                <span className="text-xs text-muted-foreground">
-                  Preview visual
-                </span>
-                <Switch
-                  checked={useRichEditor}
-                  onCheckedChange={setUseRichEditor}
-                />
-              </div>
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="mb-4 flex flex-wrap h-auto gap-1">
-                  {allTemplateKeys.map((key: string) => (
-                    <TabsTrigger key={key} value={key} className="text-xs sm:text-sm">
-                      {getTemplateTitle(key)}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+                <div className="flex items-center justify-end gap-2 mb-4">
+                  <span className="text-xs text-muted-foreground">
+                    Preview visual
+                  </span>
+                  <Switch
+                    checked={useRichEditor}
+                    onCheckedChange={setUseRichEditor}
+                  />
+                </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="mb-4 flex flex-wrap h-auto gap-1">
+                    {allTemplateKeys.map((key: string) => (
+                      <TabsTrigger
+                        key={key}
+                        value={key}
+                        className="text-xs sm:text-sm"
+                      >
+                        {getTemplateTitle(key)}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
 
-                {allTemplateKeys.map((key) => {
-                  const tplValue = getCurrentTemplateValue(key);
-                  return (
-                  <TabsContent key={key} value={key} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="subject">Assunto do Email</Label>
-                      <Input
-                        id="subject"
-                        value={templates[key]?.subject ?? tplValue.subject}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          setTemplates((prev: Record<string, TemplateState>) => ({
-                            ...prev,
-                            [key]: {
-                              ...tplValue,
-                              ...(prev[key] || {}),
-                              subject: e.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="Digite o assunto do email..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="content">Conteúdo (HTML)</Label>
-                      {useRichEditor ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Código HTML</Label>
-                            <textarea
-                              id="content"
-                              className="w-full h-80 p-3 border rounded-md bg-background text-foreground font-mono text-xs"
-                              value={templates[key]?.content ?? tplValue.content}
-                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                                setTemplates((prev: Record<string, TemplateState>) => ({
+                  {allTemplateKeys.map(key => {
+                    const tplValue = getCurrentTemplateValue(key);
+                    return (
+                      <TabsContent key={key} value={key} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="subject">Assunto do Email</Label>
+                          <Input
+                            id="subject"
+                            value={templates[key]?.subject ?? tplValue.subject}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>
+                            ) =>
+                              setTemplates(
+                                (prev: Record<string, TemplateState>) => ({
                                   ...prev,
                                   [key]: {
                                     ...tplValue,
                                     ...(prev[key] || {}),
-                                    content: e.target.value,
+                                    subject: e.target.value,
                                   },
-                                }))
+                                })
+                              )
+                            }
+                            placeholder="Digite o assunto do email..."
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="content">Conteúdo (HTML)</Label>
+                          {useRichEditor ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">
+                                  Código HTML
+                                </Label>
+                                <textarea
+                                  id="content"
+                                  className="w-full h-80 p-3 border rounded-md bg-background text-foreground font-mono text-xs"
+                                  value={
+                                    templates[key]?.content ?? tplValue.content
+                                  }
+                                  onChange={(
+                                    e: React.ChangeEvent<HTMLTextAreaElement>
+                                  ) =>
+                                    setTemplates(
+                                      (
+                                        prev: Record<string, TemplateState>
+                                      ) => ({
+                                        ...prev,
+                                        [key]: {
+                                          ...tplValue,
+                                          ...(prev[key] || {}),
+                                          content: e.target.value,
+                                        },
+                                      })
+                                    )
+                                  }
+                                  placeholder="Digite o conteúdo HTML do email..."
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">
+                                  Preview Visual
+                                </Label>
+                                <iframe
+                                  title="Preview do Email"
+                                  srcDoc={
+                                    templates[key]?.content ?? tplValue.content
+                                  }
+                                  className="w-full h-80 border rounded-md bg-white"
+                                  sandbox="allow-same-origin"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <textarea
+                              id="content"
+                              className="w-full h-64 p-3 border rounded-md bg-background text-foreground font-mono text-sm"
+                              value={
+                                templates[key]?.content ?? tplValue.content
+                              }
+                              onChange={(
+                                e: React.ChangeEvent<HTMLTextAreaElement>
+                              ) =>
+                                setTemplates(
+                                  (prev: Record<string, TemplateState>) => ({
+                                    ...prev,
+                                    [key]: {
+                                      ...tplValue,
+                                      ...(prev[key] || {}),
+                                      content: e.target.value,
+                                    },
+                                  })
+                                )
                               }
                               placeholder="Digite o conteúdo HTML do email..."
                             />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Preview Visual</Label>
-                            <iframe
-                              title="Preview do Email"
-                              srcDoc={templates[key]?.content ?? tplValue.content}
-                              className="w-full h-80 border rounded-md bg-white"
-                              sandbox="allow-same-origin"
-                            />
+                          )}
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <p>
+                              Variáveis disponíveis no HTML:{" "}
+                              <span className="font-mono">{"{{nome}}"}</span>,{" "}
+                              <span className="font-mono">{"{{email}}"}</span>,{" "}
+                              <span className="font-mono">{"{{cpf}}"}</span>,{" "}
+                              <span className="font-mono">
+                                {"{{telefone}}"}
+                              </span>
+                              ,{" "}
+                              <span className="font-mono">
+                                {"{{endereco}}"}
+                              </span>
+                              ,{" "}
+                              <span className="font-mono">{"{{cidade}}"}</span>,{" "}
+                              <span className="font-mono">{"{{cep}}"}</span>,{" "}
+                              <span className="font-mono">{"{{data}}"}</span>.
+                            </p>
+                            <p>
+                              Variáveis extras (dependem do evento): qualquer
+                              chave enviada pelo sistema. Exemplos:{" "}
+                              <span className="font-mono">
+                                {"{{sinarmStatus}}"}
+                              </span>
+                              ,{" "}
+                              <span className="font-mono">
+                                {"{{protocolNumber}}"}
+                              </span>
+                              ,{" "}
+                              <span className="font-mono">
+                                {"{{dataAgendamento}}"}
+                              </span>
+                              ,{" "}
+                              <span className="font-mono">
+                                {"{{examinador}}"}
+                              </span>
+                              ,{" "}
+                              <span className="font-mono">
+                                {"{{tipoAgendamento}}"}
+                              </span>
+                              .
+                            </p>
                           </div>
                         </div>
-                      ) : (
-                        <textarea
-                          id="content"
-                          className="w-full h-64 p-3 border rounded-md bg-background text-foreground font-mono text-sm"
-                          value={templates[key]?.content ?? tplValue.content}
-                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                            setTemplates((prev: Record<string, TemplateState>) => ({
-                              ...prev,
-                              [key]: {
-                                ...tplValue,
-                                ...(prev[key] || {}),
-                                content: e.target.value,
-                              },
-                            }))
-                          }
-                          placeholder="Digite o conteúdo HTML do email..."
-                        />
-                      )}
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <p>
-                          Variáveis disponíveis no HTML: <span className="font-mono">{"{{nome}}"}</span>, <span className="font-mono">{"{{email}}"}</span>, <span className="font-mono">{"{{cpf}}"}</span>, <span className="font-mono">{"{{telefone}}"}</span>, <span className="font-mono">{"{{endereco}}"}</span>, <span className="font-mono">{"{{cidade}}"}</span>, <span className="font-mono">{"{{cep}}"}</span>, <span className="font-mono">{"{{data}}"}</span>.
-                        </p>
-                        <p>
-                          Variáveis extras (dependem do evento): qualquer chave enviada pelo sistema. Exemplos: <span className="font-mono">{"{{sinarmStatus}}"}</span>, <span className="font-mono">{"{{protocolNumber}}"}</span>, <span className="font-mono">{"{{dataAgendamento}}"}</span>, <span className="font-mono">{"{{examinador}}"}</span>, <span className="font-mono">{"{{tipoAgendamento}}"}</span>.
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label>Anexos</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {(templates[key]?.attachments || []).map((att: Attachment, i: number) => (
-                          <div key={i} className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full text-sm">
-                            <FileText className="h-4 w-4" />
-                            <span>{att.fileName}</span>
-                            <button onClick={() => removeAttachment(i)} className="text-destructive hover:text-destructive/80">
-                              <X className="h-4 w-4" />
-                            </button>
+                        <div className="space-y-2">
+                          <Label>Anexos</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {(templates[key]?.attachments || []).map(
+                              (att: Attachment, i: number) => (
+                                <div
+                                  key={i}
+                                  className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full text-sm"
+                                >
+                                  <FileText className="h-4 w-4" />
+                                  <span>{att.fileName}</span>
+                                  <button
+                                    onClick={() => removeAttachment(i)}
+                                    className="text-destructive hover:text-destructive/80"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              )
+                            )}
                           </div>
-                        ))}
-                      </div>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadAttachmentMutation.isPending}
-                      >
-                        {uploadAttachmentMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Upload className="h-4 w-4 mr-2" />
-                        )}
-                        Adicionar Anexo
-                      </Button>
-                    </div>
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadAttachmentMutation.isPending}
+                          >
+                            {uploadAttachmentMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Upload className="h-4 w-4 mr-2" />
+                            )}
+                            Adicionar Anexo
+                          </Button>
+                        </div>
 
-                    <div className="flex justify-end pt-4">
-                      <Button onClick={handleSaveTemplate} disabled={saveTemplateMutation.isPending}>
-                        {saveTemplateMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        Salvar Template
-                      </Button>
-                    </div>
-                  </TabsContent>
-                  );
-                })}
-              </Tabs>
+                        <div className="flex justify-end pt-4">
+                          <Button
+                            onClick={handleSaveTemplate}
+                            disabled={saveTemplateMutation.isPending}
+                          >
+                            {saveTemplateMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            Salvar Template
+                          </Button>
+                        </div>
+                      </TabsContent>
+                    );
+                  })}
+                </Tabs>
               </>
             )}
           </CardContent>

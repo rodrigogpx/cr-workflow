@@ -32,11 +32,7 @@ export default function PlatformAdminAdmins() {
         onAddNew={openCreate}
       />
 
-      <AdminForm
-        open={formOpen}
-        onClose={closeForm}
-        editTarget={editTarget}
-      />
+      <AdminForm open={formOpen} onClose={closeForm} editTarget={editTarget} />
 
       <ChangePasswordDialog
         open={!!passwordTarget}

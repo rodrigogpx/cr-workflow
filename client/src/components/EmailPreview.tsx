@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Send, CheckCircle2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -25,7 +31,6 @@ export function EmailPreview({
   scheduledDate = null,
   examinerName = null,
 }: EmailPreviewProps) {
-
   // Buscar template salvo
   const { data: template } = trpc.emails.getTemplate.useQuery({ templateKey });
 
@@ -39,14 +44,16 @@ export function EmailPreview({
     onSuccess: () => {
       toast.success("Email enviado com sucesso!");
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Erro ao enviar email: ${error.message}`);
     },
   });
 
   const handleSendEmail = () => {
     if (!template) {
-      toast.error("Template não encontrado. Configure-o na área de administração.");
+      toast.error(
+        "Template não encontrado. Configure-o na área de administração."
+      );
       return;
     }
 
@@ -64,7 +71,10 @@ export function EmailPreview({
     if (!date) return "";
     const d = typeof date === "string" ? new Date(date) : date;
     if (isNaN(d.getTime())) return "";
-    return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    return d.toLocaleString("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
   };
 
   const schedulingDateFormatted = formatScheduledDate(scheduledDate);
@@ -86,7 +96,9 @@ export function EmailPreview({
       .replace(/\{\{data_agendamento\}\}/g, schedulingDateFormatted)
       .replace(/\{\{examinador\}\}/g, schedulingExaminer);
   }
-  const attachments = template?.attachments ? JSON.parse(template.attachments) : [];
+  const attachments = template?.attachments
+    ? JSON.parse(template.attachments)
+    : [];
 
   const wasAlreadySent = !!emailLog;
 
@@ -112,11 +124,19 @@ export function EmailPreview({
         {/* Botão de Reenvio */}
         <Button
           onClick={handleSendEmail}
-          disabled={sendEmailMutation.isPending || !template || (requiresScheduling && !scheduledDate)}
+          disabled={
+            sendEmailMutation.isPending ||
+            !template ||
+            (requiresScheduling && !scheduledDate)
+          }
           className="w-full"
         >
           <Send className="h-4 w-4 mr-2" />
-          {sendEmailMutation.isPending ? "Enviando..." : wasAlreadySent ? "Reenviar Confirmação de Agendamento" : "Enviar Confirmação de Agendamento"}
+          {sendEmailMutation.isPending
+            ? "Enviando..."
+            : wasAlreadySent
+              ? "Reenviar Confirmação de Agendamento"
+              : "Enviar Confirmação de Agendamento"}
         </Button>
 
         {requiresScheduling && !scheduledDate && (

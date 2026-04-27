@@ -19,13 +19,17 @@ O template utiliza uma estrutura profissional e organizada com os seguintes elem
 ### Seções do Email
 
 #### 1. Saudação Personalizada
+
 Utiliza a variável `{{nome}}` para personalização.
 
 #### 2. Informações Importantes
+
 Explica brevemente o que é o CR e a importância do processo.
 
 #### 3. Documentação e Informações Complementares
+
 **Seção principal** que destaca os arquivos anexos, incluindo:
+
 - Lista completa de documentos necessários
 - Prazos e etapas do processo
 - Orientações sobre avaliações obrigatórias
@@ -33,13 +37,17 @@ Explica brevemente o que é o CR e a importância do processo.
 - Procedimentos de segurança e guarda
 
 #### 4. Próximos Passos
+
 Orienta o cliente sobre o que fazer após ler os materiais anexos.
 
 #### 5. Aviso de Atenção
+
 Caixa amarela destacada alertando sobre a importância do cumprimento dos requisitos legais.
 
 #### 6. Contato
+
 Informações de contato usando variáveis:
+
 - `{{email}}` - Email do cliente
 - `{{telefone}}` - Telefone do cliente
 
@@ -47,14 +55,14 @@ Informações de contato usando variáveis:
 
 O template suporta as seguintes variáveis que serão substituídas automaticamente:
 
-| Variável | Descrição | Exemplo |
-|----------|-----------|---------|
-| `{{nome}}` | Nome completo do cliente | João da Silva |
-| `{{email}}` | Email do cliente | joao@example.com |
-| `{{telefone}}` | Telefone do cliente | (11) 98765-4321 |
-| `{{data}}` | Data atual | 19/11/2025 |
-| `{{status}}` | Status do workflow | 65% concluído |
-| `{{status_sinarm}}` | Status Sinarm-CAC | Em Análise |
+| Variável            | Descrição                | Exemplo          |
+| ------------------- | ------------------------ | ---------------- |
+| `{{nome}}`          | Nome completo do cliente | João da Silva    |
+| `{{email}}`         | Email do cliente         | joao@example.com |
+| `{{telefone}}`      | Telefone do cliente      | (11) 98765-4321  |
+| `{{data}}`          | Data atual               | 19/11/2025       |
+| `{{status}}`        | Status do workflow       | 65% concluído    |
+| `{{status_sinarm}}` | Status Sinarm-CAC        | Em Análise       |
 
 ## Como Usar
 

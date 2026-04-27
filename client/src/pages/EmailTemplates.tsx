@@ -2,11 +2,28 @@
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Mail, Upload, X, FileText, Loader2, Trash2, Plus, Zap, ChevronLeft } from "lucide-react";
+import {
+  Save,
+  Mail,
+  Upload,
+  X,
+  FileText,
+  Loader2,
+  Trash2,
+  Plus,
+  Zap,
+  ChevronLeft,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useTenantSlug, buildTenantPath } from "@/_core/hooks/useTenantSlug";
 
@@ -29,8 +46,8 @@ export default function EmailTemplates() {
   const [templates, setTemplates] = useState<Record<string, TemplateState>>({});
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
-  const [newTemplateKey, setNewTemplateKey] = useState('');
-  const [newTemplateTitle, setNewTemplateTitle] = useState('');
+  const [newTemplateKey, setNewTemplateKey] = useState("");
+  const [newTemplateTitle, setNewTemplateTitle] = useState("");
   const [showNewTemplateDialog, setShowNewTemplateDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,25 +58,31 @@ export default function EmailTemplates() {
     trpc.emails.getAllTemplates.useQuery();
 
   const { data: smtpConfig } = trpc.emails.getSmtpConfig.useQuery();
-  const emailLogoUrl = (smtpConfig as any)?.emailLogoUrl || '';
+  const emailLogoUrl = (smtpConfig as any)?.emailLogoUrl || "";
 
   const replaceLogoVariable = (html: string) => {
     if (!html) return html;
     if (emailLogoUrl) {
-      return html.replace(/\{\{logo\}\}/g, `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`);
+      return html.replace(
+        /\{\{logo\}\}/g,
+        `<img src="${emailLogoUrl}" alt="Logo" style="max-height: 80px; max-width: 200px;" />`
+      );
     }
-    return html.replace(/\{\{logo\}\}/g, '<span style="color: #999; font-style: italic;">[Logo não configurada]</span>');
+    return html.replace(
+      /\{\{logo\}\}/g,
+      '<span style="color: #999; font-style: italic;">[Logo não configurada]</span>'
+    );
   };
 
   const getTemplateTitle = (key: string) => {
     const titles: Record<string, string> = {
-      'boasvindas-filiado': "Boas Vindas (Automático)",
+      "boasvindas-filiado": "Boas Vindas (Automático)",
       welcome: "Boas Vindas",
       process_cr: "Processo CR",
       process: "Processo CR",
       psicotecnico: "Encaminhamento Psicotécnico",
       laudo_tecnico: "Agendamento Laudo Técnico",
-      'agendamento-laudo': "Agendamento de Laudo",
+      "agendamento-laudo": "Agendamento de Laudo",
       juntada_documentos: "Juntada de Documentos",
       psicotecnico_concluido: "Avaliação Psicológica Concluída",
       laudo_tecnico_concluido: "Laudo Técnico Concluído",
@@ -108,23 +131,32 @@ export default function EmailTemplates() {
     },
   });
 
-  const uploadAttachmentMutation = trpc.documents.uploadTemplateAttachment.useMutation({
-    onSuccess: (data: any) => {
-      const fileName = fileInputRef.current?.files?.[0]?.name || "anexo.pdf";
-      const newAttachment = { fileName, fileKey: data.fileKey, fileUrl: data.url };
-      const currentAttachments = templates[selectedKey || '']?.attachments || [];
-      handleTemplateChange("attachments", [...currentAttachments, newAttachment]);
-      toast.success("Anexo enviado com sucesso!");
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao enviar anexo: ${error.message}`);
-    },
-  });
+  const uploadAttachmentMutation =
+    trpc.documents.uploadTemplateAttachment.useMutation({
+      onSuccess: (data: any) => {
+        const fileName = fileInputRef.current?.files?.[0]?.name || "anexo.pdf";
+        const newAttachment = {
+          fileName,
+          fileKey: data.fileKey,
+          fileUrl: data.url,
+        };
+        const currentAttachments =
+          templates[selectedKey || ""]?.attachments || [];
+        handleTemplateChange("attachments", [
+          ...currentAttachments,
+          newAttachment,
+        ]);
+        toast.success("Anexo enviado com sucesso!");
+      },
+      onError: (error: any) => {
+        toast.error(`Erro ao enviar anexo: ${error.message}`);
+      },
+    });
 
   const seedTemplatesMutation = trpc.emails.seedTemplates.useMutation({
     onSuccess: (data: any) => {
       toast.success("Templates e triggers atualizados com sucesso!", {
-        description: `Processados ${data.templates} templates e ${data.triggers} triggers.`
+        description: `Processados ${data.templates} templates e ${data.triggers} triggers.`,
       });
       utils.emails.getAllTemplates.invalidate();
     },
@@ -163,7 +195,11 @@ export default function EmailTemplates() {
       return;
     }
     const count = checkedKeys.size;
-    if (!confirm(`Tem certeza que deseja excluir ${count} template(s)? Esta ação não pode ser desfeita.`)) {
+    if (
+      !confirm(
+        `Tem certeza que deseja excluir ${count} template(s)? Esta ação não pode ser desfeita.`
+      )
+    ) {
       return;
     }
     setIsDeleting(true);
@@ -195,7 +231,7 @@ export default function EmailTemplates() {
         const fileData = e.target?.result as string;
         uploadAttachmentMutation.mutate({
           fileName: file.name,
-          fileData: fileData.split(',')[1],
+          fileData: fileData.split(",")[1],
           mimeType: file.type,
         });
       };
@@ -206,8 +242,10 @@ export default function EmailTemplates() {
   const handleRemoveAttachment = (index: number) => {
     if (!selectedKey) return;
     const currentAttachments = templates[selectedKey]?.attachments || [];
-    const updatedAttachments = currentAttachments.filter((_: any, i: number) => i !== index);
-    handleTemplateChange('attachments', updatedAttachments);
+    const updatedAttachments = currentAttachments.filter(
+      (_: any, i: number) => i !== index
+    );
+    handleTemplateChange("attachments", updatedAttachments);
   };
 
   const toggleCheck = (key: string) => {
@@ -227,17 +265,21 @@ export default function EmailTemplates() {
     }
   };
 
-  if (user && user.role !== 'admin') {
+  if (user && user.role !== "admin") {
     const dashboardPath = buildTenantPath(tenantSlug, "/dashboard");
     return (
       <div className="flex items-center justify-center p-4">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle>Acesso Negado</CardTitle>
-            <CardDescription>Apenas administradores podem acessar esta página.</CardDescription>
+            <CardDescription>
+              Apenas administradores podem acessar esta página.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => setLocation(dashboardPath)}>Voltar ao Dashboard</Button>
+            <Button onClick={() => setLocation(dashboardPath)}>
+              Voltar ao Dashboard
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -250,12 +292,17 @@ export default function EmailTemplates() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => setSelectedKey(null)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedKey(null)}
+          >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Voltar à lista
           </Button>
           <h2 className="text-lg font-semibold truncate">
-            {allTemplates.find((t: any) => t.templateKey === selectedKey)?.templateTitle || getTemplateTitle(selectedKey)}
+            {allTemplates.find((t: any) => t.templateKey === selectedKey)
+              ?.templateTitle || getTemplateTitle(selectedKey)}
           </h2>
         </div>
 
@@ -266,7 +313,9 @@ export default function EmailTemplates() {
               <Input
                 id="tpl-subject"
                 value={tpl.subject}
-                onChange={(e: any) => handleTemplateChange('subject', e.target.value)}
+                onChange={(e: any) =>
+                  handleTemplateChange("subject", e.target.value)
+                }
               />
             </div>
 
@@ -277,13 +326,18 @@ export default function EmailTemplates() {
                   <p className="text-xs text-gray-500 mb-2">Editor HTML</p>
                   <textarea
                     value={tpl.content}
-                    onChange={(e: any) => handleTemplateChange('content', e.target.value)}
+                    onChange={(e: any) =>
+                      handleTemplateChange("content", e.target.value)
+                    }
                     className="w-full min-h-[400px] p-3 border rounded-md font-mono text-sm"
                     placeholder="Digite o conteúdo do email em HTML..."
                   />
                   <div className="mt-2 text-xs text-gray-500 space-y-1">
                     <p>
-                      Variáveis: <code>{"{{nome}}"}</code>, <code>{"{{email}}"}</code>, <code>{"{{cpf}}"}</code>, <code>{"{{telefone}}"}</code>, <code>{"{{data}}"}</code>, <code>{"{{logo}}"}</code>
+                      Variáveis: <code>{"{{nome}}"}</code>,{" "}
+                      <code>{"{{email}}"}</code>, <code>{"{{cpf}}"}</code>,{" "}
+                      <code>{"{{telefone}}"}</code>, <code>{"{{data}}"}</code>,{" "}
+                      <code>{"{{logo}}"}</code>
                     </p>
                   </div>
                 </div>
@@ -291,7 +345,10 @@ export default function EmailTemplates() {
                   <p className="text-xs text-gray-500 mb-2">Preview</p>
                   {/* SECURITY: iframe srcdoc com sandbox bloqueia scripts, forms e plugins */}
                   <iframe
-                    srcDoc={replaceLogoVariable(tpl.content) || '<p style="color:#9ca3af">O preview aparecerá aqui...</p>'}
+                    srcDoc={
+                      replaceLogoVariable(tpl.content) ||
+                      '<p style="color:#9ca3af">O preview aparecerá aqui...</p>'
+                    }
                     sandbox="allow-same-origin"
                     className="w-full border rounded-md bg-white"
                     title="Preview do template"
@@ -305,17 +362,28 @@ export default function EmailTemplates() {
               <Label>Anexos</Label>
               <div className="border rounded-md p-4 space-y-2">
                 {(tpl.attachments || []).map((att: any, index: number) => (
-                  <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between bg-gray-50 p-2 rounded"
+                  >
                     <div className="flex items-center gap-2">
                       <FileText className="h-5 w-5 text-gray-500" />
                       <span className="text-sm">{att.fileName}</span>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveAttachment(index)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveAttachment(index)}
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
-                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Adicionar Anexo
                 </Button>
@@ -333,9 +401,14 @@ export default function EmailTemplates() {
               <Button variant="outline" onClick={() => setSelectedKey(null)}>
                 Cancelar
               </Button>
-              <Button onClick={handleSaveTemplate} disabled={saveTemplateMutation.isPending}>
+              <Button
+                onClick={handleSaveTemplate}
+                disabled={saveTemplateMutation.isPending}
+              >
                 <Save className="h-4 w-4 mr-2" />
-                {saveTemplateMutation.isPending ? 'Salvando...' : 'Salvar Template'}
+                {saveTemplateMutation.isPending
+                  ? "Salvando..."
+                  : "Salvar Template"}
               </Button>
             </div>
           </CardContent>
@@ -351,7 +424,11 @@ export default function EmailTemplates() {
       <div className="flex flex-wrap items-center gap-2">
         <Button
           onClick={() => {
-            if (confirm("Deseja carregar/atualizar os templates padrão? Isso irá restaurar os templates originais e corrigir textos.")) {
+            if (
+              confirm(
+                "Deseja carregar/atualizar os templates padrão? Isso irá restaurar os templates originais e corrigir textos."
+              )
+            ) {
               seedTemplatesMutation.mutate();
             }
           }}
@@ -359,10 +436,13 @@ export default function EmailTemplates() {
           variant="default"
         >
           <Zap className="h-4 w-4 mr-2" />
-          {seedTemplatesMutation.isPending ? 'Semeando...' : 'Semear Padrão'}
+          {seedTemplatesMutation.isPending ? "Semeando..." : "Semear Padrão"}
         </Button>
 
-        <Button variant="outline" onClick={() => setShowNewTemplateDialog(true)}>
+        <Button
+          variant="outline"
+          onClick={() => setShowNewTemplateDialog(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Criar Novo Template
         </Button>
@@ -374,7 +454,9 @@ export default function EmailTemplates() {
             disabled={isDeleting}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            {isDeleting ? 'Excluindo...' : `Excluir Selecionados (${checkedKeys.size})`}
+            {isDeleting
+              ? "Excluindo..."
+              : `Excluir Selecionados (${checkedKeys.size})`}
           </Button>
         )}
       </div>
@@ -386,7 +468,9 @@ export default function EmailTemplates() {
             <Mail className="h-5 w-5" />
             Templates de Email
             {allTemplates.length > 0 && (
-              <span className="text-sm font-normal text-gray-500">({allTemplates.length})</span>
+              <span className="text-sm font-normal text-gray-500">
+                ({allTemplates.length})
+              </span>
             )}
           </CardTitle>
         </CardHeader>
@@ -399,14 +483,19 @@ export default function EmailTemplates() {
             <div className="text-center py-8 text-gray-500">
               <Mail className="h-10 w-10 mx-auto mb-3 text-gray-300" />
               <p className="font-medium">Nenhum template cadastrado</p>
-              <p className="text-sm mt-1">Clique em "Semear Padrão" para carregar os templates padrão.</p>
+              <p className="text-sm mt-1">
+                Clique em "Semear Padrão" para carregar os templates padrão.
+              </p>
             </div>
           ) : (
             <div className="space-y-1">
               {/* Select all header */}
               <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-md text-sm font-medium text-gray-600">
                 <Checkbox
-                  checked={checkedKeys.size === allTemplates.length && allTemplates.length > 0}
+                  checked={
+                    checkedKeys.size === allTemplates.length &&
+                    allTemplates.length > 0
+                  }
                   onCheckedChange={toggleSelectAll}
                 />
                 <span className="flex-1">Selecionar todos</span>
@@ -429,7 +518,9 @@ export default function EmailTemplates() {
                   >
                     {t.templateTitle || getTemplateTitle(t.templateKey)}
                   </button>
-                  <span className="text-xs text-gray-400 font-mono hidden sm:inline">{t.templateKey}</span>
+                  <span className="text-xs text-gray-400 font-mono hidden sm:inline">
+                    {t.templateKey}
+                  </span>
                 </div>
               ))}
             </div>
@@ -443,7 +534,9 @@ export default function EmailTemplates() {
           <Card className="w-full max-w-md">
             <CardHeader>
               <CardTitle>Criar Novo Template</CardTitle>
-              <CardDescription>Adicione um novo template de email personalizado</CardDescription>
+              <CardDescription>
+                Adicione um novo template de email personalizado
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -452,9 +545,15 @@ export default function EmailTemplates() {
                   id="templateKey"
                   placeholder="ex: welcome_premium"
                   value={newTemplateKey}
-                  onChange={(e: any) => setNewTemplateKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                  onChange={(e: any) =>
+                    setNewTemplateKey(
+                      e.target.value.toLowerCase().replace(/\s+/g, "_")
+                    )
+                  }
                 />
-                <p className="text-xs text-gray-500 mt-1">Use apenas letras minúsculas, números e underscore</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Use apenas letras minúsculas, números e underscore
+                </p>
               </div>
               <div>
                 <Label htmlFor="templateTitle">Título do Template</Label>
@@ -471,8 +570,8 @@ export default function EmailTemplates() {
                 variant="outline"
                 onClick={() => {
                   setShowNewTemplateDialog(false);
-                  setNewTemplateKey('');
-                  setNewTemplateTitle('');
+                  setNewTemplateKey("");
+                  setNewTemplateTitle("");
                 }}
               >
                 Cancelar
@@ -480,19 +579,19 @@ export default function EmailTemplates() {
               <Button
                 onClick={() => {
                   if (!newTemplateKey || !newTemplateTitle) {
-                    toast.error('Preencha todos os campos');
+                    toast.error("Preencha todos os campos");
                     return;
                   }
                   saveTemplateMutation.mutate({
                     templateKey: newTemplateKey,
                     templateTitle: newTemplateTitle,
-                    subject: '',
-                    content: '',
-                    attachments: '[]',
+                    subject: "",
+                    content: "",
+                    attachments: "[]",
                   });
                   setShowNewTemplateDialog(false);
-                  setNewTemplateKey('');
-                  setNewTemplateTitle('');
+                  setNewTemplateKey("");
+                  setNewTemplateTitle("");
                   setSelectedKey(newTemplateKey);
                 }}
               >

@@ -1,6 +1,10 @@
-import nodemailer from 'nodemailer';
-import type { Attachment } from 'nodemailer/lib/mailer';
-import { getEmailSettings, getEmailSettingsFromDb, type EmailSettings } from './db';
+import nodemailer from "nodemailer";
+import type { Attachment } from "nodemailer/lib/mailer";
+import {
+  getEmailSettings,
+  getEmailSettingsFromDb,
+  type EmailSettings,
+} from "./db";
 
 const POSTMANGPX_BASE_URL = process.env.POSTMANGPX_BASE_URL;
 const POSTMANGPX_API_KEY = process.env.POSTMANGPX_API_KEY;
@@ -32,35 +36,47 @@ interface SmtpConfig {
  * mailto: são ignorados.
  */
 function disableClickTracking(html: string): string {
-  if (!html || typeof html !== 'string') return html;
-  return html.replace(/<a\s+([^>]*?)href\s*=\s*(["'])(https?:\/\/[^"']+)\2([^>]*)>/gi, (match, pre, quote, url, post) => {
-    const attrs = `${pre ?? ''}${post ?? ''}`.toLowerCase();
-    if (attrs.includes('clicktracking=')) return match;
-    return `<a ${pre ?? ''}href=${quote}${url}${quote}${post ?? ''} clicktracking="off" data-notrack="true" data-clicktracking="off">`;
-  });
+  if (!html || typeof html !== "string") return html;
+  return html.replace(
+    /<a\s+([^>]*?)href\s*=\s*(["'])(https?:\/\/[^"']+)\2([^>]*)>/gi,
+    (match, pre, quote, url, post) => {
+      const attrs = `${pre ?? ""}${post ?? ""}`.toLowerCase();
+      if (attrs.includes("clicktracking=")) return match;
+      return `<a ${pre ?? ""}href=${quote}${url}${quote}${post ?? ""} clicktracking="off" data-notrack="true" data-clicktracking="off">`;
+    }
+  );
 }
 
-function extractEmailAddress(fromValue: string | undefined | null): string | undefined {
+function extractEmailAddress(
+  fromValue: string | undefined | null
+): string | undefined {
   if (!fromValue) return undefined;
   const match = fromValue.match(/<([^>]+)>/);
   if (match?.[1]) return match[1].trim();
   const trimmed = fromValue.trim();
   // If it's already an email without display name
-  if (trimmed.includes('@') && !trimmed.includes(' ')) return trimmed;
+  if (trimmed.includes("@") && !trimmed.includes(" ")) return trimmed;
   return undefined;
 }
 
-async function resolveSmtpConfig(tenantDb?: any, tenantId?: number): Promise<SmtpConfig> {
+async function resolveSmtpConfig(
+  tenantDb?: any,
+  tenantId?: number
+): Promise<SmtpConfig> {
   if (tenantId) {
-    const { getTenantSmtpSettings } = await import('./db');
+    const { getTenantSmtpSettings } = await import("./db");
     const tenantConfig = await getTenantSmtpSettings(tenantId);
-    if (tenantConfig && tenantConfig.emailMethod === 'smtp' && tenantConfig.smtpHost) {
+    if (
+      tenantConfig &&
+      tenantConfig.emailMethod === "smtp" &&
+      tenantConfig.smtpHost
+    ) {
       return {
         smtpHost: tenantConfig.smtpHost,
         smtpPort: tenantConfig.smtpPort || 587,
-        smtpUser: tenantConfig.smtpUser || '',
-        smtpPass: tenantConfig.smtpPassword || '',
-        smtpFrom: tenantConfig.smtpFrom || '',
+        smtpUser: tenantConfig.smtpUser || "",
+        smtpPass: tenantConfig.smtpPassword || "",
+        smtpFrom: tenantConfig.smtpFrom || "",
         useSecure: tenantConfig.smtpPort === 465,
       };
     }
@@ -81,8 +97,15 @@ async function resolveSmtpConfig(tenantDb?: any, tenantId?: number): Promise<Smt
     };
   }
 
-  if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new Error('SMTP configuration missing. Please configure SMTP via the admin panel or set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS environment variables.');
+  if (
+    !process.env.SMTP_HOST ||
+    !process.env.SMTP_PORT ||
+    !process.env.SMTP_USER ||
+    !process.env.SMTP_PASS
+  ) {
+    throw new Error(
+      "SMTP configuration missing. Please configure SMTP via the admin panel or set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS environment variables."
+    );
   }
 
   return {
@@ -95,7 +118,10 @@ async function resolveSmtpConfig(tenantDb?: any, tenantId?: number): Promise<Smt
   };
 }
 
-async function getTransporterWithConfig(tenantDb?: any, tenantId?: number): Promise<{ transporter: nodemailer.Transporter; config: SmtpConfig }> {
+async function getTransporterWithConfig(
+  tenantDb?: any,
+  tenantId?: number
+): Promise<{ transporter: nodemailer.Transporter; config: SmtpConfig }> {
   const config = await resolveSmtpConfig(tenantDb, tenantId);
   const configKey = `${config.smtpHost}:${config.smtpPort}:${config.smtpUser}:${config.useSecure}`;
 
@@ -126,17 +152,19 @@ export interface SendEmailOptions {
     content?: Buffer; // Raw content
     contentType?: string;
     cid?: string;
-    disposition?: 'inline' | 'attachment';
+    disposition?: "inline" | "attachment";
   }>;
 }
 
-function parseDataUri(dataUri: string): { contentType: string; content: Buffer } | null {
-  const match = /^data:([^;]+);base64,(.+)$/i.exec(dataUri || '');
+function parseDataUri(
+  dataUri: string
+): { contentType: string; content: Buffer } | null {
+  const match = /^data:([^;]+);base64,(.+)$/i.exec(dataUri || "");
   if (!match?.[1] || !match?.[2]) return null;
   try {
     return {
       contentType: match[1],
-      content: Buffer.from(match[2], 'base64'),
+      content: Buffer.from(match[2], "base64"),
     };
   } catch {
     return null;
@@ -149,15 +177,21 @@ async function resolveAttachmentToBase64(att: {
   content?: Buffer;
   contentType?: string;
   cid?: string;
-  disposition?: 'inline' | 'attachment';
-}): Promise<{ filename: string; contentType: string; contentBase64: string; cid?: string; disposition?: 'inline' | 'attachment' } | null> {
+  disposition?: "inline" | "attachment";
+}): Promise<{
+  filename: string;
+  contentType: string;
+  contentBase64: string;
+  cid?: string;
+  disposition?: "inline" | "attachment";
+} | null> {
   let content: Buffer | null = att.content || null;
-  let contentType = att.contentType || 'application/octet-stream';
+  let contentType = att.contentType || "application/octet-stream";
 
   if (!content && att.path) {
     const resp = await fetch(att.path);
     if (!resp.ok) return null;
-    contentType = resp.headers.get('content-type') || contentType;
+    contentType = resp.headers.get("content-type") || contentType;
     const ab = await resp.arrayBuffer();
     content = Buffer.from(ab);
   }
@@ -167,45 +201,61 @@ async function resolveAttachmentToBase64(att: {
   return {
     filename: att.filename,
     contentType,
-    contentBase64: content.toString('base64'),
+    contentBase64: content.toString("base64"),
     cid: att.cid,
     disposition: att.disposition,
   };
 }
 
-export function buildInlineLogoAttachment(emailLogoValue: string | undefined | null): { filename: string; content: Buffer; contentType: string; cid: string; disposition: 'inline' } | null {
+export function buildInlineLogoAttachment(
+  emailLogoValue: string | undefined | null
+): {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+  cid: string;
+  disposition: "inline";
+} | null {
   if (!emailLogoValue) return null;
   const parsed = parseDataUri(emailLogoValue);
   if (!parsed) return null;
-  const ext = (parsed.contentType.split('/')[1] || 'png').replace(/[^a-z0-9]/gi, '') || 'png';
+  const ext =
+    (parsed.contentType.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "") ||
+    "png";
   return {
     filename: `logo.${ext}`,
     content: parsed.content,
     contentType: parsed.contentType,
-    cid: 'email-logo',
-    disposition: 'inline',
+    cid: "email-logo",
+    disposition: "inline",
   };
 }
 
 /**
  * Send email via Gateway (production) or SMTP (development)
  */
-export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; tenantId?: number }): Promise<{ success: boolean; messageId?: string }> {
+export async function sendEmail(
+  options: SendEmailOptions & { tenantDb?: any; tenantId?: number }
+): Promise<{ success: boolean; messageId?: string }> {
   const { tenantDb, tenantId, ...emailOptions } = options;
-  
+
   let finalTenantId = tenantId;
-  
+
   if (!finalTenantId) {
-    const { getAllTenants } = await import('./db');
+    const { getAllTenants } = await import("./db");
     const allTenants = await getAllTenants();
     if (allTenants && allTenants.length > 0) {
       finalTenantId = allTenants[0].id;
     }
   }
 
-  const { getTenantSmtpSettings } = await import('./db');
-  let emailMethod = process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true' ? 'gateway' : 'smtp';
-  
+  const { getTenantSmtpSettings } = await import("./db");
+  let emailMethod =
+    process.env.NODE_ENV === "production" ||
+    process.env.USE_EMAIL_GATEWAY === "true"
+      ? "gateway"
+      : "smtp";
+
   if (finalTenantId) {
     const tenantSettings = await getTenantSmtpSettings(finalTenantId);
     if (tenantSettings && tenantSettings.emailMethod) {
@@ -213,36 +263,43 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
     }
   }
 
-  const useGateway = emailMethod === 'gateway';
+  const useGateway = emailMethod === "gateway";
 
   if (useGateway) {
-    const result = await sendEmailViaPostmanGpx({
-      to: emailOptions.to,
-      subject: emailOptions.subject,
-      html: emailOptions.html,
-      attachments: emailOptions.attachments,
-    }, finalTenantId);
+    const result = await sendEmailViaPostmanGpx(
+      {
+        to: emailOptions.to,
+        subject: emailOptions.subject,
+        html: emailOptions.html,
+        attachments: emailOptions.attachments,
+      },
+      finalTenantId
+    );
 
     if (!result.success) {
-      throw new Error(result.error || 'Falha ao enviar email via Gateway');
+      throw new Error(result.error || "Falha ao enviar email via Gateway");
     }
 
-    return { success: true, messageId: 'gateway-' + Date.now() };
+    return { success: true, messageId: "gateway-" + Date.now() };
   }
 
   // SMTP direto
   try {
-    const { transporter: transport, config } = await getTransporterWithConfig(tenantDb, finalTenantId);
+    const { transporter: transport, config } = await getTransporterWithConfig(
+      tenantDb,
+      finalTenantId
+    );
 
     // Prepare attachments for Nodemailer
-    const attachments: Attachment[] = options.attachments?.map(att => ({
-      filename: att.filename,
-      path: att.path,
-      content: att.content,
-      contentType: att.contentType,
-      cid: att.cid,
-      disposition: att.disposition,
-    })) || [];
+    const attachments: Attachment[] =
+      options.attachments?.map(att => ({
+        filename: att.filename,
+        path: att.path,
+        content: att.content,
+        contentType: att.contentType,
+        cid: att.cid,
+        disposition: att.disposition,
+      })) || [];
 
     const info = await transport.sendMail({
       from: config.smtpFrom,
@@ -252,18 +309,18 @@ export async function sendEmail(options: SendEmailOptions & { tenantDb?: any; te
       html: disableClickTracking(options.html),
       attachments,
       // Ensure proper UTF-8 encoding
-      encoding: 'utf-8',
-      textEncoding: 'base64',
+      encoding: "utf-8",
+      textEncoding: "base64",
       // Add explicit headers for charset
       headers: {
-        'Content-Type': 'text/html; charset=UTF-8',
-        'charset': 'UTF-8',
+        "Content-Type": "text/html; charset=UTF-8",
+        charset: "UTF-8",
       },
     });
 
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[EmailService] Error sending email:', error);
+    console.error("[EmailService] Error sending email:", error);
     throw error;
   }
 }
@@ -276,13 +333,13 @@ async function sendEmailViaPostmanGpx(
     to: string;
     subject: string;
     html: string;
-    attachments?: SendEmailOptions['attachments'];
+    attachments?: SendEmailOptions["attachments"];
   },
   tenantId?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { getTenantSmtpSettings, getAllTenants } = await import('./db');
-    
+    const { getTenantSmtpSettings, getAllTenants } = await import("./db");
+
     let finalTenantId = tenantId;
     if (!finalTenantId) {
       const allTenants = await getAllTenants();
@@ -303,22 +360,33 @@ async function sendEmailViaPostmanGpx(
         smtpFrom = tenantSettings?.smtpFrom || undefined;
       }
     } catch (err) {
-      console.error('[EmailService] Error looking up tenant settings:', err);
+      console.error("[EmailService] Error looking up tenant settings:", err);
       // ignore tenant lookup errors and fallback to env
     }
 
     if (!baseUrl || !apiKey) {
       return {
         success: false,
-        error: 'PostmanGPX não configurado. Informe Base URL e API Key nas configurações do tenant (ou defina POSTMANGPX_BASE_URL e POSTMANGPX_API_KEY).',
+        error:
+          "PostmanGPX não configurado. Informe Base URL e API Key nas configurações do tenant (ou defina POSTMANGPX_BASE_URL e POSTMANGPX_API_KEY).",
       };
     }
 
-    const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
+    const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
-    let gatewayAttachments: Array<{ filename: string; contentType: string; contentBase64: string; cid?: string; disposition?: 'inline' | 'attachment' }> | undefined;
+    let gatewayAttachments:
+      | Array<{
+          filename: string;
+          contentType: string;
+          contentBase64: string;
+          cid?: string;
+          disposition?: "inline" | "attachment";
+        }>
+      | undefined;
     if (options.attachments?.length) {
-      const resolved = await Promise.all(options.attachments.map(resolveAttachmentToBase64));
+      const resolved = await Promise.all(
+        options.attachments.map(resolveAttachmentToBase64)
+      );
       gatewayAttachments = resolved.filter(Boolean) as any;
     }
 
@@ -335,9 +403,9 @@ async function sendEmailViaPostmanGpx(
       from: smtpFrom,
       replyTo: extractEmailAddress(smtpFrom),
       attachments: gatewayAttachments,
-      charset: 'UTF-8',
+      charset: "UTF-8",
       // Add explicit content-type with charset for HTML
-      contentType: 'text/html; charset=UTF-8',
+      contentType: "text/html; charset=UTF-8",
       // Disable click/open tracking — cobrir múltiplas convenções de API
       trackClicks: false,
       trackOpens: false,
@@ -351,23 +419,26 @@ async function sendEmailViaPostmanGpx(
     };
 
     const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'X-API-Key': apiKey,
+        "Content-Type": "application/json; charset=utf-8",
+        "X-API-Key": apiKey,
       },
       body: JSON.stringify(emailPayload),
     });
 
-    const contentType = response.headers.get('content-type') || '';
+    const contentType = response.headers.get("content-type") || "";
     const rawText = await response.text();
-    const maybeJson = contentType.includes('application/json');
+    const maybeJson = contentType.includes("application/json");
     const data = maybeJson ? safeJsonParse(rawText) : null;
 
     if (!response.ok) {
       return {
         success: false,
-        error: (data as any)?.message || rawText || `Erro ao chamar PostmanGPX (HTTP ${response.status})`,
+        error:
+          (data as any)?.message ||
+          rawText ||
+          `Erro ao chamar PostmanGPX (HTTP ${response.status})`,
       };
     }
 
@@ -378,8 +449,11 @@ async function sendEmailViaPostmanGpx(
 
     return { success: true };
   } catch (error: any) {
-    console.error('[EmailService] PostmanGPX request failed:', error);
-    return { success: false, error: `Falha na conexão com PostmanGPX: ${error.message}` };
+    console.error("[EmailService] PostmanGPX request failed:", error);
+    return {
+      success: false,
+      error: `Falha na conexão com PostmanGPX: ${error.message}`,
+    };
   }
 }
 
@@ -395,22 +469,24 @@ function safeJsonParse(text: string): unknown {
  * Fetch image from URL and convert to base64 data URI
  * This embeds the image directly in the email HTML, avoiding external URL issues
  */
-export async function fetchImageAsBase64(imageUrl: string): Promise<string | null> {
+export async function fetchImageAsBase64(
+  imageUrl: string
+): Promise<string | null> {
   try {
     const response = await fetch(imageUrl);
-    
+
     if (!response.ok) {
-      console.error('[EmailService] Failed to fetch image:', response.status);
+      console.error("[EmailService] Failed to fetch image:", response.status);
       return null;
     }
-    
-    const contentType = response.headers.get('content-type') || 'image/png';
+
+    const contentType = response.headers.get("content-type") || "image/png";
     const arrayBuffer = await response.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-    
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+
     return `data:${contentType};base64,${base64}`;
   } catch (error) {
-    console.error('[EmailService] Error converting image to base64:', error);
+    console.error("[EmailService] Error converting image to base64:", error);
     return null;
   }
 }
@@ -432,40 +508,44 @@ export async function sendTestEmailWithSettings(settings: {
   postmanGpxBaseUrl?: string;
   postmanGpxApiKey?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const defaultSubject = '✅ Teste de Configuração - CAC 360';
-  const defaultBodyText = 'Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações estão corretas.';
-  
+  const defaultSubject = "✅ Teste de Configuração - CAC 360";
+  const defaultBodyText =
+    "Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações estão corretas.";
+
   const subject = settings.subject || defaultSubject;
   const bodyText = settings.body || defaultBodyText;
-  
+
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <h2 style="color: #1a5c00;">✅ ${subject}</h2>
-      <p>${bodyText.replace(/\n/g, '<br/>')}</p>
+      <p>${bodyText.replace(/\n/g, "<br/>")}</p>
       <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
       <p style="color: #666; font-size: 12px;">Enviado via CAC 360</p>
     </div>
   `;
 
   // Usar Gateway se explicitamente solicitado, ou se em produção e não definido
-  const shouldUseGateway = settings.useGateway !== undefined 
-    ? settings.useGateway 
-    : (process.env.NODE_ENV === 'production' || process.env.USE_EMAIL_GATEWAY === 'true');
-  
+  const shouldUseGateway =
+    settings.useGateway !== undefined
+      ? settings.useGateway
+      : process.env.NODE_ENV === "production" ||
+        process.env.USE_EMAIL_GATEWAY === "true";
+
   if (shouldUseGateway) {
     if (!settings.postmanGpxBaseUrl || !settings.postmanGpxApiKey) {
       return {
         success: false,
-        error: 'PostmanGPX não configurado. Informe Base URL e API Key nas configurações.',
+        error:
+          "PostmanGPX não configurado. Informe Base URL e API Key nas configurações.",
       };
     }
 
-    const normalizedBaseUrl = settings.postmanGpxBaseUrl.replace(/\/$/, '');
+    const normalizedBaseUrl = settings.postmanGpxBaseUrl.replace(/\/$/, "");
     const response = await fetch(`${normalizedBaseUrl}/api/v1/send`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': settings.postmanGpxApiKey,
+        "Content-Type": "application/json",
+        "X-API-Key": settings.postmanGpxApiKey,
       },
       body: JSON.stringify({
         to: settings.toEmail,
@@ -473,8 +553,8 @@ export async function sendTestEmailWithSettings(settings: {
         html: disableClickTracking(htmlBody),
         from: settings.from,
         replyTo: extractEmailAddress(settings.from),
-        charset: 'UTF-8',
-        contentType: 'text/html; charset=UTF-8',
+        charset: "UTF-8",
+        contentType: "text/html; charset=UTF-8",
         // Disable click/open tracking — idem emailPayload principal
         trackClicks: false,
         trackOpens: false,
@@ -488,14 +568,19 @@ export async function sendTestEmailWithSettings(settings: {
       }),
     });
 
-    const contentType = response.headers.get('content-type') || '';
+    const contentType = response.headers.get("content-type") || "";
     const rawText = await response.text();
-    const data = contentType.includes('application/json') ? safeJsonParse(rawText) : null;
+    const data = contentType.includes("application/json")
+      ? safeJsonParse(rawText)
+      : null;
 
     if (!response.ok) {
       return {
         success: false,
-        error: (data as any)?.message || rawText || `Erro ao enviar teste via PostmanGPX (HTTP ${response.status})`,
+        error:
+          (data as any)?.message ||
+          rawText ||
+          `Erro ao enviar teste via PostmanGPX (HTTP ${response.status})`,
       };
     }
 
@@ -505,7 +590,7 @@ export async function sendTestEmailWithSettings(settings: {
   // Fallback para SMTP direto (desenvolvimento local)
   try {
     const useSecure = settings.port === 465;
-    
+
     const transporter = nodemailer.createTransport({
       host: settings.host,
       port: settings.port,
@@ -530,17 +615,20 @@ export async function sendTestEmailWithSettings(settings: {
       subject,
       html: disableClickTracking(htmlBody),
       // Standardize encoding with main function
-      encoding: 'utf-8',
-      textEncoding: 'base64',
+      encoding: "utf-8",
+      textEncoding: "base64",
       headers: {
-        'Content-Type': 'text/html; charset=UTF-8',
-        'charset': 'UTF-8',
+        "Content-Type": "text/html; charset=UTF-8",
+        charset: "UTF-8",
       },
     });
 
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message || 'Erro desconhecido ao enviar email' };
+    return {
+      success: false,
+      error: error.message || "Erro desconhecido ao enviar email",
+    };
   }
 }
 
@@ -548,8 +636,8 @@ export async function sendTestEmailWithSettings(settings: {
 // EMAIL TRIGGER AUTOMATION
 // ============================================
 
-import * as db from './db';
-import type { Client, User } from '../drizzle/schema';
+import * as db from "./db";
+import type { Client, User } from "../drizzle/schema";
 
 interface TriggerContext {
   tenantDb?: any;
@@ -565,19 +653,33 @@ interface TriggerContext {
  * @param event - The trigger event (e.g., 'CLIENT_CREATED', 'STEP_COMPLETED:2')
  * @param context - Context containing client, users, and optional scheduled date
  */
-export async function triggerEmails(event: string, context: TriggerContext): Promise<void> {
+export async function triggerEmails(
+  event: string,
+  context: TriggerContext
+): Promise<void> {
   try {
-    const { tenantDb, tenantId, client, users = [], scheduledDate, extraData } = context;
-    
-    console.log(`[EmailTrigger] Processing event="${event}" client=${client.id} (${client.name}) tenant=${tenantId || 'none'}`);
-    
+    const {
+      tenantDb,
+      tenantId,
+      client,
+      users = [],
+      scheduledDate,
+      extraData,
+    } = context;
+
+    console.log(
+      `[EmailTrigger] Processing event="${event}" client=${client.id} (${client.name}) tenant=${tenantId || "none"}`
+    );
+
     // Fetch tenant settings to get logo and name (already saved as base64 data URI)
-    const tenantSettings = tenantId ? await db.getTenantSmtpSettings(tenantId) : null;
-    const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
+    const tenantSettings = tenantId
+      ? await db.getTenantSmtpSettings(tenantId)
+      : null;
+    const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || "";
 
     // Injeta nome do clube no extraData para substituição de {{nome_clube}}
     const enrichedExtraData: Record<string, any> = {
-      nome_clube: tenantSettings?.name || 'CAC 360',
+      nome_clube: tenantSettings?.name || "CAC 360",
       ...extraData,
     };
 
@@ -587,50 +689,79 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
     const triggers = tenantDb
       ? await db.getActiveTriggersByEventFromDb(tenantDb, event, tenantId)
       : await db.getActiveTriggersByEvent(event, tenantId);
-    
+
     if (triggers.length === 0) {
-      console.log(`[EmailTrigger] No active triggers found for event="${event}" tenant=${tenantId}`);
+      console.log(
+        `[EmailTrigger] No active triggers found for event="${event}" tenant=${tenantId}`
+      );
       return;
     }
-    
-    console.log(`[EmailTrigger] Found ${triggers.length} trigger(s) for event="${event}"`);
-    
+
+    console.log(
+      `[EmailTrigger] Found ${triggers.length} trigger(s) for event="${event}"`
+    );
+
     for (const trigger of triggers) {
       // Get templates for this trigger
       const templates = tenantDb
         ? await db.getTemplatesByTriggerIdFromDb(tenantDb, trigger.id)
         : await db.getTemplatesByTriggerId(trigger.id);
-      
+
       if (templates.length === 0) {
-        console.warn(`[EmailTrigger] Trigger "${trigger.name}" (id=${trigger.id}) has no linked templates — skipping`);
+        console.warn(
+          `[EmailTrigger] Trigger "${trigger.name}" (id=${trigger.id}) has no linked templates — skipping`
+        );
         continue;
       }
-      
+
       // Determine recipients
-      const recipients = await resolveRecipients(trigger, client, users, tenantDb);
-      
+      const recipients = await resolveRecipients(
+        trigger,
+        client,
+        users,
+        tenantDb
+      );
+
       if (recipients.length === 0) {
-        console.warn(`[EmailTrigger] Trigger "${trigger.name}" — no recipients resolved (recipientType=${trigger.recipientType}, clientEmail=${client.email || 'none'})`);
+        console.warn(
+          `[EmailTrigger] Trigger "${trigger.name}" — no recipients resolved (recipientType=${trigger.recipientType}, clientEmail=${client.email || "none"})`
+        );
         continue;
       }
-      
+
       // Process each template
       for (const templateLink of templates) {
         const template = templateLink.template;
         if (!template) {
           continue;
         }
-        
+
         // Render template with client data (logo is already base64 from database)
-        const renderedSubject = renderTemplate(template.subject, client, enrichedExtraData, emailLogoUrl);
-        const renderedContent = renderTemplate(template.content, client, enrichedExtraData, emailLogoUrl);
-        
+        const renderedSubject = renderTemplate(
+          template.subject,
+          client,
+          enrichedExtraData,
+          emailLogoUrl
+        );
+        const renderedContent = renderTemplate(
+          template.content,
+          client,
+          enrichedExtraData,
+          emailLogoUrl
+        );
+
         // Check if this is a reminder template and we have a scheduled date
-        if (templateLink.isForReminder && scheduledDate && trigger.sendBeforeHours) {
+        if (
+          templateLink.isForReminder &&
+          scheduledDate &&
+          trigger.sendBeforeHours
+        ) {
           // Schedule the reminder email
           const reminderDate = new Date(scheduledDate);
-          reminderDate.setHours(reminderDate.getHours() - trigger.sendBeforeHours);
-          
+          reminderDate.setHours(
+            reminderDate.getHours() - trigger.sendBeforeHours
+          );
+
           // Only schedule if the reminder date is in the future
           if (reminderDate > new Date()) {
             for (const recipient of recipients) {
@@ -645,16 +776,16 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
                 content: renderedContent,
                 scheduledFor: reminderDate,
                 referenceDate: scheduledDate,
-                status: 'pending' as const,
+                status: "pending" as const,
               };
-              
+
               tenantDb
                 ? await db.scheduleEmailToDb(tenantDb, scheduledData)
                 : await db.scheduleEmail(scheduledData);
             }
           }
         }
-        
+
         // Send immediate email if configured
         if (trigger.sendImmediate && !templateLink.isForReminder) {
           for (const recipient of recipients) {
@@ -662,7 +793,9 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
               continue;
             }
             try {
-              console.log(`[EmailTrigger] Sending email to ${recipient.email} — trigger="${trigger.name}" template="${template.templateKey}" subject="${renderedSubject}"`);
+              console.log(
+                `[EmailTrigger] Sending email to ${recipient.email} — trigger="${trigger.name}" template="${template.templateKey}" subject="${renderedSubject}"`
+              );
               await sendEmail({
                 to: recipient.email,
                 subject: renderedSubject,
@@ -671,8 +804,10 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
                 tenantDb,
                 tenantId,
               });
-              console.log(`[EmailTrigger] ✓ Email sent successfully to ${recipient.email}`);
-              
+              console.log(
+                `[EmailTrigger] ✓ Email sent successfully to ${recipient.email}`
+              );
+
               // Registrar envio na Central de Mensagens
               try {
                 if (tenantDb) {
@@ -689,14 +824,17 @@ export async function triggerEmails(event: string, context: TriggerContext): Pro
                 console.error(`[EmailTrigger] Failed to log email:`, logError);
               }
             } catch (error) {
-              console.error(`[EmailTrigger] Failed to send email to ${recipient.email}:`, error);
+              console.error(
+                `[EmailTrigger] Failed to send email to ${recipient.email}:`,
+                error
+              );
             }
           }
         }
       }
     }
   } catch (error) {
-    console.error('[EmailTrigger] Error processing triggers:', error);
+    console.error("[EmailTrigger] Error processing triggers:", error);
   }
 }
 
@@ -710,16 +848,16 @@ async function resolveRecipients(
   tenantDb?: any
 ): Promise<Array<{ email: string; name: string | null }>> {
   const recipients: Array<{ email: string; name: string | null }> = [];
-  
+
   // Add client if recipientType includes client
-  if (trigger.recipientType === 'client' || trigger.recipientType === 'both') {
+  if (trigger.recipientType === "client" || trigger.recipientType === "both") {
     if (client.email && client.email.trim()) {
       recipients.push({ email: client.email, name: client.name });
     }
   }
-  
+
   // Add operator if recipientType is operator
-  if (trigger.recipientType === 'operator') {
+  if (trigger.recipientType === "operator") {
     const operator = tenantDb
       ? await db.getUserByIdFromDb(tenantDb, client.operatorId)
       : await db.getUserById(client.operatorId);
@@ -727,56 +865,66 @@ async function resolveRecipients(
       recipients.push({ email: operator.email, name: operator.name });
     }
   }
-  
+
   // Add specific users if recipientType includes users
-  if (trigger.recipientType === 'users' || trigger.recipientType === 'both') {
+  if (trigger.recipientType === "users" || trigger.recipientType === "both") {
     if (trigger.recipientUserIds) {
       const userIds: number[] = JSON.parse(trigger.recipientUserIds);
       for (const userId of userIds) {
-        const user = users.find(u => u.id === userId) || (tenantDb
-          ? await db.getUserByIdFromDb(tenantDb, userId)
-          : await db.getUserById(userId));
+        const user =
+          users.find(u => u.id === userId) ||
+          (tenantDb
+            ? await db.getUserByIdFromDb(tenantDb, userId)
+            : await db.getUserById(userId));
         if (user) {
           recipients.push({ email: user.email, name: user.name });
         }
       }
     }
   }
-  
+
   // Remove duplicates
-  const uniqueRecipients = recipients.filter((r, i, arr) => 
-    arr.findIndex(x => x.email === r.email) === i
+  const uniqueRecipients = recipients.filter(
+    (r, i, arr) => arr.findIndex(x => x.email === r.email) === i
   );
-  
+
   return uniqueRecipients;
 }
 
 /**
  * Render template with client data (replace placeholders)
  */
-function renderTemplate(template: string, client: Client, extraData?: Record<string, any>, emailLogoUrl?: string): string {
+function renderTemplate(
+  template: string,
+  client: Client,
+  extraData?: Record<string, any>,
+  emailLogoUrl?: string
+): string {
   let rendered = template;
-  
+
   // Client placeholders
-  rendered = rendered.replace(/\{\{nome\}\}/gi, client.name || '');
-  rendered = rendered.replace(/\{\{email\}\}/gi, client.email || '');
-  rendered = rendered.replace(/\{\{cpf\}\}/gi, client.cpf || '');
-  rendered = rendered.replace(/\{\{telefone\}\}/gi, client.phone || '');
-  rendered = rendered.replace(/\{\{endereco\}\}/gi, client.address || '');
-  rendered = rendered.replace(/\{\{cidade\}\}/gi, client.city || '');
-  rendered = rendered.replace(/\{\{cep\}\}/gi, client.cep || '');
-  
+  rendered = rendered.replace(/\{\{nome\}\}/gi, client.name || "");
+  rendered = rendered.replace(/\{\{email\}\}/gi, client.email || "");
+  rendered = rendered.replace(/\{\{cpf\}\}/gi, client.cpf || "");
+  rendered = rendered.replace(/\{\{telefone\}\}/gi, client.phone || "");
+  rendered = rendered.replace(/\{\{endereco\}\}/gi, client.address || "");
+  rendered = rendered.replace(/\{\{cidade\}\}/gi, client.city || "");
+  rendered = rendered.replace(/\{\{cep\}\}/gi, client.cep || "");
+
   // Extra data placeholders
   if (extraData) {
     for (const [key, value] of Object.entries(extraData)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
-      rendered = rendered.replace(regex, String(value || ''));
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, "gi");
+      rendered = rendered.replace(regex, String(value || ""));
     }
   }
-  
+
   // Date placeholder
-  rendered = rendered.replace(/\{\{data\}\}/gi, new Date().toLocaleDateString('pt-BR'));
-  
+  rendered = rendered.replace(
+    /\{\{data\}\}/gi,
+    new Date().toLocaleDateString("pt-BR")
+  );
+
   // Logo placeholder — CID inline se tenant tiver logo; caso contrário, logo
   // texto da plataforma CAC 360 (compatível com todos os clientes de email).
   const CAC360_LOGO_FALLBACK =
@@ -789,11 +937,14 @@ function renderTemplate(template: string, client: Client, extraData?: Record<str
     `</td></tr></table>`;
 
   if (emailLogoUrl) {
-    rendered = rendered.replace(/\{\{logo\}\}/gi, `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`);
+    rendered = rendered.replace(
+      /\{\{logo\}\}/gi,
+      `<img src="cid:email-logo" alt="Logo" style="max-height: 80px; max-width: 200px; display: block;" />`
+    );
   } else {
     rendered = rendered.replace(/\{\{logo\}\}/gi, CAC360_LOGO_FALLBACK);
   }
-  
+
   return rendered;
 }
 
@@ -802,12 +953,13 @@ function renderTemplate(template: string, client: Client, extraData?: Record<str
  */
 export function buildPsychReferralEmailHtml(
   clientName: string,
-  type: 'standard' | 'custom',
-  dateStr: string,
+  type: "standard" | "custom",
+  dateStr: string
 ): string {
-  const intro = type === 'standard'
-    ? `Segue em anexo o seu <strong>Encaminhamento para Avaliação Psicológica</strong> emitido pela plataforma CAC 360.`
-    : `Segue em anexo o <strong>encaminhamento personalizado</strong> para Avaliação Psicológica, encaminhado pelo seu gestor de processo, junto com sua ficha de dados cadastrais.`;
+  const intro =
+    type === "standard"
+      ? `Segue em anexo o seu <strong>Encaminhamento para Avaliação Psicológica</strong> emitido pela plataforma CAC 360.`
+      : `Segue em anexo o <strong>encaminhamento personalizado</strong> para Avaliação Psicológica, encaminhado pelo seu gestor de processo, junto com sua ficha de dados cadastrais.`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -861,12 +1013,14 @@ export async function processScheduledEmails(tenantDb?: any): Promise<number> {
     const pendingEmails = tenantDb
       ? await db.getPendingScheduledEmailsFromDb(tenantDb)
       : await db.getPendingScheduledEmails();
-    
+
     let sent = 0;
     for (const scheduled of pendingEmails) {
       try {
-        const tenantSettings = scheduled.tenantId ? await db.getTenantSmtpSettings(scheduled.tenantId) : null;
-        const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || '';
+        const tenantSettings = scheduled.tenantId
+          ? await db.getTenantSmtpSettings(scheduled.tenantId)
+          : null;
+        const emailLogoUrl = (tenantSettings as any)?.emailLogoUrl || "";
         const inlineLogo = buildInlineLogoAttachment(emailLogoUrl);
 
         await sendEmail({
@@ -877,23 +1031,30 @@ export async function processScheduledEmails(tenantDb?: any): Promise<number> {
           tenantDb,
           tenantId: scheduled.tenantId,
         });
-        
+
         tenantDb
           ? await db.markScheduledEmailSentToDb(tenantDb, scheduled.id)
           : await db.markScheduledEmailSent(scheduled.id);
-        
+
         sent++;
       } catch (error: any) {
-        console.error(`[EmailTrigger] Failed to send scheduled email ${scheduled.id}:`, error);
+        console.error(
+          `[EmailTrigger] Failed to send scheduled email ${scheduled.id}:`,
+          error
+        );
         tenantDb
-          ? await db.markScheduledEmailFailedToDb(tenantDb, scheduled.id, error.message)
+          ? await db.markScheduledEmailFailedToDb(
+              tenantDb,
+              scheduled.id,
+              error.message
+            )
           : await db.markScheduledEmailFailed(scheduled.id, error.message);
       }
     }
-    
+
     return sent;
   } catch (error) {
-    console.error('[EmailTrigger] Error processing scheduled emails:', error);
+    console.error("[EmailTrigger] Error processing scheduled emails:", error);
     return 0;
   }
 }

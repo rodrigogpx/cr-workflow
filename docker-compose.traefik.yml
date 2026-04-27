@@ -4,7 +4,7 @@
 # Deploy: docker stack deploy -c docker-compose.traefik.yml traefik
 # Remove: docker stack rm traefik
 
-version: '3.8'
+version: "3.8"
 
 services:
   traefik:
@@ -62,10 +62,10 @@ services:
         max_attempts: 3
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
         reservations:
-          cpus: '0.1'
+          cpus: "0.1"
           memory: 128M
       labels:
         # Dashboard

@@ -12,22 +12,24 @@ interface EmailConfigPanelProps {
 }
 
 export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
-  const { data: config, isLoading } = trpc.tenants.getEmailConfig.useQuery({ tenantId });
+  const { data: config, isLoading } = trpc.tenants.getEmailConfig.useQuery({
+    tenantId,
+  });
   const utils = trpc.useContext();
-  
+
   const updateConfig = trpc.tenants.updateEmailConfig.useMutation({
     onSuccess: () => {
       toast.success("Configuração atualizada");
       utils.tenants.getEmailConfig.invalidate({ tenantId });
     },
-    onError: (err) => toast.error(err.message),
+    onError: err => toast.error(err.message),
   });
-  
+
   const testConfig = trpc.tenants.testEmailConfig.useMutation({
     onSuccess: () => toast.success("Email de teste enviado!"),
-    onError: (err) => toast.error(err.message),
+    onError: err => toast.error(err.message),
   });
-  
+
   const [emailMethod, setEmailMethod] = useState<"smtp" | "gateway">("gateway");
   const [smtpHost, setSmtpHost] = useState("");
   const [smtpPort, setSmtpPort] = useState(587);
@@ -37,7 +39,7 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
   const [postmanGpxBaseUrl, setPostmanGpxBaseUrl] = useState("");
   const [postmanGpxApiKey, setPostmanGpxApiKey] = useState("");
   const [testEmail, setTestEmail] = useState("");
-  
+
   useEffect(() => {
     if (config) {
       setEmailMethod(config.emailMethod);
@@ -48,7 +50,7 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
       setPostmanGpxBaseUrl(config.postmanGpxBaseUrl);
     }
   }, [config]);
-  
+
   const handleSave = () => {
     updateConfig.mutate({
       tenantId,
@@ -62,7 +64,7 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
       postmanGpxApiKey: postmanGpxApiKey || undefined,
     });
   };
-  
+
   const handleTest = () => {
     if (!testEmail) {
       toast.error("Informe um email para teste");
@@ -70,7 +72,7 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
     }
     testConfig.mutate({ tenantId, testEmail });
   };
-  
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -78,7 +80,7 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Seletor de Método */}
@@ -90,7 +92,7 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
               type="radio"
               value="smtp"
               checked={emailMethod === "smtp"}
-              onChange={(e) => setEmailMethod(e.target.value as "smtp")}
+              onChange={e => setEmailMethod(e.target.value as "smtp")}
               className="w-4 h-4"
             />
             <span>SMTP Direto</span>
@@ -100,14 +102,14 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
               type="radio"
               value="gateway"
               checked={emailMethod === "gateway"}
-              onChange={(e) => setEmailMethod(e.target.value as "gateway")}
+              onChange={e => setEmailMethod(e.target.value as "gateway")}
               className="w-4 h-4"
             />
             <span>Gateway HTTP (PostmanGPX)</span>
           </label>
         </div>
       </div>
-      
+
       {/* Configurações SMTP */}
       {emailMethod === "smtp" && (
         <Card>
@@ -116,34 +118,47 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Host SMTP</Label>
-                <Input value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} />
+                <Input
+                  value={smtpHost}
+                  onChange={e => setSmtpHost(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Porta</Label>
-                <Input type="number" value={smtpPort} onChange={(e) => setSmtpPort(Number(e.target.value))} />
+                <Input
+                  type="number"
+                  value={smtpPort}
+                  onChange={e => setSmtpPort(Number(e.target.value))}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Usuário</Label>
-                <Input value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} />
+                <Input
+                  value={smtpUser}
+                  onChange={e => setSmtpUser(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Senha</Label>
-                <Input 
-                  type="password" 
-                  value={smtpPassword} 
-                  onChange={(e) => setSmtpPassword(e.target.value)}
+                <Input
+                  type="password"
+                  value={smtpPassword}
+                  onChange={e => setSmtpPassword(e.target.value)}
                   placeholder={config?.hasSmtpPassword ? "••••••••" : ""}
                 />
               </div>
               <div className="col-span-2 space-y-2">
                 <Label>Email Remetente (From)</Label>
-                <Input value={smtpFrom} onChange={(e) => setSmtpFrom(e.target.value)} />
+                <Input
+                  value={smtpFrom}
+                  onChange={e => setSmtpFrom(e.target.value)}
+                />
               </div>
             </div>
           </CardContent>
         </Card>
       )}
-      
+
       {/* Configurações Gateway */}
       {emailMethod === "gateway" && (
         <Card>
@@ -152,26 +167,32 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>URL Base PostmanGPX</Label>
-                <Input value={postmanGpxBaseUrl} onChange={(e) => setPostmanGpxBaseUrl(e.target.value)} />
+                <Input
+                  value={postmanGpxBaseUrl}
+                  onChange={e => setPostmanGpxBaseUrl(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>API Key</Label>
-                <Input 
-                  type="password" 
-                  value={postmanGpxApiKey} 
-                  onChange={(e) => setPostmanGpxApiKey(e.target.value)}
+                <Input
+                  type="password"
+                  value={postmanGpxApiKey}
+                  onChange={e => setPostmanGpxApiKey(e.target.value)}
                   placeholder={config?.hasPostmanGpxApiKey ? "••••••••" : ""}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Email Remetente (From)</Label>
-                <Input value={smtpFrom} onChange={(e) => setSmtpFrom(e.target.value)} />
+                <Input
+                  value={smtpFrom}
+                  onChange={e => setSmtpFrom(e.target.value)}
+                />
               </div>
             </div>
           </CardContent>
         </Card>
       )}
-      
+
       {/* Teste de Configuração */}
       <Card className="bg-blue-50 border-blue-200">
         <CardContent className="p-4 space-y-4">
@@ -180,27 +201,33 @@ export function EmailConfigPanel({ tenantId }: EmailConfigPanelProps) {
             Testar Configuração
           </h4>
           <div className="flex gap-2">
-            <Input 
-              type="email" 
-              placeholder="seu@email.com" 
+            <Input
+              type="email"
+              placeholder="seu@email.com"
               value={testEmail}
-              onChange={(e) => setTestEmail(e.target.value)}
+              onChange={e => setTestEmail(e.target.value)}
             />
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleTest}
               disabled={testConfig.isPending}
             >
-              {testConfig.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar Teste"}
+              {testConfig.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Enviar Teste"
+              )}
             </Button>
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Ações */}
       <div className="flex justify-end gap-2 pt-4 border-t">
         <Button onClick={handleSave} disabled={updateConfig.isPending}>
-          {updateConfig.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {updateConfig.isPending && (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          )}
           Salvar Configurações
         </Button>
       </div>

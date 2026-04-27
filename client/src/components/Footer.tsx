@@ -1,10 +1,11 @@
 declare const __GIT_COMMIT__: string;
 
 export default function Footer() {
-  const commitHash = typeof __GIT_COMMIT__ !== 'undefined' ? __GIT_COMMIT__ : 'dev';
-  
+  const commitHash =
+    typeof __GIT_COMMIT__ !== "undefined" ? __GIT_COMMIT__ : "dev";
+
   // Log para depuração no console do navegador
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     (window as any)._APP_VERSION = commitHash;
   }
 
@@ -15,7 +16,9 @@ export default function Footer() {
           <div className="flex items-center gap-2">
             <span>© 2025 ACR Digital</span>
             <span className="hidden md:inline">•</span>
-            <span className="hidden md:inline">Todos os direitos reservados</span>
+            <span className="hidden md:inline">
+              Todos os direitos reservados
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <span>Desenvolvido por</span>

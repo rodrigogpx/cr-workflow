@@ -15,30 +15,34 @@
  *
  * Uso: node scripts/pre-push.mjs
  */
-import postgres from 'postgres';
-import { spawn } from 'child_process';
+import postgres from "postgres";
+import { spawn } from "child_process";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
-  console.warn('[pre-push] DATABASE_URL não definida, pulando.');
+  console.warn("[pre-push] DATABASE_URL não definida, pulando.");
   process.exit(0);
 }
 
-const isCi = process.env.CI === 'true';
+const isCi = process.env.CI === "true";
 const isRailway = Boolean(
-  process.env.RAILWAY_ENVIRONMENT
-  || process.env.RAILWAY_PROJECT_ID
-  || process.env.RAILWAY_SERVICE_ID
-  || process.env.RAILWAY_STATIC_URL
+  process.env.RAILWAY_ENVIRONMENT ||
+    process.env.RAILWAY_PROJECT_ID ||
+    process.env.RAILWAY_SERVICE_ID ||
+    process.env.RAILWAY_STATIC_URL
 );
 
 // Hard no-op em CI/Railway UNLESS explicitamente permitido por RAILWAY_MIGRATION=1
 // (usado durante deploy para rodar migrations automaticamente)
-const allowRailwayMigration = process.env.RAILWAY_MIGRATION === '1';
+const allowRailwayMigration = process.env.RAILWAY_MIGRATION === "1";
 
 if ((isCi || isRailway) && !allowRailwayMigration) {
-  console.log('[pre-push] Ambiente CI/Railway detectado — pulando db:push neste ambiente.');
-  console.log('[pre-push] (Para rodar migração no Railway, defina RAILWAY_MIGRATION=1)');
+  console.log(
+    "[pre-push] Ambiente CI/Railway detectado — pulando db:push neste ambiente."
+  );
+  console.log(
+    "[pre-push] (Para rodar migração no Railway, defina RAILWAY_MIGRATION=1)"
+  );
   process.exit(0);
 }
 
@@ -70,30 +74,35 @@ async function tableExists(tableName) {
 const ghostConstraints = [
   // clients: CREATE TABLE tinha "cpf" NOT NULL UNIQUE → cria clients_cpf_key
   // Mas schema quer clients_tenantId_cpf_unique (composite tenantId+cpf)
-  { name: 'clients_cpf_key', table: 'clients' },
-  { name: 'clients_cpf_unique', table: 'clients' },
+  { name: "clients_cpf_key", table: "clients" },
+  { name: "clients_cpf_unique", table: "clients" },
   // users: CREATE TABLE tinha "email" NOT NULL UNIQUE → cria users_email_key
   // Mas schema quer users_email_unique
-  { name: 'users_email_key', table: 'users' },
+  { name: "users_email_key", table: "users" },
   // tenants: CREATE TABLE UNIQUE inline
-  { name: 'tenants_slug_key', table: 'tenants' },
+  { name: "tenants_slug_key", table: "tenants" },
   // planDefinitions: CREATE TABLE UNIQUE inline
-  { name: 'planDefinitions_slug_key', table: 'planDefinitions' },
+  { name: "planDefinitions_slug_key", table: "planDefinitions" },
   // platformAdmins: possível nome default
-  { name: 'platformAdmins_email_key', table: 'platformAdmins' },
+  { name: "platformAdmins_email_key", table: "platformAdmins" },
   // platformSettings: possível nome default
-  { name: 'platformSettings_key_key', table: 'platformSettings' },
+  { name: "platformSettings_key_key", table: "platformSettings" },
   // clientInviteTokens: possível nome default
-  { name: 'clientInviteTokens_token_key', table: 'clientInviteTokens' },
+  { name: "clientInviteTokens_token_key", table: "clientInviteTokens" },
   // clientPortalSessions: possível nome default
-  { name: 'clientPortalSessions_sessionToken_key', table: 'clientPortalSessions' },
+  {
+    name: "clientPortalSessions_sessionToken_key",
+    table: "clientPortalSessions",
+  },
 ];
 
 for (const g of ghostConstraints) {
   if (await constraintExists(g.name)) {
     try {
       await sql.unsafe(`ALTER TABLE "${g.table}" DROP CONSTRAINT "${g.name}"`);
-      console.log(`[pre-push] 🗑 Constraint fantasma "${g.name}" removido de "${g.table}".`);
+      console.log(
+        `[pre-push] 🗑 Constraint fantasma "${g.name}" removido de "${g.table}".`
+      );
     } catch (err) {
       console.warn(`[pre-push] Aviso ao remover "${g.name}": ${err.message}`);
     }
@@ -102,24 +111,56 @@ for (const g of ghostConstraints) {
 
 // ── Etapa 1: Garantir constraints do schema drizzle ──────────────────────────
 const constraints = [
-  { name: 'users_email_unique',                          table: 'users',                cols: ['"email"'] },
-  { name: 'clients_tenantId_cpf_unique',                 table: 'clients',              cols: ['"tenantId"', '"cpf"'] },
-  { name: 'tenants_slug_unique',                         table: 'tenants',              cols: ['"slug"'] },
-  { name: 'planDefinitions_slug_unique',                 table: 'planDefinitions',      cols: ['"slug"'] },
-  { name: 'usageSnapshots_tenantId_snapshotDate_unique', table: 'usageSnapshots',       cols: ['"tenantId"', '"snapshotDate"'] },
-  { name: 'platformSettings_key_unique',                 table: 'platformSettings',     cols: ['"key"'] },
-  { name: 'platformAdmins_email_unique',                 table: 'platformAdmins',       cols: ['"email"'] },
-  { name: 'clientInviteTokens_token_unique',             table: 'clientInviteTokens',   cols: ['"token"'] },
-  { name: 'clientPortalSessions_sessionToken_unique',    table: 'clientPortalSessions', cols: ['"sessionToken"'] },
+  { name: "users_email_unique", table: "users", cols: ['"email"'] },
+  {
+    name: "clients_tenantId_cpf_unique",
+    table: "clients",
+    cols: ['"tenantId"', '"cpf"'],
+  },
+  { name: "tenants_slug_unique", table: "tenants", cols: ['"slug"'] },
+  {
+    name: "planDefinitions_slug_unique",
+    table: "planDefinitions",
+    cols: ['"slug"'],
+  },
+  {
+    name: "usageSnapshots_tenantId_snapshotDate_unique",
+    table: "usageSnapshots",
+    cols: ['"tenantId"', '"snapshotDate"'],
+  },
+  {
+    name: "platformSettings_key_unique",
+    table: "platformSettings",
+    cols: ['"key"'],
+  },
+  {
+    name: "platformAdmins_email_unique",
+    table: "platformAdmins",
+    cols: ['"email"'],
+  },
+  {
+    name: "clientInviteTokens_token_unique",
+    table: "clientInviteTokens",
+    cols: ['"token"'],
+  },
+  {
+    name: "clientPortalSessions_sessionToken_unique",
+    table: "clientPortalSessions",
+    cols: ['"sessionToken"'],
+  },
 ];
 
-let ok = 0, skipped = 0, failed = 0;
+let ok = 0,
+  skipped = 0,
+  failed = 0;
 
 for (const c of constraints) {
   try {
     // 1) Verificar se a tabela existe
     if (!(await tableExists(c.table))) {
-      console.log(`[pre-push] ⏭ "${c.name}" — tabela "${c.table}" não existe, pulando.`);
+      console.log(
+        `[pre-push] ⏭ "${c.name}" — tabela "${c.table}" não existe, pulando.`
+      );
       skipped++;
       continue;
     }
@@ -133,7 +174,9 @@ for (const c of constraints) {
 
     // 3) Constraint não existe — precisamos criar.
     //    Primeiro, dropar índice órfão (pode existir sem constraint real).
-    console.log(`[pre-push] ⚠ "${c.name}" NÃO existe em pg_constraint. Criando...`);
+    console.log(
+      `[pre-push] ⚠ "${c.name}" NÃO existe em pg_constraint. Criando...`
+    );
 
     try {
       await sql.unsafe(`DROP INDEX IF EXISTS "${c.name}"`);
@@ -142,7 +185,7 @@ for (const c of constraints) {
     }
 
     // 4) Verificar duplicatas antes de criar o constraint
-    const colsList = c.cols.join(', ');
+    const colsList = c.cols.join(", ");
     const dupes = await sql.unsafe(`
       SELECT ${colsList}, COUNT(*) AS cnt
       FROM "${c.table}"
@@ -151,13 +194,15 @@ for (const c of constraints) {
       LIMIT 5
     `);
     if (dupes.length > 0) {
-      console.warn(`[pre-push] ✗ "${c.name}" — ${dupes.length} grupo(s) de duplicatas encontrados:`);
-      for (const d of dupes) console.warn('  ', JSON.stringify(d));
+      console.warn(
+        `[pre-push] ✗ "${c.name}" — ${dupes.length} grupo(s) de duplicatas encontrados:`
+      );
+      for (const d of dupes) console.warn("  ", JSON.stringify(d));
       // Limpar duplicatas mantendo o registro mais recente (maior id)
       console.log(`[pre-push]   Removendo duplicatas de "${c.table}"...`);
       await sql.unsafe(`
         DELETE FROM "${c.table}" a USING "${c.table}" b
-        WHERE a.id < b.id AND ${c.cols.map(col => `a.${col} IS NOT DISTINCT FROM b.${col}`).join(' AND ')}
+        WHERE a.id < b.id AND ${c.cols.map(col => `a.${col} IS NOT DISTINCT FROM b.${col}`).join(" AND ")}
       `);
       console.log(`[pre-push]   Duplicatas removidas.`);
     }
@@ -172,7 +217,9 @@ for (const c of constraints) {
       console.log(`[pre-push] ✓ "${c.name}" criado com sucesso.`);
       ok++;
     } else {
-      console.error(`[pre-push] ✗ "${c.name}" — ADD CONSTRAINT executou mas não aparece em pg_constraint!`);
+      console.error(
+        `[pre-push] ✗ "${c.name}" — ADD CONSTRAINT executou mas não aparece em pg_constraint!`
+      );
       failed++;
     }
   } catch (err) {
@@ -182,7 +229,9 @@ for (const c of constraints) {
 }
 
 // ── Diagnóstico: mostrar estado real do DB para investigação ──────────────
-console.log('[pre-push] === DIAGNÓSTICO: estado dos constraints na tabela clients ===');
+console.log(
+  "[pre-push] === DIAGNÓSTICO: estado dos constraints na tabela clients ==="
+);
 try {
   const pgConstraints = await sql`
     SELECT c.conname, c.contype, 
@@ -194,7 +243,9 @@ try {
     GROUP BY c.conname, c.contype
     ORDER BY c.conname`;
   for (const r of pgConstraints) {
-    console.log(`  pg_constraint: ${r.conname} type=${r.contype} cols=[${r.columns}]`);
+    console.log(
+      `  pg_constraint: ${r.conname} type=${r.contype} cols=[${r.columns}]`
+    );
   }
 
   const pgIndexes = await sql`
@@ -205,20 +256,22 @@ try {
     console.log(`  pg_indexes: ${r.indexname} → ${r.indexdef}`);
   }
 } catch (e) {
-  console.warn('[pre-push] Erro no diagnóstico:', e.message);
+  console.warn("[pre-push] Erro no diagnóstico:", e.message);
 }
-console.log('[pre-push] === FIM DIAGNÓSTICO ===');
+console.log("[pre-push] === FIM DIAGNÓSTICO ===");
 
 await sql.end();
-console.log(`[pre-push] Etapa 1 concluída — ok:${ok} pulados:${skipped} falhas:${failed} / ${constraints.length} total`);
+console.log(
+  `[pre-push] Etapa 1 concluída — ok:${ok} pulados:${skipped} falhas:${failed} / ${constraints.length} total`
+);
 
 // ── Etapa 2: drizzle-kit push ──────────────────────────────────────────────
-console.log('[pre-push] Etapa 2: executando drizzle-kit push --force...');
+console.log("[pre-push] Etapa 2: executando drizzle-kit push --force...");
 
 const TIMEOUT_MS = 90_000; // 90 segundos para evitar timeout do Railway
 
-const drizzle = spawn('drizzle-kit', ['push', '--force'], {
-  stdio: ['pipe', 'inherit', 'inherit'],
+const drizzle = spawn("drizzle-kit", ["push", "--force"], {
+  stdio: ["pipe", "inherit", "inherit"],
   env: { ...process.env },
 });
 
@@ -227,32 +280,44 @@ const drizzle = spawn('drizzle-kit', ['push', '--force'], {
 // 500ms é o intervalo que funcionava no deploy original.
 const keepEntering = setInterval(() => {
   try {
-    drizzle.stdin.write('\r');
-    drizzle.stdin.write('\n');
-  } catch { /* stdin fechado, ignorar */ }
+    drizzle.stdin.write("\r");
+    drizzle.stdin.write("\n");
+  } catch {
+    /* stdin fechado, ignorar */
+  }
 }, 500);
 
 // Timeout de segurança: se drizzle-kit travar em prompt, matar o processo.
 // O schema já foi aplicado pelos constraints da Etapa 1 + statements anteriores.
 const killTimer = setTimeout(() => {
-  console.warn(`[pre-push] drizzle-kit travou por ${TIMEOUT_MS / 1000}s — matando processo...`);
-  drizzle.kill('SIGTERM');
+  console.warn(
+    `[pre-push] drizzle-kit travou por ${TIMEOUT_MS / 1000}s — matando processo...`
+  );
+  drizzle.kill("SIGTERM");
   setTimeout(() => {
-    try { drizzle.kill('SIGKILL'); } catch { /* já morreu */ }
+    try {
+      drizzle.kill("SIGKILL");
+    } catch {
+      /* já morreu */
+    }
   }, 5_000);
 }, TIMEOUT_MS);
 
-const exitCode = await new Promise((resolve) => {
-  drizzle.on('exit', (code) => {
+const exitCode = await new Promise(resolve => {
+  drizzle.on("exit", code => {
     clearTimeout(killTimer);
     clearInterval(keepEntering);
-    try { drizzle.stdin.end(); } catch { /* ignorar */ }
+    try {
+      drizzle.stdin.end();
+    } catch {
+      /* ignorar */
+    }
     resolve(code ?? 0);
   });
-  drizzle.on('error', (err) => {
+  drizzle.on("error", err => {
     clearTimeout(killTimer);
     clearInterval(keepEntering);
-    console.error('[pre-push] Erro ao executar drizzle-kit:', err.message);
+    console.error("[pre-push] Erro ao executar drizzle-kit:", err.message);
     resolve(1);
   });
 });
@@ -260,7 +325,9 @@ const exitCode = await new Promise((resolve) => {
 if (exitCode !== 0) {
   // Não abortar o deploy — erros comuns: views de extensões Railway (pg_stat_statements),
   // prompts interativos que não responderam. O schema das tabelas da app já foi aplicado.
-  console.warn(`[pre-push] drizzle-kit push encerrou com código ${exitCode}. Continuando deploy...`);
+  console.warn(
+    `[pre-push] drizzle-kit push encerrou com código ${exitCode}. Continuando deploy...`
+  );
 }
 
-console.log('[pre-push] Concluído.');
+console.log("[pre-push] Concluído.");

@@ -1,7 +1,7 @@
 # Docker Compose - CAC 360 Multi-Tenant Architecture
 # Arquitetura Híbrida: Container único + DBs separados por tenant
 
-version: '3.8'
+version: "3.8"
 
 services:
   # ============================================
@@ -24,7 +24,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"  # Dashboard (remover em produção)
+      - "8080:8080" # Dashboard (remover em produção)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-certificates:/letsencrypt
@@ -71,7 +71,7 @@ services:
       replicas: 2
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 1G
 
   # ============================================
@@ -127,7 +127,7 @@ services:
   # DATABASES POR TENANT
   # Cada clube tem seu próprio banco
   # ============================================
-  
+
   # Exemplo: Clube de Tiro Esportivo SP
   db-tiroesp:
     image: postgres:15-alpine

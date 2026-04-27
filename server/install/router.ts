@@ -15,7 +15,11 @@ import {
 } from "../db";
 import { hashPassword } from "../_core/auth";
 import { sendTestEmailWithSettings } from "../emailService";
-import { invalidateTenantCache, getTenantConfig, getTenantDb } from "../config/tenant.config";
+import {
+  invalidateTenantCache,
+  getTenantConfig,
+  getTenantDb,
+} from "../config/tenant.config";
 import { seedTenantEmailTemplates } from "../defaults/seedTenant";
 
 const installRouter = Router();
@@ -67,7 +71,7 @@ type DbConfigInput = z.infer<typeof dbConfigSchema>;
 
 async function testDatabaseConnection(config: DbConfigInput) {
   const connectionString = `postgres://${encodeURIComponent(config.user)}:${encodeURIComponent(
-    config.password,
+    config.password
   )}@${config.host}:${config.port}/${config.name}`;
 
   const client = postgres(connectionString, {
@@ -161,7 +165,8 @@ installRouter.post("/complete", async (req: Request, res: Response) => {
       const platformDbUrl = process.env.DATABASE_URL;
       if (!platformDbUrl) {
         return res.status(400).json({
-          error: "DATABASE_URL não está configurado no servidor para o modo single-db.",
+          error:
+            "DATABASE_URL não está configurado no servidor para o modo single-db.",
         });
       }
       const url = new URL(platformDbUrl);
@@ -218,7 +223,7 @@ installRouter.post("/complete", async (req: Request, res: Response) => {
 
     const existingTenant = await getTenantBySlug(payload.tenant.slug);
     let tenantId = existingTenant?.id;
-    
+
     if (existingTenant) {
       await updateTenant(existingTenant.id, tenantPayload);
     } else {
@@ -255,9 +260,18 @@ installRouter.post("/complete", async (req: Request, res: Response) => {
       setPlatformSetting("install.admin.name", payload.admin.name),
       setPlatformSetting("install.defaultTenant.slug", payload.tenant.slug),
       setPlatformSetting("install.db.mode", payload.tenant.dbMode),
-      setPlatformSetting("install.domain.root", payload.domain?.rootDomain ?? ""),
-      setPlatformSetting("install.domain.defaultSubdomain", payload.domain?.defaultSubdomain ?? ""),
-      setPlatformSetting("install.domain.acmeEmail", payload.domain?.acmeEmail ?? ""),
+      setPlatformSetting(
+        "install.domain.root",
+        payload.domain?.rootDomain ?? ""
+      ),
+      setPlatformSetting(
+        "install.domain.defaultSubdomain",
+        payload.domain?.defaultSubdomain ?? ""
+      ),
+      setPlatformSetting(
+        "install.domain.acmeEmail",
+        payload.domain?.acmeEmail ?? ""
+      ),
       setPlatformSetting("install.completed", "true"),
       setPlatformSetting("install.completedAt", new Date().toISOString()),
     ]);

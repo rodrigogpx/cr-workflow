@@ -2,45 +2,81 @@ import { useState, useEffect } from "react";
 import { TenantAdminLayout } from "@/components/TenantAdminLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Loader2, Send, Cloud, Server, Image, Trash2, Download } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Mail,
+  Loader2,
+  Send,
+  Cloud,
+  Server,
+  Image,
+  Trash2,
+  Download,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export default function TenantSettings() {
-  const { data: smtpConfig, isLoading: isLoadingSmtp } = trpc.emails.getSmtpConfig.useQuery();
+  const { data: smtpConfig, isLoading: isLoadingSmtp } =
+    trpc.emails.getSmtpConfig.useQuery();
   const utils = trpc.useUtils();
 
-  const [emailMethod, setEmailMethod] = useState<'gateway' | 'smtp'>('gateway');
-  const [smtpHost, setSmtpHost] = useState('');
-  const [smtpPort, setSmtpPort] = useState('587');
-  const [smtpUser, setSmtpUser] = useState('');
-  const [smtpFrom, setSmtpFrom] = useState('');
+  const [emailMethod, setEmailMethod] = useState<"gateway" | "smtp">("gateway");
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpFrom, setSmtpFrom] = useState("");
   const [useSecure, setUseSecure] = useState(false);
-  const [smtpPass, setSmtpPass] = useState('');
+  const [smtpPass, setSmtpPass] = useState("");
   const [smtpPassDirty, setSmtpPassDirty] = useState(false);
 
-  const [postmanGpxBaseUrl, setPostmanGpxBaseUrl] = useState('');
-  const [postmanGpxApiKey, setPostmanGpxApiKey] = useState('');
+  const [postmanGpxBaseUrl, setPostmanGpxBaseUrl] = useState("");
+  const [postmanGpxApiKey, setPostmanGpxApiKey] = useState("");
   const [postmanGpxApiKeyDirty, setPostmanGpxApiKeyDirty] = useState(false);
 
   // Logo para emails
-  const [logoUrl, setLogoUrl] = useState('');
-  const [logoInputUrl, setLogoInputUrl] = useState('');
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoInputUrl, setLogoInputUrl] = useState("");
 
   // Modal de email de teste
   const [testEmailModalOpen, setTestEmailModalOpen] = useState(false);
-  const [testEmailTo, setTestEmailTo] = useState('');
-  const [testEmailSubject, setTestEmailSubject] = useState('Teste de Email - CAC 360');
-  const [testEmailBody, setTestEmailBody] = useState('Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações estão funcionando corretamente.');
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testEmailSubject, setTestEmailSubject] = useState(
+    "Teste de Email - CAC 360"
+  );
+  const [testEmailBody, setTestEmailBody] = useState(
+    "Este é um email de teste enviado pelo sistema CAC 360.\n\nSe você recebeu este email, as configurações estão funcionando corretamente."
+  );
 
   useEffect(() => {
     if (smtpConfig) {
-      setEmailMethod((smtpConfig.emailMethod as 'gateway' | 'smtp') || 'gateway');
+      setEmailMethod(
+        (smtpConfig.emailMethod as "gateway" | "smtp") || "gateway"
+      );
       setSmtpHost(smtpConfig.smtpHost || "");
       setSmtpPort(String(smtpConfig.smtpPort || 587));
       setSmtpUser(smtpConfig.smtpUser || "");
@@ -68,15 +104,17 @@ export default function TenantSettings() {
     },
   });
 
-  const testSmtpConnectionMutation = trpc.emails.testSmtpConnection.useMutation({
-    onSuccess: (data: any) => {
-      toast.success(`Email de teste enviado para ${data.sentTo}!`);
-      setTestEmailModalOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(`Falha ao enviar email de teste: ${error.message}`);
-    },
-  });
+  const testSmtpConnectionMutation = trpc.emails.testSmtpConnection.useMutation(
+    {
+      onSuccess: (data: any) => {
+        toast.success(`Email de teste enviado para ${data.sentTo}!`);
+        setTestEmailModalOpen(false);
+      },
+      onError: (error: any) => {
+        toast.error(`Falha ao enviar email de teste: ${error.message}`);
+      },
+    }
+  );
 
   const importLogoMutation = trpc.emails.importLogoFromUrl.useMutation({
     onSuccess: (data: any) => {
@@ -120,7 +158,7 @@ export default function TenantSettings() {
       return;
     }
 
-    if (emailMethod === 'smtp') {
+    if (emailMethod === "smtp") {
       if (!smtpHost || !smtpPort || !smtpUser) {
         toast.error("Preencha todos os campos obrigatórios de SMTP.");
         return;
@@ -133,7 +171,7 @@ export default function TenantSettings() {
       }
 
       updateSmtpConfigMutation.mutate({
-        emailMethod: 'smtp',
+        emailMethod: "smtp",
         smtpHost,
         smtpPort: portNumber,
         smtpUser,
@@ -148,10 +186,13 @@ export default function TenantSettings() {
       }
 
       updateSmtpConfigMutation.mutate({
-        emailMethod: 'gateway',
+        emailMethod: "gateway",
         smtpFrom,
         postmanGpxBaseUrl,
-        postmanGpxApiKey: postmanGpxApiKeyDirty && postmanGpxApiKey ? postmanGpxApiKey : undefined,
+        postmanGpxApiKey:
+          postmanGpxApiKeyDirty && postmanGpxApiKey
+            ? postmanGpxApiKey
+            : undefined,
       });
     }
   };
@@ -174,7 +215,8 @@ export default function TenantSettings() {
               Configuração de Envio de Emails
             </CardTitle>
             <CardDescription>
-              Escolha o método de envio e configure as credenciais para disparar emails para seus clientes.
+              Escolha o método de envio e configure as credenciais para disparar
+              emails para seus clientes.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -187,7 +229,10 @@ export default function TenantSettings() {
                 {/* Seletor de Método */}
                 <div className="space-y-2">
                   <Label>Método de Envio *</Label>
-                  <Select value={emailMethod} onValueChange={(v: 'gateway' | 'smtp') => setEmailMethod(v)}>
+                  <Select
+                    value={emailMethod}
+                    onValueChange={(v: "gateway" | "smtp") => setEmailMethod(v)}
+                  >
                     <SelectTrigger className="w-full md:w-[300px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -207,9 +252,9 @@ export default function TenantSettings() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    {emailMethod === 'gateway' 
-                      ? 'Usa o serviço PostmanGPX via API (recomendado para ambiente cloud)'
-                      : 'Conexão direta com servidor SMTP (requer portas abertas)'}
+                    {emailMethod === "gateway"
+                      ? "Usa o serviço PostmanGPX via API (recomendado para ambiente cloud)"
+                      : "Conexão direta com servidor SMTP (requer portas abertas)"}
                   </p>
                 </div>
 
@@ -220,15 +265,16 @@ export default function TenantSettings() {
                     id="smtpFrom"
                     placeholder='"Meu Clube" <contato@meuclube.com>'
                     value={smtpFrom}
-                    onChange={(e) => setSmtpFrom(e.target.value)}
+                    onChange={e => setSmtpFrom(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Nome e email que aparecerão como remetente. Formato: "Nome" &lt;email@dominio.com&gt;
+                    Nome e email que aparecerão como remetente. Formato: "Nome"
+                    &lt;email@dominio.com&gt;
                   </p>
                 </div>
 
                 {/* Campos SMTP (apenas se método = smtp) */}
-                {emailMethod === 'smtp' && (
+                {emailMethod === "smtp" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                     <div className="space-y-4">
                       <div className="space-y-2">
@@ -237,7 +283,7 @@ export default function TenantSettings() {
                           id="smtpHost"
                           placeholder="smtp.gmail.com"
                           value={smtpHost}
-                          onChange={(e) => setSmtpHost(e.target.value)}
+                          onChange={e => setSmtpHost(e.target.value)}
                         />
                       </div>
                       <div className="space-y-2">
@@ -246,7 +292,7 @@ export default function TenantSettings() {
                           id="smtpPort"
                           placeholder="587"
                           value={smtpPort}
-                          onChange={(e) => setSmtpPort(e.target.value)}
+                          onChange={e => setSmtpPort(e.target.value)}
                         />
                       </div>
                     </div>
@@ -257,7 +303,7 @@ export default function TenantSettings() {
                           id="smtpUser"
                           placeholder="seu-email@gmail.com"
                           value={smtpUser}
-                          onChange={(e) => setSmtpUser(e.target.value)}
+                          onChange={e => setSmtpUser(e.target.value)}
                         />
                       </div>
                       <div className="space-y-2">
@@ -265,9 +311,13 @@ export default function TenantSettings() {
                         <Input
                           id="smtpPass"
                           type="password"
-                          placeholder={smtpConfig?.hasPassword ? '******** (deixe em branco para manter)' : 'Senha ou App Password'}
+                          placeholder={
+                            smtpConfig?.hasPassword
+                              ? "******** (deixe em branco para manter)"
+                              : "Senha ou App Password"
+                          }
                           value={smtpPass}
-                          onChange={(e) => {
+                          onChange={e => {
                             setSmtpPass(e.target.value);
                             setSmtpPassDirty(true);
                           }}
@@ -281,10 +331,13 @@ export default function TenantSettings() {
                           id="useSecure"
                           type="checkbox"
                           checked={useSecure}
-                          onChange={(e) => setUseSecure(e.target.checked)}
+                          onChange={e => setUseSecure(e.target.checked)}
                           className="h-4 w-4 rounded border-gray-300"
                         />
-                        <Label htmlFor="useSecure" className="text-sm font-normal">
+                        <Label
+                          htmlFor="useSecure"
+                          className="text-sm font-normal"
+                        >
                           Usar conexão segura (SSL/TLS)
                         </Label>
                       </div>
@@ -293,31 +346,40 @@ export default function TenantSettings() {
                 )}
 
                 {/* Campos PostmanGPX (apenas se método = gateway) */}
-                {emailMethod === 'gateway' && (
+                {emailMethod === "gateway" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="postmanGpxBaseUrl">PostmanGPX Base URL *</Label>
+                        <Label htmlFor="postmanGpxBaseUrl">
+                          PostmanGPX Base URL *
+                        </Label>
                         <Input
                           id="postmanGpxBaseUrl"
                           placeholder="https://postmangpx.seudominio.com"
                           value={postmanGpxBaseUrl}
-                          onChange={(e) => setPostmanGpxBaseUrl(e.target.value)}
+                          onChange={e => setPostmanGpxBaseUrl(e.target.value)}
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Exemplo: https://postmangpx.seudominio.com (sem / no final)
+                        Exemplo: https://postmangpx.seudominio.com (sem / no
+                        final)
                       </p>
                     </div>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="postmanGpxApiKey">PostmanGPX API Key *</Label>
+                        <Label htmlFor="postmanGpxApiKey">
+                          PostmanGPX API Key *
+                        </Label>
                         <Input
                           id="postmanGpxApiKey"
                           type="password"
-                          placeholder={(smtpConfig as any)?.hasPostmanGpxApiKey ? '******** (deixe em branco para manter)' : 'pmgpx_live_...'}
+                          placeholder={
+                            (smtpConfig as any)?.hasPostmanGpxApiKey
+                              ? "******** (deixe em branco para manter)"
+                              : "pmgpx_live_..."
+                          }
                           value={postmanGpxApiKey}
-                          onChange={(e) => {
+                          onChange={e => {
                             setPostmanGpxApiKey(e.target.value);
                             setPostmanGpxApiKeyDirty(true);
                           }}
@@ -328,85 +390,101 @@ export default function TenantSettings() {
                 )}
 
                 {/* Botões */}
-                  <div className="flex flex-col gap-2 pt-4">
-                    <Button
-                      onClick={handleSaveSmtpConfig}
-                      disabled={updateSmtpConfigMutation.isPending}
-                    >
-                      {updateSmtpConfigMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
-                    </Button>
-                    <Dialog open={testEmailModalOpen} onOpenChange={setTestEmailModalOpen}>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          disabled={(emailMethod === 'smtp' && !smtpHost) || (emailMethod === 'gateway' && !postmanGpxBaseUrl)}
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Enviar Email de Teste
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[500px]">
-                        <DialogHeader>
-                          <DialogTitle>Enviar Email de Teste</DialogTitle>
-                          <DialogDescription>
-                            Envie um email de teste para verificar se as configurações SMTP estão corretas.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="testEmailTo">Email do Destinatário *</Label>
-                            <Input
-                              id="testEmailTo"
-                              type="email"
-                              placeholder="destinatario@exemplo.com"
-                              value={testEmailTo}
-                              onChange={(e) => setTestEmailTo(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="testEmailSubject">Assunto</Label>
-                            <Input
-                              id="testEmailSubject"
-                              placeholder="Assunto do email"
-                              value={testEmailSubject}
-                              onChange={(e) => setTestEmailSubject(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="testEmailBody">Mensagem</Label>
-                            <Textarea
-                              id="testEmailBody"
-                              placeholder="Conteúdo do email de teste..."
-                              value={testEmailBody}
-                              onChange={(e) => setTestEmailBody(e.target.value)}
-                              rows={4}
-                            />
-                          </div>
+                <div className="flex flex-col gap-2 pt-4">
+                  <Button
+                    onClick={handleSaveSmtpConfig}
+                    disabled={updateSmtpConfigMutation.isPending}
+                  >
+                    {updateSmtpConfigMutation.isPending
+                      ? "Salvando..."
+                      : "Salvar Configurações"}
+                  </Button>
+                  <Dialog
+                    open={testEmailModalOpen}
+                    onOpenChange={setTestEmailModalOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled={
+                          (emailMethod === "smtp" && !smtpHost) ||
+                          (emailMethod === "gateway" && !postmanGpxBaseUrl)
+                        }
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Enviar Email de Teste
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[500px]">
+                      <DialogHeader>
+                        <DialogTitle>Enviar Email de Teste</DialogTitle>
+                        <DialogDescription>
+                          Envie um email de teste para verificar se as
+                          configurações SMTP estão corretas.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="testEmailTo">
+                            Email do Destinatário *
+                          </Label>
+                          <Input
+                            id="testEmailTo"
+                            type="email"
+                            placeholder="destinatario@exemplo.com"
+                            value={testEmailTo}
+                            onChange={e => setTestEmailTo(e.target.value)}
+                          />
                         </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setTestEmailModalOpen(false)}>
-                            Cancelar
-                          </Button>
-                          <Button 
-                            onClick={handleSendTestEmail}
-                            disabled={testSmtpConnectionMutation.isPending || !testEmailTo}
-                          >
-                            {testSmtpConnectionMutation.isPending ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Enviando...
-                              </>
-                            ) : (
-                              <>
-                                <Send className="h-4 w-4 mr-2" />
-                                Enviar
-                              </>
-                            )}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="testEmailSubject">Assunto</Label>
+                          <Input
+                            id="testEmailSubject"
+                            placeholder="Assunto do email"
+                            value={testEmailSubject}
+                            onChange={e => setTestEmailSubject(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="testEmailBody">Mensagem</Label>
+                          <Textarea
+                            id="testEmailBody"
+                            placeholder="Conteúdo do email de teste..."
+                            value={testEmailBody}
+                            onChange={e => setTestEmailBody(e.target.value)}
+                            rows={4}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => setTestEmailModalOpen(false)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={handleSendTestEmail}
+                          disabled={
+                            testSmtpConnectionMutation.isPending || !testEmailTo
+                          }
+                        >
+                          {testSmtpConnectionMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4 mr-2" />
+                              Enviar
+                            </>
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
             )}
           </CardContent>
@@ -420,7 +498,11 @@ export default function TenantSettings() {
               Logo para Emails
             </CardTitle>
             <CardDescription>
-              Importe a logo do site do clube para usar nos templates de email através da variável <code className="bg-muted px-1 py-0.5 rounded text-sm">{"{{logo}}"}</code>
+              Importe a logo do site do clube para usar nos templates de email
+              através da variável{" "}
+              <code className="bg-muted px-1 py-0.5 rounded text-sm">
+                {"{{logo}}"}
+              </code>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -428,15 +510,19 @@ export default function TenantSettings() {
               {/* Preview da logo atual */}
               {logoUrl && (
                 <div className="flex items-start gap-4 p-4 border rounded-lg bg-muted/50">
-                  <img 
-                    src={logoUrl} 
-                    alt="Logo atual" 
+                  <img
+                    src={logoUrl}
+                    alt="Logo atual"
                     className="max-h-24 max-w-48 object-contain border rounded"
                   />
                   <div className="flex-1">
                     <p className="text-sm font-medium">Logo atual</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Use <code className="bg-muted px-1 py-0.5 rounded">{"{{logo}}"}</code> nos templates para inserir esta imagem.
+                      Use{" "}
+                      <code className="bg-muted px-1 py-0.5 rounded">
+                        {"{{logo}}"}
+                      </code>{" "}
+                      nos templates para inserir esta imagem.
                     </p>
                     <Button
                       variant="destructive"
@@ -466,7 +552,7 @@ export default function TenantSettings() {
                     id="logoInputUrl"
                     placeholder="https://site-do-clube.com.br/logo.png"
                     value={logoInputUrl}
-                    onChange={(e) => setLogoInputUrl(e.target.value)}
+                    onChange={e => setLogoInputUrl(e.target.value)}
                   />
                   <Button
                     onClick={() => {
@@ -487,7 +573,8 @@ export default function TenantSettings() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Cole a URL da imagem do site do clube. A imagem será copiada para nosso servidor.
+                  Cole a URL da imagem do site do clube. A imagem será copiada
+                  para nosso servidor.
                 </p>
               </div>
             </div>

@@ -4,7 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -16,15 +21,24 @@ interface ChangePasswordDialogProps {
   target: any | null;
 }
 
-export function ChangePasswordDialog({ open, onClose, target }: ChangePasswordDialogProps) {
+export function ChangePasswordDialog({
+  open,
+  onClose,
+  target,
+}: ChangePasswordDialogProps) {
   const { admin: me, isSuperAdmin } = usePlatformAuth();
   const isSelf = (me as any)?.id === target?.id;
   const requireCurrentPassword = isSelf; // superadmin editing others doesn't need current password
 
-  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [form, setForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   useEffect(() => {
-    if (open) setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    if (open)
+      setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
   }, [open]);
 
   const mutation = trpc.platformAdmins.changePassword.useMutation({
@@ -32,7 +46,8 @@ export function ChangePasswordDialog({ open, onClose, target }: ChangePasswordDi
       toast.success("Senha alterada com sucesso.");
       onClose();
     },
-    onError: (err: any) => toast.error(err?.message ?? "Erro ao alterar senha."),
+    onError: (err: any) =>
+      toast.error(err?.message ?? "Erro ao alterar senha."),
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -44,7 +59,9 @@ export function ChangePasswordDialog({ open, onClose, target }: ChangePasswordDi
     mutation.mutate({
       id: target.id,
       newPassword: form.newPassword,
-      currentPassword: requireCurrentPassword ? form.currentPassword : undefined,
+      currentPassword: requireCurrentPassword
+        ? form.currentPassword
+        : undefined,
     });
   }
 
@@ -69,7 +86,9 @@ export function ChangePasswordDialog({ open, onClose, target }: ChangePasswordDi
                 type="password"
                 placeholder="••••••••"
                 value={form.currentPassword}
-                onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))}
+                onChange={e =>
+                  setForm(f => ({ ...f, currentPassword: e.target.value }))
+                }
                 required
               />
             </div>
@@ -82,7 +101,9 @@ export function ChangePasswordDialog({ open, onClose, target }: ChangePasswordDi
               type="password"
               placeholder="••••••••"
               value={form.newPassword}
-              onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))}
+              onChange={e =>
+                setForm(f => ({ ...f, newPassword: e.target.value }))
+              }
               required
               minLength={8}
             />
@@ -95,18 +116,27 @@ export function ChangePasswordDialog({ open, onClose, target }: ChangePasswordDi
               type="password"
               placeholder="••••••••"
               value={form.confirmPassword}
-              onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
+              onChange={e =>
+                setForm(f => ({ ...f, confirmPassword: e.target.value }))
+              }
               required
               minLength={8}
             />
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={mutation.isPending}
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {mutation.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
               Salvar senha
             </Button>
           </DialogFooter>

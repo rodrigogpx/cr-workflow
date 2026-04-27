@@ -1,1181 +1,2233 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>UI/UX — Módulo IAT — CAC360</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-  * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
-  code, .mono { font-family: 'JetBrains Mono', monospace; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UI/UX — Módulo IAT — CAC360</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+      * {
+        font-family: "Inter", sans-serif;
+        box-sizing: border-box;
+      }
+      code,
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+      }
 
-  /* Nav */
-  .nav-link { @apply text-sm text-slate-400 hover:text-white transition-colors cursor-pointer px-3 py-1.5 rounded-md hover:bg-white/10; }
-  .nav-link.active { @apply text-white bg-blue-600; }
+      /* Nav */
+      .nav-link {
+        @apply text-sm text-slate-400 hover:text-white transition-colors cursor-pointer px-3 py-1.5 rounded-md hover:bg-white/10;
+      }
+      .nav-link.active {
+        @apply text-white bg-blue-600;
+      }
 
-  /* Sections */
-  .section { display: none; }
-  .section.active { display: block; }
+      /* Sections */
+      .section {
+        display: none;
+      }
+      .section.active {
+        display: block;
+      }
 
-  /* Chip */
-  .chip { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium; }
+      /* Chip */
+      .chip {
+        @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+      }
 
-  /* Calendar grid */
-  .cal-day { @apply rounded-lg p-1 min-h-[80px] border border-slate-700/50 relative; }
-  .cal-day.today { @apply border-blue-500 bg-blue-950/30; }
-  .cal-day.other-month { @apply opacity-40; }
-  .cal-event { @apply text-xs rounded px-1.5 py-0.5 mb-0.5 truncate cursor-pointer font-medium; }
+      /* Calendar grid */
+      .cal-day {
+        @apply rounded-lg p-1 min-h-[80px] border border-slate-700/50 relative;
+      }
+      .cal-day.today {
+        @apply border-blue-500 bg-blue-950/30;
+      }
+      .cal-day.other-month {
+        @apply opacity-40;
+      }
+      .cal-event {
+        @apply text-xs rounded px-1.5 py-0.5 mb-0.5 truncate cursor-pointer font-medium;
+      }
 
-  /* Timeline */
-  .timeline-item { @apply flex gap-4 relative; }
-  .timeline-item::before { content:''; @apply absolute left-[19px] top-8 bottom-0 w-0.5 bg-slate-700; }
-  .timeline-item:last-child::before { display:none; }
+      /* Timeline */
+      .timeline-item {
+        @apply flex gap-4 relative;
+      }
+      .timeline-item::before {
+        content: "";
+        @apply absolute left-[19px] top-8 bottom-0 w-0.5 bg-slate-700;
+      }
+      .timeline-item:last-child::before {
+        display: none;
+      }
 
-  /* Attendance cell */
-  .att-cell { @apply w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold cursor-pointer transition-all border; }
-  .att-p { @apply bg-emerald-900/60 border-emerald-700 text-emerald-300 hover:bg-emerald-800; }
-  .att-a { @apply bg-red-900/60 border-red-700 text-red-300 hover:bg-red-800; }
-  .att-j { @apply bg-amber-900/60 border-amber-700 text-amber-300 hover:bg-amber-800; }
-  .att-n { @apply bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700; }
+      /* Attendance cell */
+      .att-cell {
+        @apply w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold cursor-pointer transition-all border;
+      }
+      .att-p {
+        @apply bg-emerald-900/60 border-emerald-700 text-emerald-300 hover:bg-emerald-800;
+      }
+      .att-a {
+        @apply bg-red-900/60 border-red-700 text-red-300 hover:bg-red-800;
+      }
+      .att-j {
+        @apply bg-amber-900/60 border-amber-700 text-amber-300 hover:bg-amber-800;
+      }
+      .att-n {
+        @apply bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700;
+      }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: #0f172a; }
-  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f172a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 3px;
+      }
 
-  /* Print */
-  @media print { body { background: white; } .no-print { display:none; } }
-</style>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-
-<!-- TOP BAR -->
-<div class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 no-print">
-  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-6">
-    <!-- Logo -->
-    <div class="flex items-center gap-2 mr-4">
-      <div class="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-xs font-black">C</div>
-      <span class="font-bold text-sm text-white">CAC360</span>
-      <span class="text-slate-500 text-xs">/ IAT UI/UX</span>
-    </div>
-    <!-- Nav -->
-    <nav class="flex items-center gap-1 overflow-x-auto" id="mainNav">
-      <button class="nav-link active" data-target="overview">Visão Geral</button>
-      <button class="nav-link" data-target="design-system">Design System</button>
-      <button class="nav-link" data-target="calendar">📅 Agenda Geral</button>
-      <button class="nav-link" data-target="instructor">👨‍🏫 Ag. Instrutor</button>
-      <button class="nav-link" data-target="class-view">🎓 Ag. Turma</button>
-      <button class="nav-link" data-target="attendance">✅ Frequência</button>
-      <button class="nav-link" data-target="conflicts">⚠️ Conflitos</button>
-      <button class="nav-link" data-target="components">🧩 Componentes</button>
-      <button class="nav-link" data-target="specs">📋 Specs Técnicas</button>
-    </nav>
-    <!-- Badge -->
-    <div class="ml-auto flex-shrink-0">
-      <span class="chip bg-blue-900 text-blue-300">Abril 2026 · v1.0</span>
-    </div>
-  </div>
-</div>
-
-<div class="max-w-7xl mx-auto px-6 py-8">
-
-<!-- ═══════════════════════════════════════════════════════ OVERVIEW -->
-<section id="overview" class="section active space-y-8">
-
-  <div>
-    <h1 class="text-3xl font-black text-white mb-1">Planejamento UI/UX — Módulo IAT</h1>
-    <p class="text-slate-400">Instrução de Armamento e Tiro · Evolução do sistema de agendas e cadastros</p>
-  </div>
-
-  <!-- Stack Card -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <h2 class="text-lg font-bold text-white mb-4">Stack UI existente (será mantida)</h2>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
-        <div class="text-blue-400 font-bold mb-1">shadcn/ui + Radix</div>
-        <div class="text-xs text-slate-400">Componentes base: Dialog, Sheet, Tabs, Calendar, Table, Select, Combobox…</div>
-      </div>
-      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
-        <div class="text-violet-400 font-bold mb-1">Tailwind CSS v4</div>
-        <div class="text-xs text-slate-400">Utilitários, tema dark, variáveis CSS, tailwind-animate</div>
-      </div>
-      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
-        <div class="text-emerald-400 font-bold mb-1">framer-motion v12</div>
-        <div class="text-xs text-slate-400">Animações de entrada, drag-and-drop, transições de layout</div>
-      </div>
-      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
-        <div class="text-amber-400 font-bold mb-1">date-fns v4 + Recharts</div>
-        <div class="text-xs text-slate-400">Manipulação de datas e gráficos de analytics</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- New Components Overview -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <h2 class="text-lg font-bold text-white mb-4">Novos componentes a criar — mapa de dependências</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-      <!-- Col 1: Data -->
-      <div class="space-y-3">
-        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Camada de Dados</div>
-        <div class="bg-blue-950/50 border border-blue-800/60 rounded-xl p-3">
-          <div class="font-semibold text-blue-300 text-sm mb-1">useIATSchedule()</div>
-          <div class="text-xs text-slate-400">Hook central. Agrega eventos de turmas, exames e agendamentos. Filtros: instructorId, classId, dateRange.</div>
-        </div>
-        <div class="bg-blue-950/50 border border-blue-800/60 rounded-xl p-3">
-          <div class="font-semibold text-blue-300 text-sm mb-1">useConflictCheck()</div>
-          <div class="text-xs text-slate-400">Verifica sobreposição de horários do instrutor em tempo real ao preencher forms.</div>
-        </div>
-        <div class="bg-blue-950/50 border border-blue-800/60 rounded-xl p-3">
-          <div class="font-semibold text-blue-300 text-sm mb-1">useAttendance()</div>
-          <div class="text-xs text-slate-400">Frequência por sessão: carrega, atualiza em batch, calcula % presença.</div>
-        </div>
-      </div>
-
-      <!-- Col 2: Presentation -->
-      <div class="space-y-3">
-        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Componentes de Apresentação</div>
-        <div class="bg-violet-950/50 border border-violet-800/60 rounded-xl p-3">
-          <div class="font-semibold text-violet-300 text-sm mb-1">IATCalendarView</div>
-          <div class="text-xs text-slate-400">Calendário mensal/semanal/diário com eventos color-coded e popover de detalhes.</div>
-        </div>
-        <div class="bg-violet-950/50 border border-violet-800/60 rounded-xl p-3">
-          <div class="font-semibold text-violet-300 text-sm mb-1">IATInstructorAgenda</div>
-          <div class="text-xs text-slate-400">Painel lateral com mini-calendário + lista de eventos da semana por instrutor.</div>
-        </div>
-        <div class="bg-violet-950/50 border border-violet-800/60 rounded-xl p-3">
-          <div class="font-semibold text-violet-300 text-sm mb-1">IATClassTimeline</div>
-          <div class="text-xs text-slate-400">Timeline horizontal com sessões e exame final da turma.</div>
-        </div>
-        <div class="bg-violet-950/50 border border-violet-800/60 rounded-xl p-3">
-          <div class="font-semibold text-violet-300 text-sm mb-1">IATAttendanceSheet</div>
-          <div class="text-xs text-slate-400">Grade aluno × sessão com toggle P/A/J por célula.</div>
-        </div>
-      </div>
-
-      <!-- Col 3: Interactive -->
-      <div class="space-y-3">
-        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Painéis Interativos</div>
-        <div class="bg-emerald-950/50 border border-emerald-800/60 rounded-xl p-3">
-          <div class="font-semibold text-emerald-300 text-sm mb-1">IATSessionsPanel</div>
-          <div class="text-xs text-slate-400">Sheet lateral da turma: lista sessões, adiciona/edita/remove, acessa frequência.</div>
-        </div>
-        <div class="bg-emerald-950/50 border border-emerald-800/60 rounded-xl p-3">
-          <div class="font-semibold text-emerald-300 text-sm mb-1">IATConflictWarning</div>
-          <div class="text-xs text-slate-400">Alert inline com lista dos conflitos detectados + sugestão de horário alternativo.</div>
-        </div>
-        <div class="bg-emerald-950/50 border border-emerald-800/60 rounded-xl p-3">
-          <div class="font-semibold text-emerald-300 text-sm mb-1">IATEventPopover</div>
-          <div class="text-xs text-slate-400">Popover ao clicar em evento no calendário: detalhes, links de ação rápida.</div>
-        </div>
-        <div class="bg-emerald-950/50 border border-emerald-800/60 rounded-xl p-3">
-          <div class="font-semibold text-emerald-300 text-sm mb-1">IATInstructorPicker</div>
-          <div class="text-xs text-slate-400">Combobox com avatar, especialidades e badge de disponibilidade em tempo real.</div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- UX Principles -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-      <div class="text-2xl mb-3">⚡</div>
-      <div class="font-bold text-white mb-1">Rápido por padrão</div>
-      <div class="text-xs text-slate-400">Otimistic updates em presenças. Debounce em buscas. Skeleton loaders. Suspense com fallback.</div>
-    </div>
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-      <div class="text-2xl mb-3">🚫</div>
-      <div class="font-bold text-white mb-1">Prevenir erros</div>
-      <div class="text-xs text-slate-400">Detecção de conflito em tempo real. Confirmação em ações destrutivas. Formulários com validação inline.</div>
-    </div>
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-      <div class="text-2xl mb-3">📱</div>
-      <div class="font-bold text-white mb-1">Responsivo</div>
-      <div class="text-xs text-slate-400">Calendário em modo lista em mobile. Sheets em vez de dialogs em telas estreitas. Touch-friendly.</div>
-    </div>
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-      <div class="text-2xl mb-3">🎨</div>
-      <div class="font-bold text-white mb-1">Consistente</div>
-      <div class="text-xs text-slate-400">Paleta semântica: azul=curso/turma, vermelho=exame, cinza=avulso. Badges padronizados por status.</div>
-    </div>
-  </div>
-
-</section>
-
-<!-- ═══════════════════════════════════════════════════════ DESIGN SYSTEM -->
-<section id="design-system" class="section space-y-8">
-
-  <div>
-    <h1 class="text-2xl font-black text-white mb-1">Design System — Tokens IAT</h1>
-    <p class="text-slate-400">Cores, tipografia, espaçamento e componentes base para o módulo IAT</p>
-  </div>
-
-  <!-- Color Palette -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <h2 class="font-bold text-white mb-4">Paleta Semântica de Eventos</h2>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="space-y-2">
-        <div class="h-16 rounded-xl bg-blue-600 flex items-end p-3"><span class="text-white font-bold text-xs">Turma / Curso</span></div>
-        <div class="space-y-1 text-xs">
-          <div class="flex justify-between"><span class="text-slate-400">bg</span><code class="text-blue-400">blue-600 / #2563EB</code></div>
-          <div class="flex justify-between"><span class="text-slate-400">light</span><code class="text-blue-400">blue-100 text-blue-800</code></div>
-          <div class="flex justify-between"><span class="text-slate-400">dark</span><code class="text-blue-400">blue-900/60 text-blue-300</code></div>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <div class="h-16 rounded-xl bg-red-600 flex items-end p-3"><span class="text-white font-bold text-xs">Exame / Laudo</span></div>
-        <div class="space-y-1 text-xs">
-          <div class="flex justify-between"><span class="text-slate-400">bg</span><code class="text-red-400">red-600 / #DC2626</code></div>
-          <div class="flex justify-between"><span class="text-slate-400">light</span><code class="text-red-400">red-100 text-red-800</code></div>
-          <div class="flex justify-between"><span class="text-slate-400">dark</span><code class="text-red-400">red-900/60 text-red-300</code></div>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <div class="h-16 rounded-xl bg-violet-600 flex items-end p-3"><span class="text-white font-bold text-xs">Sessão de Aula</span></div>
-        <div class="space-y-1 text-xs">
-          <div class="flex justify-between"><span class="text-slate-400">bg</span><code class="text-violet-400">violet-600 / #7C3AED</code></div>
-          <div class="flex justify-between"><span class="text-slate-400">light</span><code class="text-violet-400">violet-100 text-violet-800</code></div>
-          <div class="flex justify-between"><span class="text-slate-400">dark</span><code class="text-violet-400">violet-900/60 text-violet-300</code></div>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <div class="h-16 rounded-xl bg-slate-600 flex items-end p-3"><span class="text-white font-bold text-xs">Agendamento Avulso</span></div>
-        <div class="space-y-1 text-xs">
-          <div class="flex justify-between"><span class="text-slate-400">bg</span><code class="text-slate-400">slate-600 / #475569</code></div>
-          <div class="flex justify-between"><span class="text-slate-400">light</span><code class="text-slate-400">slate-100 text-slate-700</code></div>
-          <div class="flex justify-between"><span class="text-slate-400">dark</span><code class="text-slate-400">slate-700 text-slate-300</code></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Status Badges -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <h2 class="font-bold text-white mb-4">Badges de Status padronizados</h2>
-    <div class="space-y-4">
-      <div>
-        <div class="text-xs text-slate-500 mb-2 uppercase tracking-wider">Turma</div>
-        <div class="flex flex-wrap gap-2">
-          <span class="chip bg-blue-900/60 text-blue-300 border border-blue-700">● Agendada</span>
-          <span class="chip bg-amber-900/60 text-amber-300 border border-amber-700">● Em Andamento</span>
-          <span class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700">✓ Concluída</span>
-          <span class="chip bg-slate-700 text-slate-400 border border-slate-600">✕ Cancelada</span>
-        </div>
-      </div>
-      <div>
-        <div class="text-xs text-slate-500 mb-2 uppercase tracking-wider">Exame</div>
-        <div class="flex flex-wrap gap-2">
-          <span class="chip bg-blue-900/60 text-blue-300 border border-blue-700">● Agendado</span>
-          <span class="chip bg-violet-900/60 text-violet-300 border border-violet-700">● Realizado</span>
-          <span class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700">✓ Aprovado</span>
-          <span class="chip bg-red-900/60 text-red-300 border border-red-700">✕ Reprovado</span>
-          <span class="chip bg-slate-700 text-slate-400 border border-slate-600">✕ Cancelado</span>
-        </div>
-      </div>
-      <div>
-        <div class="text-xs text-slate-500 mb-2 uppercase tracking-wider">Frequência</div>
-        <div class="flex flex-wrap gap-2">
-          <span class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 font-bold">P — Presente</span>
-          <span class="chip bg-red-900/60 text-red-300 border border-red-700 font-bold">A — Ausente</span>
-          <span class="chip bg-amber-900/60 text-amber-300 border border-amber-700 font-bold">J — Justificado</span>
-          <span class="chip bg-slate-700 text-slate-400 border border-slate-600 font-bold">— Pendente</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Event Color Dots Legend -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <h2 class="font-bold text-white mb-4">Anatomia do Event Card no Calendário</h2>
-    <div class="space-y-3">
-
-      <!-- Turma event example -->
-      <div class="rounded-lg overflow-hidden border border-blue-700/40 max-w-sm">
-        <div class="bg-blue-600 px-3 py-2 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-white font-bold text-xs">09:00</span>
-            <span class="text-blue-100 text-xs">Turma IAT-07</span>
+      /* Print */
+      @media print {
+        body {
+          background: white;
+        }
+        .no-print {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <!-- TOP BAR -->
+    <div
+      class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 no-print"
+    >
+      <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-6">
+        <!-- Logo -->
+        <div class="flex items-center gap-2 mr-4">
+          <div
+            class="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-xs font-black"
+          >
+            C
           </div>
-          <span class="bg-blue-800 text-blue-200 text-xs px-1.5 py-0.5 rounded">Turma</span>
+          <span class="font-bold text-sm text-white">CAC360</span>
+          <span class="text-slate-500 text-xs">/ IAT UI/UX</span>
         </div>
-        <div class="bg-blue-950/40 px-3 py-2 text-xs space-y-1">
-          <div class="text-slate-300">📖 Tiro Defensivo</div>
-          <div class="text-slate-400">👨‍🏫 Instrutor: Carlos Silva</div>
-          <div class="text-slate-400">📍 Estande Principal · 3h</div>
-          <div class="flex gap-2 mt-2">
-            <button class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded">Ver turma</button>
-            <button class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2 py-1 rounded">Editar</button>
-          </div>
+        <!-- Nav -->
+        <nav class="flex items-center gap-1 overflow-x-auto" id="mainNav">
+          <button class="nav-link active" data-target="overview">
+            Visão Geral
+          </button>
+          <button class="nav-link" data-target="design-system">
+            Design System
+          </button>
+          <button class="nav-link" data-target="calendar">
+            📅 Agenda Geral
+          </button>
+          <button class="nav-link" data-target="instructor">
+            👨‍🏫 Ag. Instrutor
+          </button>
+          <button class="nav-link" data-target="class-view">
+            🎓 Ag. Turma
+          </button>
+          <button class="nav-link" data-target="attendance">
+            ✅ Frequência
+          </button>
+          <button class="nav-link" data-target="conflicts">⚠️ Conflitos</button>
+          <button class="nav-link" data-target="components">
+            🧩 Componentes
+          </button>
+          <button class="nav-link" data-target="specs">
+            📋 Specs Técnicas
+          </button>
+        </nav>
+        <!-- Badge -->
+        <div class="ml-auto flex-shrink-0">
+          <span class="chip bg-blue-900 text-blue-300">Abril 2026 · v1.0</span>
         </div>
-      </div>
-
-      <!-- Exam event example -->
-      <div class="rounded-lg overflow-hidden border border-red-700/40 max-w-sm">
-        <div class="bg-red-700 px-3 py-2 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-white font-bold text-xs">14:00</span>
-            <span class="text-red-100 text-xs">Laudo PF — João M.</span>
-          </div>
-          <span class="bg-red-900 text-red-200 text-xs px-1.5 py-0.5 rounded">Exame</span>
-        </div>
-        <div class="bg-red-950/40 px-3 py-2 text-xs space-y-1">
-          <div class="text-slate-300">🎯 Laudo de Aptidão — PF</div>
-          <div class="text-slate-400">👨‍🏫 Ana Paula • CPF: 123.456.789-00</div>
-          <div class="flex gap-2 mt-2">
-            <button class="bg-red-700 hover:bg-red-600 text-white text-xs px-2 py-1 rounded">Ver exame</button>
-            <button class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2 py-1 rounded">Resultado</button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-    <p class="text-xs text-slate-500 mt-4">Os popovers de evento abrem via <code class="text-blue-400">Popover</code> do Radix com delay de 200ms ao hover e clique para fixar.</p>
-  </div>
-
-</section>
-
-<!-- ═══════════════════════════════════════════════════════ CALENDAR -->
-<section id="calendar" class="section space-y-8">
-
-  <div>
-    <h1 class="text-2xl font-black text-white mb-1">IATCalendarView — Agenda Geral</h1>
-    <p class="text-slate-400">Componente principal de calendário com modos: Mês · Semana · Dia · Lista</p>
-  </div>
-
-  <!-- Calendar mockup -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-
-    <!-- Calendar header -->
-    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-      <div class="flex items-center gap-3">
-        <button class="p-2 rounded-lg hover:bg-slate-800 text-slate-400">&#8592;</button>
-        <h3 class="text-lg font-bold text-white">Abril 2026</h3>
-        <button class="p-2 rounded-lg hover:bg-slate-800 text-slate-400">&#8594;</button>
-        <button class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg ml-2">Hoje</button>
-      </div>
-
-      <!-- Filters -->
-      <div class="flex items-center gap-2">
-        <select class="bg-slate-800 border border-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg">
-          <option>Todos os instrutores</option>
-          <option>Carlos Silva</option>
-          <option>Ana Paula</option>
-        </select>
-        <select class="bg-slate-800 border border-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg">
-          <option>Todos os tipos</option>
-          <option>Turmas</option>
-          <option>Exames</option>
-          <option>Avulsos</option>
-        </select>
-      </div>
-
-      <!-- View mode toggle -->
-      <div class="flex bg-slate-800 rounded-lg p-1 gap-1">
-        <button class="text-xs px-3 py-1.5 rounded-md bg-blue-600 text-white font-medium">Mês</button>
-        <button class="text-xs px-3 py-1.5 rounded-md text-slate-400 hover:text-white">Semana</button>
-        <button class="text-xs px-3 py-1.5 rounded-md text-slate-400 hover:text-white">Dia</button>
-        <button class="text-xs px-3 py-1.5 rounded-md text-slate-400 hover:text-white">Lista</button>
       </div>
     </div>
 
-    <!-- Day headers -->
-    <div class="grid grid-cols-7 border-b border-slate-800 px-3 pt-3 pb-1">
-      <div class="text-center text-xs font-semibold text-slate-500 py-1">Dom</div>
-      <div class="text-center text-xs font-semibold text-slate-500 py-1">Seg</div>
-      <div class="text-center text-xs font-semibold text-slate-500 py-1">Ter</div>
-      <div class="text-center text-xs font-semibold text-slate-500 py-1">Qua</div>
-      <div class="text-center text-xs font-semibold text-slate-500 py-1">Qui</div>
-      <div class="text-center text-xs font-semibold text-slate-500 py-1">Sex</div>
-      <div class="text-center text-xs font-semibold text-slate-500 py-1">Sáb</div>
-    </div>
-
-    <!-- Calendar grid -->
-    <div class="grid grid-cols-7 gap-px bg-slate-800 px-0 pb-0">
-      <!-- Week 1 -->
-      <div class="cal-day bg-slate-900 opacity-40 p-2"><span class="text-xs text-slate-500">29</span></div>
-      <div class="cal-day bg-slate-900 opacity-40 p-2"><span class="text-xs text-slate-500">30</span></div>
-      <div class="cal-day bg-slate-900 opacity-40 p-2"><span class="text-xs text-slate-500">31</span></div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">1</span></div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">2</span></div>
-      <div class="cal-day bg-slate-900 p-2">
-        <span class="text-xs text-slate-400">3</span>
-        <div class="cal-event bg-blue-600/80 text-white mt-1">Turma IAT-06</div>
-      </div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">4</span></div>
-
-      <!-- Week 2 -->
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">5</span></div>
-      <div class="cal-day bg-slate-900 today p-2">
-        <span class="text-xs font-bold text-blue-400 bg-blue-600 w-5 h-5 rounded-full flex items-center justify-center">6</span>
-        <div class="cal-event bg-red-600/80 text-white mt-1">Laudo PF — 14h</div>
-      </div>
-      <div class="cal-day bg-slate-900 p-2">
-        <span class="text-xs text-slate-400">7</span>
-        <div class="cal-event bg-violet-600/80 text-white mt-1">Sessão 2/4</div>
-      </div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">8</span></div>
-      <div class="cal-day bg-slate-900 p-2">
-        <span class="text-xs text-slate-400">9</span>
-        <div class="cal-event bg-blue-600/80 text-white mt-1">Turma IAT-07</div>
-        <div class="cal-event bg-red-600/80 text-white">Exame PCT</div>
-      </div>
-      <div class="cal-day bg-slate-900 p-2">
-        <span class="text-xs text-slate-400">10</span>
-        <div class="cal-event bg-violet-600/80 text-white mt-1">Sessão 3/4</div>
-      </div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">11</span></div>
-
-      <!-- Week 3 -->
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">12</span></div>
-      <div class="cal-day bg-slate-900 p-2">
-        <span class="text-xs text-slate-400">13</span>
-        <div class="cal-event bg-slate-600/80 text-white mt-1">Ag. Avulso</div>
-      </div>
-      <div class="cal-day bg-slate-900 p-2">
-        <span class="text-xs text-slate-400">14</span>
-        <div class="cal-event bg-violet-600/80 text-white mt-1">Sessão 4/4</div>
-      </div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">15</span></div>
-      <div class="cal-day bg-slate-900 p-2">
-        <span class="text-xs text-slate-400">16</span>
-        <div class="cal-event bg-red-600/80 text-white mt-1">Laudo Exército</div>
-        <div class="cal-event bg-blue-600/80 text-white">Turma IAT-08</div>
-      </div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">17</span></div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">18</span></div>
-
-      <!-- Week 4 partial -->
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">19</span></div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">20</span></div>
-      <div class="cal-day bg-slate-900 p-2">
-        <span class="text-xs text-slate-400">21</span>
-        <div class="cal-event bg-blue-600/80 text-white mt-1">Turma IAT-07</div>
-      </div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">22</span></div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">23</span></div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">24</span></div>
-      <div class="cal-day bg-slate-900 p-2"><span class="text-xs text-slate-400">25</span></div>
-    </div>
-
-    <!-- Legend -->
-    <div class="flex items-center gap-4 px-5 py-3 border-t border-slate-800 bg-slate-900/50">
-      <span class="text-xs text-slate-500 font-medium">Legenda:</span>
-      <span class="flex items-center gap-1.5 text-xs"><span class="w-3 h-3 rounded bg-blue-600"></span><span class="text-slate-400">Turma/Curso</span></span>
-      <span class="flex items-center gap-1.5 text-xs"><span class="w-3 h-3 rounded bg-red-600"></span><span class="text-slate-400">Exame/Laudo</span></span>
-      <span class="flex items-center gap-1.5 text-xs"><span class="w-3 h-3 rounded bg-violet-600"></span><span class="text-slate-400">Sessão de Aula</span></span>
-      <span class="flex items-center gap-1.5 text-xs"><span class="w-3 h-3 rounded bg-slate-600"></span><span class="text-slate-400">Agendamento Avulso</span></span>
-      <button class="ml-auto text-xs text-slate-400 hover:text-white flex items-center gap-1">⬇ Exportar período</button>
-    </div>
-  </div>
-
-  <!-- Implementation note -->
-  <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-5">
-    <h3 class="font-semibold text-white mb-3">Decisão de implementação: calendário próprio vs. biblioteca</h3>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-      <div class="space-y-2">
-        <div class="font-medium text-emerald-400">✅ Implementação própria (recomendado)</div>
-        <ul class="text-slate-400 space-y-1 text-xs">
-          <li>• Zero dependência externa extra</li>
-          <li>• Total controle sobre estilo dark mode</li>
-          <li>• Usa date-fns já instalado</li>
-          <li>• Grid CSS: mês = <code>grid-cols-7</code></li>
-          <li>• Semana = coluna por dia, linhas por hora</li>
-          <li>• ~400 linhas de TSX</li>
-        </ul>
-      </div>
-      <div class="space-y-2">
-        <div class="font-medium text-amber-400">⚠️ react-big-calendar</div>
-        <ul class="text-slate-400 space-y-1 text-xs">
-          <li>• Requer CSS customizado extenso</li>
-          <li>• Tamanho: ~85kB minzipped</li>
-          <li>• Drag-and-drop built-in</li>
-          <li>• API complexa para customização</li>
-          <li>• Boa opção se drag precisar ser nativo</li>
-        </ul>
-      </div>
-      <div class="space-y-2">
-        <div class="font-medium text-red-400">❌ FullCalendar</div>
-        <ul class="text-slate-400 space-y-1 text-xs">
-          <li>• Versão React paga (premium)</li>
-          <li>• Bundle grande (+200kB)</li>
-          <li>• Overkill para este caso de uso</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-</section>
-
-<!-- ═══════════════════════════════════════════════════════ INSTRUCTOR -->
-<section id="instructor" class="section space-y-8">
-
-  <div>
-    <h1 class="text-2xl font-black text-white mb-1">IATInstructorAgenda — Agenda por Instrutor</h1>
-    <p class="text-slate-400">Painel dedicado que mostra todos os compromissos de um instrutor específico</p>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-    <!-- Left: Instructor selector + mini calendar -->
-    <div class="space-y-4">
-      <!-- Instructor card -->
-      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5">
-        <div class="text-xs text-slate-500 uppercase tracking-wider mb-3">Instrutor</div>
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-12 h-12 rounded-full bg-blue-700 flex items-center justify-center text-white font-bold text-lg">CS</div>
-          <div>
-            <div class="font-bold text-white">Carlos Silva</div>
-            <div class="text-xs text-slate-400">CR-SP 12.345</div>
-            <div class="flex gap-1 mt-1">
-              <span class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs">✓ Credenciado PF</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Specialty chips -->
-        <div class="space-y-1">
-          <div class="text-xs text-slate-500 mb-1">Especialidades</div>
-          <div class="flex flex-wrap gap-1">
-            <span class="chip bg-slate-800 text-slate-300 border border-slate-700">🔫 Pistola</span>
-            <span class="chip bg-slate-800 text-slate-300 border border-slate-700">🔫 Revólver</span>
-            <span class="chip bg-slate-800 text-slate-300 border border-slate-700">🎯 Tiro Tático</span>
-          </div>
-        </div>
-
-        <div class="border-t border-slate-700 mt-4 pt-4 grid grid-cols-3 gap-2 text-center">
-          <div>
-            <div class="text-xl font-black text-blue-400">14</div>
-            <div class="text-xs text-slate-500">turmas este mês</div>
-          </div>
-          <div>
-            <div class="text-xl font-black text-red-400">6</div>
-            <div class="text-xs text-slate-500">exames este mês</div>
-          </div>
-          <div>
-            <div class="text-xl font-black text-emerald-400">42h</div>
-            <div class="text-xs text-slate-500">carga mensal</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Availability grid -->
-      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5">
-        <div class="text-xs text-slate-500 uppercase tracking-wider mb-3">Disponibilidade semanal</div>
-        <div class="space-y-1 text-xs">
-          <div class="grid grid-cols-4 gap-1 font-medium text-slate-500 pb-1">
-            <span></span><span>Manhã</span><span>Tarde</span><span>Noite</span>
-          </div>
-          <div class="grid grid-cols-4 gap-1">
-            <span class="text-slate-400 py-1">Seg</span>
-            <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center">✓</span>
-            <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center">✓</span>
-            <span class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center">—</span>
-          </div>
-          <div class="grid grid-cols-4 gap-1">
-            <span class="text-slate-400 py-1">Ter</span>
-            <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center">✓</span>
-            <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center">✓</span>
-            <span class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center">—</span>
-          </div>
-          <div class="grid grid-cols-4 gap-1">
-            <span class="text-slate-400 py-1">Qua</span>
-            <span class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center">—</span>
-            <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center">✓</span>
-            <span class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center">—</span>
-          </div>
-          <div class="grid grid-cols-4 gap-1">
-            <span class="text-slate-400 py-1">Qui</span>
-            <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center">✓</span>
-            <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center">✓</span>
-            <span class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center">—</span>
-          </div>
-          <div class="grid grid-cols-4 gap-1">
-            <span class="text-slate-400 py-1">Sex</span>
-            <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center">✓</span>
-            <span class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center">—</span>
-            <span class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center">—</span>
-          </div>
-        </div>
-        <button class="w-full mt-3 text-xs text-blue-400 hover:text-blue-300 border border-slate-700 rounded-lg py-2 hover:bg-slate-800 transition-colors">+ Editar disponibilidade</button>
-      </div>
-    </div>
-
-    <!-- Right: Week agenda -->
-    <div class="lg:col-span-2 bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+      <!-- ═══════════════════════════════════════════════════════ OVERVIEW -->
+      <section id="overview" class="section active space-y-8">
         <div>
-          <h3 class="font-bold text-white">Semana de 6 – 10 Abr 2026</h3>
-          <p class="text-xs text-slate-400">5 compromissos · 14h totais</p>
-        </div>
-        <div class="flex gap-2">
-          <button class="text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white">‹ Anterior</button>
-          <button class="text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white">Próxima ›</button>
-        </div>
-      </div>
-      <div class="p-5 space-y-3">
-
-        <!-- Day: Monday -->
-        <div>
-          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Segunda, 6 Abr</div>
-          <div class="flex items-start gap-3 p-3 bg-blue-950/40 border border-blue-800/50 rounded-xl hover:bg-blue-950/60 transition-colors cursor-pointer">
-            <div class="text-center min-w-[48px]">
-              <div class="text-lg font-black text-blue-400">09</div>
-              <div class="text-xs text-slate-500">:00</div>
-            </div>
-            <div class="flex-1">
-              <div class="font-semibold text-white text-sm">Turma IAT-07 — Sessão 1/4</div>
-              <div class="text-xs text-slate-400 mt-0.5">Tiro Defensivo · Estande A · 3h</div>
-              <div class="flex items-center gap-2 mt-2">
-                <span class="chip bg-blue-900/60 text-blue-300 border border-blue-700">● Agendada</span>
-                <span class="text-xs text-slate-500">12 alunos</span>
-              </div>
-            </div>
-            <button class="text-slate-400 hover:text-white p-1">⋯</button>
-          </div>
+          <h1 class="text-3xl font-black text-white mb-1">
+            Planejamento UI/UX — Módulo IAT
+          </h1>
+          <p class="text-slate-400">
+            Instrução de Armamento e Tiro · Evolução do sistema de agendas e
+            cadastros
+          </p>
         </div>
 
-        <!-- Day: Tuesday -->
-        <div>
-          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Terça, 7 Abr</div>
-          <div class="flex items-start gap-3 p-3 bg-red-950/40 border border-red-800/50 rounded-xl hover:bg-red-950/60 transition-colors cursor-pointer">
-            <div class="text-center min-w-[48px]">
-              <div class="text-lg font-black text-red-400">14</div>
-              <div class="text-xs text-slate-500">:00</div>
-            </div>
-            <div class="flex-1">
-              <div class="font-semibold text-white text-sm">Laudo PF — Maria Souza</div>
-              <div class="text-xs text-slate-400 mt-0.5">Laudo de Aptidão · Sala 2 · 1h</div>
-              <div class="flex items-center gap-2 mt-2">
-                <span class="chip bg-blue-900/60 text-blue-300 border border-blue-700">● Agendado</span>
+        <!-- Stack Card -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h2 class="text-lg font-bold text-white mb-4">
+            Stack UI existente (será mantida)
+          </h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div class="text-blue-400 font-bold mb-1">shadcn/ui + Radix</div>
+              <div class="text-xs text-slate-400">
+                Componentes base: Dialog, Sheet, Tabs, Calendar, Table, Select,
+                Combobox…
               </div>
             </div>
-            <button class="text-slate-400 hover:text-white p-1">⋯</button>
-          </div>
-        </div>
-
-        <!-- Day: Thursday -->
-        <div>
-          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Quinta, 9 Abr</div>
-          <div class="space-y-2">
-            <div class="flex items-start gap-3 p-3 bg-blue-950/40 border border-blue-800/50 rounded-xl hover:bg-blue-950/60 transition-colors cursor-pointer">
-              <div class="text-center min-w-[48px]">
-                <div class="text-lg font-black text-blue-400">08</div>
-                <div class="text-xs text-slate-500">:30</div>
-              </div>
-              <div class="flex-1">
-                <div class="font-semibold text-white text-sm">Turma IAT-08 — Tiro Básico</div>
-                <div class="text-xs text-slate-400 mt-0.5">Aula inaugural · Estande B · 4h</div>
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div class="text-violet-400 font-bold mb-1">Tailwind CSS v4</div>
+              <div class="text-xs text-slate-400">
+                Utilitários, tema dark, variáveis CSS, tailwind-animate
               </div>
             </div>
-            <div class="flex items-start gap-3 p-3 bg-red-950/40 border border-red-800/50 rounded-xl hover:bg-red-950/60 transition-colors cursor-pointer">
-              <div class="text-center min-w-[48px]">
-                <div class="text-lg font-black text-red-400">15</div>
-                <div class="text-xs text-slate-500">:00</div>
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div class="text-emerald-400 font-bold mb-1">
+                framer-motion v12
               </div>
-              <div class="flex-1">
-                <div class="font-semibold text-white text-sm">Exame PCT — João Lima</div>
-                <div class="text-xs text-slate-400 mt-0.5">PCT · Sala 1 · 2h</div>
+              <div class="text-xs text-slate-400">
+                Animações de entrada, drag-and-drop, transições de layout
+              </div>
+            </div>
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+              <div class="text-amber-400 font-bold mb-1">
+                date-fns v4 + Recharts
+              </div>
+              <div class="text-xs text-slate-400">
+                Manipulação de datas e gráficos de analytics
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Day: Friday -->
-        <div>
-          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Sexta, 10 Abr</div>
-          <div class="flex items-start gap-3 p-3 bg-violet-950/40 border border-violet-800/50 rounded-xl">
-            <div class="text-center min-w-[48px]">
-              <div class="text-lg font-black text-violet-400">09</div>
-              <div class="text-xs text-slate-500">:00</div>
+        <!-- New Components Overview -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h2 class="text-lg font-bold text-white mb-4">
+            Novos componentes a criar — mapa de dependências
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Col 1: Data -->
+            <div class="space-y-3">
+              <div
+                class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+              >
+                Camada de Dados
+              </div>
+              <div
+                class="bg-blue-950/50 border border-blue-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-blue-300 text-sm mb-1">
+                  useIATSchedule()
+                </div>
+                <div class="text-xs text-slate-400">
+                  Hook central. Agrega eventos de turmas, exames e agendamentos.
+                  Filtros: instructorId, classId, dateRange.
+                </div>
+              </div>
+              <div
+                class="bg-blue-950/50 border border-blue-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-blue-300 text-sm mb-1">
+                  useConflictCheck()
+                </div>
+                <div class="text-xs text-slate-400">
+                  Verifica sobreposição de horários do instrutor em tempo real
+                  ao preencher forms.
+                </div>
+              </div>
+              <div
+                class="bg-blue-950/50 border border-blue-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-blue-300 text-sm mb-1">
+                  useAttendance()
+                </div>
+                <div class="text-xs text-slate-400">
+                  Frequência por sessão: carrega, atualiza em batch, calcula %
+                  presença.
+                </div>
+              </div>
             </div>
-            <div class="flex-1">
-              <div class="font-semibold text-white text-sm">Turma IAT-07 — Sessão 2/4</div>
-              <div class="text-xs text-slate-400 mt-0.5">Tiro Defensivo · Estande A · 3h</div>
+
+            <!-- Col 2: Presentation -->
+            <div class="space-y-3">
+              <div
+                class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+              >
+                Componentes de Apresentação
+              </div>
+              <div
+                class="bg-violet-950/50 border border-violet-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-violet-300 text-sm mb-1">
+                  IATCalendarView
+                </div>
+                <div class="text-xs text-slate-400">
+                  Calendário mensal/semanal/diário com eventos color-coded e
+                  popover de detalhes.
+                </div>
+              </div>
+              <div
+                class="bg-violet-950/50 border border-violet-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-violet-300 text-sm mb-1">
+                  IATInstructorAgenda
+                </div>
+                <div class="text-xs text-slate-400">
+                  Painel lateral com mini-calendário + lista de eventos da
+                  semana por instrutor.
+                </div>
+              </div>
+              <div
+                class="bg-violet-950/50 border border-violet-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-violet-300 text-sm mb-1">
+                  IATClassTimeline
+                </div>
+                <div class="text-xs text-slate-400">
+                  Timeline horizontal com sessões e exame final da turma.
+                </div>
+              </div>
+              <div
+                class="bg-violet-950/50 border border-violet-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-violet-300 text-sm mb-1">
+                  IATAttendanceSheet
+                </div>
+                <div class="text-xs text-slate-400">
+                  Grade aluno × sessão com toggle P/A/J por célula.
+                </div>
+              </div>
+            </div>
+
+            <!-- Col 3: Interactive -->
+            <div class="space-y-3">
+              <div
+                class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+              >
+                Painéis Interativos
+              </div>
+              <div
+                class="bg-emerald-950/50 border border-emerald-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-emerald-300 text-sm mb-1">
+                  IATSessionsPanel
+                </div>
+                <div class="text-xs text-slate-400">
+                  Sheet lateral da turma: lista sessões, adiciona/edita/remove,
+                  acessa frequência.
+                </div>
+              </div>
+              <div
+                class="bg-emerald-950/50 border border-emerald-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-emerald-300 text-sm mb-1">
+                  IATConflictWarning
+                </div>
+                <div class="text-xs text-slate-400">
+                  Alert inline com lista dos conflitos detectados + sugestão de
+                  horário alternativo.
+                </div>
+              </div>
+              <div
+                class="bg-emerald-950/50 border border-emerald-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-emerald-300 text-sm mb-1">
+                  IATEventPopover
+                </div>
+                <div class="text-xs text-slate-400">
+                  Popover ao clicar em evento no calendário: detalhes, links de
+                  ação rápida.
+                </div>
+              </div>
+              <div
+                class="bg-emerald-950/50 border border-emerald-800/60 rounded-xl p-3"
+              >
+                <div class="font-semibold text-emerald-300 text-sm mb-1">
+                  IATInstructorPicker
+                </div>
+                <div class="text-xs text-slate-400">
+                  Combobox com avatar, especialidades e badge de disponibilidade
+                  em tempo real.
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-      </div>
-    </div>
-
-  </div>
-
-</section>
-
-<!-- ═══════════════════════════════════════════════════════ CLASS VIEW -->
-<section id="class-view" class="section space-y-8">
-
-  <div>
-    <h1 class="text-2xl font-black text-white mb-1">IATClassTimeline + IATSessionsPanel</h1>
-    <p class="text-slate-400">Visão completa da turma: timeline de sessões, matrículas e controle de frequência</p>
-  </div>
-
-  <!-- Class header -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <div class="flex items-start justify-between mb-4">
-      <div class="flex items-start gap-4">
-        <div class="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center text-white font-black text-lg">07</div>
-        <div>
-          <div class="flex items-center gap-2 mb-1">
-            <h2 class="text-xl font-black text-white">Turma IAT-07</h2>
-            <span class="chip bg-amber-900/60 text-amber-300 border border-amber-700">● Em Andamento</span>
-          </div>
-          <div class="text-sm text-slate-400">Tiro Defensivo · Carlos Silva · Estande Principal</div>
-          <div class="flex items-center gap-4 mt-2 text-xs text-slate-400">
-            <span>📅 Início: 06 Abr 2026</span>
-            <span>📅 Previsão fim: 14 Abr 2026</span>
-            <span>👥 12 / 15 alunos</span>
-            <span>⏱ 12h totais</span>
-          </div>
-        </div>
-      </div>
-      <div class="flex gap-2">
-        <button class="text-xs px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg">+ Adicionar Sessão</button>
-        <button class="text-xs px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg">Ver Matrículas</button>
-      </div>
-    </div>
-
-    <!-- Progress bar -->
-    <div class="mt-2">
-      <div class="flex justify-between text-xs text-slate-400 mb-1">
-        <span>Progresso da turma</span>
-        <span>2 de 4 sessões concluídas (+ exame)</span>
-      </div>
-      <div class="w-full bg-slate-800 rounded-full h-2">
-        <div class="bg-blue-600 h-2 rounded-full" style="width: 40%"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Timeline mockup -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <h3 class="font-bold text-white mb-6">Timeline da Turma</h3>
-    <div class="space-y-4">
-
-      <!-- Session 1 - done -->
-      <div class="timeline-item">
-        <div class="w-10 h-10 rounded-full bg-emerald-600 border-4 border-slate-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 z-10">1</div>
-        <div class="flex-1 pb-4">
-          <div class="flex items-center gap-3 mb-1">
-            <span class="font-semibold text-white">Sessão 1 — Teoria e Segurança</span>
-            <span class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs">✓ Realizada</span>
-          </div>
-          <div class="text-xs text-slate-400">06 Abr · 09:00–12:00 · Estande A · 3h</div>
-          <div class="flex items-center gap-2 mt-2">
-            <span class="text-xs text-slate-300">Frequência: </span>
-            <div class="flex gap-1">
-              <span class="chip bg-emerald-900/40 text-emerald-400 border border-emerald-800">11P</span>
-              <span class="chip bg-red-900/40 text-red-400 border border-red-800">1A</span>
+        <!-- UX Principles -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div class="text-2xl mb-3">⚡</div>
+            <div class="font-bold text-white mb-1">Rápido por padrão</div>
+            <div class="text-xs text-slate-400">
+              Otimistic updates em presenças. Debounce em buscas. Skeleton
+              loaders. Suspense com fallback.
             </div>
-            <button class="text-xs text-slate-400 hover:text-white underline ml-1">Ver detalhes</button>
           </div>
-        </div>
-      </div>
-
-      <!-- Session 2 - done -->
-      <div class="timeline-item">
-        <div class="w-10 h-10 rounded-full bg-emerald-600 border-4 border-slate-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 z-10">2</div>
-        <div class="flex-1 pb-4">
-          <div class="flex items-center gap-3 mb-1">
-            <span class="font-semibold text-white">Sessão 2 — Prática no Estande</span>
-            <span class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs">✓ Realizada</span>
-          </div>
-          <div class="text-xs text-slate-400">10 Abr · 09:00–12:00 · Estande A · 3h</div>
-          <div class="flex items-center gap-2 mt-2">
-            <span class="text-xs text-slate-300">Frequência: </span>
-            <div class="flex gap-1">
-              <span class="chip bg-emerald-900/40 text-emerald-400 border border-emerald-800">12P</span>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div class="text-2xl mb-3">🚫</div>
+            <div class="font-bold text-white mb-1">Prevenir erros</div>
+            <div class="text-xs text-slate-400">
+              Detecção de conflito em tempo real. Confirmação em ações
+              destrutivas. Formulários com validação inline.
             </div>
-            <button class="text-xs text-slate-400 hover:text-white underline ml-1">Ver detalhes</button>
           </div>
-        </div>
-      </div>
-
-      <!-- Session 3 - scheduled -->
-      <div class="timeline-item">
-        <div class="w-10 h-10 rounded-full bg-blue-600 border-4 border-slate-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 z-10">3</div>
-        <div class="flex-1 pb-4 bg-blue-950/20 border border-blue-800/30 rounded-xl p-3 -mt-1">
-          <div class="flex items-center gap-3 mb-1">
-            <span class="font-semibold text-white">Sessão 3 — Técnicas Avançadas</span>
-            <span class="chip bg-blue-900/60 text-blue-300 border border-blue-700 text-xs">● Agendada</span>
-          </div>
-          <div class="text-xs text-slate-400">14 Abr · 09:00–12:00 · Estande A · 3h</div>
-          <div class="flex gap-2 mt-2">
-            <button class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">Editar</button>
-            <button class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">Cancelar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Session 4 - scheduled -->
-      <div class="timeline-item">
-        <div class="w-10 h-10 rounded-full bg-slate-700 border-4 border-slate-900 flex items-center justify-center text-slate-300 font-bold text-sm flex-shrink-0 z-10">4</div>
-        <div class="flex-1 pb-4">
-          <div class="flex items-center gap-3 mb-1">
-            <span class="font-semibold text-slate-300">Sessão 4 — Revisão e Simulado</span>
-            <span class="chip bg-slate-700 text-slate-400 border border-slate-600 text-xs">● Agendada</span>
-          </div>
-          <div class="text-xs text-slate-500">18 Abr · 09:00–12:00 · Estande A · 3h</div>
-        </div>
-      </div>
-
-      <!-- Exam -->
-      <div class="timeline-item">
-        <div class="w-10 h-10 rounded-full bg-red-700 border-4 border-slate-900 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 z-10">🎯</div>
-        <div class="flex-1 bg-red-950/30 border border-red-800/40 rounded-xl p-3 -mt-1">
-          <div class="flex items-center gap-3 mb-1">
-            <span class="font-semibold text-white">Exame Final — Tiro Defensivo</span>
-            <span class="chip bg-slate-700 text-slate-400 border border-slate-600 text-xs">Pendente</span>
-          </div>
-          <div class="text-xs text-slate-400">22 Abr · 14:00 · Sala de Exames · 2h</div>
-          <div class="text-xs text-slate-500 mt-1 italic">Agendado automaticamente após conclusão das 4 sessões</div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-</section>
-
-<!-- ═══════════════════════════════════════════════════════ ATTENDANCE -->
-<section id="attendance" class="section space-y-8">
-
-  <div>
-    <h1 class="text-2xl font-black text-white mb-1">IATAttendanceSheet — Controle de Frequência</h1>
-    <p class="text-slate-400">Grade interativa aluno × sessão com toggle P/A/J e cálculo automático de percentual</p>
-  </div>
-
-  <!-- Stats bar -->
-  <div class="grid grid-cols-4 gap-4">
-    <div class="bg-emerald-950/50 border border-emerald-800/50 rounded-xl p-4 text-center">
-      <div class="text-2xl font-black text-emerald-400">87%</div>
-      <div class="text-xs text-slate-400">Média de presença</div>
-    </div>
-    <div class="bg-blue-950/50 border border-blue-800/50 rounded-xl p-4 text-center">
-      <div class="text-2xl font-black text-blue-400">12</div>
-      <div class="text-xs text-slate-400">Alunos matriculados</div>
-    </div>
-    <div class="bg-amber-950/50 border border-amber-800/50 rounded-xl p-4 text-center">
-      <div class="text-2xl font-black text-amber-400">2</div>
-      <div class="text-xs text-slate-400">Sessões concluídas</div>
-    </div>
-    <div class="bg-red-950/50 border border-red-800/50 rounded-xl p-4 text-center">
-      <div class="text-2xl font-black text-red-400">1</div>
-      <div class="text-xs text-slate-400">Em risco (&lt;75%)</div>
-    </div>
-  </div>
-
-  <!-- Attendance grid -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-      <h3 class="font-bold text-white">Grade de Frequência — Turma IAT-07</h3>
-      <div class="flex gap-2">
-        <button class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg">⬇ Exportar PDF</button>
-        <button class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg">✓ Salvar presenças</button>
-      </div>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-slate-800">
-            <th class="text-left px-4 py-3 text-slate-400 font-medium w-48">Aluno</th>
-            <th class="text-center px-3 py-3 text-blue-400 font-medium w-20">
-              <div>S1</div>
-              <div class="text-xs text-slate-500 font-normal">06/Abr</div>
-            </th>
-            <th class="text-center px-3 py-3 text-blue-400 font-medium w-20">
-              <div>S2</div>
-              <div class="text-xs text-slate-500 font-normal">10/Abr</div>
-            </th>
-            <th class="text-center px-3 py-3 text-slate-600 font-medium w-20">
-              <div>S3</div>
-              <div class="text-xs text-slate-600 font-normal">14/Abr</div>
-            </th>
-            <th class="text-center px-3 py-3 text-slate-600 font-medium w-20">
-              <div>S4</div>
-              <div class="text-xs text-slate-600 font-normal">18/Abr</div>
-            </th>
-            <th class="text-center px-3 py-3 text-slate-400 font-medium w-24">% Presença</th>
-            <th class="text-center px-3 py-3 text-slate-400 font-medium w-24">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
-            <td class="px-4 py-2 text-slate-200 font-medium">João Silva</td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-p mx-auto">P</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-p mx-auto">P</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-n mx-auto">—</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-n mx-auto">—</div></td>
-            <td class="px-3 py-2 text-center"><span class="text-emerald-400 font-bold">100%</span></td>
-            <td class="px-3 py-2 text-center"><span class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs">Regular</span></td>
-          </tr>
-          <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
-            <td class="px-4 py-2 text-slate-200 font-medium">Maria Oliveira</td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-a mx-auto">A</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-p mx-auto">P</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-n mx-auto">—</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-n mx-auto">—</div></td>
-            <td class="px-3 py-2 text-center"><span class="text-amber-400 font-bold">50%</span></td>
-            <td class="px-3 py-2 text-center"><span class="chip bg-red-900/60 text-red-300 border border-red-700 text-xs">⚠ Em risco</span></td>
-          </tr>
-          <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
-            <td class="px-4 py-2 text-slate-200 font-medium">Pedro Santos</td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-p mx-auto">P</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-j mx-auto">J</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-n mx-auto">—</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-n mx-auto">—</div></td>
-            <td class="px-3 py-2 text-center"><span class="text-amber-400 font-bold">75%</span></td>
-            <td class="px-3 py-2 text-center"><span class="chip bg-amber-900/60 text-amber-300 border border-amber-700 text-xs">Atenção</span></td>
-          </tr>
-          <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
-            <td class="px-4 py-2 text-slate-200 font-medium">Ana Costa</td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-p mx-auto">P</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-p mx-auto">P</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-n mx-auto">—</div></td>
-            <td class="px-3 py-2 text-center"><div class="att-cell att-n mx-auto">—</div></td>
-            <td class="px-3 py-2 text-center"><span class="text-emerald-400 font-bold">100%</span></td>
-            <td class="px-3 py-2 text-center"><span class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs">Regular</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="flex items-center gap-4 px-5 py-3 bg-slate-800/30 border-t border-slate-800 text-xs text-slate-400">
-      <span>Legenda de células:</span>
-      <span class="flex items-center gap-1"><span class="att-cell att-p w-6 h-6 text-xs">P</span> Presente</span>
-      <span class="flex items-center gap-1"><span class="att-cell att-a w-6 h-6 text-xs">A</span> Ausente</span>
-      <span class="flex items-center gap-1"><span class="att-cell att-j w-6 h-6 text-xs">J</span> Justificado</span>
-      <span class="flex items-center gap-1"><span class="att-cell att-n w-6 h-6 text-xs">—</span> Sessão futura</span>
-      <span class="ml-auto text-slate-500">Clique para alternar · ⚠ Em risco = abaixo de 75% de presença</span>
-    </div>
-  </div>
-
-</section>
-
-<!-- ═══════════════════════════════════════════════════════ CONFLICTS -->
-<section id="conflicts" class="section space-y-8">
-
-  <div>
-    <h1 class="text-2xl font-black text-white mb-1">IATConflictWarning — Detecção de Conflitos</h1>
-    <p class="text-slate-400">Sistema de alerta em tempo real ao agendar instrutor já ocupado</p>
-  </div>
-
-  <!-- Conflict alert inline -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6 space-y-6">
-    <h3 class="font-bold text-white">Exemplo: Formulário de Nova Turma com conflito detectado</h3>
-
-    <!-- Form mockup -->
-    <div class="max-w-2xl space-y-4">
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Curso</label>
-          <div class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">Tiro Defensivo</div>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Instrutor</label>
-          <div class="bg-slate-800 border border-red-500 rounded-lg px-3 py-2 text-sm text-white flex items-center justify-between">
-            <span>Carlos Silva</span>
-            <span class="text-red-400 text-xs">⚠ Conflito</span>
-          </div>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Data</label>
-          <div class="bg-slate-800 border border-red-500/50 rounded-lg px-3 py-2 text-sm text-white">09 Abr 2026</div>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Horário</label>
-          <div class="bg-slate-800 border border-red-500/50 rounded-lg px-3 py-2 text-sm text-white">09:00 – 12:00</div>
-        </div>
-      </div>
-
-      <!-- Conflict warning banner -->
-      <div class="bg-red-950/50 border border-red-700/70 rounded-xl p-4">
-        <div class="flex items-start gap-3">
-          <span class="text-red-400 text-xl mt-0.5">⚠</span>
-          <div class="flex-1">
-            <div class="font-semibold text-red-300 mb-1">Conflito de horário detectado</div>
-            <p class="text-xs text-red-200/80 mb-3">Carlos Silva já tem um compromisso no horário selecionado:</p>
-            <div class="bg-red-900/40 border border-red-800/50 rounded-lg p-3 space-y-1">
-              <div class="text-xs text-white font-medium">Turma IAT-08 — Tiro Básico (Sessão 1)</div>
-              <div class="text-xs text-red-200">09 Abr 2026 · 08:30 – 12:30 · Estande B</div>
-              <div class="text-xs text-red-300">⏱ Sobreposição: 09:00 – 12:00 (3h)</div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div class="text-2xl mb-3">📱</div>
+            <div class="font-bold text-white mb-1">Responsivo</div>
+            <div class="text-xs text-slate-400">
+              Calendário em modo lista em mobile. Sheets em vez de dialogs em
+              telas estreitas. Touch-friendly.
             </div>
-            <div class="mt-3">
-              <div class="text-xs text-red-200/80 mb-2 font-medium">Instrutores disponíveis para 09 Abr · 09:00–12:00:</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div class="text-2xl mb-3">🎨</div>
+            <div class="font-bold text-white mb-1">Consistente</div>
+            <div class="text-xs text-slate-400">
+              Paleta semântica: azul=curso/turma, vermelho=exame, cinza=avulso.
+              Badges padronizados por status.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════ DESIGN SYSTEM -->
+      <section id="design-system" class="section space-y-8">
+        <div>
+          <h1 class="text-2xl font-black text-white mb-1">
+            Design System — Tokens IAT
+          </h1>
+          <p class="text-slate-400">
+            Cores, tipografia, espaçamento e componentes base para o módulo IAT
+          </p>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h2 class="font-bold text-white mb-4">Paleta Semântica de Eventos</h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="space-y-2">
+              <div class="h-16 rounded-xl bg-blue-600 flex items-end p-3">
+                <span class="text-white font-bold text-xs">Turma / Curso</span>
+              </div>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">bg</span
+                  ><code class="text-blue-400">blue-600 / #2563EB</code>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">light</span
+                  ><code class="text-blue-400">blue-100 text-blue-800</code>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">dark</span
+                  ><code class="text-blue-400">blue-900/60 text-blue-300</code>
+                </div>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div class="h-16 rounded-xl bg-red-600 flex items-end p-3">
+                <span class="text-white font-bold text-xs">Exame / Laudo</span>
+              </div>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">bg</span
+                  ><code class="text-red-400">red-600 / #DC2626</code>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">light</span
+                  ><code class="text-red-400">red-100 text-red-800</code>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">dark</span
+                  ><code class="text-red-400">red-900/60 text-red-300</code>
+                </div>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div class="h-16 rounded-xl bg-violet-600 flex items-end p-3">
+                <span class="text-white font-bold text-xs">Sessão de Aula</span>
+              </div>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">bg</span
+                  ><code class="text-violet-400">violet-600 / #7C3AED</code>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">light</span
+                  ><code class="text-violet-400"
+                    >violet-100 text-violet-800</code
+                  >
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">dark</span
+                  ><code class="text-violet-400"
+                    >violet-900/60 text-violet-300</code
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div class="h-16 rounded-xl bg-slate-600 flex items-end p-3">
+                <span class="text-white font-bold text-xs"
+                  >Agendamento Avulso</span
+                >
+              </div>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">bg</span
+                  ><code class="text-slate-400">slate-600 / #475569</code>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">light</span
+                  ><code class="text-slate-400">slate-100 text-slate-700</code>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">dark</span
+                  ><code class="text-slate-400">slate-700 text-slate-300</code>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Badges -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h2 class="font-bold text-white mb-4">
+            Badges de Status padronizados
+          </h2>
+          <div class="space-y-4">
+            <div>
+              <div class="text-xs text-slate-500 mb-2 uppercase tracking-wider">
+                Turma
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  class="chip bg-blue-900/60 text-blue-300 border border-blue-700"
+                  >● Agendada</span
+                >
+                <span
+                  class="chip bg-amber-900/60 text-amber-300 border border-amber-700"
+                  >● Em Andamento</span
+                >
+                <span
+                  class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700"
+                  >✓ Concluída</span
+                >
+                <span
+                  class="chip bg-slate-700 text-slate-400 border border-slate-600"
+                  >✕ Cancelada</span
+                >
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-500 mb-2 uppercase tracking-wider">
+                Exame
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  class="chip bg-blue-900/60 text-blue-300 border border-blue-700"
+                  >● Agendado</span
+                >
+                <span
+                  class="chip bg-violet-900/60 text-violet-300 border border-violet-700"
+                  >● Realizado</span
+                >
+                <span
+                  class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700"
+                  >✓ Aprovado</span
+                >
+                <span
+                  class="chip bg-red-900/60 text-red-300 border border-red-700"
+                  >✕ Reprovado</span
+                >
+                <span
+                  class="chip bg-slate-700 text-slate-400 border border-slate-600"
+                  >✕ Cancelado</span
+                >
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-500 mb-2 uppercase tracking-wider">
+                Frequência
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 font-bold"
+                  >P — Presente</span
+                >
+                <span
+                  class="chip bg-red-900/60 text-red-300 border border-red-700 font-bold"
+                  >A — Ausente</span
+                >
+                <span
+                  class="chip bg-amber-900/60 text-amber-300 border border-amber-700 font-bold"
+                  >J — Justificado</span
+                >
+                <span
+                  class="chip bg-slate-700 text-slate-400 border border-slate-600 font-bold"
+                  >— Pendente</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Event Color Dots Legend -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h2 class="font-bold text-white mb-4">
+            Anatomia do Event Card no Calendário
+          </h2>
+          <div class="space-y-3">
+            <!-- Turma event example -->
+            <div
+              class="rounded-lg overflow-hidden border border-blue-700/40 max-w-sm"
+            >
+              <div
+                class="bg-blue-600 px-3 py-2 flex items-center justify-between"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-white font-bold text-xs">09:00</span>
+                  <span class="text-blue-100 text-xs">Turma IAT-07</span>
+                </div>
+                <span
+                  class="bg-blue-800 text-blue-200 text-xs px-1.5 py-0.5 rounded"
+                  >Turma</span
+                >
+              </div>
+              <div class="bg-blue-950/40 px-3 py-2 text-xs space-y-1">
+                <div class="text-slate-300">📖 Tiro Defensivo</div>
+                <div class="text-slate-400">👨‍🏫 Instrutor: Carlos Silva</div>
+                <div class="text-slate-400">📍 Estande Principal · 3h</div>
+                <div class="flex gap-2 mt-2">
+                  <button
+                    class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded"
+                  >
+                    Ver turma
+                  </button>
+                  <button
+                    class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2 py-1 rounded"
+                  >
+                    Editar
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Exam event example -->
+            <div
+              class="rounded-lg overflow-hidden border border-red-700/40 max-w-sm"
+            >
+              <div
+                class="bg-red-700 px-3 py-2 flex items-center justify-between"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-white font-bold text-xs">14:00</span>
+                  <span class="text-red-100 text-xs">Laudo PF — João M.</span>
+                </div>
+                <span
+                  class="bg-red-900 text-red-200 text-xs px-1.5 py-0.5 rounded"
+                  >Exame</span
+                >
+              </div>
+              <div class="bg-red-950/40 px-3 py-2 text-xs space-y-1">
+                <div class="text-slate-300">🎯 Laudo de Aptidão — PF</div>
+                <div class="text-slate-400">
+                  👨‍🏫 Ana Paula • CPF: 123.456.789-00
+                </div>
+                <div class="flex gap-2 mt-2">
+                  <button
+                    class="bg-red-700 hover:bg-red-600 text-white text-xs px-2 py-1 rounded"
+                  >
+                    Ver exame
+                  </button>
+                  <button
+                    class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2 py-1 rounded"
+                  >
+                    Resultado
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-slate-500 mt-4">
+            Os popovers de evento abrem via
+            <code class="text-blue-400">Popover</code> do Radix com delay de
+            200ms ao hover e clique para fixar.
+          </p>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════ CALENDAR -->
+      <section id="calendar" class="section space-y-8">
+        <div>
+          <h1 class="text-2xl font-black text-white mb-1">
+            IATCalendarView — Agenda Geral
+          </h1>
+          <p class="text-slate-400">
+            Componente principal de calendário com modos: Mês · Semana · Dia ·
+            Lista
+          </p>
+        </div>
+
+        <!-- Calendar mockup -->
+        <div
+          class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden"
+        >
+          <!-- Calendar header -->
+          <div
+            class="flex items-center justify-between px-5 py-4 border-b border-slate-800"
+          >
+            <div class="flex items-center gap-3">
+              <button class="p-2 rounded-lg hover:bg-slate-800 text-slate-400">
+                &#8592;
+              </button>
+              <h3 class="text-lg font-bold text-white">Abril 2026</h3>
+              <button class="p-2 rounded-lg hover:bg-slate-800 text-slate-400">
+                &#8594;
+              </button>
+              <button
+                class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg ml-2"
+              >
+                Hoje
+              </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex items-center gap-2">
+              <select
+                class="bg-slate-800 border border-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg"
+              >
+                <option>Todos os instrutores</option>
+                <option>Carlos Silva</option>
+                <option>Ana Paula</option>
+              </select>
+              <select
+                class="bg-slate-800 border border-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg"
+              >
+                <option>Todos os tipos</option>
+                <option>Turmas</option>
+                <option>Exames</option>
+                <option>Avulsos</option>
+              </select>
+            </div>
+
+            <!-- View mode toggle -->
+            <div class="flex bg-slate-800 rounded-lg p-1 gap-1">
+              <button
+                class="text-xs px-3 py-1.5 rounded-md bg-blue-600 text-white font-medium"
+              >
+                Mês
+              </button>
+              <button
+                class="text-xs px-3 py-1.5 rounded-md text-slate-400 hover:text-white"
+              >
+                Semana
+              </button>
+              <button
+                class="text-xs px-3 py-1.5 rounded-md text-slate-400 hover:text-white"
+              >
+                Dia
+              </button>
+              <button
+                class="text-xs px-3 py-1.5 rounded-md text-slate-400 hover:text-white"
+              >
+                Lista
+              </button>
+            </div>
+          </div>
+
+          <!-- Day headers -->
+          <div
+            class="grid grid-cols-7 border-b border-slate-800 px-3 pt-3 pb-1"
+          >
+            <div class="text-center text-xs font-semibold text-slate-500 py-1">
+              Dom
+            </div>
+            <div class="text-center text-xs font-semibold text-slate-500 py-1">
+              Seg
+            </div>
+            <div class="text-center text-xs font-semibold text-slate-500 py-1">
+              Ter
+            </div>
+            <div class="text-center text-xs font-semibold text-slate-500 py-1">
+              Qua
+            </div>
+            <div class="text-center text-xs font-semibold text-slate-500 py-1">
+              Qui
+            </div>
+            <div class="text-center text-xs font-semibold text-slate-500 py-1">
+              Sex
+            </div>
+            <div class="text-center text-xs font-semibold text-slate-500 py-1">
+              Sáb
+            </div>
+          </div>
+
+          <!-- Calendar grid -->
+          <div class="grid grid-cols-7 gap-px bg-slate-800 px-0 pb-0">
+            <!-- Week 1 -->
+            <div class="cal-day bg-slate-900 opacity-40 p-2">
+              <span class="text-xs text-slate-500">29</span>
+            </div>
+            <div class="cal-day bg-slate-900 opacity-40 p-2">
+              <span class="text-xs text-slate-500">30</span>
+            </div>
+            <div class="cal-day bg-slate-900 opacity-40 p-2">
+              <span class="text-xs text-slate-500">31</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">1</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">2</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">3</span>
+              <div class="cal-event bg-blue-600/80 text-white mt-1">
+                Turma IAT-06
+              </div>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">4</span>
+            </div>
+
+            <!-- Week 2 -->
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">5</span>
+            </div>
+            <div class="cal-day bg-slate-900 today p-2">
+              <span
+                class="text-xs font-bold text-blue-400 bg-blue-600 w-5 h-5 rounded-full flex items-center justify-center"
+                >6</span
+              >
+              <div class="cal-event bg-red-600/80 text-white mt-1">
+                Laudo PF — 14h
+              </div>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">7</span>
+              <div class="cal-event bg-violet-600/80 text-white mt-1">
+                Sessão 2/4
+              </div>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">8</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">9</span>
+              <div class="cal-event bg-blue-600/80 text-white mt-1">
+                Turma IAT-07
+              </div>
+              <div class="cal-event bg-red-600/80 text-white">Exame PCT</div>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">10</span>
+              <div class="cal-event bg-violet-600/80 text-white mt-1">
+                Sessão 3/4
+              </div>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">11</span>
+            </div>
+
+            <!-- Week 3 -->
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">12</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">13</span>
+              <div class="cal-event bg-slate-600/80 text-white mt-1">
+                Ag. Avulso
+              </div>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">14</span>
+              <div class="cal-event bg-violet-600/80 text-white mt-1">
+                Sessão 4/4
+              </div>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">15</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">16</span>
+              <div class="cal-event bg-red-600/80 text-white mt-1">
+                Laudo Exército
+              </div>
+              <div class="cal-event bg-blue-600/80 text-white">
+                Turma IAT-08
+              </div>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">17</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">18</span>
+            </div>
+
+            <!-- Week 4 partial -->
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">19</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">20</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">21</span>
+              <div class="cal-event bg-blue-600/80 text-white mt-1">
+                Turma IAT-07
+              </div>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">22</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">23</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">24</span>
+            </div>
+            <div class="cal-day bg-slate-900 p-2">
+              <span class="text-xs text-slate-400">25</span>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div
+            class="flex items-center gap-4 px-5 py-3 border-t border-slate-800 bg-slate-900/50"
+          >
+            <span class="text-xs text-slate-500 font-medium">Legenda:</span>
+            <span class="flex items-center gap-1.5 text-xs"
+              ><span class="w-3 h-3 rounded bg-blue-600"></span
+              ><span class="text-slate-400">Turma/Curso</span></span
+            >
+            <span class="flex items-center gap-1.5 text-xs"
+              ><span class="w-3 h-3 rounded bg-red-600"></span
+              ><span class="text-slate-400">Exame/Laudo</span></span
+            >
+            <span class="flex items-center gap-1.5 text-xs"
+              ><span class="w-3 h-3 rounded bg-violet-600"></span
+              ><span class="text-slate-400">Sessão de Aula</span></span
+            >
+            <span class="flex items-center gap-1.5 text-xs"
+              ><span class="w-3 h-3 rounded bg-slate-600"></span
+              ><span class="text-slate-400">Agendamento Avulso</span></span
+            >
+            <button
+              class="ml-auto text-xs text-slate-400 hover:text-white flex items-center gap-1"
+            >
+              ⬇ Exportar período
+            </button>
+          </div>
+        </div>
+
+        <!-- Implementation note -->
+        <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-5">
+          <h3 class="font-semibold text-white mb-3">
+            Decisão de implementação: calendário próprio vs. biblioteca
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div class="space-y-2">
+              <div class="font-medium text-emerald-400">
+                ✅ Implementação própria (recomendado)
+              </div>
+              <ul class="text-slate-400 space-y-1 text-xs">
+                <li>• Zero dependência externa extra</li>
+                <li>• Total controle sobre estilo dark mode</li>
+                <li>• Usa date-fns já instalado</li>
+                <li>• Grid CSS: mês = <code>grid-cols-7</code></li>
+                <li>• Semana = coluna por dia, linhas por hora</li>
+                <li>• ~400 linhas de TSX</li>
+              </ul>
+            </div>
+            <div class="space-y-2">
+              <div class="font-medium text-amber-400">
+                ⚠️ react-big-calendar
+              </div>
+              <ul class="text-slate-400 space-y-1 text-xs">
+                <li>• Requer CSS customizado extenso</li>
+                <li>• Tamanho: ~85kB minzipped</li>
+                <li>• Drag-and-drop built-in</li>
+                <li>• API complexa para customização</li>
+                <li>• Boa opção se drag precisar ser nativo</li>
+              </ul>
+            </div>
+            <div class="space-y-2">
+              <div class="font-medium text-red-400">❌ FullCalendar</div>
+              <ul class="text-slate-400 space-y-1 text-xs">
+                <li>• Versão React paga (premium)</li>
+                <li>• Bundle grande (+200kB)</li>
+                <li>• Overkill para este caso de uso</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════ INSTRUCTOR -->
+      <section id="instructor" class="section space-y-8">
+        <div>
+          <h1 class="text-2xl font-black text-white mb-1">
+            IATInstructorAgenda — Agenda por Instrutor
+          </h1>
+          <p class="text-slate-400">
+            Painel dedicado que mostra todos os compromissos de um instrutor
+            específico
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Left: Instructor selector + mini calendar -->
+          <div class="space-y-4">
+            <!-- Instructor card -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5">
+              <div class="text-xs text-slate-500 uppercase tracking-wider mb-3">
+                Instrutor
+              </div>
+              <div class="flex items-center gap-3 mb-4">
+                <div
+                  class="w-12 h-12 rounded-full bg-blue-700 flex items-center justify-center text-white font-bold text-lg"
+                >
+                  CS
+                </div>
+                <div>
+                  <div class="font-bold text-white">Carlos Silva</div>
+                  <div class="text-xs text-slate-400">CR-SP 12.345</div>
+                  <div class="flex gap-1 mt-1">
+                    <span
+                      class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs"
+                      >✓ Credenciado PF</span
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Specialty chips -->
+              <div class="space-y-1">
+                <div class="text-xs text-slate-500 mb-1">Especialidades</div>
+                <div class="flex flex-wrap gap-1">
+                  <span
+                    class="chip bg-slate-800 text-slate-300 border border-slate-700"
+                    >🔫 Pistola</span
+                  >
+                  <span
+                    class="chip bg-slate-800 text-slate-300 border border-slate-700"
+                    >🔫 Revólver</span
+                  >
+                  <span
+                    class="chip bg-slate-800 text-slate-300 border border-slate-700"
+                    >🎯 Tiro Tático</span
+                  >
+                </div>
+              </div>
+
+              <div
+                class="border-t border-slate-700 mt-4 pt-4 grid grid-cols-3 gap-2 text-center"
+              >
+                <div>
+                  <div class="text-xl font-black text-blue-400">14</div>
+                  <div class="text-xs text-slate-500">turmas este mês</div>
+                </div>
+                <div>
+                  <div class="text-xl font-black text-red-400">6</div>
+                  <div class="text-xs text-slate-500">exames este mês</div>
+                </div>
+                <div>
+                  <div class="text-xl font-black text-emerald-400">42h</div>
+                  <div class="text-xs text-slate-500">carga mensal</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Availability grid -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5">
+              <div class="text-xs text-slate-500 uppercase tracking-wider mb-3">
+                Disponibilidade semanal
+              </div>
+              <div class="space-y-1 text-xs">
+                <div
+                  class="grid grid-cols-4 gap-1 font-medium text-slate-500 pb-1"
+                >
+                  <span></span><span>Manhã</span><span>Tarde</span
+                  ><span>Noite</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1">
+                  <span class="text-slate-400 py-1">Seg</span>
+                  <span
+                    class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center"
+                    >✓</span
+                  >
+                  <span
+                    class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center"
+                    >✓</span
+                  >
+                  <span
+                    class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center"
+                    >—</span
+                  >
+                </div>
+                <div class="grid grid-cols-4 gap-1">
+                  <span class="text-slate-400 py-1">Ter</span>
+                  <span
+                    class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center"
+                    >✓</span
+                  >
+                  <span
+                    class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center"
+                    >✓</span
+                  >
+                  <span
+                    class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center"
+                    >—</span
+                  >
+                </div>
+                <div class="grid grid-cols-4 gap-1">
+                  <span class="text-slate-400 py-1">Qua</span>
+                  <span
+                    class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center"
+                    >—</span
+                  >
+                  <span
+                    class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center"
+                    >✓</span
+                  >
+                  <span
+                    class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center"
+                    >—</span
+                  >
+                </div>
+                <div class="grid grid-cols-4 gap-1">
+                  <span class="text-slate-400 py-1">Qui</span>
+                  <span
+                    class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center"
+                    >✓</span
+                  >
+                  <span
+                    class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center"
+                    >✓</span
+                  >
+                  <span
+                    class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center"
+                    >—</span
+                  >
+                </div>
+                <div class="grid grid-cols-4 gap-1">
+                  <span class="text-slate-400 py-1">Sex</span>
+                  <span
+                    class="bg-emerald-900/60 border border-emerald-700 text-emerald-300 rounded py-1 text-center"
+                    >✓</span
+                  >
+                  <span
+                    class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center"
+                    >—</span
+                  >
+                  <span
+                    class="bg-slate-800 border border-slate-700 text-slate-500 rounded py-1 text-center"
+                    >—</span
+                  >
+                </div>
+              </div>
+              <button
+                class="w-full mt-3 text-xs text-blue-400 hover:text-blue-300 border border-slate-700 rounded-lg py-2 hover:bg-slate-800 transition-colors"
+              >
+                + Editar disponibilidade
+              </button>
+            </div>
+          </div>
+
+          <!-- Right: Week agenda -->
+          <div
+            class="lg:col-span-2 bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden"
+          >
+            <div
+              class="flex items-center justify-between px-5 py-4 border-b border-slate-800"
+            >
+              <div>
+                <h3 class="font-bold text-white">Semana de 6 – 10 Abr 2026</h3>
+                <p class="text-xs text-slate-400">
+                  5 compromissos · 14h totais
+                </p>
+              </div>
               <div class="flex gap-2">
-                <button class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs px-3 py-2 rounded-lg flex items-center gap-2">
-                  <div class="w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-bold">AP</div>
-                  Ana Paula
-                  <span class="text-emerald-400 text-xs">✓ Livre</span>
+                <button
+                  class="text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white"
+                >
+                  ‹ Anterior
                 </button>
-                <button class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs px-3 py-2 rounded-lg flex items-center gap-2">
-                  <div class="w-5 h-5 rounded-full bg-amber-600 flex items-center justify-center text-white text-xs font-bold">RM</div>
-                  Ricardo M.
-                  <span class="text-emerald-400 text-xs">✓ Livre</span>
+                <button
+                  class="text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white"
+                >
+                  Próxima ›
                 </button>
+              </div>
+            </div>
+            <div class="p-5 space-y-3">
+              <!-- Day: Monday -->
+              <div>
+                <div
+                  class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"
+                >
+                  Segunda, 6 Abr
+                </div>
+                <div
+                  class="flex items-start gap-3 p-3 bg-blue-950/40 border border-blue-800/50 rounded-xl hover:bg-blue-950/60 transition-colors cursor-pointer"
+                >
+                  <div class="text-center min-w-[48px]">
+                    <div class="text-lg font-black text-blue-400">09</div>
+                    <div class="text-xs text-slate-500">:00</div>
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-semibold text-white text-sm">
+                      Turma IAT-07 — Sessão 1/4
+                    </div>
+                    <div class="text-xs text-slate-400 mt-0.5">
+                      Tiro Defensivo · Estande A · 3h
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                      <span
+                        class="chip bg-blue-900/60 text-blue-300 border border-blue-700"
+                        >● Agendada</span
+                      >
+                      <span class="text-xs text-slate-500">12 alunos</span>
+                    </div>
+                  </div>
+                  <button class="text-slate-400 hover:text-white p-1">⋯</button>
+                </div>
+              </div>
+
+              <!-- Day: Tuesday -->
+              <div>
+                <div
+                  class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"
+                >
+                  Terça, 7 Abr
+                </div>
+                <div
+                  class="flex items-start gap-3 p-3 bg-red-950/40 border border-red-800/50 rounded-xl hover:bg-red-950/60 transition-colors cursor-pointer"
+                >
+                  <div class="text-center min-w-[48px]">
+                    <div class="text-lg font-black text-red-400">14</div>
+                    <div class="text-xs text-slate-500">:00</div>
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-semibold text-white text-sm">
+                      Laudo PF — Maria Souza
+                    </div>
+                    <div class="text-xs text-slate-400 mt-0.5">
+                      Laudo de Aptidão · Sala 2 · 1h
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                      <span
+                        class="chip bg-blue-900/60 text-blue-300 border border-blue-700"
+                        >● Agendado</span
+                      >
+                    </div>
+                  </div>
+                  <button class="text-slate-400 hover:text-white p-1">⋯</button>
+                </div>
+              </div>
+
+              <!-- Day: Thursday -->
+              <div>
+                <div
+                  class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"
+                >
+                  Quinta, 9 Abr
+                </div>
+                <div class="space-y-2">
+                  <div
+                    class="flex items-start gap-3 p-3 bg-blue-950/40 border border-blue-800/50 rounded-xl hover:bg-blue-950/60 transition-colors cursor-pointer"
+                  >
+                    <div class="text-center min-w-[48px]">
+                      <div class="text-lg font-black text-blue-400">08</div>
+                      <div class="text-xs text-slate-500">:30</div>
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-semibold text-white text-sm">
+                        Turma IAT-08 — Tiro Básico
+                      </div>
+                      <div class="text-xs text-slate-400 mt-0.5">
+                        Aula inaugural · Estande B · 4h
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="flex items-start gap-3 p-3 bg-red-950/40 border border-red-800/50 rounded-xl hover:bg-red-950/60 transition-colors cursor-pointer"
+                  >
+                    <div class="text-center min-w-[48px]">
+                      <div class="text-lg font-black text-red-400">15</div>
+                      <div class="text-xs text-slate-500">:00</div>
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-semibold text-white text-sm">
+                        Exame PCT — João Lima
+                      </div>
+                      <div class="text-xs text-slate-400 mt-0.5">
+                        PCT · Sala 1 · 2h
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Day: Friday -->
+              <div>
+                <div
+                  class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"
+                >
+                  Sexta, 10 Abr
+                </div>
+                <div
+                  class="flex items-start gap-3 p-3 bg-violet-950/40 border border-violet-800/50 rounded-xl"
+                >
+                  <div class="text-center min-w-[48px]">
+                    <div class="text-lg font-black text-violet-400">09</div>
+                    <div class="text-xs text-slate-500">:00</div>
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-semibold text-white text-sm">
+                      Turma IAT-07 — Sessão 2/4
+                    </div>
+                    <div class="text-xs text-slate-400 mt-0.5">
+                      Tiro Defensivo · Estande A · 3h
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Action buttons -->
-      <div class="flex gap-3">
-        <button class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2.5 rounded-xl border border-slate-700">Alterar horário</button>
-        <button class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2.5 rounded-xl border border-slate-700">Trocar instrutor</button>
-        <button class="flex-1 bg-red-700 hover:bg-red-600 text-white text-sm px-4 py-2.5 rounded-xl opacity-60 cursor-not-allowed" title="Salvar bloqueado por conflito">Salvar turma</button>
-      </div>
-      <p class="text-xs text-slate-500">O botão "Salvar" fica desabilitado enquanto houver conflito não resolvido.</p>
-    </div>
-  </div>
-
-  <!-- IATInstructorPicker -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <h3 class="font-bold text-white mb-4">IATInstructorPicker — Combobox com disponibilidade em tempo real</h3>
-    <div class="max-w-sm space-y-2">
-      <label class="text-xs text-slate-400">Selecionar Instrutor (Seg 6 Abr · 09:00–12:00)</label>
-      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
-        <div class="px-3 py-2 border-b border-slate-700">
-          <input class="bg-transparent text-sm text-white w-full outline-none placeholder:text-slate-500" placeholder="Buscar instrutor..." value="Car" />
+      <!-- ═══════════════════════════════════════════════════════ CLASS VIEW -->
+      <section id="class-view" class="section space-y-8">
+        <div>
+          <h1 class="text-2xl font-black text-white mb-1">
+            IATClassTimeline + IATSessionsPanel
+          </h1>
+          <p class="text-slate-400">
+            Visão completa da turma: timeline de sessões, matrículas e controle
+            de frequência
+          </p>
         </div>
-        <div class="py-1">
-          <div class="px-3 py-2 flex items-center gap-3 hover:bg-slate-700/50 cursor-pointer">
-            <div class="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center text-white text-xs font-bold">CS</div>
-            <div class="flex-1">
-              <div class="text-sm text-white font-medium">Carlos Silva</div>
-              <div class="text-xs text-slate-400">CR-SP 12.345 · Pistola, Revólver</div>
+
+        <!-- Class header -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex items-start gap-4">
+              <div
+                class="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center text-white font-black text-lg"
+              >
+                07
+              </div>
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <h2 class="text-xl font-black text-white">Turma IAT-07</h2>
+                  <span
+                    class="chip bg-amber-900/60 text-amber-300 border border-amber-700"
+                    >● Em Andamento</span
+                  >
+                </div>
+                <div class="text-sm text-slate-400">
+                  Tiro Defensivo · Carlos Silva · Estande Principal
+                </div>
+                <div
+                  class="flex items-center gap-4 mt-2 text-xs text-slate-400"
+                >
+                  <span>📅 Início: 06 Abr 2026</span>
+                  <span>📅 Previsão fim: 14 Abr 2026</span>
+                  <span>👥 12 / 15 alunos</span>
+                  <span>⏱ 12h totais</span>
+                </div>
+              </div>
             </div>
-            <span class="chip bg-red-900/60 text-red-300 border border-red-700 text-xs">⚠ Ocupado</span>
+            <div class="flex gap-2">
+              <button
+                class="text-xs px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg"
+              >
+                + Adicionar Sessão
+              </button>
+              <button
+                class="text-xs px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg"
+              >
+                Ver Matrículas
+              </button>
+            </div>
           </div>
-          <div class="px-3 py-2 flex items-center gap-3 hover:bg-slate-700/50 cursor-pointer bg-emerald-950/20">
-            <div class="w-8 h-8 rounded-full bg-violet-700 flex items-center justify-center text-white text-xs font-bold">AP</div>
-            <div class="flex-1">
-              <div class="text-sm text-white font-medium">Ana Paula Ferreira</div>
-              <div class="text-xs text-slate-400">CR-SP 98.765 · Pistola, Tiro Tático</div>
+
+          <!-- Progress bar -->
+          <div class="mt-2">
+            <div class="flex justify-between text-xs text-slate-400 mb-1">
+              <span>Progresso da turma</span>
+              <span>2 de 4 sessões concluídas (+ exame)</span>
             </div>
-            <span class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs">✓ Disponível</span>
+            <div class="w-full bg-slate-800 rounded-full h-2">
+              <div
+                class="bg-blue-600 h-2 rounded-full"
+                style="width: 40%"
+              ></div>
+            </div>
           </div>
         </div>
-      </div>
-      <p class="text-xs text-slate-500">Disponibilidade verificada em tempo real via <code class="text-blue-400">iat.schedules.checkConflict</code> com debounce de 300ms.</p>
-    </div>
-  </div>
 
-</section>
+        <!-- Timeline mockup -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h3 class="font-bold text-white mb-6">Timeline da Turma</h3>
+          <div class="space-y-4">
+            <!-- Session 1 - done -->
+            <div class="timeline-item">
+              <div
+                class="w-10 h-10 rounded-full bg-emerald-600 border-4 border-slate-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 z-10"
+              >
+                1
+              </div>
+              <div class="flex-1 pb-4">
+                <div class="flex items-center gap-3 mb-1">
+                  <span class="font-semibold text-white"
+                    >Sessão 1 — Teoria e Segurança</span
+                  >
+                  <span
+                    class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs"
+                    >✓ Realizada</span
+                  >
+                </div>
+                <div class="text-xs text-slate-400">
+                  06 Abr · 09:00–12:00 · Estande A · 3h
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-xs text-slate-300">Frequência: </span>
+                  <div class="flex gap-1">
+                    <span
+                      class="chip bg-emerald-900/40 text-emerald-400 border border-emerald-800"
+                      >11P</span
+                    >
+                    <span
+                      class="chip bg-red-900/40 text-red-400 border border-red-800"
+                      >1A</span
+                    >
+                  </div>
+                  <button
+                    class="text-xs text-slate-400 hover:text-white underline ml-1"
+                  >
+                    Ver detalhes
+                  </button>
+                </div>
+              </div>
+            </div>
 
-<!-- ═══════════════════════════════════════════════════════ COMPONENTS -->
-<section id="components" class="section space-y-8">
+            <!-- Session 2 - done -->
+            <div class="timeline-item">
+              <div
+                class="w-10 h-10 rounded-full bg-emerald-600 border-4 border-slate-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 z-10"
+              >
+                2
+              </div>
+              <div class="flex-1 pb-4">
+                <div class="flex items-center gap-3 mb-1">
+                  <span class="font-semibold text-white"
+                    >Sessão 2 — Prática no Estande</span
+                  >
+                  <span
+                    class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs"
+                    >✓ Realizada</span
+                  >
+                </div>
+                <div class="text-xs text-slate-400">
+                  10 Abr · 09:00–12:00 · Estande A · 3h
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-xs text-slate-300">Frequência: </span>
+                  <div class="flex gap-1">
+                    <span
+                      class="chip bg-emerald-900/40 text-emerald-400 border border-emerald-800"
+                      >12P</span
+                    >
+                  </div>
+                  <button
+                    class="text-xs text-slate-400 hover:text-white underline ml-1"
+                  >
+                    Ver detalhes
+                  </button>
+                </div>
+              </div>
+            </div>
 
-  <div>
-    <h1 class="text-2xl font-black text-white mb-1">Biblioteca de Componentes IAT</h1>
-    <p class="text-slate-400">Todos os novos componentes, onde ficam e como se conectam</p>
-  </div>
+            <!-- Session 3 - scheduled -->
+            <div class="timeline-item">
+              <div
+                class="w-10 h-10 rounded-full bg-blue-600 border-4 border-slate-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 z-10"
+              >
+                3
+              </div>
+              <div
+                class="flex-1 pb-4 bg-blue-950/20 border border-blue-800/30 rounded-xl p-3 -mt-1"
+              >
+                <div class="flex items-center gap-3 mb-1">
+                  <span class="font-semibold text-white"
+                    >Sessão 3 — Técnicas Avançadas</span
+                  >
+                  <span
+                    class="chip bg-blue-900/60 text-blue-300 border border-blue-700 text-xs"
+                    >● Agendada</span
+                  >
+                </div>
+                <div class="text-xs text-slate-400">
+                  14 Abr · 09:00–12:00 · Estande A · 3h
+                </div>
+                <div class="flex gap-2 mt-2">
+                  <button
+                    class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
 
-  <!-- File tree -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <h3 class="font-bold text-white mb-4">Estrutura de arquivos proposta</h3>
-    <div class="mono text-sm space-y-0.5">
-      <div class="text-slate-500">client/src/</div>
-      <div class="text-slate-500 pl-4">pages/</div>
-      <div class="pl-8 text-violet-300">IATModule.tsx <span class="text-slate-500 text-xs">← refatorar: adicionar aba Calendário, integrar SessionsPanel</span></div>
-      <div class="text-slate-500 pl-4">components/iat/</div>
-      <div class="pl-8 text-blue-300">calendar/</div>
-      <div class="pl-12 text-emerald-300">IATCalendarView.tsx <span class="text-slate-500 text-xs">← componente principal</span></div>
-      <div class="pl-12 text-emerald-300">IATCalendarEvent.tsx <span class="text-slate-500 text-xs">← event chip no grid</span></div>
-      <div class="pl-12 text-emerald-300">IATEventPopover.tsx <span class="text-slate-500 text-xs">← detalhes ao clicar</span></div>
-      <div class="pl-12 text-emerald-300">IATWeekView.tsx <span class="text-slate-500 text-xs">← timeline 7 dias</span></div>
-      <div class="pl-8 text-blue-300">instructors/</div>
-      <div class="pl-12 text-emerald-300">IATInstructorAgenda.tsx</div>
-      <div class="pl-12 text-emerald-300">IATInstructorPicker.tsx <span class="text-slate-500 text-xs">← combobox c/ disponibilidade</span></div>
-      <div class="pl-12 text-emerald-300">IATAvailabilityGrid.tsx <span class="text-slate-500 text-xs">← grade seg–sáb manhã/tarde/noite</span></div>
-      <div class="pl-8 text-blue-300">classes/</div>
-      <div class="pl-12 text-emerald-300">IATClassTimeline.tsx</div>
-      <div class="pl-12 text-emerald-300">IATSessionsPanel.tsx <span class="text-slate-500 text-xs">← Sheet lateral</span></div>
-      <div class="pl-12 text-emerald-300">IATSessionForm.tsx <span class="text-slate-500 text-xs">← Dialog criar/editar sessão</span></div>
-      <div class="pl-8 text-blue-300">attendance/</div>
-      <div class="pl-12 text-emerald-300">IATAttendanceSheet.tsx <span class="text-slate-500 text-xs">← grade aluno × sessão</span></div>
-      <div class="pl-12 text-emerald-300">IATAttendanceCell.tsx <span class="text-slate-500 text-xs">← célula P/A/J com toggle</span></div>
-      <div class="pl-8 text-blue-300">shared/</div>
-      <div class="pl-12 text-emerald-300">IATConflictWarning.tsx</div>
-      <div class="pl-12 text-emerald-300">IATStatusBadge.tsx <span class="text-slate-500 text-xs">← badge padronizado por status</span></div>
-      <div class="pl-12 text-emerald-300">IATEventTypeBadge.tsx</div>
-      <div class="text-slate-500 pl-4">_core/hooks/</div>
-      <div class="pl-8 text-amber-300">useIATSchedule.ts</div>
-      <div class="pl-8 text-amber-300">useConflictCheck.ts</div>
-      <div class="pl-8 text-amber-300">useAttendance.ts</div>
-    </div>
-  </div>
+            <!-- Session 4 - scheduled -->
+            <div class="timeline-item">
+              <div
+                class="w-10 h-10 rounded-full bg-slate-700 border-4 border-slate-900 flex items-center justify-center text-slate-300 font-bold text-sm flex-shrink-0 z-10"
+              >
+                4
+              </div>
+              <div class="flex-1 pb-4">
+                <div class="flex items-center gap-3 mb-1">
+                  <span class="font-semibold text-slate-300"
+                    >Sessão 4 — Revisão e Simulado</span
+                  >
+                  <span
+                    class="chip bg-slate-700 text-slate-400 border border-slate-600 text-xs"
+                    >● Agendada</span
+                  >
+                </div>
+                <div class="text-xs text-slate-500">
+                  18 Abr · 09:00–12:00 · Estande A · 3h
+                </div>
+              </div>
+            </div>
 
-  <!-- Component API table -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6 overflow-x-auto">
-    <h3 class="font-bold text-white mb-4">API dos principais componentes (Props)</h3>
-    <table class="w-full text-xs">
-      <thead>
-        <tr class="border-b border-slate-700">
-          <th class="text-left py-2 pr-4 text-slate-400 font-semibold">Componente</th>
-          <th class="text-left py-2 pr-4 text-slate-400 font-semibold">Props principais</th>
-          <th class="text-left py-2 text-slate-400 font-semibold">Callbacks</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-800">
-        <tr>
-          <td class="py-2 pr-4 text-emerald-300 font-medium mono">IATCalendarView</td>
-          <td class="py-2 pr-4 text-slate-300 mono">view, onViewChange, instructorId?, classId?, dateRange</td>
-          <td class="py-2 text-slate-400">onEventClick, onDayClick, onCreateEvent</td>
-        </tr>
-        <tr>
-          <td class="py-2 pr-4 text-emerald-300 font-medium mono">IATInstructorAgenda</td>
-          <td class="py-2 pr-4 text-slate-300 mono">instructorId, weekStart</td>
-          <td class="py-2 text-slate-400">onWeekChange, onEventClick</td>
-        </tr>
-        <tr>
-          <td class="py-2 pr-4 text-emerald-300 font-medium mono">IATClassTimeline</td>
-          <td class="py-2 pr-4 text-slate-300 mono">classId, sessions[], exam?</td>
-          <td class="py-2 text-slate-400">onSessionClick, onAddSession</td>
-        </tr>
-        <tr>
-          <td class="py-2 pr-4 text-emerald-300 font-medium mono">IATSessionsPanel</td>
-          <td class="py-2 pr-4 text-slate-300 mono">classId, open, onOpenChange</td>
-          <td class="py-2 text-slate-400">onSessionSaved, onSessionDeleted</td>
-        </tr>
-        <tr>
-          <td class="py-2 pr-4 text-emerald-300 font-medium mono">IATAttendanceSheet</td>
-          <td class="py-2 pr-4 text-slate-300 mono">classId, sessions[], enrollments[]</td>
-          <td class="py-2 text-slate-400">onAttendanceChange (batch)</td>
-        </tr>
-        <tr>
-          <td class="py-2 pr-4 text-emerald-300 font-medium mono">IATConflictWarning</td>
-          <td class="py-2 pr-4 text-slate-300 mono">instructorId, date, startTime, endTime</td>
-          <td class="py-2 text-slate-400">onSelectAlternative(instructorId)</td>
-        </tr>
-        <tr>
-          <td class="py-2 pr-4 text-emerald-300 font-medium mono">IATInstructorPicker</td>
-          <td class="py-2 pr-4 text-slate-300 mono">value, date?, startTime?, endTime?, courseId?</td>
-          <td class="py-2 text-slate-400">onSelect(instructor)</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+            <!-- Exam -->
+            <div class="timeline-item">
+              <div
+                class="w-10 h-10 rounded-full bg-red-700 border-4 border-slate-900 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 z-10"
+              >
+                🎯
+              </div>
+              <div
+                class="flex-1 bg-red-950/30 border border-red-800/40 rounded-xl p-3 -mt-1"
+              >
+                <div class="flex items-center gap-3 mb-1">
+                  <span class="font-semibold text-white"
+                    >Exame Final — Tiro Defensivo</span
+                  >
+                  <span
+                    class="chip bg-slate-700 text-slate-400 border border-slate-600 text-xs"
+                    >Pendente</span
+                  >
+                </div>
+                <div class="text-xs text-slate-400">
+                  22 Abr · 14:00 · Sala de Exames · 2h
+                </div>
+                <div class="text-xs text-slate-500 mt-1 italic">
+                  Agendado automaticamente após conclusão das 4 sessões
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-</section>
+      <!-- ═══════════════════════════════════════════════════════ ATTENDANCE -->
+      <section id="attendance" class="section space-y-8">
+        <div>
+          <h1 class="text-2xl font-black text-white mb-1">
+            IATAttendanceSheet — Controle de Frequência
+          </h1>
+          <p class="text-slate-400">
+            Grade interativa aluno × sessão com toggle P/A/J e cálculo
+            automático de percentual
+          </p>
+        </div>
 
-<!-- ═══════════════════════════════════════════════════════ SPECS -->
-<section id="specs" class="section space-y-8">
+        <!-- Stats bar -->
+        <div class="grid grid-cols-4 gap-4">
+          <div
+            class="bg-emerald-950/50 border border-emerald-800/50 rounded-xl p-4 text-center"
+          >
+            <div class="text-2xl font-black text-emerald-400">87%</div>
+            <div class="text-xs text-slate-400">Média de presença</div>
+          </div>
+          <div
+            class="bg-blue-950/50 border border-blue-800/50 rounded-xl p-4 text-center"
+          >
+            <div class="text-2xl font-black text-blue-400">12</div>
+            <div class="text-xs text-slate-400">Alunos matriculados</div>
+          </div>
+          <div
+            class="bg-amber-950/50 border border-amber-800/50 rounded-xl p-4 text-center"
+          >
+            <div class="text-2xl font-black text-amber-400">2</div>
+            <div class="text-xs text-slate-400">Sessões concluídas</div>
+          </div>
+          <div
+            class="bg-red-950/50 border border-red-800/50 rounded-xl p-4 text-center"
+          >
+            <div class="text-2xl font-black text-red-400">1</div>
+            <div class="text-xs text-slate-400">Em risco (&lt;75%)</div>
+          </div>
+        </div>
 
-  <div>
-    <h1 class="text-2xl font-black text-white mb-1">Specs Técnicas de Implementação</h1>
-    <p class="text-slate-400">Decisões técnicas, padrões de código e critérios de aceitação</p>
-  </div>
+        <!-- Attendance grid -->
+        <div
+          class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden"
+        >
+          <div
+            class="flex items-center justify-between px-5 py-4 border-b border-slate-800"
+          >
+            <h3 class="font-bold text-white">
+              Grade de Frequência — Turma IAT-07
+            </h3>
+            <div class="flex gap-2">
+              <button
+                class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg"
+              >
+                ⬇ Exportar PDF
+              </button>
+              <button
+                class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg"
+              >
+                ✓ Salvar presenças
+              </button>
+            </div>
+          </div>
 
-  <!-- Patterns -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-slate-800">
+                  <th
+                    class="text-left px-4 py-3 text-slate-400 font-medium w-48"
+                  >
+                    Aluno
+                  </th>
+                  <th
+                    class="text-center px-3 py-3 text-blue-400 font-medium w-20"
+                  >
+                    <div>S1</div>
+                    <div class="text-xs text-slate-500 font-normal">06/Abr</div>
+                  </th>
+                  <th
+                    class="text-center px-3 py-3 text-blue-400 font-medium w-20"
+                  >
+                    <div>S2</div>
+                    <div class="text-xs text-slate-500 font-normal">10/Abr</div>
+                  </th>
+                  <th
+                    class="text-center px-3 py-3 text-slate-600 font-medium w-20"
+                  >
+                    <div>S3</div>
+                    <div class="text-xs text-slate-600 font-normal">14/Abr</div>
+                  </th>
+                  <th
+                    class="text-center px-3 py-3 text-slate-600 font-medium w-20"
+                  >
+                    <div>S4</div>
+                    <div class="text-xs text-slate-600 font-normal">18/Abr</div>
+                  </th>
+                  <th
+                    class="text-center px-3 py-3 text-slate-400 font-medium w-24"
+                  >
+                    % Presença
+                  </th>
+                  <th
+                    class="text-center px-3 py-3 text-slate-400 font-medium w-24"
+                  >
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
+                  <td class="px-4 py-2 text-slate-200 font-medium">
+                    João Silva
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-p mx-auto">P</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-p mx-auto">P</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-n mx-auto">—</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-n mx-auto">—</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span class="text-emerald-400 font-bold">100%</span>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span
+                      class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs"
+                      >Regular</span
+                    >
+                  </td>
+                </tr>
+                <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
+                  <td class="px-4 py-2 text-slate-200 font-medium">
+                    Maria Oliveira
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-a mx-auto">A</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-p mx-auto">P</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-n mx-auto">—</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-n mx-auto">—</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span class="text-amber-400 font-bold">50%</span>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span
+                      class="chip bg-red-900/60 text-red-300 border border-red-700 text-xs"
+                      >⚠ Em risco</span
+                    >
+                  </td>
+                </tr>
+                <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
+                  <td class="px-4 py-2 text-slate-200 font-medium">
+                    Pedro Santos
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-p mx-auto">P</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-j mx-auto">J</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-n mx-auto">—</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-n mx-auto">—</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span class="text-amber-400 font-bold">75%</span>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span
+                      class="chip bg-amber-900/60 text-amber-300 border border-amber-700 text-xs"
+                      >Atenção</span
+                    >
+                  </td>
+                </tr>
+                <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
+                  <td class="px-4 py-2 text-slate-200 font-medium">
+                    Ana Costa
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-p mx-auto">P</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-p mx-auto">P</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-n mx-auto">—</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="att-cell att-n mx-auto">—</div>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span class="text-emerald-400 font-bold">100%</span>
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span
+                      class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs"
+                      >Regular</span
+                    >
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-    <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-4">
-      <h3 class="font-bold text-white">Padrão de Dados: useIATSchedule()</h3>
-      <pre class="bg-slate-950 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto"><code>// hooks/useIATSchedule.ts
+          <div
+            class="flex items-center gap-4 px-5 py-3 bg-slate-800/30 border-t border-slate-800 text-xs text-slate-400"
+          >
+            <span>Legenda de células:</span>
+            <span class="flex items-center gap-1"
+              ><span class="att-cell att-p w-6 h-6 text-xs">P</span>
+              Presente</span
+            >
+            <span class="flex items-center gap-1"
+              ><span class="att-cell att-a w-6 h-6 text-xs">A</span>
+              Ausente</span
+            >
+            <span class="flex items-center gap-1"
+              ><span class="att-cell att-j w-6 h-6 text-xs">J</span>
+              Justificado</span
+            >
+            <span class="flex items-center gap-1"
+              ><span class="att-cell att-n w-6 h-6 text-xs">—</span> Sessão
+              futura</span
+            >
+            <span class="ml-auto text-slate-500"
+              >Clique para alternar · ⚠ Em risco = abaixo de 75% de
+              presença</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════ CONFLICTS -->
+      <section id="conflicts" class="section space-y-8">
+        <div>
+          <h1 class="text-2xl font-black text-white mb-1">
+            IATConflictWarning — Detecção de Conflitos
+          </h1>
+          <p class="text-slate-400">
+            Sistema de alerta em tempo real ao agendar instrutor já ocupado
+          </p>
+        </div>
+
+        <!-- Conflict alert inline -->
+        <div
+          class="bg-slate-900 rounded-2xl border border-slate-800 p-6 space-y-6"
+        >
+          <h3 class="font-bold text-white">
+            Exemplo: Formulário de Nova Turma com conflito detectado
+          </h3>
+
+          <!-- Form mockup -->
+          <div class="max-w-2xl space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-xs text-slate-400 mb-1 block">Curso</label>
+                <div
+                  class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                >
+                  Tiro Defensivo
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 mb-1 block"
+                  >Instrutor</label
+                >
+                <div
+                  class="bg-slate-800 border border-red-500 rounded-lg px-3 py-2 text-sm text-white flex items-center justify-between"
+                >
+                  <span>Carlos Silva</span>
+                  <span class="text-red-400 text-xs">⚠ Conflito</span>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 mb-1 block">Data</label>
+                <div
+                  class="bg-slate-800 border border-red-500/50 rounded-lg px-3 py-2 text-sm text-white"
+                >
+                  09 Abr 2026
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 mb-1 block">Horário</label>
+                <div
+                  class="bg-slate-800 border border-red-500/50 rounded-lg px-3 py-2 text-sm text-white"
+                >
+                  09:00 – 12:00
+                </div>
+              </div>
+            </div>
+
+            <!-- Conflict warning banner -->
+            <div class="bg-red-950/50 border border-red-700/70 rounded-xl p-4">
+              <div class="flex items-start gap-3">
+                <span class="text-red-400 text-xl mt-0.5">⚠</span>
+                <div class="flex-1">
+                  <div class="font-semibold text-red-300 mb-1">
+                    Conflito de horário detectado
+                  </div>
+                  <p class="text-xs text-red-200/80 mb-3">
+                    Carlos Silva já tem um compromisso no horário selecionado:
+                  </p>
+                  <div
+                    class="bg-red-900/40 border border-red-800/50 rounded-lg p-3 space-y-1"
+                  >
+                    <div class="text-xs text-white font-medium">
+                      Turma IAT-08 — Tiro Básico (Sessão 1)
+                    </div>
+                    <div class="text-xs text-red-200">
+                      09 Abr 2026 · 08:30 – 12:30 · Estande B
+                    </div>
+                    <div class="text-xs text-red-300">
+                      ⏱ Sobreposição: 09:00 – 12:00 (3h)
+                    </div>
+                  </div>
+                  <div class="mt-3">
+                    <div class="text-xs text-red-200/80 mb-2 font-medium">
+                      Instrutores disponíveis para 09 Abr · 09:00–12:00:
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs px-3 py-2 rounded-lg flex items-center gap-2"
+                      >
+                        <div
+                          class="w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-bold"
+                        >
+                          AP
+                        </div>
+                        Ana Paula
+                        <span class="text-emerald-400 text-xs">✓ Livre</span>
+                      </button>
+                      <button
+                        class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs px-3 py-2 rounded-lg flex items-center gap-2"
+                      >
+                        <div
+                          class="w-5 h-5 rounded-full bg-amber-600 flex items-center justify-center text-white text-xs font-bold"
+                        >
+                          RM
+                        </div>
+                        Ricardo M.
+                        <span class="text-emerald-400 text-xs">✓ Livre</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex gap-3">
+              <button
+                class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2.5 rounded-xl border border-slate-700"
+              >
+                Alterar horário
+              </button>
+              <button
+                class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2.5 rounded-xl border border-slate-700"
+              >
+                Trocar instrutor
+              </button>
+              <button
+                class="flex-1 bg-red-700 hover:bg-red-600 text-white text-sm px-4 py-2.5 rounded-xl opacity-60 cursor-not-allowed"
+                title="Salvar bloqueado por conflito"
+              >
+                Salvar turma
+              </button>
+            </div>
+            <p class="text-xs text-slate-500">
+              O botão "Salvar" fica desabilitado enquanto houver conflito não
+              resolvido.
+            </p>
+          </div>
+        </div>
+
+        <!-- IATInstructorPicker -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h3 class="font-bold text-white mb-4">
+            IATInstructorPicker — Combobox com disponibilidade em tempo real
+          </h3>
+          <div class="max-w-sm space-y-2">
+            <label class="text-xs text-slate-400"
+              >Selecionar Instrutor (Seg 6 Abr · 09:00–12:00)</label
+            >
+            <div
+              class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl"
+            >
+              <div class="px-3 py-2 border-b border-slate-700">
+                <input
+                  class="bg-transparent text-sm text-white w-full outline-none placeholder:text-slate-500"
+                  placeholder="Buscar instrutor..."
+                  value="Car"
+                />
+              </div>
+              <div class="py-1">
+                <div
+                  class="px-3 py-2 flex items-center gap-3 hover:bg-slate-700/50 cursor-pointer"
+                >
+                  <div
+                    class="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center text-white text-xs font-bold"
+                  >
+                    CS
+                  </div>
+                  <div class="flex-1">
+                    <div class="text-sm text-white font-medium">
+                      Carlos Silva
+                    </div>
+                    <div class="text-xs text-slate-400">
+                      CR-SP 12.345 · Pistola, Revólver
+                    </div>
+                  </div>
+                  <span
+                    class="chip bg-red-900/60 text-red-300 border border-red-700 text-xs"
+                    >⚠ Ocupado</span
+                  >
+                </div>
+                <div
+                  class="px-3 py-2 flex items-center gap-3 hover:bg-slate-700/50 cursor-pointer bg-emerald-950/20"
+                >
+                  <div
+                    class="w-8 h-8 rounded-full bg-violet-700 flex items-center justify-center text-white text-xs font-bold"
+                  >
+                    AP
+                  </div>
+                  <div class="flex-1">
+                    <div class="text-sm text-white font-medium">
+                      Ana Paula Ferreira
+                    </div>
+                    <div class="text-xs text-slate-400">
+                      CR-SP 98.765 · Pistola, Tiro Tático
+                    </div>
+                  </div>
+                  <span
+                    class="chip bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs"
+                    >✓ Disponível</span
+                  >
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500">
+              Disponibilidade verificada em tempo real via
+              <code class="text-blue-400">iat.schedules.checkConflict</code> com
+              debounce de 300ms.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════ COMPONENTS -->
+      <section id="components" class="section space-y-8">
+        <div>
+          <h1 class="text-2xl font-black text-white mb-1">
+            Biblioteca de Componentes IAT
+          </h1>
+          <p class="text-slate-400">
+            Todos os novos componentes, onde ficam e como se conectam
+          </p>
+        </div>
+
+        <!-- File tree -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h3 class="font-bold text-white mb-4">
+            Estrutura de arquivos proposta
+          </h3>
+          <div class="mono text-sm space-y-0.5">
+            <div class="text-slate-500">client/src/</div>
+            <div class="text-slate-500 pl-4">pages/</div>
+            <div class="pl-8 text-violet-300">
+              IATModule.tsx
+              <span class="text-slate-500 text-xs"
+                >← refatorar: adicionar aba Calendário, integrar
+                SessionsPanel</span
+              >
+            </div>
+            <div class="text-slate-500 pl-4">components/iat/</div>
+            <div class="pl-8 text-blue-300">calendar/</div>
+            <div class="pl-12 text-emerald-300">
+              IATCalendarView.tsx
+              <span class="text-slate-500 text-xs">← componente principal</span>
+            </div>
+            <div class="pl-12 text-emerald-300">
+              IATCalendarEvent.tsx
+              <span class="text-slate-500 text-xs">← event chip no grid</span>
+            </div>
+            <div class="pl-12 text-emerald-300">
+              IATEventPopover.tsx
+              <span class="text-slate-500 text-xs">← detalhes ao clicar</span>
+            </div>
+            <div class="pl-12 text-emerald-300">
+              IATWeekView.tsx
+              <span class="text-slate-500 text-xs">← timeline 7 dias</span>
+            </div>
+            <div class="pl-8 text-blue-300">instructors/</div>
+            <div class="pl-12 text-emerald-300">IATInstructorAgenda.tsx</div>
+            <div class="pl-12 text-emerald-300">
+              IATInstructorPicker.tsx
+              <span class="text-slate-500 text-xs"
+                >← combobox c/ disponibilidade</span
+              >
+            </div>
+            <div class="pl-12 text-emerald-300">
+              IATAvailabilityGrid.tsx
+              <span class="text-slate-500 text-xs"
+                >← grade seg–sáb manhã/tarde/noite</span
+              >
+            </div>
+            <div class="pl-8 text-blue-300">classes/</div>
+            <div class="pl-12 text-emerald-300">IATClassTimeline.tsx</div>
+            <div class="pl-12 text-emerald-300">
+              IATSessionsPanel.tsx
+              <span class="text-slate-500 text-xs">← Sheet lateral</span>
+            </div>
+            <div class="pl-12 text-emerald-300">
+              IATSessionForm.tsx
+              <span class="text-slate-500 text-xs"
+                >← Dialog criar/editar sessão</span
+              >
+            </div>
+            <div class="pl-8 text-blue-300">attendance/</div>
+            <div class="pl-12 text-emerald-300">
+              IATAttendanceSheet.tsx
+              <span class="text-slate-500 text-xs">← grade aluno × sessão</span>
+            </div>
+            <div class="pl-12 text-emerald-300">
+              IATAttendanceCell.tsx
+              <span class="text-slate-500 text-xs"
+                >← célula P/A/J com toggle</span
+              >
+            </div>
+            <div class="pl-8 text-blue-300">shared/</div>
+            <div class="pl-12 text-emerald-300">IATConflictWarning.tsx</div>
+            <div class="pl-12 text-emerald-300">
+              IATStatusBadge.tsx
+              <span class="text-slate-500 text-xs"
+                >← badge padronizado por status</span
+              >
+            </div>
+            <div class="pl-12 text-emerald-300">IATEventTypeBadge.tsx</div>
+            <div class="text-slate-500 pl-4">_core/hooks/</div>
+            <div class="pl-8 text-amber-300">useIATSchedule.ts</div>
+            <div class="pl-8 text-amber-300">useConflictCheck.ts</div>
+            <div class="pl-8 text-amber-300">useAttendance.ts</div>
+          </div>
+        </div>
+
+        <!-- Component API table -->
+        <div
+          class="bg-slate-900 rounded-2xl border border-slate-800 p-6 overflow-x-auto"
+        >
+          <h3 class="font-bold text-white mb-4">
+            API dos principais componentes (Props)
+          </h3>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-slate-700">
+                <th class="text-left py-2 pr-4 text-slate-400 font-semibold">
+                  Componente
+                </th>
+                <th class="text-left py-2 pr-4 text-slate-400 font-semibold">
+                  Props principais
+                </th>
+                <th class="text-left py-2 text-slate-400 font-semibold">
+                  Callbacks
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800">
+              <tr>
+                <td class="py-2 pr-4 text-emerald-300 font-medium mono">
+                  IATCalendarView
+                </td>
+                <td class="py-2 pr-4 text-slate-300 mono">
+                  view, onViewChange, instructorId?, classId?, dateRange
+                </td>
+                <td class="py-2 text-slate-400">
+                  onEventClick, onDayClick, onCreateEvent
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 text-emerald-300 font-medium mono">
+                  IATInstructorAgenda
+                </td>
+                <td class="py-2 pr-4 text-slate-300 mono">
+                  instructorId, weekStart
+                </td>
+                <td class="py-2 text-slate-400">onWeekChange, onEventClick</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 text-emerald-300 font-medium mono">
+                  IATClassTimeline
+                </td>
+                <td class="py-2 pr-4 text-slate-300 mono">
+                  classId, sessions[], exam?
+                </td>
+                <td class="py-2 text-slate-400">
+                  onSessionClick, onAddSession
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 text-emerald-300 font-medium mono">
+                  IATSessionsPanel
+                </td>
+                <td class="py-2 pr-4 text-slate-300 mono">
+                  classId, open, onOpenChange
+                </td>
+                <td class="py-2 text-slate-400">
+                  onSessionSaved, onSessionDeleted
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 text-emerald-300 font-medium mono">
+                  IATAttendanceSheet
+                </td>
+                <td class="py-2 pr-4 text-slate-300 mono">
+                  classId, sessions[], enrollments[]
+                </td>
+                <td class="py-2 text-slate-400">onAttendanceChange (batch)</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 text-emerald-300 font-medium mono">
+                  IATConflictWarning
+                </td>
+                <td class="py-2 pr-4 text-slate-300 mono">
+                  instructorId, date, startTime, endTime
+                </td>
+                <td class="py-2 text-slate-400">
+                  onSelectAlternative(instructorId)
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 text-emerald-300 font-medium mono">
+                  IATInstructorPicker
+                </td>
+                <td class="py-2 pr-4 text-slate-300 mono">
+                  value, date?, startTime?, endTime?, courseId?
+                </td>
+                <td class="py-2 text-slate-400">onSelect(instructor)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════ SPECS -->
+      <section id="specs" class="section space-y-8">
+        <div>
+          <h1 class="text-2xl font-black text-white mb-1">
+            Specs Técnicas de Implementação
+          </h1>
+          <p class="text-slate-400">
+            Decisões técnicas, padrões de código e critérios de aceitação
+          </p>
+        </div>
+
+        <!-- Patterns -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div
+            class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-4"
+          >
+            <h3 class="font-bold text-white">
+              Padrão de Dados: useIATSchedule()
+            </h3>
+            <pre
+              class="bg-slate-950 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto"
+            ><code>// hooks/useIATSchedule.ts
 type UnifiedEvent = {
   id: string            // "{type}-{id}"
   type: 'class'|'session'|'exam'|'schedule'
@@ -1199,11 +2251,17 @@ function useIATSchedule(filters: {
   // Normaliza em UnifiedEvent[]
   // Retorna: { events, isLoading, error }
 }</code></pre>
-    </div>
+          </div>
 
-    <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-4">
-      <h3 class="font-bold text-white">Padrão de Conflito: useConflictCheck()</h3>
-      <pre class="bg-slate-950 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto"><code>// hooks/useConflictCheck.ts
+          <div
+            class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-4"
+          >
+            <h3 class="font-bold text-white">
+              Padrão de Conflito: useConflictCheck()
+            </h3>
+            <pre
+              class="bg-slate-950 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto"
+            ><code>// hooks/useConflictCheck.ts
 function useConflictCheck({
   instructorId: number | null
   date: string | null       // "2026-04-09"
@@ -1222,11 +2280,17 @@ const { hasConflict, alternatives } =
   useConflictCheck({ instructorId, date, ... })
 
 // Desabilita submit se hasConflict === true</code></pre>
-    </div>
+          </div>
 
-    <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-4">
-      <h3 class="font-bold text-white">Padrão de Frequência: Optimistic Updates</h3>
-      <pre class="bg-slate-950 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto"><code>// IATAttendanceCell.tsx
+          <div
+            class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-4"
+          >
+            <h3 class="font-bold text-white">
+              Padrão de Frequência: Optimistic Updates
+            </h3>
+            <pre
+              class="bg-slate-950 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto"
+            ><code>// IATAttendanceCell.tsx
 // Toggle P → A → J → P ao clicar
 // Update optimista: muda estado local
 // imediatamente (sem esperar API)
@@ -1246,11 +2310,15 @@ const handleToggle = (enrollmentId, sessionId) => {
 // Flush chama iat.attendance.record
 // com array de { enrollmentId, sessionId, status }
 // Em caso de erro: reverte estado local + toast</code></pre>
-    </div>
+          </div>
 
-    <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-4">
-      <h3 class="font-bold text-white">Animações: framer-motion</h3>
-      <pre class="bg-slate-950 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto"><code>// Entrada de eventos no calendário
+          <div
+            class="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-4"
+          >
+            <h3 class="font-bold text-white">Animações: framer-motion</h3>
+            <pre
+              class="bg-slate-950 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto"
+            ><code>// Entrada de eventos no calendário
 const eventVariants = {
   hidden: { opacity: 0, scale: 0.95 },
   visible: { opacity: 1, scale: 1,
@@ -1272,67 +2340,197 @@ const eventVariants = {
 // IATConflictWarning — shake ao detectar
 animate={hasConflict ? "shake" : "idle"}
 variants={{ shake: { x: [-4,4,-4,4,0] } }}</code></pre>
+          </div>
+        </div>
+
+        <!-- Acceptance criteria -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h3 class="font-bold text-white mb-4">
+            Critérios de Aceitação por Fase
+          </h3>
+          <div class="space-y-4">
+            <div>
+              <div class="text-sm font-semibold text-blue-400 mb-2">
+                Fase 1 — Sessões e Frequência
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Criar sessão com data/hora/local abre Dialog validado</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Toggle P/A/J na célula muda cor imediatamente
+                    (optimistic)</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >% de presença recalculada automaticamente após toggle</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Badge "Em risco" aparece para alunos abaixo de 75%</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Sessões da turma aparecem na timeline em ordem
+                    cronológica</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Deletar sessão pede confirmação e remove presenças
+                    associadas</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-violet-400 mb-2">
+                Fase 2 — Agenda do Instrutor
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-violet-400">☐</span
+                  ><span class="text-slate-300"
+                    >Instrutor com compromisso aparece como "Ocupado" no
+                    Picker</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-violet-400">☐</span
+                  ><span class="text-slate-300"
+                    >Botão Salvar desabilitado enquanto conflito não
+                    resolvido</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-violet-400">☐</span
+                  ><span class="text-slate-300"
+                    >Lista de instrutores alternativos disponíveis exibida no
+                    conflito</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-violet-400">☐</span
+                  ><span class="text-slate-300"
+                    >Grade de disponibilidade semanal editável por
+                    instrutor</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-violet-400">☐</span
+                  ><span class="text-slate-300"
+                    >Agenda do instrutor filtra por semana com navegação
+                    prev/next</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-emerald-400 mb-2">
+                Fase 3 — Calendário Geral
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Calendário mensal exibe eventos de turma, exame e
+                    avulsos</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Filtro por instrutor filtra eventos em tempo real</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Clique em evento abre Popover com detalhes e ações
+                    rápidas</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Troca de modo (mês/semana/dia) com animação de
+                    transição</span
+                  >
+                </div>
+                <div
+                  class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"
+                >
+                  <span class="text-emerald-400">☐</span
+                  ><span class="text-slate-300"
+                    >Calendário responsivo: modo lista em viewport < 768px</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
-  </div>
+    <!-- /main container -->
 
-  <!-- Acceptance criteria -->
-  <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-    <h3 class="font-bold text-white mb-4">Critérios de Aceitação por Fase</h3>
-    <div class="space-y-4">
-      <div>
-        <div class="text-sm font-semibold text-blue-400 mb-2">Fase 1 — Sessões e Frequência</div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Criar sessão com data/hora/local abre Dialog validado</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Toggle P/A/J na célula muda cor imediatamente (optimistic)</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">% de presença recalculada automaticamente após toggle</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Badge "Em risco" aparece para alunos abaixo de 75%</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Sessões da turma aparecem na timeline em ordem cronológica</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Deletar sessão pede confirmação e remove presenças associadas</span></div>
-        </div>
-      </div>
-      <div>
-        <div class="text-sm font-semibold text-violet-400 mb-2">Fase 2 — Agenda do Instrutor</div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-violet-400">☐</span><span class="text-slate-300">Instrutor com compromisso aparece como "Ocupado" no Picker</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-violet-400">☐</span><span class="text-slate-300">Botão Salvar desabilitado enquanto conflito não resolvido</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-violet-400">☐</span><span class="text-slate-300">Lista de instrutores alternativos disponíveis exibida no conflito</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-violet-400">☐</span><span class="text-slate-300">Grade de disponibilidade semanal editável por instrutor</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-violet-400">☐</span><span class="text-slate-300">Agenda do instrutor filtra por semana com navegação prev/next</span></div>
-        </div>
-      </div>
-      <div>
-        <div class="text-sm font-semibold text-emerald-400 mb-2">Fase 3 — Calendário Geral</div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Calendário mensal exibe eventos de turma, exame e avulsos</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Filtro por instrutor filtra eventos em tempo real</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Clique em evento abre Popover com detalhes e ações rápidas</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Troca de modo (mês/semana/dia) com animação de transição</span></div>
-          <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg p-2"><span class="text-emerald-400">☐</span><span class="text-slate-300">Calendário responsivo: modo lista em viewport < 768px</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <script>
+      // Navigation
+      const nav = document.getElementById("mainNav");
+      const links = nav.querySelectorAll(".nav-link");
+      const sections = document.querySelectorAll(".section");
 
-</section>
-
-</div><!-- /main container -->
-
-<script>
-  // Navigation
-  const nav = document.getElementById('mainNav')
-  const links = nav.querySelectorAll('.nav-link')
-  const sections = document.querySelectorAll('.section')
-
-  links.forEach(link => {
-    link.addEventListener('click', () => {
-      const target = link.dataset.target
-      links.forEach(l => l.classList.remove('active'))
-      sections.forEach(s => s.classList.remove('active'))
-      link.classList.add('active')
-      document.getElementById(target).classList.add('active')
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    })
-  })
-</script>
-</body>
+      links.forEach(link => {
+        link.addEventListener("click", () => {
+          const target = link.dataset.target;
+          links.forEach(l => l.classList.remove("active"));
+          sections.forEach(s => s.classList.remove("active"));
+          link.classList.add("active");
+          document.getElementById(target).classList.add("active");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      });
+    </script>
+  </body>
 </html>

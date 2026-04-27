@@ -1,6 +1,6 @@
 /**
  * Multi-Tenant Configuration for CAC 360
- * 
+ *
  * Este arquivo gerencia a configuração e resolução de tenants (clubes)
  */
 
@@ -77,7 +77,10 @@ setInterval(() => {
 }, CONNECTION_IDLE_TIMEOUT);
 
 // Cache de configurações de tenant
-const tenantConfigCache: Map<string, { config: TenantConfig; cachedAt: number }> = new Map();
+const tenantConfigCache: Map<
+  string,
+  { config: TenantConfig; cachedAt: number }
+> = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 /**
@@ -86,18 +89,29 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
  */
 export function resolveTenantSlug(hostname: string): string | null {
   // Desenvolvimento local
-  if (hostname === 'localhost' || hostname.startsWith('127.0.0.1')) {
+  if (hostname === "localhost" || hostname.startsWith("127.0.0.1")) {
     // Em dev, usar variável de ambiente ou default
-    return process.env.DEV_TENANT_SLUG || 'default';
+    return process.env.DEV_TENANT_SLUG || "default";
   }
 
   // Extrair subdomínio
   // Ex: tiroesp.cac360.com.br → tiroesp
-  const parts = hostname.split('.');
+  const parts = hostname.split(".");
   if (parts.length >= 3) {
     const subdomain = parts[0];
     // Ignorar subdomínios especiais
-    if (['www', 'api', 'admin', 'platform-admin', 'hml', 'app', 'dev', 'staging'].includes(subdomain)) {
+    if (
+      [
+        "www",
+        "api",
+        "admin",
+        "platform-admin",
+        "hml",
+        "app",
+        "dev",
+        "staging",
+      ].includes(subdomain)
+    ) {
       return null;
     }
     return subdomain;
@@ -109,7 +123,9 @@ export function resolveTenantSlug(hostname: string): string | null {
 /**
  * Busca configuração do tenant no banco de dados da plataforma
  */
-export async function getTenantConfig(slug: string): Promise<TenantConfig | null> {
+export async function getTenantConfig(
+  slug: string
+): Promise<TenantConfig | null> {
   // Verificar cache
   const cached = tenantConfigCache.get(slug);
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL) {
@@ -117,12 +133,12 @@ export async function getTenantConfig(slug: string): Promise<TenantConfig | null
   }
 
   // Buscar no banco da plataforma
-  const isSingleDbMode = process.env.TENANT_DB_MODE === 'single';
+  const isSingleDbMode = process.env.TENANT_DB_MODE === "single";
   const platformDbUrl = isSingleDbMode
     ? process.env.DATABASE_URL
-    : (process.env.PLATFORM_DATABASE_URL || process.env.DATABASE_URL);
+    : process.env.PLATFORM_DATABASE_URL || process.env.DATABASE_URL;
   if (!platformDbUrl) {
-    console.error('[Tenant] Platform database URL not configured');
+    console.error("[Tenant] Platform database URL not configured");
     return null;
   }
 
@@ -157,7 +173,7 @@ export async function getTenantConfig(slug: string): Promise<TenantConfig | null
 
     return tenant;
   } catch (error) {
-    console.error('[Tenant] Error fetching tenant config:', error);
+    console.error("[Tenant] Error fetching tenant config:", error);
     return null;
   }
 }
@@ -165,9 +181,13 @@ export async function getTenantConfig(slug: string): Promise<TenantConfig | null
 /**
  * Obtem conexão de banco de dados para um tenant específico
  */
-export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<typeof drizzle> | null> {
-  const isSingleDbMode = process.env.TENANT_DB_MODE === 'single';
-  const cacheKey = isSingleDbMode ? 'single_db' : `${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
+export async function getTenantDb(
+  tenant: TenantConfig
+): Promise<ReturnType<typeof drizzle> | null> {
+  const isSingleDbMode = process.env.TENANT_DB_MODE === "single";
+  const cacheKey = isSingleDbMode
+    ? "single_db"
+    : `${tenant.dbHost}:${tenant.dbPort}/${tenant.dbName}`;
 
   // Verificar cache de conexões
   const cached = tenantDbConnections.get(cacheKey);
@@ -178,9 +198,10 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
 
   // Verificar limite de conexões e fazer eviction se necessário
   if (tenantDbConnections.size >= MAX_TENANT_CONNECTIONS) {
-    const entries = [...tenantDbConnections.entries()]
-      .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
-    
+    const entries = [...tenantDbConnections.entries()].sort(
+      (a, b) => a[1].lastUsed - b[1].lastUsed
+    );
+
     // Remover as 10% conexões mais antigas
     const toRemove = Math.max(1, Math.floor(entries.length * 0.1));
     for (let i = 0; i < toRemove; i++) {
@@ -196,11 +217,14 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
 
   try {
     const platformDbUrl = process.env.DATABASE_URL;
-    let connectionString = '';
-    
-    // PRIORIDADE: Se estamos no Railway/Produção e temos DATABASE_URL, 
+    let connectionString = "";
+
+    // PRIORIDADE: Se estamos no Railway/Produção e temos DATABASE_URL,
     // usamos ela para evitar erros de credenciais desatualizadas no banco de dados do tenant.
-    if (platformDbUrl && (isSingleDbMode || process.env.NODE_ENV === 'production')) {
+    if (
+      platformDbUrl &&
+      (isSingleDbMode || process.env.NODE_ENV === "production")
+    ) {
       connectionString = platformDbUrl;
     } else if (tenant.dbHost && tenant.dbName && tenant.dbUser) {
       // Modo Multi-DB explícito (apenas se tivermos todos os dados e não estivermos forçando single)
@@ -211,25 +235,32 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
     }
 
     if (!connectionString) {
-      console.error(`[Tenant] No connection string available for tenant ${tenant.slug}`);
+      console.error(
+        `[Tenant] No connection string available for tenant ${tenant.slug}`
+      );
       return null;
     }
-    
+
     // Check if the connection string is a URL and has sslmode
-    const hasSslMode = connectionString.includes('sslmode=');
-    const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
-    
+    const hasSslMode = connectionString.includes("sslmode=");
+    const isLocalhost =
+      connectionString.includes("localhost") ||
+      connectionString.includes("127.0.0.1");
+
     const client = postgres(connectionString, {
       max: Number(process.env.TENANT_DB_POOL_MAX ?? 5),
       // Only force SSL if it's explicitly production and not localhost, and no sslmode is defined in URL
-      ssl: (process.env.NODE_ENV === "production" && !isLocalhost && !hasSslMode) ? 'require' : undefined,
+      ssl:
+        process.env.NODE_ENV === "production" && !isLocalhost && !hasSslMode
+          ? "require"
+          : undefined,
       idle_timeout: 60,
       connect_timeout: 10,
       // UTF-8 encoding for proper character handling
       onnotice: () => {}, // Suppress notices
       debug: false,
       // Force UTF-8 encoding for all text data
-      encoding: 'utf8',
+      encoding: "utf8",
       types: {
         // Ensure text fields are decoded as UTF-8
         text: {
@@ -237,8 +268,8 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
           from: [1043, 25, 18, 19], // varchar, text, char, name
           parse: (x: string) => {
             // Force UTF-8 interpretation if needed
-            if (typeof x === 'string') return x;
-            return Buffer.from(x).toString('utf8');
+            if (typeof x === "string") return x;
+            return Buffer.from(x).toString("utf8");
           },
           serialize: (x: string) => x,
         },
@@ -262,7 +293,10 @@ export async function getTenantDb(tenant: TenantConfig): Promise<ReturnType<type
 
     return db;
   } catch (error) {
-    console.error(`[Tenant] Error connecting to database for tenant ${tenant.slug}:`, error);
+    console.error(
+      `[Tenant] Error connecting to database for tenant ${tenant.slug}:`,
+      error
+    );
     tenantDbConnections.delete(cacheKey);
     return null;
   }
@@ -287,11 +321,17 @@ export function isTenantActive(tenant: TenantConfig): boolean {
     return false;
   }
 
-  if (tenant.subscriptionStatus === 'cancelled' || tenant.subscriptionStatus === 'suspended') {
+  if (
+    tenant.subscriptionStatus === "cancelled" ||
+    tenant.subscriptionStatus === "suspended"
+  ) {
     return false;
   }
 
-  if (tenant.subscriptionExpiresAt && new Date(tenant.subscriptionExpiresAt) < new Date()) {
+  if (
+    tenant.subscriptionExpiresAt &&
+    new Date(tenant.subscriptionExpiresAt) < new Date()
+  ) {
     return false;
   }
 
@@ -304,10 +344,10 @@ export function isTenantActive(tenant: TenantConfig): boolean {
 export function getTenantFeatures(tenant: TenantConfig): string[] {
   const features: string[] = [];
 
-  if (tenant.featureWorkflowCR) features.push('workflow-cr');
-  if (tenant.featureApostilamento) features.push('apostilamento');
-  if (tenant.featureRenovacao) features.push('renovacao');
-  if (tenant.featureInsumos) features.push('insumos');
+  if (tenant.featureWorkflowCR) features.push("workflow-cr");
+  if (tenant.featureApostilamento) features.push("apostilamento");
+  if (tenant.featureRenovacao) features.push("renovacao");
+  if (tenant.featureInsumos) features.push("insumos");
 
   return features;
 }
@@ -316,17 +356,17 @@ export function getTenantFeatures(tenant: TenantConfig): string[] {
  * Tenant padrão para desenvolvimento/fallback
  */
 export const defaultTenantConfig: Partial<TenantConfig> = {
-  slug: 'default',
-  name: 'CAC 360 - Demo',
-  primaryColor: '#1a5c00',
-  secondaryColor: '#4d9702',
+  slug: "default",
+  name: "CAC 360 - Demo",
+  primaryColor: "#1a5c00",
+  secondaryColor: "#4d9702",
   featureWorkflowCR: true,
   featureApostilamento: false,
   featureRenovacao: false,
   featureInsumos: false,
   featureIAT: false,
-  plan: 'starter',
-  subscriptionStatus: 'trial',
+  plan: "starter",
+  subscriptionStatus: "trial",
   maxUsers: 5,
   maxClients: 100,
   maxStorageGB: 10,

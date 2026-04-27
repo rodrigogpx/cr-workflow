@@ -1,16 +1,16 @@
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 const SMTP_CONFIG = {
-  host: 'smtp.gmail.com',
+  host: "smtp.gmail.com",
   port: 587,
   secure: false,
   auth: {
-    user: 'rodrigogpx@gmail.com',
-    pass: 'qhou kvus uvre ivnv'
-  }
+    user: "rodrigogpx@gmail.com",
+    pass: "qhou kvus uvre ivnv",
+  },
 };
 
-console.log('🚀 Teste FINAL - Email com texto apenas...\n');
+console.log("🚀 Teste FINAL - Email com texto apenas...\n");
 
 const transporter = nodemailer.createTransport(SMTP_CONFIG);
 
@@ -18,18 +18,18 @@ const htmlContent = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-
 
 const mailOptions = {
   from: '"CAC 360" <rodrigogpx@gmail.com>',
-  to: 'rodrigogpx@gmail.com',
-  subject: 'Teste FINAL - Bem-vindo(a) à CAC 360 - Texto Apenas',
-  html: htmlContent
+  to: "rodrigogpx@gmail.com",
+  subject: "Teste FINAL - Bem-vindo(a) à CAC 360 - Texto Apenas",
+  html: htmlContent,
 };
 
 try {
-  console.log('📧 Enviando email...');
+  console.log("📧 Enviando email...");
   const info = await transporter.sendMail(mailOptions);
-  console.log('\n✅ Email enviado!');
-  console.log('📬 Message ID:', info.messageId);
+  console.log("\n✅ Email enviado!");
+  console.log("📬 Message ID:", info.messageId);
   console.log('\n🎯 Header com texto "CAC 360" em vermelho sobre fundo preto');
 } catch (error) {
-  console.error('\n❌ Erro:', error.message);
+  console.error("\n❌ Erro:", error.message);
   process.exit(1);
 }

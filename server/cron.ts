@@ -80,7 +80,9 @@ async function runDailyJob(): Promise<void> {
           <p>Acesse o painel financeiro para regularizar o pagamento e evitar interrupção do serviço.</p>
           <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
         </div>`,
-      } as any).catch((e: any) => console.error("[Cron] Falha email alerta 7d:", e));
+      } as any).catch((e: any) =>
+        console.error("[Cron] Falha email alerta 7d:", e)
+      );
     }
 
     // Log do resumo
@@ -116,13 +118,17 @@ async function runSuspensionJob(): Promise<void> {
             <p>Entre em contato com nosso suporte para regularizar e reativar o acesso.</p>
             <p style="color:#888;font-size:12px">CAC 360 — notificação automática</p>
           </div>`,
-        } as any).catch((e: any) => console.error("[Cron] Falha email suspensão:", e));
+        } as any).catch((e: any) =>
+          console.error("[Cron] Falha email suspensão:", e)
+        );
       }
 
       console.log(`[Cron] Tenant suspenso — id=${tenantId} sub=${sub.id}`);
     }
 
-    console.log(`[Cron] Job de suspensão concluído — ${expired.length} tenant(s) processado(s).`);
+    console.log(
+      `[Cron] Job de suspensão concluído — ${expired.length} tenant(s) processado(s).`
+    );
   } catch (err) {
     console.error("[Cron] Erro no job de suspensão:", err);
   }

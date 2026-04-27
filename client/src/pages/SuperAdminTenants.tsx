@@ -1,6 +1,6 @@
 /**
  * Super Admin - Tenant Management Page
- * 
+ *
  * Página para gerenciamento de tenants (clubes) da plataforma CAC 360
  */
 
@@ -9,15 +9,21 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Building2, 
-  Plus, 
-  Search, 
-  Settings, 
+import {
+  Building2,
+  Plus,
+  Search,
+  Settings,
   Database,
   Users,
   Loader2,
@@ -39,7 +45,7 @@ import {
   CalendarCheck,
   Package,
   Bot,
-  CheckCircle
+  CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { EmailConfigPanel } from "@/components/super-admin/EmailConfigPanel";
@@ -91,36 +97,39 @@ const MODULE_DEFINITIONS = [
 
 type ModuleKey = (typeof MODULE_DEFINITIONS)[number]["key"];
 
-const MODULE_COLOR_MAP: Record<string, { enabled: string; hover: string; icon: string; check: string }> = {
+const MODULE_COLOR_MAP: Record<
+  string,
+  { enabled: string; hover: string; icon: string; check: string }
+> = {
   purple: {
     enabled: "border-purple-500 bg-purple-50",
-    hover:   "hover:border-purple-400 hover:bg-purple-50/60",
-    icon:    "bg-purple-100 text-purple-600",
-    check:   "text-purple-500",
+    hover: "hover:border-purple-400 hover:bg-purple-50/60",
+    icon: "bg-purple-100 text-purple-600",
+    check: "text-purple-500",
   },
   blue: {
     enabled: "border-blue-500 bg-blue-50",
-    hover:   "hover:border-blue-400 hover:bg-blue-50/60",
-    icon:    "bg-blue-100 text-blue-600",
-    check:   "text-blue-500",
+    hover: "hover:border-blue-400 hover:bg-blue-50/60",
+    icon: "bg-blue-100 text-blue-600",
+    check: "text-blue-500",
   },
   amber: {
     enabled: "border-amber-500 bg-amber-50",
-    hover:   "hover:border-amber-400 hover:bg-amber-50/60",
-    icon:    "bg-amber-100 text-amber-600",
-    check:   "text-amber-500",
+    hover: "hover:border-amber-400 hover:bg-amber-50/60",
+    icon: "bg-amber-100 text-amber-600",
+    check: "text-amber-500",
   },
   green: {
     enabled: "border-green-500 bg-green-50",
-    hover:   "hover:border-green-400 hover:bg-green-50/60",
-    icon:    "bg-green-100 text-green-600",
-    check:   "text-green-500",
+    hover: "hover:border-green-400 hover:bg-green-50/60",
+    icon: "bg-green-100 text-green-600",
+    check: "text-green-500",
   },
   rose: {
     enabled: "border-rose-500 bg-rose-50",
-    hover:   "hover:border-rose-400 hover:bg-rose-50/60",
-    icon:    "bg-rose-100 text-rose-600",
-    check:   "text-rose-500",
+    hover: "hover:border-rose-400 hover:bg-rose-50/60",
+    icon: "bg-rose-100 text-rose-600",
+    check: "text-rose-500",
   },
 };
 
@@ -145,7 +154,9 @@ function ModuleCard({
       disabled={readonly}
       className={[
         "relative w-full text-left rounded-xl border-2 p-4 transition-all duration-150 focus:outline-none",
-        readonly ? "cursor-default opacity-80" : "focus-visible:ring-2 focus-visible:ring-purple-400",
+        readonly
+          ? "cursor-default opacity-80"
+          : "focus-visible:ring-2 focus-visible:ring-purple-400",
         enabled
           ? colors.enabled + " shadow-sm"
           : "border-gray-200 bg-white " + (readonly ? "" : colors.hover),
@@ -153,7 +164,9 @@ function ModuleCard({
     >
       {/* Ícone + check */}
       <div className="flex items-start justify-between mb-3">
-        <div className={`p-2 rounded-lg ${enabled ? colors.icon : "bg-gray-100 text-gray-400"}`}>
+        <div
+          className={`p-2 rounded-lg ${enabled ? colors.icon : "bg-gray-100 text-gray-400"}`}
+        >
           <Icon className="h-5 w-5" />
         </div>
         {enabled && (
@@ -162,12 +175,16 @@ function ModuleCard({
       </div>
 
       {/* Nome */}
-      <p className={`text-sm font-semibold leading-tight ${enabled ? "text-gray-900" : "text-gray-500"}`}>
+      <p
+        className={`text-sm font-semibold leading-tight ${enabled ? "text-gray-900" : "text-gray-500"}`}
+      >
         {mod.label}
       </p>
 
       {/* Descrição */}
-      <p className={`text-xs mt-1 leading-snug ${enabled ? "text-gray-600" : "text-gray-400"}`}>
+      <p
+        className={`text-xs mt-1 leading-snug ${enabled ? "text-gray-600" : "text-gray-400"}`}
+      >
         {mod.description}
       </p>
 
@@ -210,41 +227,64 @@ interface Tenant {
 
 function TenantStats({ tenantId }: { tenantId: number }) {
   const { data, isLoading } = trpc.tenants.getStats.useQuery({ id: tenantId });
-  
+
   if (isLoading) {
-    return <span className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Carregando...</span>;
+    return (
+      <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <Loader2 className="h-3 w-3 animate-spin" /> Carregando...
+      </span>
+    );
   }
-  
+
   if (!data) return null;
-  
+
   return (
     <div className="flex flex-col gap-1 mt-2 text-xs">
       <div className="flex items-center gap-2">
-        <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full" title="Usuários">
+        <span
+          className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full"
+          title="Usuários"
+        >
           <Users className="h-3 w-3" /> {data.usersCount}
         </span>
-        <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full" title="Clientes">
+        <span
+          className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full"
+          title="Clientes"
+        >
           <Building2 className="h-3 w-3" /> {data.clientsCount}
         </span>
       </div>
-      
+
       <div className="flex items-center gap-2 mt-1">
-        <span className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full" title="Tamanho do Banco de Dados">
+        <span
+          className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full"
+          title="Tamanho do Banco de Dados"
+        >
           <Database className="h-3 w-3" /> {data.dbSizeMB} MB
         </span>
-        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full" title="Armazenamento de Arquivos Usado">
+        <span
+          className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full"
+          title="Armazenamento de Arquivos Usado"
+        >
           <Database className="h-3 w-3" /> {data.storageUsedGB} GB
         </span>
       </div>
 
       <div className="flex items-center gap-2 mt-1">
         {data.lastActivity && (
-          <span className="flex items-center gap-1 text-gray-500" title={`Última atividade: ${new Date(data.lastActivity).toLocaleString()}`}>
-            <Clock className="h-3 w-3" /> {new Date(data.lastActivity).toLocaleDateString()}
+          <span
+            className="flex items-center gap-1 text-gray-500"
+            title={`Última atividade: ${new Date(data.lastActivity).toLocaleString()}`}
+          >
+            <Clock className="h-3 w-3" />{" "}
+            {new Date(data.lastActivity).toLocaleDateString()}
           </span>
         )}
         {(data as any).error && (
-          <span className="flex items-center gap-1 text-red-500" title={(data as any).error}>
+          <span
+            className="flex items-center gap-1 text-red-500"
+            title={(data as any).error}
+          >
             <AlertCircle className="h-3 w-3" /> Erro BD
           </span>
         )}
@@ -260,7 +300,9 @@ export default function SuperAdminTenants() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [activeTab, setActiveTab] = useState<"general" | "email" | "templates" | "triggers">("general");
+  const [activeTab, setActiveTab] = useState<
+    "general" | "email" | "templates" | "triggers"
+  >("general");
   const [panelMounted, setPanelMounted] = useState(false);
 
   useEffect(() => {
@@ -299,7 +341,11 @@ export default function SuperAdminTenants() {
     featureIAT: false,
   });
 
-  const { data: tenants = [], isLoading: isLoadingTenants, isFetching } = trpc.tenants.list.useQuery();
+  const {
+    data: tenants = [],
+    isLoading: isLoadingTenants,
+    isFetching,
+  } = trpc.tenants.list.useQuery();
   const { data: planDefinitions = [] } = trpc.plans.list.useQuery();
 
   const createTenant = trpc.tenants.create.useMutation({
@@ -323,7 +369,7 @@ export default function SuperAdminTenants() {
       });
       utils.tenants.list.invalidate();
     },
-    onError: (err) => toast.error(err.message || "Erro ao criar tenant"),
+    onError: err => toast.error(err.message || "Erro ao criar tenant"),
   });
 
   const updateTenant = trpc.tenants.update.useMutation({
@@ -332,7 +378,7 @@ export default function SuperAdminTenants() {
       closeEditPanel();
       utils.tenants.list.invalidate();
     },
-    onError: (err) => toast.error(err.message || "Erro ao atualizar tenant"),
+    onError: err => toast.error(err.message || "Erro ao atualizar tenant"),
   });
 
   const setStatus = trpc.tenants.setStatus.useMutation({
@@ -340,7 +386,7 @@ export default function SuperAdminTenants() {
       toast.success("Status atualizado");
       utils.tenants.list.invalidate();
     },
-    onError: (err) => toast.error(err.message || "Erro ao alterar status"),
+    onError: err => toast.error(err.message || "Erro ao alterar status"),
   });
 
   const deleteTenant = trpc.tenants.delete.useMutation({
@@ -348,7 +394,7 @@ export default function SuperAdminTenants() {
       toast.success("Tenant cancelado/arquivado");
       utils.tenants.list.invalidate();
     },
-    onError: (err) => toast.error(err.message || "Erro ao remover tenant"),
+    onError: err => toast.error(err.message || "Erro ao remover tenant"),
   });
 
   const hardDeleteTenant = trpc.tenants.hardDelete.useMutation({
@@ -356,22 +402,25 @@ export default function SuperAdminTenants() {
       toast.success("Tenant excluído DEFINITIVAMENTE");
       utils.tenants.list.invalidate();
     },
-    onError: (err) => toast.error(err.message || "Erro ao excluir tenant permanentemente"),
+    onError: err =>
+      toast.error(err.message || "Erro ao excluir tenant permanentemente"),
   });
 
   const [impersonatePassword, setImpersonatePassword] = useState("");
-  const [impersonatingTenantId, setImpersonatingTenantId] = useState<number | null>(null);
+  const [impersonatingTenantId, setImpersonatingTenantId] = useState<
+    number | null
+  >(null);
 
   const impersonate = trpc.tenants.impersonate.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(`Entrando como admin de ${data.tenantSlug}...`);
       window.location.href = `/${data.tenantSlug}/dashboard`;
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(error.message || "Erro ao tentar acessar o tenant");
       setImpersonatingTenantId(null);
       setImpersonatePassword("");
-    }
+    },
   });
 
   const handleImpersonate = (tenantId: number) => {
@@ -380,17 +429,17 @@ export default function SuperAdminTenants() {
 
   const confirmImpersonate = () => {
     if (!impersonatingTenantId || !impersonatePassword) return;
-    
-    impersonate.mutate({ 
+
+    impersonate.mutate({
       tenantId: impersonatingTenantId,
-      confirmPassword: impersonatePassword
+      confirmPassword: impersonatePassword,
     });
   };
 
   const filteredTenants = useMemo(
     () =>
       tenants.filter(
-        (t) =>
+        t =>
           t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           t.slug.toLowerCase().includes(searchTerm.toLowerCase())
       ),
@@ -400,13 +449,29 @@ export default function SuperAdminTenants() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" /> Ativo</Badge>;
+        return (
+          <Badge className="bg-green-500">
+            <CheckCircle2 className="h-3 w-3 mr-1" /> Ativo
+          </Badge>
+        );
       case "trial":
-        return <Badge className="bg-blue-500"><Clock className="h-3 w-3 mr-1" /> Trial</Badge>;
+        return (
+          <Badge className="bg-blue-500">
+            <Clock className="h-3 w-3 mr-1" /> Trial
+          </Badge>
+        );
       case "suspended":
-        return <Badge className="bg-yellow-500"><AlertCircle className="h-3 w-3 mr-1" /> Suspenso</Badge>;
+        return (
+          <Badge className="bg-yellow-500">
+            <AlertCircle className="h-3 w-3 mr-1" /> Suspenso
+          </Badge>
+        );
       case "cancelled":
-        return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" /> Cancelado</Badge>;
+        return (
+          <Badge className="bg-red-500">
+            <XCircle className="h-3 w-3 mr-1" /> Cancelado
+          </Badge>
+        );
       default:
         return <Badge>{status}</Badge>;
     }
@@ -415,11 +480,26 @@ export default function SuperAdminTenants() {
   const getPlanBadge = (plan: string) => {
     switch (plan) {
       case "enterprise":
-        return <Badge variant="outline" className="border-purple-500 text-purple-500">Enterprise</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-purple-500 text-purple-500"
+          >
+            Enterprise
+          </Badge>
+        );
       case "professional":
-        return <Badge variant="outline" className="border-blue-500 text-blue-500">Professional</Badge>;
+        return (
+          <Badge variant="outline" className="border-blue-500 text-blue-500">
+            Professional
+          </Badge>
+        );
       case "starter":
-        return <Badge variant="outline" className="border-gray-500 text-gray-500">Starter</Badge>;
+        return (
+          <Badge variant="outline" className="border-gray-500 text-gray-500">
+            Starter
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{plan}</Badge>;
     }
@@ -427,7 +507,13 @@ export default function SuperAdminTenants() {
 
   const handleCreateTenant = () => {
     // Validate
-    if (!newTenant.slug || !newTenant.name || !newTenant.adminName || !newTenant.adminEmail || !newTenant.adminPassword) {
+    if (
+      !newTenant.slug ||
+      !newTenant.name ||
+      !newTenant.adminName ||
+      !newTenant.adminEmail ||
+      !newTenant.adminPassword
+    ) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -478,21 +564,31 @@ export default function SuperAdminTenants() {
 
   const toggleStatus = (tenant: Tenant) => {
     const next =
-      tenant.subscriptionStatus === "suspended" || tenant.subscriptionStatus === "cancelled"
+      tenant.subscriptionStatus === "suspended" ||
+      tenant.subscriptionStatus === "cancelled"
         ? "active"
         : "suspended";
     setStatus.mutate({ id: tenant.id, status: next });
   };
 
   const handleDelete = (tenant: Tenant) => {
-    if (tenant.subscriptionStatus === 'cancelled') {
-      if (confirm(`ATENÇÃO: Deseja EXCLUIR DEFINITIVAMENTE o tenant "${tenant.name}"?\n\nEsta ação não pode ser desfeita e apagará TODOS os dados (usuários, clientes, documentos, etc) deste tenant.`)) {
+    if (tenant.subscriptionStatus === "cancelled") {
+      if (
+        confirm(
+          `ATENÇÃO: Deseja EXCLUIR DEFINITIVAMENTE o tenant "${tenant.name}"?\n\nEsta ação não pode ser desfeita e apagará TODOS os dados (usuários, clientes, documentos, etc) deste tenant.`
+        )
+      ) {
         hardDeleteTenant.mutate({ id: tenant.id });
       }
       return;
     }
 
-    if (!confirm(`Deseja cancelar/arquivar o tenant "${tenant.name}"?\n\nEle ficará inativo mas os dados serão mantidos para auditoria.`)) return;
+    if (
+      !confirm(
+        `Deseja cancelar/arquivar o tenant "${tenant.name}"?\n\nEle ficará inativo mas os dados serão mantidos para auditoria.`
+      )
+    )
+      return;
     deleteTenant.mutate({ id: tenant.id });
   };
 
@@ -506,16 +602,20 @@ export default function SuperAdminTenants() {
               <img src={APP_LOGO} alt="CAC 360" className="h-10 w-auto" />
               <div>
                 <h1 className="text-xl font-bold">CAC 360 — Platform Admin</h1>
-                <p className="text-sm text-purple-200">Gerenciamento de Tenants</p>
+                <p className="text-sm text-purple-200">
+                  Gerenciamento de Tenants
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-6">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold">{admin?.name || "Admin"}</p>
+                <p className="text-sm font-semibold">
+                  {admin?.name || "Admin"}
+                </p>
                 <p className="text-xs text-purple-200">{admin?.email || ""}</p>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="text-white border-white/50 hover:bg-white/10"
                 onClick={() => setLocation("/platform-admin")}
               >
@@ -535,7 +635,9 @@ export default function SuperAdminTenants() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total de Tenants</p>
+                  <p className="text-sm text-muted-foreground">
+                    Total de Tenants
+                  </p>
                   <p className="text-3xl font-bold">{tenants.length}</p>
                 </div>
                 <Building2 className="h-10 w-10 text-purple-500 opacity-50" />
@@ -548,7 +650,10 @@ export default function SuperAdminTenants() {
                 <div>
                   <p className="text-sm text-muted-foreground">Ativos</p>
                   <p className="text-3xl font-bold text-green-600">
-                    {tenants.filter(t => t.subscriptionStatus === "active").length}
+                    {
+                      tenants.filter(t => t.subscriptionStatus === "active")
+                        .length
+                    }
                   </p>
                 </div>
                 <CheckCircle2 className="h-10 w-10 text-green-500 opacity-50" />
@@ -561,7 +666,10 @@ export default function SuperAdminTenants() {
                 <div>
                   <p className="text-sm text-muted-foreground">Em Trial</p>
                   <p className="text-3xl font-bold text-blue-600">
-                    {tenants.filter(t => t.subscriptionStatus === "trial").length}
+                    {
+                      tenants.filter(t => t.subscriptionStatus === "trial")
+                        .length
+                    }
                   </p>
                 </div>
                 <Clock className="h-10 w-10 text-blue-500 opacity-50" />
@@ -574,7 +682,10 @@ export default function SuperAdminTenants() {
                 <div>
                   <p className="text-sm text-muted-foreground">Suspensos</p>
                   <p className="text-3xl font-bold text-yellow-600">
-                    {tenants.filter(t => t.subscriptionStatus === "suspended").length}
+                    {
+                      tenants.filter(t => t.subscriptionStatus === "suspended")
+                        .length
+                    }
                   </p>
                 </div>
                 <AlertCircle className="h-10 w-10 text-yellow-500 opacity-50" />
@@ -590,13 +701,18 @@ export default function SuperAdminTenants() {
             <Input
               placeholder="Buscar por nome ou slug..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
           <div className="flex items-center gap-3">
-            {isFetching && <Loader className="h-4 w-4 animate-spin text-gray-500" />}
-            <Button onClick={() => setShowCreateModal(true)} className="bg-purple-600 text-white shadow-lg shadow-purple-900/30 hover:bg-purple-500">
+            {isFetching && (
+              <Loader className="h-4 w-4 animate-spin text-gray-500" />
+            )}
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-purple-600 text-white shadow-lg shadow-purple-900/30 hover:bg-purple-500"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Novo Tenant
             </Button>
@@ -613,13 +729,16 @@ export default function SuperAdminTenants() {
               </CardContent>
             </Card>
           ) : filteredTenants.length > 0 ? (
-            filteredTenants.map((tenant) => (
-              <Card key={tenant.id} className="bg-white shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            filteredTenants.map(tenant => (
+              <Card
+                key={tenant.id}
+                className="bg-white shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       {/* Color indicator */}
-                      <div 
+                      <div
                         className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg"
                         style={{ backgroundColor: tenant.primaryColor }}
                       >
@@ -627,7 +746,9 @@ export default function SuperAdminTenants() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-semibold">{tenant.name}</h3>
+                          <h3 className="text-lg font-semibold">
+                            {tenant.name}
+                          </h3>
                           {getStatusBadge(tenant.subscriptionStatus)}
                           {getPlanBadge(tenant.plan)}
                         </div>
@@ -651,25 +772,41 @@ export default function SuperAdminTenants() {
                       {/* Features */}
                       <div className="flex gap-1 mr-4">
                         {tenant.featureWorkflowCR && (
-                          <Badge variant="secondary" className="text-xs">CR</Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            CR
+                          </Badge>
                         )}
                         {tenant.featureApostilamento && (
-                          <Badge variant="secondary" className="text-xs">APO</Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            APO
+                          </Badge>
                         )}
                         {tenant.featureRenovacao && (
-                          <Badge variant="secondary" className="text-xs">REN</Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            REN
+                          </Badge>
                         )}
                         {tenant.featureInsumos && (
-                          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-xs">Insumos</Badge>
+                          <Badge
+                            variant="outline"
+                            className="bg-primary/5 border-primary/20 text-xs"
+                          >
+                            Insumos
+                          </Badge>
                         )}
                         {tenant.featureIAT && (
-                          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-xs">IAT</Badge>
+                          <Badge
+                            variant="outline"
+                            className="bg-primary/5 border-primary/20 text-xs"
+                          >
+                            IAT
+                          </Badge>
                         )}
                       </div>
 
                       {/* Actions */}
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="icon"
                         title="Entrar como Admin"
                         onClick={() => handleImpersonate(tenant.id)}
@@ -677,13 +814,22 @@ export default function SuperAdminTenants() {
                       >
                         <Globe className="h-4 w-4 text-indigo-500" />
                       </Button>
-                      <Button variant="ghost" size="icon" title="Editar" onClick={() => setEditingTenant(tenant)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Editar"
+                        onClick={() => setEditingTenant(tenant)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        title={tenant.subscriptionStatus === "suspended" ? "Ativar" : "Suspender"}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={
+                          tenant.subscriptionStatus === "suspended"
+                            ? "Ativar"
+                            : "Suspender"
+                        }
                         onClick={() => toggleStatus(tenant)}
                         disabled={setStatus.isLoading}
                       >
@@ -693,10 +839,10 @@ export default function SuperAdminTenants() {
                           <PauseCircle className="h-4 w-4 text-yellow-600" />
                         )}
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-red-500 hover:text-red-700" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500 hover:text-red-700"
                         title="Excluir"
                         onClick={() => handleDelete(tenant)}
                         disabled={deleteTenant.isLoading}
@@ -721,7 +867,12 @@ export default function SuperAdminTenants() {
 
       {/* Create Tenant Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false); }}>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={e => {
+            if (e.target === e.currentTarget) setShowCreateModal(false);
+          }}
+        >
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle>Criar Novo Tenant</CardTitle>
@@ -738,9 +889,18 @@ export default function SuperAdminTenants() {
                     id="slug"
                     placeholder="meuclube"
                     value={newTenant.slug}
-                    onChange={(e) => setNewTenant({ ...newTenant, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                    onChange={e =>
+                      setNewTenant({
+                        ...newTenant,
+                        slug: e.target.value
+                          .toLowerCase()
+                          .replace(/[^a-z0-9-]/g, ""),
+                      })
+                    }
                   />
-                  <p className="text-xs text-muted-foreground">{newTenant.slug || "slug"}.cac360.com.br</p>
+                  <p className="text-xs text-muted-foreground">
+                    {newTenant.slug || "slug"}.cac360.com.br
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Clube*</Label>
@@ -748,7 +908,9 @@ export default function SuperAdminTenants() {
                     id="name"
                     placeholder="Clube de Tiro XYZ"
                     value={newTenant.name}
-                    onChange={(e) => setNewTenant({ ...newTenant, name: e.target.value })}
+                    onChange={e =>
+                      setNewTenant({ ...newTenant, name: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -766,7 +928,12 @@ export default function SuperAdminTenants() {
                       id="adminName"
                       placeholder="João Silva"
                       value={newTenant.adminName}
-                      onChange={(e) => setNewTenant({ ...newTenant, adminName: e.target.value })}
+                      onChange={e =>
+                        setNewTenant({
+                          ...newTenant,
+                          adminName: e.target.value,
+                        })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -776,7 +943,12 @@ export default function SuperAdminTenants() {
                       type="email"
                       placeholder="admin@meuclube.com"
                       value={newTenant.adminEmail}
-                      onChange={(e) => setNewTenant({ ...newTenant, adminEmail: e.target.value })}
+                      onChange={e =>
+                        setNewTenant({
+                          ...newTenant,
+                          adminEmail: e.target.value,
+                        })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -786,12 +958,18 @@ export default function SuperAdminTenants() {
                       type="password"
                       placeholder="Mínimo 6 caracteres"
                       value={newTenant.adminPassword}
-                      onChange={(e) => setNewTenant({ ...newTenant, adminPassword: e.target.value })}
+                      onChange={e =>
+                        setNewTenant({
+                          ...newTenant,
+                          adminPassword: e.target.value,
+                        })
+                      }
                     />
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Este será o primeiro administrador do tenant. Ele poderá criar novos usuários depois.
+                  Este será o primeiro administrador do tenant. Ele poderá criar
+                  novos usuários depois.
                 </p>
               </div>
 
@@ -805,43 +983,61 @@ export default function SuperAdminTenants() {
                       id="plan"
                       className="w-full p-2 border rounded-md"
                       value={newTenant.plan}
-                      onChange={(e) => {
+                      onChange={e => {
                         const slug = e.target.value;
-                        const plan = (planDefinitions as any[]).find((p: any) => p.slug === slug);
+                        const plan = (planDefinitions as any[]).find(
+                          (p: any) => p.slug === slug
+                        );
                         setNewTenant({
                           ...newTenant,
                           plan: slug as any,
-                          ...(plan ? {
-                            maxUsers: plan.maxUsers,
-                            maxClients: plan.maxClients,
-                            featureWorkflowCR: plan.featureWorkflowCR ?? true,
-                            featureApostilamento: plan.featureApostilamento ?? false,
-                            featureRenovacao: plan.featureRenovacao ?? false,
-                            featureInsumos: plan.featureInsumos ?? false,
-                            featureIAT: plan.featureIAT ?? false,
-                          } : {}),
+                          ...(plan
+                            ? {
+                                maxUsers: plan.maxUsers,
+                                maxClients: plan.maxClients,
+                                featureWorkflowCR:
+                                  plan.featureWorkflowCR ?? true,
+                                featureApostilamento:
+                                  plan.featureApostilamento ?? false,
+                                featureRenovacao:
+                                  plan.featureRenovacao ?? false,
+                                featureInsumos: plan.featureInsumos ?? false,
+                                featureIAT: plan.featureIAT ?? false,
+                              }
+                            : {}),
                         });
                       }}
                     >
-                      {(planDefinitions as any[]).length > 0
-                        ? (planDefinitions as any[])
-                            .filter((p: any) => p.isActive !== false)
-                            .sort((a: any, b: any) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
-                            .map((p: any) => (
-                              <option key={p.slug} value={p.slug}>{p.name}</option>
-                            ))
-                        : <>
-                            <option value="starter">Starter</option>
-                            <option value="professional">Professional</option>
-                            <option value="enterprise">Enterprise</option>
-                          </>
-                      }
+                      {(planDefinitions as any[]).length > 0 ? (
+                        (planDefinitions as any[])
+                          .filter((p: any) => p.isActive !== false)
+                          .sort(
+                            (a: any, b: any) =>
+                              (a.displayOrder ?? 0) - (b.displayOrder ?? 0)
+                          )
+                          .map((p: any) => (
+                            <option key={p.slug} value={p.slug}>
+                              {p.name}
+                            </option>
+                          ))
+                      ) : (
+                        <>
+                          <option value="starter">Starter</option>
+                          <option value="professional">Professional</option>
+                          <option value="enterprise">Enterprise</option>
+                        </>
+                      )}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxUsers" className="flex items-center gap-1">
+                    <Label
+                      htmlFor="maxUsers"
+                      className="flex items-center gap-1"
+                    >
                       Máx. Usuários
-                      <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                      <span className="text-[0.6rem] text-gray-400 font-normal">
+                        (incluído no plano)
+                      </span>
                     </Label>
                     <Input
                       id="maxUsers"
@@ -853,9 +1049,14 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxClients" className="flex items-center gap-1">
+                    <Label
+                      htmlFor="maxClients"
+                      className="flex items-center gap-1"
+                    >
                       Máx. Clientes
-                      <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
+                      <span className="text-[0.6rem] text-gray-400 font-normal">
+                        (incluído no plano)
+                      </span>
                     </Label>
                     <Input
                       id="maxClients"
@@ -867,27 +1068,41 @@ export default function SuperAdminTenants() {
                     />
                   </div>
                 </div>
-                {(planDefinitions as any[]).find((p: any) => p.slug === newTenant.plan) && (() => {
-                  const pd = (planDefinitions as any[]).find((p: any) => p.slug === newTenant.plan);
-                  return pd?.description ? (
-                    <p className="text-xs text-gray-500">{pd.description}</p>
-                  ) : null;
-                })()}
+                {(planDefinitions as any[]).find(
+                  (p: any) => p.slug === newTenant.plan
+                ) &&
+                  (() => {
+                    const pd = (planDefinitions as any[]).find(
+                      (p: any) => p.slug === newTenant.plan
+                    );
+                    return pd?.description ? (
+                      <p className="text-xs text-gray-500">{pd.description}</p>
+                    ) : null;
+                  })()}
               </div>
 
               {/* Features */}
               <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
                 <div>
-                  <h4 className="font-semibold text-gray-800">Módulos Disponíveis</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">Selecione os módulos ativos para este tenant</p>
+                  <h4 className="font-semibold text-gray-800">
+                    Módulos Disponíveis
+                  </h4>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Selecione os módulos ativos para este tenant
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {MODULE_DEFINITIONS.map((mod) => (
+                  {MODULE_DEFINITIONS.map(mod => (
                     <ModuleCard
                       key={mod.key}
                       mod={mod}
                       enabled={!!newTenant[mod.key]}
-                      onToggle={() => setNewTenant({ ...newTenant, [mod.key]: !newTenant[mod.key] })}
+                      onToggle={() =>
+                        setNewTenant({
+                          ...newTenant,
+                          [mod.key]: !newTenant[mod.key],
+                        })
+                      }
                     />
                   ))}
                 </div>
@@ -895,11 +1110,20 @@ export default function SuperAdminTenants() {
 
               {/* Actions */}
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCreateModal(false)}
+                >
                   Cancelar
                 </Button>
-                <Button onClick={handleCreateTenant} className="bg-purple-600 hover:bg-purple-700" disabled={createTenant.isLoading}>
-                  {createTenant.isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Button
+                  onClick={handleCreateTenant}
+                  className="bg-purple-600 hover:bg-purple-700"
+                  disabled={createTenant.isLoading}
+                >
+                  {createTenant.isLoading && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   Criar Tenant
                 </Button>
               </div>
@@ -913,21 +1137,25 @@ export default function SuperAdminTenants() {
         <div className="fixed inset-0 z-50">
           {/* Backdrop */}
           <div
-            className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${panelMounted ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${panelMounted ? "opacity-100" : "opacity-0"}`}
             onClick={closeEditPanel}
           />
 
           {/* Panel - slides from right */}
           <div
             className={`absolute top-0 right-0 h-full w-[75vw] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
-              panelMounted ? 'translate-x-0' : 'translate-x-full'
+              panelMounted ? "translate-x-0" : "translate-x-full"
             }`}
           >
             {/* Panel Header */}
             <div className="bg-purple-700 px-6 py-4 flex items-center justify-between shrink-0">
               <div>
-                <h2 className="text-white font-semibold text-lg">Editar Tenant</h2>
-                <p className="text-white/60 text-sm">{editingTenant.name} &middot; {editingTenant.slug}</p>
+                <h2 className="text-white font-semibold text-lg">
+                  Editar Tenant
+                </h2>
+                <p className="text-white/60 text-sm">
+                  {editingTenant.name} &middot; {editingTenant.slug}
+                </p>
               </div>
               <button
                 onClick={closeEditPanel}
@@ -940,210 +1168,261 @@ export default function SuperAdminTenants() {
             {/* Panel Content */}
             <div className="flex-1 overflow-y-auto bg-[#f5f5f5]">
               <div className="p-6 space-y-6">
-              {/* Tabs Navigation */}
-              <div className="flex gap-2 border-b">
-                <button
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "general"
-                      ? "border-b-2 border-purple-600 text-purple-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveTab("general")}
-                >
-                  Geral
-                </button>
-                <button
-                  className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
-                    activeTab === "email"
-                      ? "border-b-2 border-purple-600 text-purple-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveTab("email")}
-                >
-                  <Mail className="h-4 w-4" />
-                  Email & SMTP
-                </button>
-                <button
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "templates"
-                      ? "border-b-2 border-purple-600 text-purple-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveTab("templates")}
-                >
-                  Templates
-                </button>
-                <button
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "triggers"
-                      ? "border-b-2 border-purple-600 text-purple-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveTab("triggers")}
-                >
-                  Automações
-                </button>
-                <button
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "billing"
-                      ? "border-b-2 border-purple-600 text-purple-600"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setActiveTab("billing")}
-                >
-                  Financeiro
-                </button>
-              </div>
-
-              {/* Tab Content - General */}
-              {activeTab === "general" && (
-                <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Nome</Label>
-                  <Input
-                    value={editingTenant.name}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Slug</Label>
-                  <Input value={editingTenant.slug} disabled />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Cor primária</Label>
-                  <Input
-                    value={editingTenant.primaryColor}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, primaryColor: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Cor secundária</Label>
-                  <Input
-                    value={editingTenant.secondaryColor}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, secondaryColor: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Plano</Label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    value={editingTenant.plan}
-                    onChange={(e) => {
-                      const slug = e.target.value;
-                      const plan = (planDefinitions as any[]).find((p: any) => p.slug === slug);
-                      setEditingTenant({
-                        ...editingTenant,
-                        plan: slug as Tenant["plan"],
-                        ...(plan ? {
-                          maxUsers: plan.maxUsers,
-                          maxClients: plan.maxClients,
-                          featureWorkflowCR: plan.featureWorkflowCR ?? true,
-                          featureApostilamento: plan.featureApostilamento ?? false,
-                          featureRenovacao: plan.featureRenovacao ?? false,
-                          featureInsumos: plan.featureInsumos ?? false,
-                          featureIAT: plan.featureIAT ?? false,
-                        } : {}),
-                      });
-                    }}
+                {/* Tabs Navigation */}
+                <div className="flex gap-2 border-b">
+                  <button
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      activeTab === "general"
+                        ? "border-b-2 border-purple-600 text-purple-600"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    onClick={() => setActiveTab("general")}
                   >
-                    {(planDefinitions as any[]).length > 0
-                      ? (planDefinitions as any[])
-                          .filter((p: any) => p.isActive !== false)
-                          .sort((a: any, b: any) => a.displayOrder - b.displayOrder)
-                          .map((p: any) => (
-                            <option key={p.slug} value={p.slug}>{p.name}</option>
-                          ))
-                      : <>
-                          <option value="starter">Starter</option>
-                          <option value="professional">Professional</option>
-                          <option value="enterprise">Enterprise</option>
-                        </>
-                    }
-                  </select>
+                    Geral
+                  </button>
+                  <button
+                    className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
+                      activeTab === "email"
+                        ? "border-b-2 border-purple-600 text-purple-600"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    onClick={() => setActiveTab("email")}
+                  >
+                    <Mail className="h-4 w-4" />
+                    Email & SMTP
+                  </button>
+                  <button
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      activeTab === "templates"
+                        ? "border-b-2 border-purple-600 text-purple-600"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    onClick={() => setActiveTab("templates")}
+                  >
+                    Templates
+                  </button>
+                  <button
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      activeTab === "triggers"
+                        ? "border-b-2 border-purple-600 text-purple-600"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    onClick={() => setActiveTab("triggers")}
+                  >
+                    Automações
+                  </button>
+                  <button
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      activeTab === "billing"
+                        ? "border-b-2 border-purple-600 text-purple-600"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    onClick={() => setActiveTab("billing")}
+                  >
+                    Financeiro
+                  </button>
                 </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    Máx. Usuários
-                    <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    value={editingTenant.maxUsers}
-                    readOnly
-                    disabled
-                    className="bg-gray-50 text-gray-500 cursor-default"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    Máx. Clientes
-                    <span className="text-[0.6rem] text-gray-400 font-normal">(incluído no plano)</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    value={editingTenant.maxClients}
-                    readOnly
-                    disabled
-                    className="bg-gray-50 text-gray-500 cursor-default"
-                  />
-                </div>
-              </div>
 
-              <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
-                <div>
-                  <h4 className="font-semibold text-gray-800">Módulos Disponíveis</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">Selecione os módulos ativos para este tenant</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {MODULE_DEFINITIONS.map((mod) => (
-                    <ModuleCard
-                      key={mod.key}
-                      mod={mod}
-                      enabled={!!editingTenant[mod.key]}
-                      onToggle={() => setEditingTenant({ ...editingTenant, [mod.key]: !editingTenant[mod.key] })}
-                    />
-                  ))}
-                </div>
-              </div>
+                {/* Tab Content - General */}
+                {activeTab === "general" && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Nome</Label>
+                        <Input
+                          value={editingTenant.name}
+                          onChange={e =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              name: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Slug</Label>
+                        <Input value={editingTenant.slug} disabled />
+                      </div>
+                    </div>
 
-                  <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button variant="outline" onClick={closeEditPanel}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleUpdateTenant} className="bg-purple-600 hover:bg-purple-700" disabled={updateTenant.isLoading}>
-                      {updateTenant.isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Salvar alterações
-                    </Button>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Cor primária</Label>
+                        <Input
+                          value={editingTenant.primaryColor}
+                          onChange={e =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              primaryColor: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cor secundária</Label>
+                        <Input
+                          value={editingTenant.secondaryColor}
+                          onChange={e =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              secondaryColor: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Plano</Label>
+                        <select
+                          className="w-full p-2 border rounded-md"
+                          value={editingTenant.plan}
+                          onChange={e => {
+                            const slug = e.target.value;
+                            const plan = (planDefinitions as any[]).find(
+                              (p: any) => p.slug === slug
+                            );
+                            setEditingTenant({
+                              ...editingTenant,
+                              plan: slug as Tenant["plan"],
+                              ...(plan
+                                ? {
+                                    maxUsers: plan.maxUsers,
+                                    maxClients: plan.maxClients,
+                                    featureWorkflowCR:
+                                      plan.featureWorkflowCR ?? true,
+                                    featureApostilamento:
+                                      plan.featureApostilamento ?? false,
+                                    featureRenovacao:
+                                      plan.featureRenovacao ?? false,
+                                    featureInsumos:
+                                      plan.featureInsumos ?? false,
+                                    featureIAT: plan.featureIAT ?? false,
+                                  }
+                                : {}),
+                            });
+                          }}
+                        >
+                          {(planDefinitions as any[]).length > 0 ? (
+                            (planDefinitions as any[])
+                              .filter((p: any) => p.isActive !== false)
+                              .sort(
+                                (a: any, b: any) =>
+                                  a.displayOrder - b.displayOrder
+                              )
+                              .map((p: any) => (
+                                <option key={p.slug} value={p.slug}>
+                                  {p.name}
+                                </option>
+                              ))
+                          ) : (
+                            <>
+                              <option value="starter">Starter</option>
+                              <option value="professional">Professional</option>
+                              <option value="enterprise">Enterprise</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1">
+                          Máx. Usuários
+                          <span className="text-[0.6rem] text-gray-400 font-normal">
+                            (incluído no plano)
+                          </span>
+                        </Label>
+                        <Input
+                          type="number"
+                          value={editingTenant.maxUsers}
+                          readOnly
+                          disabled
+                          className="bg-gray-50 text-gray-500 cursor-default"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1">
+                          Máx. Clientes
+                          <span className="text-[0.6rem] text-gray-400 font-normal">
+                            (incluído no plano)
+                          </span>
+                        </Label>
+                        <Input
+                          type="number"
+                          value={editingTenant.maxClients}
+                          readOnly
+                          disabled
+                          className="bg-gray-50 text-gray-500 cursor-default"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                      <div>
+                        <h4 className="font-semibold text-gray-800">
+                          Módulos Disponíveis
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Selecione os módulos ativos para este tenant
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {MODULE_DEFINITIONS.map(mod => (
+                          <ModuleCard
+                            key={mod.key}
+                            mod={mod}
+                            enabled={!!editingTenant[mod.key]}
+                            onToggle={() =>
+                              setEditingTenant({
+                                ...editingTenant,
+                                [mod.key]: !editingTenant[mod.key],
+                              })
+                            }
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4 border-t">
+                      <Button variant="outline" onClick={closeEditPanel}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={handleUpdateTenant}
+                        className="bg-purple-600 hover:bg-purple-700"
+                        disabled={updateTenant.isLoading}
+                      >
+                        {updateTenant.isLoading && (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        )}
+                        Salvar alterações
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Tab Content - Email */}
-              {activeTab === "email" && (
-                <EmailConfigPanel tenantId={editingTenant.id} />
-              )}
+                {/* Tab Content - Email */}
+                {activeTab === "email" && (
+                  <EmailConfigPanel tenantId={editingTenant.id} />
+                )}
 
-              {/* Tab Content - Templates */}
-              {activeTab === "templates" && (
-                <EmailTemplatesPanel tenantId={editingTenant.id} />
-              )}
+                {/* Tab Content - Templates */}
+                {activeTab === "templates" && (
+                  <EmailTemplatesPanel tenantId={editingTenant.id} />
+                )}
 
-              {/* Tab Content - Triggers */}
-              {activeTab === "triggers" && (
-                <EmailTriggersPanel tenantId={editingTenant.id} />
-              )}
+                {/* Tab Content - Triggers */}
+                {activeTab === "triggers" && (
+                  <EmailTriggersPanel tenantId={editingTenant.id} />
+                )}
 
-              {/* Tab Content - Billing */}
-              {activeTab === "billing" && (
-                <TenantBillingPanel tenantId={editingTenant.id} tenantName={editingTenant.name} />
-              )}
+                {/* Tab Content - Billing */}
+                {activeTab === "billing" && (
+                  <TenantBillingPanel
+                    tenantId={editingTenant.id}
+                    tenantName={editingTenant.name}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -1151,7 +1430,15 @@ export default function SuperAdminTenants() {
       )}
       {/* Impersonate Password Modal */}
       {impersonatingTenantId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) { setImpersonatingTenantId(null); setImpersonatePassword(""); } }}>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={e => {
+            if (e.target === e.currentTarget) {
+              setImpersonatingTenantId(null);
+              setImpersonatePassword("");
+            }
+          }}
+        >
           <Card className="w-full max-w-md">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1159,10 +1446,19 @@ export default function SuperAdminTenants() {
                   <Globe className="h-5 w-5 text-indigo-500" />
                   Confirmação de Acesso
                 </CardTitle>
-                <button onClick={() => { setImpersonatingTenantId(null); setImpersonatePassword(""); }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                <button
+                  onClick={() => {
+                    setImpersonatingTenantId(null);
+                    setImpersonatePassword("");
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+                >
+                  &times;
+                </button>
               </div>
               <CardDescription>
-                Para acessar este tenant como administrador, digite sua senha de Super Admin.
+                Para acessar este tenant como administrador, digite sua senha de
+                Super Admin.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1173,9 +1469,11 @@ export default function SuperAdminTenants() {
                   type="password"
                   placeholder="Sua senha de Super Admin"
                   value={impersonatePassword}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setImpersonatePassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setImpersonatePassword(e.target.value)
+                  }
                   onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
                       confirmImpersonate();
                     }
@@ -1184,8 +1482,8 @@ export default function SuperAdminTenants() {
                 />
               </div>
               <div className="flex justify-end gap-2 pt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setImpersonatingTenantId(null);
                     setImpersonatePassword("");
@@ -1193,12 +1491,14 @@ export default function SuperAdminTenants() {
                 >
                   Cancelar
                 </Button>
-                <Button 
+                <Button
                   onClick={confirmImpersonate}
                   disabled={!impersonatePassword || impersonate.isPending}
                   className="bg-indigo-600 hover:bg-indigo-700"
                 >
-                  {impersonate.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {impersonate.isPending && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   Confirmar Acesso
                 </Button>
               </div>

@@ -3,11 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Popover, PopoverContent, PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  ChevronLeft, ChevronRight, CalendarDays, Clock,
-  MapPin, User, BookOpen, ClipboardList, Layers, X,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  Clock,
+  MapPin,
+  User,
+  BookOpen,
+  ClipboardList,
+  Layers,
+  X,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -79,8 +89,18 @@ export type CalendarEvent = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const PT_MONTHS = [
-  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
 ];
 
 const PT_WEEKDAYS_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -159,37 +179,48 @@ function EventDetailCard({ event }: { event: CalendarEvent }) {
   const Icon = cfg.icon;
 
   return (
-    <div className={`rounded-lg border p-3 space-y-1.5 ${cfg.bg} ${cfg.border}`}>
+    <div
+      className={`rounded-lg border p-3 space-y-1.5 ${cfg.bg} ${cfg.border}`}
+    >
       <div className="flex items-start gap-2">
         <Icon className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${cfg.text}`} />
         <div className="min-w-0 flex-1">
-          <p className={`text-sm font-semibold leading-tight ${cfg.text}`}>{event.title}</p>
+          <p className={`text-sm font-semibold leading-tight ${cfg.text}`}>
+            {event.title}
+          </p>
           {event.subtitle && (
             <p className="text-xs text-muted-foreground">{event.subtitle}</p>
           )}
         </div>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase shrink-0 ${cfg.badgeBg}`}>
+        <span
+          className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase shrink-0 ${cfg.badgeBg}`}
+        >
           {cfg.label}
         </span>
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground pl-5">
         {event.time && (
           <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />{event.time}
+            <Clock className="h-3 w-3" />
+            {event.time}
           </span>
         )}
         {event.location && (
           <span className="flex items-center gap-1">
-            <MapPin className="h-3 w-3" />{event.location}
+            <MapPin className="h-3 w-3" />
+            {event.location}
           </span>
         )}
         {event.instructor && (
           <span className="flex items-center gap-1">
-            <User className="h-3 w-3" />{event.instructor}
+            <User className="h-3 w-3" />
+            {event.instructor}
           </span>
         )}
         <span className={`flex items-center gap-1`}>
-          <span className={`h-2 w-2 rounded-full inline-block ${STATUS_DOT[event.status] ?? "bg-slate-400"}`} />
+          <span
+            className={`h-2 w-2 rounded-full inline-block ${STATUS_DOT[event.status] ?? "bg-slate-400"}`}
+          />
           {event.status}
         </span>
       </div>
@@ -213,7 +244,9 @@ function DayCell({
   const [open, setOpen] = useState(false);
 
   if (!date) {
-    return <div className="h-24 sm:h-28 border-r border-b border-white/5 last:border-r-0" />;
+    return (
+      <div className="h-24 sm:h-28 border-r border-b border-white/5 last:border-r-0" />
+    );
   }
 
   const MAX_VISIBLE = 2;
@@ -239,8 +272,8 @@ function DayCell({
             isToday
               ? "bg-primary text-primary-foreground font-bold"
               : isOtherMonth
-              ? "text-muted-foreground/40"
-              : "text-foreground",
+                ? "text-muted-foreground/40"
+                : "text-foreground",
           ].join(" ")}
         >
           {date.getDate()}
@@ -249,14 +282,17 @@ function DayCell({
 
       {/* Event pills */}
       <div className="flex flex-col gap-0.5 flex-1 overflow-hidden">
-        {visible.map((ev) => {
+        {visible.map(ev => {
           const cfg = EVENT_TYPE_CONFIG[ev.type];
           return (
             <div
               key={ev.id}
               className={[
                 "text-[10px] leading-tight px-1.5 py-0.5 rounded truncate font-medium",
-                cfg.bg, cfg.text, "border", cfg.border,
+                cfg.bg,
+                cfg.text,
+                "border",
+                cfg.border,
               ].join(" ")}
               title={ev.title}
             >
@@ -287,14 +323,21 @@ function DayCell({
       >
         <div className="flex items-center justify-between pb-1 border-b border-white/10">
           <p className="text-sm font-semibold">
-            {date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+            {date.toLocaleDateString("pt-BR", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
           </p>
-          <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+          <button
+            onClick={() => setOpen(false)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-          {events.map((ev) => (
+          {events.map(ev => (
             <EventDetailCard key={ev.id} event={ev} />
           ))}
         </div>
@@ -308,9 +351,19 @@ function DayCell({
 function Legend() {
   return (
     <div className="flex flex-wrap gap-3">
-      {(Object.entries(EVENT_TYPE_CONFIG) as [keyof typeof EVENT_TYPE_CONFIG, typeof EVENT_TYPE_CONFIG[keyof typeof EVENT_TYPE_CONFIG]][]).map(([, cfg]) => (
-        <span key={cfg.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className={`h-2.5 w-2.5 rounded-sm ${cfg.bg} border ${cfg.border}`} />
+      {(
+        Object.entries(EVENT_TYPE_CONFIG) as [
+          keyof typeof EVENT_TYPE_CONFIG,
+          (typeof EVENT_TYPE_CONFIG)[keyof typeof EVENT_TYPE_CONFIG],
+        ][]
+      ).map(([, cfg]) => (
+        <span
+          key={cfg.label}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground"
+        >
+          <span
+            className={`h-2.5 w-2.5 rounded-sm ${cfg.bg} border ${cfg.border}`}
+          />
           {cfg.label}
         </span>
       ))}
@@ -336,7 +389,9 @@ export default function IATCalendarView({
   courses,
 }: IATCalendarViewProps) {
   const today = new Date();
-  const [viewDate, setViewDate] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [viewDate, setViewDate] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1)
+  );
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -349,8 +404,8 @@ export default function IATCalendarView({
     for (const s of schedules) {
       if (!s.scheduledDate) continue;
       const dateStr = s.scheduledDate.slice(0, 10);
-      const inst = instructors.find((i) => i.id === s.instructorId);
-      const course = courses.find((c) => c.id === s.courseId);
+      const inst = instructors.find(i => i.id === s.instructorId);
+      const course = courses.find(c => c.id === s.courseId);
       result.push({
         id: `sched-${s.id}`,
         date: dateStr,
@@ -369,13 +424,15 @@ export default function IATCalendarView({
     for (const c of classes) {
       if (!c.scheduledDate) continue;
       const dateStr = c.scheduledDate.slice(0, 10);
-      const course = courses.find((co) => co.id === c.courseId);
-      const inst = instructors.find((i) => i.id === c.instructorId);
+      const course = courses.find(co => co.id === c.courseId);
+      const inst = instructors.find(i => i.id === c.instructorId);
       result.push({
         id: `class-${c.id}`,
         date: dateStr,
         type: "class",
-        title: c.classNumber ? `Turma ${c.classNumber}` : c.title ?? `Turma #${c.id}`,
+        title: c.classNumber
+          ? `Turma ${c.classNumber}`
+          : (c.title ?? `Turma #${c.id}`),
         subtitle: course?.title,
         time: c.scheduledTime ?? null,
         location: c.location ?? null,
@@ -389,14 +446,15 @@ export default function IATCalendarView({
     for (const e of exams) {
       if (!e.scheduledDate) continue;
       const dateStr = e.scheduledDate.slice(0, 10);
-      const inst = instructors.find((i) => i.id === e.instructorId);
-      const course = courses.find((c) => c.id === e.courseId);
+      const inst = instructors.find(i => i.id === e.instructorId);
+      const course = courses.find(c => c.id === e.courseId);
       result.push({
         id: `exam-${e.id}`,
         date: dateStr,
         type: "exam",
         title: e.examType,
-        subtitle: course?.title ?? (e.weaponType ? `Arma: ${e.weaponType}` : undefined),
+        subtitle:
+          course?.title ?? (e.weaponType ? `Arma: ${e.weaponType}` : undefined),
         time: null,
         location: null,
         status: e.status,
@@ -426,7 +484,7 @@ export default function IATCalendarView({
 
   // Events in current month for the list view
   const monthPrefix = `${String(year).padStart(4, "0")}-${String(month + 1).padStart(2, "0")}`;
-  const monthEvents = allEvents.filter((ev) => ev.date.startsWith(monthPrefix));
+  const monthEvents = allEvents.filter(ev => ev.date.startsWith(monthPrefix));
 
   // ── Calendar grid ──────────────────────────────────────────────────────────
   const grid = useMemo(() => buildCalendarGrid(year, month), [year, month]);
@@ -435,9 +493,11 @@ export default function IATCalendarView({
 
   const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
-  const goToday   = () => setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  const goToday = () =>
+    setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
 
-  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+  const isCurrentMonth =
+    year === today.getFullYear() && month === today.getMonth();
 
   return (
     <div className="space-y-4">
@@ -462,10 +522,20 @@ export default function IATCalendarView({
               Hoje
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={prevMonth}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={nextMonth}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -475,7 +545,7 @@ export default function IATCalendarView({
       <Card className="bg-card/95 backdrop-blur-sm border border-white/20 overflow-hidden">
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b border-white/10">
-          {PT_WEEKDAYS_SHORT.map((wd) => (
+          {PT_WEEKDAYS_SHORT.map(wd => (
             <div
               key={wd}
               className="py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
@@ -516,7 +586,7 @@ export default function IATCalendarView({
             Eventos do mês
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {monthEvents.map((ev) => {
+            {monthEvents.map(ev => {
               const cfg = EVENT_TYPE_CONFIG[ev.type];
               const Icon = cfg.icon;
               const parsedDate = parseYMD(ev.date);
@@ -525,20 +595,28 @@ export default function IATCalendarView({
                   key={ev.id}
                   className={`rounded-lg border p-3 flex items-start gap-3 ${cfg.bg} ${cfg.border}`}
                 >
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 bg-card/50 border ${cfg.border}`}>
+                  <div
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 bg-card/50 border ${cfg.border}`}
+                  >
                     <Icon className={`h-4 w-4 ${cfg.text}`} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm font-semibold leading-tight ${cfg.text} truncate`}>
+                      <p
+                        className={`text-sm font-semibold leading-tight ${cfg.text} truncate`}
+                      >
                         {ev.title}
                       </p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase shrink-0 ${cfg.badgeBg}`}>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase shrink-0 ${cfg.badgeBg}`}
+                      >
                         {cfg.label}
                       </span>
                     </div>
                     {ev.subtitle && (
-                      <p className="text-xs text-muted-foreground truncate">{ev.subtitle}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {ev.subtitle}
+                      </p>
                     )}
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-1">
                       <span className="flex items-center gap-1">
@@ -552,12 +630,14 @@ export default function IATCalendarView({
                       </span>
                       {ev.location && (
                         <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />{ev.location}
+                          <MapPin className="h-3 w-3" />
+                          {ev.location}
                         </span>
                       )}
                       {ev.instructor && (
                         <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />{ev.instructor}
+                          <User className="h-3 w-3" />
+                          {ev.instructor}
                         </span>
                       )}
                     </div>

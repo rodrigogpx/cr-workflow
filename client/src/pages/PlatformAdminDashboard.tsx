@@ -1,6 +1,6 @@
 /**
  * Platform Admin - Dashboard
- * 
+ *
  * Página inicial da administração da plataforma CAC 360.
  * Exibe estatísticas globais, métricas financeiras e navegação para sub-seções.
  */
@@ -12,7 +12,13 @@ import { usePlatformAuth } from "@/_core/hooks/usePlatformAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import SuperAdminTenantsPage from "./SuperAdminTenants";
 import { AdminForm } from "@/components/platform-admin/AdminForm";
 import { ChangePasswordDialog } from "@/components/platform-admin/ChangePasswordDialog";
@@ -58,7 +64,7 @@ const ROLE_COLORS: Record<string, string> = {
 export default function PlatformAdminDashboard() {
   const [, setLocation] = useLocation();
   const { admin, role, isSuperAdmin, logout, loading } = usePlatformAuth({
-    redirectOnUnauthenticated: true
+    redirectOnUnauthenticated: true,
   });
 
   const [tenantsOpen, setTenantsOpen] = useState(false);
@@ -67,20 +73,30 @@ export default function PlatformAdminDashboard() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
-  const { data: tenants = [], isLoading: isLoadingTenants } = trpc.tenants.list.useQuery();
-  const { data: globalStats, isLoading: isLoadingStats } = trpc.tenants.getGlobalStats.useQuery();
+  const { data: tenants = [], isLoading: isLoadingTenants } =
+    trpc.tenants.list.useQuery();
+  const { data: globalStats, isLoading: isLoadingStats } =
+    trpc.tenants.getGlobalStats.useQuery();
   const { data: billingMetrics } = trpc.billing.metrics.useQuery();
 
   const tenantStats = useMemo(() => {
-    const active = tenants.filter((t) => t.subscriptionStatus === "active").length;
-    const trial = tenants.filter((t) => t.subscriptionStatus === "trial").length;
-    const suspended = tenants.filter((t) => t.subscriptionStatus === "suspended").length;
-    const cancelled = tenants.filter((t) => t.subscriptionStatus === "cancelled").length;
+    const active = tenants.filter(
+      t => t.subscriptionStatus === "active"
+    ).length;
+    const trial = tenants.filter(t => t.subscriptionStatus === "trial").length;
+    const suspended = tenants.filter(
+      t => t.subscriptionStatus === "suspended"
+    ).length;
+    const cancelled = tenants.filter(
+      t => t.subscriptionStatus === "cancelled"
+    ).length;
     return { active, trial, suspended, cancelled, total: tenants.length };
   }, [tenants]);
 
-  const roleLabel = role ? ROLE_LABELS[role] ?? role : "Administrador";
-  const roleClass = role ? ROLE_COLORS[role] ?? ROLE_COLORS["support"] : ROLE_COLORS["support"];
+  const roleLabel = role ? (ROLE_LABELS[role] ?? role) : "Administrador";
+  const roleClass = role
+    ? (ROLE_COLORS[role] ?? ROLE_COLORS["support"])
+    : ROLE_COLORS["support"];
 
   const navItems = [
     {
@@ -130,7 +146,7 @@ export default function PlatformAdminDashboard() {
       iconColor: "text-slate-400",
       visible: true,
     },
-  ].filter((item) => item.visible);
+  ].filter(item => item.visible);
 
   // Block render while authenticating or when unauthenticated (redirect pending)
   if (loading || !admin) return null;
@@ -152,15 +168,23 @@ export default function PlatformAdminDashboard() {
               <div className="flex items-center gap-4">
                 <img src={APP_LOGO} alt="CAC 360" className="h-10 w-auto" />
                 <div>
-                  <h1 className="text-xl font-bold">CAC 360 — Platform Admin</h1>
-                  <p className="text-sm text-purple-200">Painel de Administração</p>
+                  <h1 className="text-xl font-bold">
+                    CAC 360 — Platform Admin
+                  </h1>
+                  <p className="text-sm text-purple-200">
+                    Painel de Administração
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right hidden sm:block">
-                  <p className="text-sm font-semibold">{admin?.name || "Admin"}</p>
+                  <p className="text-sm font-semibold">
+                    {admin?.name || "Admin"}
+                  </p>
                   <div className="flex items-center gap-2 justify-end">
-                    <p className="text-xs text-purple-200">{admin?.email || ""}</p>
+                    <p className="text-xs text-purple-200">
+                      {admin?.email || ""}
+                    </p>
                     <span
                       className={`text-[0.6rem] font-semibold px-1.5 py-0.5 rounded border ${roleClass}`}
                     >
@@ -198,7 +222,9 @@ export default function PlatformAdminDashboard() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Total de Tenants</p>
+                      <p className="text-sm text-muted-foreground">
+                        Total de Tenants
+                      </p>
                       <p className="text-3xl font-bold">
                         {isLoadingTenants ? (
                           <Loader2 className="h-6 w-6 animate-spin" />
@@ -273,7 +299,9 @@ export default function PlatformAdminDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-white/60">Usuários Totais</p>
-                      <p className="text-2xl font-bold text-white">{globalStats.totalUsers}</p>
+                      <p className="text-2xl font-bold text-white">
+                        {globalStats.totalUsers}
+                      </p>
                     </div>
                     <Users className="h-8 w-8 text-blue-400 opacity-60" />
                   </div>
@@ -284,7 +312,9 @@ export default function PlatformAdminDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-white/60">Banco de Dados</p>
-                      <p className="text-2xl font-bold text-white">{globalStats.platformDbSizeMB} MB</p>
+                      <p className="text-2xl font-bold text-white">
+                        {globalStats.platformDbSizeMB} MB
+                      </p>
                     </div>
                     <Database className="h-8 w-8 text-indigo-400 opacity-60" />
                   </div>
@@ -295,7 +325,9 @@ export default function PlatformAdminDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-white/60">Armazenamento</p>
-                      <p className="text-2xl font-bold text-white">{globalStats.globalStorageGB} GB</p>
+                      <p className="text-2xl font-bold text-white">
+                        {globalStats.globalStorageGB} GB
+                      </p>
                     </div>
                     <HardDrive className="h-8 w-8 text-amber-400 opacity-60" />
                   </div>
@@ -312,15 +344,21 @@ export default function PlatformAdminDashboard() {
             </h2>
             {(() => {
               const mrrValue = billingMetrics?.mrrBRL ?? 0;
-              const mrrFormatted = billingMetrics?.mrrFormatted ?? 'R$ 0,00';
+              const mrrFormatted = billingMetrics?.mrrFormatted ?? "R$ 0,00";
               const planCounts = billingMetrics?.tenantsByPlan ?? {};
-              const totalActive = (Object.values(planCounts) as number[]).reduce((a, b) => a + b, 0);
-              const ticketMedio = totalActive > 0 ? Math.round(mrrValue / totalActive) : 0;
-              const ticketFormatted = `R$ ${(ticketMedio / 100).toFixed(2).replace('.', ',')}`;
+              const totalActive = (
+                Object.values(planCounts) as number[]
+              ).reduce((a, b) => a + b, 0);
+              const ticketMedio =
+                totalActive > 0 ? Math.round(mrrValue / totalActive) : 0;
+              const ticketFormatted = `R$ ${(ticketMedio / 100).toFixed(2).replace(".", ",")}`;
               const cancelledCount = tenantStats.cancelled;
               const totalTenants = tenantStats.total;
-              const churnRate = totalTenants > 0 ? ((cancelledCount / totalTenants) * 100).toFixed(1) : '0.0';
-              const arrFormatted = `R$ ${((mrrValue * 12) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+              const churnRate =
+                totalTenants > 0
+                  ? ((cancelledCount / totalTenants) * 100).toFixed(1)
+                  : "0.0";
+              const arrFormatted = `R$ ${((mrrValue * 12) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
               return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card className="bg-white/10 backdrop-blur-sm border-white/10 shadow-lg">
@@ -328,8 +366,12 @@ export default function PlatformAdminDashboard() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-white/60">MRR</p>
-                          <p className="text-2xl font-bold text-white">{mrrFormatted}</p>
-                          <p className="text-xs text-white/40 mt-1">Receita Recorrente Mensal</p>
+                          <p className="text-2xl font-bold text-white">
+                            {mrrFormatted}
+                          </p>
+                          <p className="text-xs text-white/40 mt-1">
+                            Receita Recorrente Mensal
+                          </p>
                         </div>
                         <TrendingUp className="h-8 w-8 text-green-400 opacity-60" />
                       </div>
@@ -340,8 +382,12 @@ export default function PlatformAdminDashboard() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-white/60">ARR</p>
-                          <p className="text-2xl font-bold text-white">{arrFormatted}</p>
-                          <p className="text-xs text-white/40 mt-1">Receita Recorrente Anual</p>
+                          <p className="text-2xl font-bold text-white">
+                            {arrFormatted}
+                          </p>
+                          <p className="text-xs text-white/40 mt-1">
+                            Receita Recorrente Anual
+                          </p>
                         </div>
                         <CreditCard className="h-8 w-8 text-blue-400 opacity-60" />
                       </div>
@@ -352,8 +398,12 @@ export default function PlatformAdminDashboard() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-white/60">Churn Rate</p>
-                          <p className="text-2xl font-bold text-white">{churnRate}%</p>
-                          <p className="text-xs text-white/40 mt-1">Taxa de cancelamento</p>
+                          <p className="text-2xl font-bold text-white">
+                            {churnRate}%
+                          </p>
+                          <p className="text-xs text-white/40 mt-1">
+                            Taxa de cancelamento
+                          </p>
                         </div>
                         <TrendingDown className="h-8 w-8 text-red-400 opacity-60" />
                       </div>
@@ -364,8 +414,12 @@ export default function PlatformAdminDashboard() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-white/60">Ticket Médio</p>
-                          <p className="text-2xl font-bold text-white">{ticketFormatted}</p>
-                          <p className="text-xs text-white/40 mt-1">Valor médio por tenant</p>
+                          <p className="text-2xl font-bold text-white">
+                            {ticketFormatted}
+                          </p>
+                          <p className="text-xs text-white/40 mt-1">
+                            Valor médio por tenant
+                          </p>
                         </div>
                         <DollarSign className="h-8 w-8 text-amber-400 opacity-60" />
                       </div>
@@ -382,12 +436,14 @@ export default function PlatformAdminDashboard() {
               Gerenciamento
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {navItems.map((item) => {
+              {navItems.map(item => {
                 const Icon = item.icon;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => item.action ? item.action() : setLocation(item.path)}
+                    onClick={() =>
+                      item.action ? item.action() : setLocation(item.path)
+                    }
                     className="group relative bg-white/95 backdrop-blur-sm rounded-xl border border-white/40 p-6 text-left transition-all duration-200 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <div className="flex items-start justify-between">
@@ -397,7 +453,9 @@ export default function PlatformAdminDashboard() {
                       <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors mt-1" />
                     </div>
                     <div className="mt-4">
-                      <h3 className="font-semibold text-gray-900 text-base">{item.label}</h3>
+                      <h3 className="font-semibold text-gray-900 text-base">
+                        {item.label}
+                      </h3>
                       <p className="text-sm text-gray-500 mt-1 leading-relaxed">
                         {item.description}
                       </p>
@@ -427,8 +485,8 @@ export default function PlatformAdminDashboard() {
       <Sheet open={billingOpen} onOpenChange={setBillingOpen}>
         <SheetContent
           side="right"
-          onInteractOutside={(e) => e.preventDefault()}
-          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={e => e.preventDefault()}
+          onPointerDownOutside={e => e.preventDefault()}
           className="w-full sm:w-[70vw] sm:max-w-none p-0 overflow-y-auto [&>button]:z-50 [&>button]:text-white [&>button]:bg-green-900/80 [&>button]:rounded-md [&>button]:p-1"
         >
           <BillingOverviewPanel />
@@ -437,14 +495,19 @@ export default function PlatformAdminDashboard() {
 
       {/* Settings Sheet */}
       <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <SheetContent side="right" className="w-full sm:w-[60vw] sm:max-w-none flex flex-col bg-background border-l-2 border-dashed border-white/20 overflow-y-auto">
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[60vw] sm:max-w-none flex flex-col bg-background border-l-2 border-dashed border-white/20 overflow-y-auto"
+        >
           <SheetHeader className="border-b-2 border-dashed border-white/20 pb-4 shrink-0">
             <div className="flex items-center gap-3">
               <div className="bg-card rounded-md p-2">
                 <Cog className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
-                <SheetTitle className="text-foreground text-lg font-bold uppercase">Configurações</SheetTitle>
+                <SheetTitle className="text-foreground text-lg font-bold uppercase">
+                  Configurações
+                </SheetTitle>
                 <SheetDescription>
                   Perfil e parâmetros da plataforma
                 </SheetDescription>
@@ -463,25 +526,46 @@ export default function PlatformAdminDashboard() {
                 <CardContent className="pt-6 space-y-4">
                   <div className="grid grid-cols-1 gap-3">
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Nome</p>
-                      <p className="font-semibold text-foreground text-sm">{(admin as any)?.name || "—"}</p>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">
+                        Nome
+                      </p>
+                      <p className="font-semibold text-foreground text-sm">
+                        {(admin as any)?.name || "—"}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">E-mail</p>
-                      <p className="font-semibold text-foreground text-sm">{(admin as any)?.email || "—"}</p>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">
+                        E-mail
+                      </p>
+                      <p className="font-semibold text-foreground text-sm">
+                        {(admin as any)?.email || "—"}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Role</p>
-                      <span className={`text-[0.7rem] font-semibold px-2 py-1 rounded border ${roleClass}`}>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">
+                        Role
+                      </p>
+                      <span
+                        className={`text-[0.7rem] font-semibold px-2 py-1 rounded border ${roleClass}`}
+                      >
                         {roleLabel}
                       </span>
                     </div>
                   </div>
                   <div className="flex gap-2 pt-2 border-t-2 border-dashed border-white/10">
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white font-bold uppercase" onClick={() => setEditProfileOpen(true)}>
+                    <Button
+                      size="sm"
+                      className="bg-primary hover:bg-primary/90 text-white font-bold uppercase"
+                      onClick={() => setEditProfileOpen(true)}
+                    >
                       Editar perfil
                     </Button>
-                    <Button size="sm" variant="outline" className="border-2 border-dashed border-white/20" onClick={() => setChangePasswordOpen(true)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-2 border-dashed border-white/20"
+                      onClick={() => setChangePasswordOpen(true)}
+                    >
                       <KeyRound className="h-3.5 w-3.5 mr-1.5" />
                       Trocar senha
                     </Button>
@@ -503,10 +587,16 @@ export default function PlatformAdminDashboard() {
                       <Mail className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-foreground text-sm">Configuração de Emails (SMTP)</h4>
+                      <h4 className="font-semibold text-foreground text-sm">
+                        Configuração de Emails (SMTP)
+                      </h4>
                       <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        As configurações SMTP são isoladas por tenant. Cada clube configura seu servidor
-                        em <span className="text-foreground font-medium">Administração → Configurações</span>.
+                        As configurações SMTP são isoladas por tenant. Cada
+                        clube configura seu servidor em{" "}
+                        <span className="text-foreground font-medium">
+                          Administração → Configurações
+                        </span>
+                        .
                       </p>
                     </div>
                   </div>
@@ -525,17 +615,36 @@ export default function PlatformAdminDashboard() {
               </h3>
               <div className="grid grid-cols-1 gap-3">
                 {[
-                  { label: "Compliance", desc: "Prazos e regras globais", icon: "📋" },
-                  { label: "Integrações", desc: "Sistemas externos e APIs", icon: "🔗" },
-                  { label: "Backup", desc: "Política de backup e retenção", icon: "💾" },
-                ].map((item) => (
-                  <Card key={item.label} className="border-2 border-dashed border-white/10 bg-card/50">
+                  {
+                    label: "Compliance",
+                    desc: "Prazos e regras globais",
+                    icon: "📋",
+                  },
+                  {
+                    label: "Integrações",
+                    desc: "Sistemas externos e APIs",
+                    icon: "🔗",
+                  },
+                  {
+                    label: "Backup",
+                    desc: "Política de backup e retenção",
+                    icon: "💾",
+                  },
+                ].map(item => (
+                  <Card
+                    key={item.label}
+                    className="border-2 border-dashed border-white/10 bg-card/50"
+                  >
                     <CardContent className="pt-6">
                       <div className="flex items-center gap-3">
                         <span className="text-xl opacity-30">{item.icon}</span>
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
-                          <p className="text-xs text-muted-foreground/60">{item.desc}</p>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            {item.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground/60">
+                            {item.desc}
+                          </p>
                         </div>
                       </div>
                     </CardContent>

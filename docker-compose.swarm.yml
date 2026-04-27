@@ -4,7 +4,7 @@
 # Deploy: docker stack deploy -c docker-compose.swarm.yml cac360
 # Remove: docker stack rm cac360
 
-version: '3.8'
+version: "3.8"
 
 services:
   # ============================================
@@ -56,13 +56,14 @@ services:
         window: 120s
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 512M
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 256M
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      test:
+        ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -99,13 +100,17 @@ services:
         max_attempts: 3
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 1G
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cac360} -d ${POSTGRES_DB:-cac360}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-cac360} -d ${POSTGRES_DB:-cac360}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
