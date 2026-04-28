@@ -47,30 +47,6 @@
 >
 > **Objetivo:** zerar essas falhas em 3 mini-WPs antes de congelar baseline. Estes são os primeiros WPs reais executados pelos agentes (validação ponta-a-ponta do protocolo).
 
-- [ ] WP-S0-A — Portabilidade do build + normalização prettier
-  - owner: —
-  - branch: —
-  - claimed_at: —
-  - scope: `package.json`, `pnpm-lock.yaml`, **+ todo arquivo tocado por `prettier --write .`** (autorizado por exceção no spec)
-  - depends_on: —
-  - deliverable: cross-env nos scripts dev/start/build:client; repo inteiro normalizado por prettier. 2 commits separados.
-  - integrity_required: static (prettier), build
-  - estimate: 1h
-  - spec: `docs/wp/WP-S0-A.md`
-  - prompt: `docs/prompts/ACTIVATE-A2-WP-S0-A.md`
-
-- [ ] WP-S0-B — Saneamento de testes frágeis
-  - owner: —
-  - branch: —
-  - claimed_at: —
-  - scope: `server/agendamento-laudo.test.ts`, `server/delete-user.test.ts`, `server/email.test.ts` (parcial), `server/formulario-agendamento-laudo.test.ts`
-  - depends_on: WP-S0-A
-  - deliverable: 4 arquivos (ou suítes) deletados; 4 issues `tests-rewrite` abertas. ADR-004.
-  - integrity_required: static, unit
-  - estimate: 2h
-  - spec: `docs/wp/WP-S0-B.md`
-  - prompt: `docs/prompts/ACTIVATE-A2-WP-S0-B.md`
-
 - [ ] WP-S0-C — Saúde de tipos (typecheck verde)
   - owner: A2 + A3 em paralelo
   - branches: `agent-a2/WP-S0-C-server-types`, `agent-a3/WP-S0-C-client-types`
@@ -84,18 +60,6 @@
   - estimate: 4-6h em paralelo
   - spec: `docs/wp/WP-S0-C.md`
   - prompts: `docs/prompts/ACTIVATE-A2-WP-S0-C-server.md`, `docs/prompts/ACTIVATE-A3-WP-S0-C-client.md`
-
-- [~] WP-S0-D — Alinhar versão pnpm em workflows com `packageManager`
-  - owner: A1
-  - branch: agent-a1/WP-S0-D-pnpm-version-alignment
-  - claimed_at: 2026-04-25
-  - scope: `.github/workflows/integrity.yml`, `.github/workflows/baseline-freeze.yml`
-  - depends_on: nenhum (paralelo a S0-A; deve mergear ANTES de S0-A para destravar CI)
-  - deliverable: remover input `version: 9` dos dois workflows; `pnpm/action-setup@v4` passa a ler `packageManager` do `package.json`. 1 commit, 4 linhas removidas.
-  - integrity_required: static (YAML), CI smoke (re-run de `integrity.yml` no próprio PR)
-  - estimate: 30min
-  - spec: `docs/wp/WP-S0-D.md`
-  - prompt: `docs/prompts/ACTIVATE-A1-WP-S0-D.md`
 
 - [ ] WP-S0-Z — Marco 2: congelar baseline em Linux/CI
   - owner: humano (workflow_dispatch)
@@ -168,7 +132,59 @@ _nenhum_
 
 ## Concluídos (mover após merge)
 
-_nenhum_
+### Sprint 0.5
+
+- [x] WP-S0-D — Alinhar versão pnpm em workflows + reconciliar lockfile
+  - owner: A1
+  - branch: agent-a1/WP-S0-D-pnpm-version-alignment
+  - claimed_at: 2026-04-25
+  - merged_pr: #8
+  - merged_at: 2026-04-26T15:12:29Z
+  - merge_commit: 12ecedb
+  - scope: `.github/workflows/integrity.yml`, `.github/workflows/baseline-freeze.yml`, `pnpm-lock.yaml`
+  - deliverable_realized: input `version: 9` removido dos dois workflows; `pnpm/action-setup@v4` agora lê `packageManager` do `package.json`. Lockfile reconciliado (6 itens de drift mascarados historicamente por pnpm 9).
+  - spec: `docs/wp/WP-S0-D.md`
+
+- [x] WP-S0-A — Portabilidade do build + normalização prettier
+  - owner: A2
+  - branch: agent-a2/WP-S0-A-portability-format
+  - claimed_at: 2026-04-25
+  - merged_pr: #7
+  - merged_at: 2026-04-27T19:22:45Z
+  - merge_commit: a0c6c75
+  - scope: `package.json`, `pnpm-lock.yaml`, `.gitignore`, `.prettierignore`, + arquivos tocados por `prettier --write`
+  - deliverable_realized: `cross-env` adicionado a `devDependencies` e aplicado nos scripts `dev`/`start`/`build:client`; 194 arquivos formatados por prettier; `.gitignore` expandido (`.tools/`, `.patches/`, prompts auxiliares); `email-templates/` adicionado a `.prettierignore`.
+  - spec: `docs/wp/WP-S0-A.md`
+
+- [x] WP-S0-B — Saneamento de testes frágeis
+  - owner: A2
+  - branch: agent-a2/WP-S0-B-purge-source-grep-tests
+  - claimed_at: 2026-04-27
+  - merged_pr: #13
+  - merged_at: 2026-04-27T20:37:40Z
+  - merge_commit: 7399d5b
+  - scope: `server/agendamento-laudo.test.ts`, `server/delete-user.test.ts`, `server/formulario-agendamento-laudo.test.ts`, `server/email.test.ts` (escopo reduzido pós-auditoria)
+  - deliverable_realized: 3 arquivos deletados (54 asserts grep-em-source removidos); `email.test.ts` preservado com `describe.skipIf(!process.env.SMTP_HOST)` (auditoria descobriu integração SMTP legítima, não grep). 4 issues de follow-up abertas: #9, #10, #11 (`tests-rewrite`), #12 (`tech-debt`).
+  - spec: `docs/wp/WP-S0-B.md`
+
+---
+
+## Notas operacionais — Sprint 0.5
+
+### Lacuna do state machine (descoberta em WP-S0-B)
+
+O state `[x]` é definido como "PR merged em `main`". O fluxo `feature → hml → main` cria um estado intermediário sem rótulo oficial: "merged em `hml`, aguardando promoção batch para `main` via Marco 2".
+
+Convenção temporária para este sprint: marcar como `[x]` ao mergear em `hml`. A promoção `hml → main` acontece no fechamento do Marco 2, via PR de promoção dedicado.
+
+Formalizar em adendo ao ADR-000 (próximo turno de A1).
+
+### Aprendizados de execução
+
+1. **Pausa explícita = parada total.** Quando o operador escreve "Pause" ou "Cole X antes de Y", o agente NÃO antecipa, NÃO consolida output, NÃO infere. Para naquele exato ponto e cola o output cru.
+2. **Conflitos de push (non-fast-forward) e rebase exigem pausa.** Agente nunca resolve autonomamente. Reporta erro, espera decisão.
+
+Ambas as regras descobertas em violação durante a execução do WP-S0-B. Formalizar em adendo ao ADR-000.
 
 ---
 
