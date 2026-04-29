@@ -78,11 +78,11 @@ Itens reconciliados (nenhum é regressão de código, todos correspondem a estad
 
 ## 5. Integrity Report obrigatório
 
-| Camada       | Como validar                                                     |
-| ------------ | ---------------------------------------------------------------- |
-| static       | YAML válido (`yamllint .github/workflows/*.yml` ou GitHub UI)    |
-| CI smoke     | Re-run do `integrity.yml` em PR vivo, ou push trivial em `hml`   |
-| dry-run      | `gh workflow run baseline-freeze.yml -F dry_run=true`            |
+| Camada   | Como validar                                                   |
+| -------- | -------------------------------------------------------------- |
+| static   | YAML válido (`yamllint .github/workflows/*.yml` ou GitHub UI)  |
+| CI smoke | Re-run do `integrity.yml` em PR vivo, ou push trivial em `hml` |
+| dry-run  | `gh workflow run baseline-freeze.yml -F dry_run=true`          |
 
 ## 6. Riscos e rollback
 
