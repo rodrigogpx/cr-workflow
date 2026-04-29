@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import nodemailer from "nodemailer";
 
-describe.skipIf(!process.env.SMTP_HOST)('SMTP Configuration', () => {
-  it('should validate SMTP credentials', async () => {
+describe.skipIf(!process.env.SMTP_HOST)("SMTP Configuration", () => {
+  it("should validate SMTP credentials", async () => {
     // Criar transporter com as credenciais
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,

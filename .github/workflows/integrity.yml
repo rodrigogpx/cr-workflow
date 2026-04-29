@@ -38,6 +38,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # -------------------------------------------------------------------
+      # Gate de formatação: bloqueia PR com drift de prettier
+      # -------------------------------------------------------------------
+      - name: Prettier check
+        run: pnpm prettier --check .
+
+      # -------------------------------------------------------------------
       # Detecta agente autor pela convenção de nome da branch
       # -------------------------------------------------------------------
       - name: Infer author agent
