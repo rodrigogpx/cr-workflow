@@ -27,7 +27,14 @@ async function getIatDb(ctx: any) {
     }
     return tenantDb;
   }
-  return await getDb();
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database not initialized",
+    });
+  }
+  return db;
 }
 
 function getTenantId(ctx: any): number {
