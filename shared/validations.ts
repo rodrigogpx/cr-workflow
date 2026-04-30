@@ -297,7 +297,7 @@ export const createUserSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   role: z.enum(["operator", "admin", "despachante"], {
-    errorMap: () => ({ message: "Selecione um perfil válido" }),
+    error: "Selecione um perfil válido",
   }),
 });
 
