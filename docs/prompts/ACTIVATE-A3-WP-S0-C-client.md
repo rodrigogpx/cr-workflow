@@ -66,7 +66,7 @@ NÃO prossiga sem luz verde.
 
   pnpm tsc --noEmit 2>&1 | grep "SuperAdminTenants" | head -20
 
-Cole o output completo. Esperado: ~8 erros, mistura de TS2769,
+Cole o output completo. Esperado: 17 erros (revisado em 2026-05-04 após WP-S0-C frente A2 mergear; contagem original era ~8). Mistura de TS2769,
 TS2322, TS2345, TS2339.
 
   wc -l client/src/pages/SuperAdminTenants.tsx
@@ -86,7 +86,7 @@ Tipos típicos de fix:
   - `{}` → narrowing com `typeof` ou cast explícito justificado
   - `isLoading` → trocar por `isPending` (TanStack Query v5)
 
-NÃO EDITE NADA AINDA. Cole as ~8 propostas e aguarde luz verde
+NÃO EDITE NADA AINDA. Cole as 17 propostas e aguarde luz verde
 geral. Posso aceitar todas, ajustar algumas, ou refazer.
 
 ### 3) Aplicar fixes
@@ -165,7 +165,7 @@ Sprint: 0.5 (fechamento)
 
 ## Resumo
 
-- client/src/pages/SuperAdminTenants.tsx: ~8 erros de tsc
+- client/src/pages/SuperAdminTenants.tsx: 17 erros de tsc
   eliminados (narrowing, fallbacks, isPending).
 - Frente A2 (iat.ts + validations.ts) está em PR paralelo.
 
@@ -220,7 +220,7 @@ Cole APENAS:
 
 ### Quando pausar manualmente
 
-- **Após seção 2 (mapeamento dos ~8 erros):** A3 vai propor fix para cada um. Olhe cada proposta criticamente:
+- **Após seção 2 (mapeamento dos 17 erros):** A3 vai propor fix para cada um. Olhe cada proposta criticamente:
   - **Fallbacks `?? '#fallback'`:** confira que o fallback faz sentido visualmente. `primaryColor ?? '#000000'` pode ficar estranho — talvez `?? '#3b82f6'` (cor padrão do tema) seja melhor.
   - **`isLoading` → `isPending`:** verifique se a UI condicional muda comportamento. Em TanStack Query v5, `isPending` é true só na primeira fetch; `isLoading` antigo era equivalente. Se houver retry/refetch, comportamento pode diferir sutilmente.
   - **`{}` → `new Date()`:** nunca aceite cast cego para `as Date`. Tem que ter narrowing ou conversão explícita.
