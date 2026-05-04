@@ -60,6 +60,8 @@
   - estimate: 4-6h em paralelo
   - spec: `docs/wp/WP-S0-C.md`
   - prompts: `docs/prompts/ACTIVATE-A2-WP-S0-C-server.md`, `docs/prompts/ACTIVATE-A3-WP-S0-C-client.md`
+  - **frente A2**: merged via PR #18 / commit `3376984` em 2026-04-30. Plano D recortado (refactor `getIatDb` com TRPCError null-guard + Zod v4 `errorMap` → `error` em `shared/validations.ts`). Redução 182→138 TS errors. Spec original divergia da realidade (assumia ~50, encontrados 182). Follow-ups documentados no PR body: A2-FU-1 (74 `ctx.user` TS18047 em routers.ts → middleware `authedProcedure`), A2-FU-2 (8 heterogêneos em routers.ts: 5 TS2345 + 2 TS2305 emailService imports + 1 TS2802), A2-FU-3 (15 heterogêneos em `_core/`).
+  - **frente A3**: pendente. Spec `docs/prompts/ACTIVATE-A3-WP-S0-C-client.md` ajustada em 2026-05-04 (17 erros reais em `SuperAdminTenants.tsx` vs ~8 originalmente esperado).
 
 - [ ] WP-S0-Z — Marco 2: congelar baseline em Linux/CI
   - owner: humano (workflow_dispatch)
@@ -166,6 +168,28 @@ _nenhum_
   - scope: `server/agendamento-laudo.test.ts`, `server/delete-user.test.ts`, `server/formulario-agendamento-laudo.test.ts`, `server/email.test.ts` (escopo reduzido pós-auditoria)
   - deliverable_realized: 3 arquivos deletados (54 asserts grep-em-source removidos); `email.test.ts` preservado com `describe.skipIf(!process.env.SMTP_HOST)` (auditoria descobriu integração SMTP legítima, não grep). 4 issues de follow-up abertas: #9, #10, #11 (`tests-rewrite`), #12 (`tech-debt`).
   - spec: `docs/wp/WP-S0-B.md`
+
+- [x] WP-S0-E — Renormalização de line endings + gate de prettier
+  - owner: A1
+  - branch: agent-a1/WP-S0-E-line-endings-and-prettier-gate
+  - claimed_at: 2026-04-29
+  - merged_pr: #15
+  - merged_at: 2026-04-29T20:00:42Z
+  - merge_commit: c681f59
+  - scope: `.gitattributes` (novo), `.github/workflows/integrity.yml`, `Dockerfile`, `email-templates/psicotecnico.html`, `railway.toml`, `docs/wp/WP-S0-D.md`, `server/email.test.ts`
+  - deliverable_realized: `.gitattributes` força `eol=lf` em text files (binários explícitos via `*.png/jpg/woff/etc binary`); novo step `pnpm prettier --check .` no workflow `Integrity Check` como gate de PR. 4 arquivos com drift CRLF→LF renormalizados. 2 arquivos com drift de prettier corrigidos via `prettier --write` (incluindo exceção documentada: `server/email.test.ts` em zona A2 tocado por A1 via mudança puramente mecânica).
+  - spec: WP-S0-E (sem documento dedicado; spec inline na conversa de ativação).
+
+- [x] hotfix-cross-env — Remove `cross-env` do start script (deploy Railway)
+  - owner: A1 (hot-fix reativo)
+  - branch: railway/fix-deploy-7141ea
+  - claimed_at: 2026-04-29
+  - merged_pr: #16
+  - merged_at: 2026-04-29T20:51:31Z
+  - merge_commit: dd15455
+  - scope: `package.json`
+  - deliverable_realized: troca de `"start": "cross-env NODE_ENV=production node dist/index.cjs"` por `"start": "NODE_ENV=production node dist/index.cjs"`. Causa raiz: `Dockerfile` faz `pnpm prune --prod` removendo `cross-env` (devDependency), e `start` precisava do binário em runtime. Bash inline `NODE_ENV=...` é portável em containers Linux.
+  - tipo: hotfix (não planejado), reativo a Railway crash loop. Branch criada pela integração Railway/GitHub (nome `railway/fix-deploy-<hash>`).
 
 ---
 
