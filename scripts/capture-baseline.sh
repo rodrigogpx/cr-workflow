@@ -74,8 +74,9 @@ if grep -qE 'Test Files|Tests ' "$REPORT_OUT"; then
   [[ -n "$test_passed" && -n "$test_failed" ]] && test_count=$((test_passed + test_failed))
 fi
 
-# Warnings de typecheck (rough — depende do formato tsc)
-tsc_warnings="$(grep -cE '(warning|TS[0-9]+)' "$REPORT_OUT" 2>/dev/null || echo 0)"
+# Warnings de typecheck — leitura direta do integrity-metrics.txt (emitido por integrity-check.sh)
+tsc_warnings=$(grep '^tsc_warnings=' "$METRICS_OUT" 2>/dev/null | cut -d= -f2)
+tsc_warnings=${tsc_warnings:-0}
 
 # -----------------------------------------------------------------------------
 # Gerar docs/integrity-baseline.json
@@ -195,4 +196,6 @@ echo "   git commit -m 'chore(sprint-0): congelar baseline de integridade'"
 echo "   git push -u origin sprint-0/baseline-freeze"
 echo "   gh pr create --title 'Sprint 0 — Baseline de integridade' --body-file .github/ISSUE_TEMPLATE/baseline-integridade.md"
 
-exit $check_exit
+# Capture mode: always succeed. The tsc_warnings count is frozen in the
+# baseline and enforced by the regression gate — not by this script's exit code.
+exit 0

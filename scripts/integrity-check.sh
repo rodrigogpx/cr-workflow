@@ -22,6 +22,7 @@ cd "$REPO_ROOT"
 pass=0
 fail=0
 skip=0
+tsc_warnings=0
 report=""
 started_at="$(date -Iseconds)"
 
@@ -113,7 +114,26 @@ changed() { [[ "$CHANGED_FILES" == *"$1"* ]]; }
 # -----------------------------------------------------------------------------
 if enabled static; then
   if grep -q '"check"' package.json 2>/dev/null; then
-    run static "typecheck (run check)" "$PKG_MGR" run check
+    if enabled static; then
+      t0=$(now_ms)
+      echo "▶ [static] typecheck (run check)..."
+      tsc_output=$("$PKG_MGR" run check 2>&1)
+      tsc_exit=$?
+      t1=$(now_ms); dt=$((t1 - t0))
+      tsc_warnings=$(printf '%s\n' "$tsc_output" | grep -c "error TS" || true)
+      if [[ $tsc_exit -eq 0 ]]; then
+        report+="- [static] typecheck (run check): ✓ (${dt}ms)\n"
+        METRICS+="static:typecheck (run check):pass:${dt}"$'\n'
+        pass=$((pass+1))
+      else
+        report+="- [static] typecheck (run check): ✗ (${tsc_warnings} errors, ${dt}ms)\n"
+        METRICS+="static:typecheck (run check):fail:${dt}"$'\n'
+        fail=$((fail+1))
+      fi
+    else
+      report+="- [static] typecheck (run check): — (skipped via LAYERS)\n"
+      skip=$((skip+1))
+    fi
   else
     skip_layer static "typecheck" "script 'check' ausente"
   fi
@@ -310,6 +330,7 @@ if [[ -n "${METRICS_OUT:-}" ]]; then
     echo "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
     [[ -n "$bundle_client_kb" ]] && echo "bundle_client_kb=${bundle_client_kb}"
     [[ -n "$bundle_server_kb" ]] && echo "bundle_server_kb=${bundle_server_kb}"
+    [[ -n "${tsc_warnings:-}" ]] && echo "tsc_warnings=${tsc_warnings}"
     echo "pass=${pass}"
     echo "fail=${fail}"
     echo "skip=${skip}"
