@@ -158,6 +158,14 @@ jobs:
           if cur_fail > 0:
               issues.append(f"{cur_fail} camada(s) falharam")
 
+          ref_tsc = base.get("tsc_warnings")
+          cur_tsc = metrics.get("tsc_warnings")
+          if ref_tsc is not None and cur_tsc is not None:
+              cur_tsc = int(cur_tsc)
+              print(f"tsc_warnings: {ref_tsc} → {cur_tsc}")
+              if cur_tsc > ref_tsc:
+                  issues.append(f"tsc_warnings cresceu de {ref_tsc} para {cur_tsc}")
+
           if issues:
               print("❌ Regressão:")
               for i in issues:
