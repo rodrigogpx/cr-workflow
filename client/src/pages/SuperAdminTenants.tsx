@@ -52,6 +52,8 @@ import { EmailConfigPanel } from "@/components/super-admin/EmailConfigPanel";
 import { EmailTemplatesPanel } from "@/components/super-admin/EmailTemplatesPanel";
 import { EmailTriggersPanel } from "@/components/super-admin/EmailTriggersPanel";
 import { TenantBillingPanel } from "@/components/super-admin/TenantBillingPanel";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "@/lib/trpc";
 
 // Logo
 const APP_LOGO = "/logo.png";
@@ -225,6 +227,34 @@ interface Tenant {
   createdAt: string;
 }
 
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type TenantRow =
+  RouterOutputs["tenants"]["list"] extends Array<infer U>
+    ? U
+    : RouterOutputs["tenants"]["list"] extends { tenants: Array<infer U> }
+      ? U
+      : never;
+
+function tenantFromRow(row: TenantRow): Tenant {
+  return {
+    ...row,
+    primaryColor: row.primaryColor ?? "#1a5c00",
+    secondaryColor: row.secondaryColor ?? "#4d9702",
+    plan: (row.plan ?? "starter") as Tenant["plan"],
+    subscriptionStatus: (row.subscriptionStatus ??
+      "trial") as Tenant["subscriptionStatus"],
+    featureWorkflowCR: row.featureWorkflowCR ?? true,
+    featureApostilamento: row.featureApostilamento ?? false,
+    featureRenovacao: row.featureRenovacao ?? false,
+    featureInsumos: row.featureInsumos ?? false,
+    featureIAT: row.featureIAT ?? false,
+    maxUsers: row.maxUsers ?? 10,
+    maxClients: row.maxClients ?? 500,
+    createdAt: row.createdAt.toISOString(),
+    subscriptionExpiresAt: row.subscriptionExpiresAt?.toISOString() ?? null,
+  };
+}
+
 function TenantStats({ tenantId }: { tenantId: number }) {
   const { data, isLoading } = trpc.tenants.getStats.useQuery({ id: tenantId });
 
@@ -274,10 +304,10 @@ function TenantStats({ tenantId }: { tenantId: number }) {
         {data.lastActivity && (
           <span
             className="flex items-center gap-1 text-gray-500"
-            title={`Última atividade: ${new Date(data.lastActivity).toLocaleString()}`}
+            title={`Última atividade: ${new Date(data.lastActivity as string).toLocaleString()}`}
           >
             <Clock className="h-3 w-3" />{" "}
-            {new Date(data.lastActivity).toLocaleDateString()}
+            {new Date(data.lastActivity as string).toLocaleDateString()}
           </span>
         )}
         {(data as any).error && (
@@ -301,7 +331,7 @@ export default function SuperAdminTenants() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "general" | "email" | "templates" | "triggers"
+    "general" | "email" | "templates" | "triggers" | "billing"
   >("general");
   const [panelMounted, setPanelMounted] = useState(false);
 
@@ -740,7 +770,9 @@ export default function SuperAdminTenants() {
                       {/* Color indicator */}
                       <div
                         className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg"
-                        style={{ backgroundColor: tenant.primaryColor }}
+                        style={{
+                          backgroundColor: tenant.primaryColor ?? "#1a5c00",
+                        }}
                       >
                         {tenant.name.charAt(0)}
                       </div>
@@ -749,8 +781,8 @@ export default function SuperAdminTenants() {
                           <h3 className="text-lg font-semibold">
                             {tenant.name}
                           </h3>
-                          {getStatusBadge(tenant.subscriptionStatus)}
-                          {getPlanBadge(tenant.plan)}
+                          {getStatusBadge(tenant.subscriptionStatus ?? "trial")}
+                          {getPlanBadge(tenant.plan ?? "starter")}
                         </div>
                         <div className="flex flex-col gap-1 mt-1">
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -818,7 +850,7 @@ export default function SuperAdminTenants() {
                         variant="ghost"
                         size="icon"
                         title="Editar"
-                        onClick={() => setEditingTenant(tenant)}
+                        onClick={() => setEditingTenant(tenantFromRow(tenant))}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -830,8 +862,8 @@ export default function SuperAdminTenants() {
                             ? "Ativar"
                             : "Suspender"
                         }
-                        onClick={() => toggleStatus(tenant)}
-                        disabled={setStatus.isLoading}
+                        onClick={() => toggleStatus(tenantFromRow(tenant))}
+                        disabled={setStatus.isPending}
                       >
                         {tenant.subscriptionStatus === "suspended" ? (
                           <PlayCircle className="h-4 w-4 text-green-600" />
@@ -844,8 +876,8 @@ export default function SuperAdminTenants() {
                         size="icon"
                         className="text-red-500 hover:text-red-700"
                         title="Excluir"
-                        onClick={() => handleDelete(tenant)}
-                        disabled={deleteTenant.isLoading}
+                        onClick={() => handleDelete(tenantFromRow(tenant))}
+                        disabled={deleteTenant.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -1119,9 +1151,9 @@ export default function SuperAdminTenants() {
                 <Button
                   onClick={handleCreateTenant}
                   className="bg-purple-600 hover:bg-purple-700"
-                  disabled={createTenant.isLoading}
+                  disabled={createTenant.isPending}
                 >
-                  {createTenant.isLoading && (
+                  {createTenant.isPending && (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   )}
                   Criar Tenant
@@ -1390,9 +1422,9 @@ export default function SuperAdminTenants() {
                       <Button
                         onClick={handleUpdateTenant}
                         className="bg-purple-600 hover:bg-purple-700"
-                        disabled={updateTenant.isLoading}
+                        disabled={updateTenant.isPending}
                       >
-                        {updateTenant.isLoading && (
+                        {updateTenant.isPending && (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         )}
                         Salvar alterações
