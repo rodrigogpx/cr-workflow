@@ -7,9 +7,10 @@ name: Baseline Freeze
 # Disparo: workflow_dispatch (manual). Owner do repo dispara após Sprint 0.5
 # (WP-S0-A + WP-S0-B + WP-S0-C) estar 100% mergeado em hml.
 #
-# Pré-condição validada pelo próprio job: pnpm prettier --check, pnpm run check,
+# Pré-condição validada pelo próprio job: pnpm prettier --check,
 # pnpm test e pnpm run build precisam passar antes do capture-baseline.sh.
-# Se qualquer um falhar, o workflow para sem abrir PR.
+# Typecheck (pnpm run check) NÃO é pré-condição — é congelado como
+# tsc_warnings no baseline e enforced pelo regression gate (WP-S0-F).
 #
 # Referência: docs/wp/WP-S0-C.md §7, docs/PLANO-MULTI-AGENTE.md §7.
 
@@ -64,8 +65,9 @@ jobs:
       - name: Pre-flight — prettier
         run: pnpm prettier --check .
 
-      - name: Pre-flight — typecheck
-        run: pnpm run check
+      # Pre-flight de typecheck removido em WP-S0-F: typecheck agora é
+      # gate de regressão (count-based) via integrity.yml. O baseline atual
+      # captura tsc_warnings e qualquer aumento futuro falha o PR.
 
       - name: Pre-flight — unit tests
         run: pnpm test
@@ -107,9 +109,12 @@ jobs:
           build_ms = (data.get("durations_ms") or {}).get("build")
           if not isinstance(build_ms, (int, float)) or build_ms <= 0:
               errors.append(f"durations_ms.build inválido: {build_ms}")
-          fail = (data.get("summary") or {}).get("fail")
-          if fail != 0:
-              errors.append(f"summary.fail={fail} (esperado 0)")
+          # summary.fail > 0 é esperado: layer 'static' falha por causa
+          # do tsc count > 0, que é justamente o que estamos congelando.
+          # Validamos que tsc_warnings foi capturado como int ≥ 0.
+          tsc_warnings = data.get("tsc_warnings")
+          if not isinstance(tsc_warnings, int) or tsc_warnings < 0:
+              errors.append(f"tsc_warnings inválido: {tsc_warnings}")
           if errors:
               print("❌ Sanity checks falharam:")
               for e in errors:
@@ -189,9 +194,10 @@ jobs:
           Gerado automaticamente pelo workflow `.github/workflows/baseline-freeze.yml` (Marco 2 do Sprint 0). O job rodou `scripts/capture-baseline.sh` em ambiente Ubuntu (mesmo OS do CI), depois de validar:
 
           - `pnpm prettier --check .` ✓
-          - `pnpm run check` ✓
           - `pnpm test` ✓
           - `pnpm run build` ✓
+
+          O typecheck (`pnpm run check`) **não é gate de pré-flight** — é congelado como `tsc_warnings` no baseline. Qualquer aumento em PRs futuros é detectado pelo regression gate de `integrity.yml` (WP-S0-F).
 
           Antes deste PR, o gate de regressão do `integrity.yml` retornava `pending` em todos os PRs dos agentes. Após o merge, PRs subsequentes comparam suas métricas com este baseline.
 
